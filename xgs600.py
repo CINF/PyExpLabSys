@@ -1,7 +1,5 @@
 import serial
 import time
-import Queue
-import pyodbc
 
 def xgs_comm(command,port=0):
 	ser = serial.Serial(0)
