@@ -1,17 +1,14 @@
 import serial
 import time
+import Queue
+import pyodbc
 
 def xgs_comm(command,port=0):
 	ser = serial.Serial(0)
-	comm = "#00" + command
+	comm = "#00" + command + "\r"
 
 	ser.write(comm)
-	time.sleep(0.25)
-	bytes = ser.inWaiting()
-	ser.read(bytes) # Strange, if the command is different from last command, it needs to be send twice...
-
-	ser.write(comm)
-	time.sleep(0.25)
+	time.sleep(1.0)
 	bytes = ser.inWaiting()
 	complete_string = ser.read(bytes)
 
@@ -23,14 +20,21 @@ def xgs_comm(command,port=0):
 
 def readAllPressures():
 	pressure_string = xgs_comm("0F")
+	#print pressure_string
+	if len(pressure_string)>0:
+		temp_pressure = pressure_string.replace(' ','').split(',')
 
-	temp_pressure = pressure_string.replace(' ','').split(',')
-	pressures = []
-	for press in temp_pressure:
-		if press == 'OPEN':
-			pressures.append(-1)
-		else:
-			pressures.append((float)(press))
+		pressures = []
+		for press in temp_pressure:
+			if press == 'OPEN':
+				pressures.append(-1)
+			else:
+				try:
+					pressures.append((float)(press))
+				except:
+					pressures.append(-2)
+	else:
+		pressures = [-2,-2,-2,-2]
 	return(pressures)
 
 def listAllGauges():
@@ -52,13 +56,38 @@ def listAllGauges():
 	return(gauges)
 
 
+def readSoftwareVersion():
+	gauge_string = xgs_comm("05")
+	return(gauge_string)
+
+
+def readPressureUnit():
+	gauge_string = xgs_comm("13")
+	unit = gauge_string.replace(' ','')
+	if unit == "00":
+		unit = "Torr"
+	if unit == "01":
+		unit = "mBar"
+	if unit == "02":
+		unit = "Pascal"
+	return(unit)
+
+
+
 def writePressuresToFile():
 	pressures = readAllPressures()
-	f = open('c:\pressures\main_chamber.pressure','w+')
-	f.write(str(pressures[1]))
-	print pressures[1]
-	f.close()
+	try:
+		if pressures[1]>0:
+			f = open('c:\pressures\main_chamber.pressure','w+')
+			f.write(str(pressures[1]))
+			f.close()
+		#print pressures[1]
+	except:
+		print pressures
 
+
+
+#print readPressureUnit()
 
 while True:
 	writePressuresToFile()
