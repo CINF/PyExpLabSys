@@ -32,7 +32,7 @@ def readAllPressures():
 				except:
 					pressures.append(-2)
 	else:
-		pressures = [-2,-2,-2,-2]
+		pressures = [-3]
 	return(pressures)
 
 def listAllGauges():
@@ -72,23 +72,7 @@ def readPressureUnit():
 
 
 
-def writePressuresToFile():
-	pressures = readAllPressures()
-	try:
-		if pressures[1]>0:
-			f = open('c:\pressures\main_chamber.pressure','w+')
-			f.write(str(pressures[1]))
-			f.close()
-		#print pressures[1]
-	except:
-		print pressures
 
-
-
-#print readPressureUnit()
-
-while True:
-	writePressuresToFile()
 
 #print readAllPressures()
 
