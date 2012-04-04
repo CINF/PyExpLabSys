@@ -22,36 +22,44 @@ class Agilent34410ADriver:
         return return_string
         
     def readSoftwareVersion(self):
-        version_string = scpi_comm("*IDN?")
+        version_string = self.scpi_comm("*IDN?")
         return(version_string)
 
     def resetDevice(self):
-        scpi_comm("*RST")
+        self.scpi_comm("*RST")
         return(True)
 
     def deviceClear(self):
-        scpi_comm("*abort")
+        self.scpi_comm("*abort")
         return(True)
 
     def clearErrorQueue(self):
         error = scpi_comm("*ESR?")
-        scpi_comm("*cls")
+        self.scpi_comm("*cls")
         return(error)
 
 
     def configCurrentMeasurement(self):
-        scpi_comm("CONFIGURE:CURRENT:DC") #Take parameter to also be able to select AC
+        self.scpi_comm("CONFIGURE:CURRENT:DC") #Take parameter to also be able to select AC
         return(True)
 
     def configResistanceMeasurement(self):
-        scpi_comm("CONFIGURE:RESISTANCE") #Take parameter to also be able to select 4W
+        self.scpi_comm("CONFIGURE:RESISTANCE") #Take parameter to also be able to select 4W
         return(True)
 
     def selectMeasurementFunction(self,function):
         values = ['CAPACITANCE','CONTINUITY','CURRENT','DIODE','FREQUENCY','RESISTANCE','TEMPERATURE','VOLTAGE']
+        return_value = False
+        if function in values:
+            return_value = True
+            function_string = "FUNCTION " + "\"" + function + "\""
+            print function_string
+            self.scpi_comm(function_string)
+            
+        return(return_value)
 
     def readConfiguration(self):
-        response = scpi_comm("CONFIGURE?")
+        response = self.scpi_comm("CONFIGURE?")
         response = response.replace(' ',',')
         conf = response.split(',')
         conf_string = "Measurement type: " + conf[0] + "\nRange: " + conf[1] + "\nResolution: " + conf[2]
@@ -64,4 +72,4 @@ class Agilent34410ADriver:
 
 
 driver  = Agilent34410ADriver()
-print driver.read()
+print driver.selectMeasurementFunction('RESISTANCE')
