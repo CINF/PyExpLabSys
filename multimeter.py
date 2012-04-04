@@ -11,7 +11,7 @@ from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg as\
 import gtk
 import gobject
 
-#from agilent_34410A.py import Agilent34410ADriver
+from agilent_34410A import Agilent34410ADriver
 
 import time
 import random
@@ -22,16 +22,18 @@ class Multimeter:
     def __init__(self):
         """ Initialisation of driver and gui """
 
-        # Initialize driver
+        self.device = Agilent34410ADriver()
 
         self.builder = gtk.Builder()
         self.builder.add_from_file("gui.glade")
         self.x = []
         self.y = []
         self.update_timer = None
+        self.starttime = time.time()
 
+        name = self.device.readSoftwareVersion(short=True)
         self.win = self.builder.get_object('window1')
-        self.win.set_title('Hallo World') # SUBS with name from driver
+        self.win.set_title(name) # SUBS with name from driver
 
         fig = Figure(figsize=(5, 4), dpi=100)
         fig.set_facecolor('white')
@@ -57,8 +59,9 @@ class Multimeter:
 
         type_combo.set_active(0)
         self.resistance_combo.set_active(0)
+        self.device.setAutoInputZ(False)
         frequency_combo.set_active(0)
-        n_points_combo.set_active(0)
+        n_points_combo.set_active(3)
 
         self.builder.connect_signals(self)
 
@@ -86,13 +89,13 @@ class Multimeter:
             selection = model[active][0]
             if selection == 'Bias [V]':
                 self.resistance_combo.set_sensitive(True)
-                # SUBS
+                self.device.selectMeasurementFunction('VOLTAGE')
             elif selection == 'Current [A]':
                 self.resistance_combo.set_sensitive(False)
-                # SUBS
+                self.device.selectMeasurementFunction('CURRENT')
             elif selection == 'Resistance [Ohm]':
                 self.resistance_combo.set_sensitive(False)
-                # SUBS
+                self.device.selectMeasurementFunction('RESISTANCE')
         self.set_update(None, before)
 
     def on_combobox2_changed(self, widget):
@@ -106,9 +109,10 @@ class Multimeter:
         if active >= 0:
             selection = model[active][0]
             if selection == 'Input Impedance LOW':
-                pass # SUBS
+                self.device.setAutoInputZ(False)
             elif selection == 'Input Impedance AUTO HIGH':
-                pass # SUBS
+                print 'test'
+                self.device.setAutoInputZ(True)
         self.set_update(None, before)
 
     def on_combobox3_changed(self, widget):
@@ -149,10 +153,10 @@ class Multimeter:
     def update(self):
         """ Ask for measurement and update graph """
         start = time.time()
-        new_measurement = random.random()
+        new_measurement = self.device.read()
         self.builder.get_object('label_measurement').\
             set_text(str(new_measurement))
-        self.x.append(time.time() % 60)
+        self.x.append(time.time() - self.starttime)
         self.y.append(new_measurement)
         self.x = self.x[self.points * -1:]
         self.y = self.y[self.points * -1:]

@@ -21,7 +21,7 @@ class Agilent34410ADriver:
             f.close()
         return return_string
         
-    def readSoftwareVersion(self):
+    def readSoftwareVersion(self, short=False):
         version_string = self.scpi_comm("*IDN?")
         return(version_string)
 
@@ -64,20 +64,19 @@ class Agilent34410ADriver:
         conf_string = "Measurement type: " + conf[0] + "\nRange: " + conf[1] + "\nResolution: " + conf[2]
         return(conf_string)
 
-    def autoInputZ(self, auto=False):
+    def setAutoInputZ(self, auto=False):
         if auto:
             self.scpi_comm("VOLT:IMP:AUTO ON")
         else:
             self.scpi_comm("VOLT:IMP:AUTO OFF")
 
     def read(self):
-        value = self.scpi_comm("READ?")
+        value = float(self.scpi_comm("READ?"))
         return value
 
-
 driver  = Agilent34410ADriver()
-print driver.selectMeasurementFunction('VOLTAGE')
-driver.autoInputZ(False)
+#print driver.readSoftwareVersion()
+#driver.autoInputZ(False)
 print driver.read()
-time.sleep(15)
-print driver.read()
+#time.sleep(15)
+#print driver.read()
