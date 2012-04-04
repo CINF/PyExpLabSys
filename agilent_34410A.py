@@ -53,7 +53,6 @@ class Agilent34410ADriver:
         if function in values:
             return_value = True
             function_string = "FUNCTION " + "\"" + function + "\""
-            print function_string
             self.scpi_comm(function_string)
             
         return(return_value)
@@ -65,6 +64,11 @@ class Agilent34410ADriver:
         conf_string = "Measurement type: " + conf[0] + "\nRange: " + conf[1] + "\nResolution: " + conf[2]
         return(conf_string)
 
+    def autoInputZ(self, auto=False):
+        if auto:
+            self.scpi_comm("VOLT:IMP:AUTO ON")
+        else:
+            self.scpi_comm("VOLT:IMP:AUTO OFF")
 
     def read(self):
         value = self.scpi_comm("READ?")
@@ -72,4 +76,8 @@ class Agilent34410ADriver:
 
 
 driver  = Agilent34410ADriver()
-print driver.selectMeasurementFunction('RESISTANCE')
+print driver.selectMeasurementFunction('VOLTAGE')
+driver.autoInputZ(False)
+print driver.read()
+time.sleep(15)
+print driver.read()
