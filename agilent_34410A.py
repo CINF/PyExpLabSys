@@ -1,43 +1,7 @@
-import time
+from SCPI import SCPI
 
-class Agilent34410ADriver:
-
-    def scpi_comm(self,command):
-        #ser = serial.Serial(0)
-        #comm = "#00" + command + "\r"
-
-        f = open('/dev/usbtmc0', 'w')
-        f.write(command)
-        f.close()
-
-        time.sleep(0.01)
-        return_string = ""    
-        if command[-1]=='?':
-            a = ' '
-            f = open('/dev/usbtmc0', 'r')
-            while not (ord(a) == 10):
-                a = f.read(1)
-                return_string += a
-            f.close()
-        return return_string
-        
-    def readSoftwareVersion(self, short=False):
-        version_string = self.scpi_comm("*IDN?")
-        return(version_string)
-
-    def resetDevice(self):
-        self.scpi_comm("*RST")
-        return(True)
-
-    def deviceClear(self):
-        self.scpi_comm("*abort")
-        return(True)
-
-    def clearErrorQueue(self):
-        error = scpi_comm("*ESR?")
-        self.scpi_comm("*cls")
-        return(error)
-
+    
+class Agilent34410ADriver(SCPI):
 
     def configCurrentMeasurement(self):
         self.scpi_comm("CONFIGURE:CURRENT:DC") #Take parameter to also be able to select AC
@@ -74,9 +38,4 @@ class Agilent34410ADriver:
         value = float(self.scpi_comm("READ?"))
         return value
 
-driver  = Agilent34410ADriver()
-#print driver.readSoftwareVersion()
-#driver.autoInputZ(False)
-print driver.read()
-#time.sleep(15)
-#print driver.read()
+
