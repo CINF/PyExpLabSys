@@ -44,7 +44,7 @@ class Multimeter:
         types = ['Bias [V]', 'Current [A]', 'Resistance [Ohm]']
         type_combo = self.build_combo('combobox1', types)
 
-        resistances = ['10 MOhm', 'High!']
+        resistances = ['Input Impedance LOW', 'Input Impedance AUTO HIGH']
         self.resistance_combo = self.build_combo('combobox2', resistances)
 
         frequences = ['As fast as possible', '10 Hz', '5 Hz', '2 Hz', '1 Hz']
@@ -86,10 +86,13 @@ class Multimeter:
             selection = model[active][0]
             if selection == 'Bias [V]':
                 self.resistance_combo.set_sensitive(True)
+                # SUBS
             elif selection == 'Current [A]':
                 self.resistance_combo.set_sensitive(False)
+                # SUBS
             elif selection == 'Resistance [Ohm]':
                 self.resistance_combo.set_sensitive(False)
+                # SUBS
         self.set_update(None, before)
 
     def on_combobox2_changed(self, widget):
@@ -101,7 +104,11 @@ class Multimeter:
         model = widget.get_model()
         active = widget.get_active()
         if active >= 0:
-            print model[active][0]
+            selection = model[active][0]
+            if selection == 'Input Impedance LOW':
+                pass # SUBS
+            elif selection == 'Input Impedance AUTO HIGH':
+                pass # SUBS
         self.set_update(None, before)
 
     def on_combobox3_changed(self, widget):
