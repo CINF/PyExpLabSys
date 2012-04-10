@@ -8,8 +8,12 @@ class InterfaceOutOfBoundsError(Exception):
 
 class CPX400DPDriver(SCPI):
 
-    def __init__(self):
+    def __init__(self,output):
         SCPI.__init__(self,'/dev/ttyACM0','serial')
+        if not (output == 1 or output == 2):
+            raise InterfaceOutOfBoundsError(output)
+        else:
+            self.output = str(output)
 
     def GetLock(self):
         function_string = 'IFLOCK'
@@ -25,39 +29,46 @@ class CPX400DPDriver(SCPI):
             return_message = "Lock acquired"
         return(return_message)
 
-    def SetVoltage(self, output,value):
-        if not (output == 1 or output == 2):
-            raise InterfaceOutOfBoundsError(output)
-        function_string = 'V' + str(output)
+    def OutputOn(self, on=False):
+        if on:
+            enabled = str(1)
+        else:
+            enabled = str(0)
+        function_string = 'OP' + self.output + ' ' + enabled
         return(self.scpi_comm(function_string))
 
-    def SetCurrentLimit(self, output,value):
-        if not (output == 1 or output == 2):
-            raise InterfaceOutOfBoundsError(output)
-        function_string = 'I' + str(output)
+    def SetVoltage(self, value):
+        function_string = 'V' + self.output + ' ' + str(value)
+        return(self.scpi_comm(function_string))
+
+    def SetCurrentLimit(self, value):
+        function_string = 'I ' + self.output
         return(self.scpi_comm(function_string))
     
-    def ReadSetVoltage(self, output):
-        if not (output == 1 or output == 2):
-            raise InterfaceOutOfBoundsError(output)
-        function_string = 'V' + str(output) + '?'
+    def IncreaseVoltage(self):
+        function_string = 'INCV' + self.output
+        return(self.scpi_comm(function_string))
+    
+    def ReadSetVoltage(self):
+        function_string = 'V' + self.output + '?'
         return(self.scpi_comm(function_string))
 
-    def ReadCurrentLimit(self, output):
-        if not (output == 1 or output == 2):
-            raise InterfaceOutOfBoundsError(output)
-        function_string = 'I' + str(output) + '?'
+    def ReadVoltageStepSize(self):
+        function_string = 'DELTAV' + self.output + '?'
         return(self.scpi_comm(function_string))
 
-
-    def ReadActualVoltage(self, output):
-        if not (output == 1 or output == 2):
-            raise InterfaceOutOfBoundsError(output)
-        function_string = 'V' + str(output) + 'O?'
+    def SetVoltageStepSize(self, value):
+        function_string = 'DELTAV' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
-    def ReadActualCurrent(self, output):
-        if not (output == 1 or output == 2):
-            raise InterfaceOutOfBoundsError(output)
-        function_string = 'I' + str(output) + 'O?'
+    def ReadCurrentLimit(self):
+        function_string = 'I' + self.output + '?'
+        return(self.scpi_comm(function_string))
+
+    def ReadActualVoltage(self):
+        function_string = 'V' + self.output + 'O?'
+        return(self.scpi_comm(function_string))
+
+    def ReadActualCurrent(self):
+        function_string = 'I' + self.output + 'O?'
         return(self.scpi_comm(function_string))
