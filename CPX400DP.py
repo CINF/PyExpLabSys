@@ -16,38 +16,47 @@ class CPX400DPDriver(SCPI):
             self.output = str(output)
 
     def SetVoltage(self, value):
+        """Sets the voltage """
         function_string = 'V' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
     def SetCurrentLimit(self, value):
+        """Sets the current limit"""
         function_string = 'I ' + self.output
         return(self.scpi_comm(function_string))
 
     def ReadSetVoltage(self):
+        """Reads the set voltage""" 
         function_string = 'V' + self.output + '?'
         return(self.scpi_comm(function_string))
 
     def ReadCurrentLimit(self):
+        """Reads the current limit"""
         function_string = 'I' + self.output + '?'
         return(self.scpi_comm(function_string))
 
     def ReadActualVoltage(self):
+        """Reads the actual output voltage"""
         function_string = 'V' + self.output + 'O?'
         return(self.scpi_comm(function_string))
 
     def ReadActualCurrent(self):
+        """Reads the actual output current"""
         function_string = 'I' + self.output + 'O?'
         return(self.scpi_comm(function_string))
        
     def SetVoltageStepSize(self, value):
+        """Sets the voltage step size"""
         function_string = 'DELTAV' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
     def SetCurrentStepSize(self, value):
+        """Sets the current step size"""
         function_string = 'DELTAI' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
     def ReadVoltageStepSize(self):
+        """Reads the voltage step size"""
         function_string = 'DELTAV' + self.output + '?'
         return(self.scpi_comm(function_string))
 
