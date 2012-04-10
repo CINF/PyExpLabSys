@@ -15,6 +15,62 @@ class CPX400DPDriver(SCPI):
         else:
             self.output = str(output)
 
+    def SetVoltage(self, value):
+        function_string = 'V' + self.output + ' ' + str(value)
+        return(self.scpi_comm(function_string))
+
+    def SetCurrentLimit(self, value):
+        function_string = 'I ' + self.output
+        return(self.scpi_comm(function_string))
+
+    def ReadSetVoltage(self):
+        function_string = 'V' + self.output + '?'
+        return(self.scpi_comm(function_string))
+
+    def ReadCurrentLimit(self):
+        function_string = 'I' + self.output + '?'
+        return(self.scpi_comm(function_string))
+
+    def ReadActualVoltage(self):
+        function_string = 'V' + self.output + 'O?'
+        return(self.scpi_comm(function_string))
+
+    def ReadActualCurrent(self):
+        function_string = 'I' + self.output + 'O?'
+        return(self.scpi_comm(function_string))
+       
+    def SetVoltageStepSize(self, value):
+        function_string = 'DELTAV' + self.output + ' ' + str(value)
+        return(self.scpi_comm(function_string))
+
+    def SetCurrentStepSize(self, value):
+        function_string = 'DELTAI' + self.output + ' ' + str(value)
+        return(self.scpi_comm(function_string))
+
+    def ReadVoltageStepSize(self):
+        function_string = 'DELTAV' + self.output + '?'
+        return(self.scpi_comm(function_string))
+
+    def ReadCurrentStepSize(self):
+        function_string = 'DELTAI' + self.output + '?'
+        return(self.scpi_comm(function_string))
+
+    def IncreaseVoltage(self):
+        function_string = 'INCV' + self.output
+        return(self.scpi_comm(function_string))
+
+    def OutputStatus(self, on=False):
+        if on:
+            enabled = str(1)
+        else:
+            enabled = str(0)
+        function_string = 'OP' + self.output + ' ' + enabled
+        return(self.scpi_comm(function_string))
+
+    def ReadOutputStatus(self):
+        function_string = 'OP' + self.output + '?'
+        return(self.scpi_comm(function_string))
+
     def GetLock(self):
         function_string = 'IFLOCK'
         self.scpi_comm(function_string)
@@ -29,46 +85,3 @@ class CPX400DPDriver(SCPI):
             return_message = "Lock acquired"
         return(return_message)
 
-    def OutputOn(self, on=False):
-        if on:
-            enabled = str(1)
-        else:
-            enabled = str(0)
-        function_string = 'OP' + self.output + ' ' + enabled
-        return(self.scpi_comm(function_string))
-
-    def SetVoltage(self, value):
-        function_string = 'V' + self.output + ' ' + str(value)
-        return(self.scpi_comm(function_string))
-
-    def SetCurrentLimit(self, value):
-        function_string = 'I ' + self.output
-        return(self.scpi_comm(function_string))
-    
-    def IncreaseVoltage(self):
-        function_string = 'INCV' + self.output
-        return(self.scpi_comm(function_string))
-    
-    def ReadSetVoltage(self):
-        function_string = 'V' + self.output + '?'
-        return(self.scpi_comm(function_string))
-
-    def ReadVoltageStepSize(self):
-        function_string = 'DELTAV' + self.output + '?'
-        return(self.scpi_comm(function_string))
-
-    def SetVoltageStepSize(self, value):
-        function_string = 'DELTAV' + self.output + ' ' + str(value)
-        return(self.scpi_comm(function_string))
-
-    def ReadCurrentLimit(self):
-        function_string = 'I' + self.output + '?'
-        return(self.scpi_comm(function_string))
-
-    def ReadActualVoltage(self):
-        function_string = 'V' + self.output + 'O?'
-        return(self.scpi_comm(function_string))
-
-    def ReadActualCurrent(self):
-        function_string = 'I' + self.output + 'O?'
-        return(self.scpi_comm(function_string))
