@@ -19,14 +19,25 @@ class NPointRunningTest:
         self.win = self.builder.get_object('window')
 
         # Add a matplotlib graph
-        self.plot = NPointRunning()
-        self.win.add(self.plot)
+        self.plot = NPointRunning(100)
+        self.win.add(self.plot.canvas)
 
     def on_window_destroy(self, widget):
         """ Window destroy """
         gtk.main_quit()
 
+    def update(self):
+        gobject.idle_add(self.tt)
+
+    def tt(self):
+        print 'hh'
+
 if __name__ == "__main__":
+    print 'start'
     n_point_running_test = NPointRunningTest()
+    print '2'
     n_point_running_test.win.show_all()
+    print '3'
     gtk.main()
+    print 'before'
+    n_point_running_test.update()
