@@ -20,7 +20,7 @@ class SCPI:
 
     def scpi_comm(self,command):
         if self.debug:
-            return random.random()
+            return str(random.random())
         if self.port == 'file':
             f = open(self.device, 'w')
         if self.port == 'serial':
