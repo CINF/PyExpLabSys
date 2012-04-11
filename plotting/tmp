@@ -1,0 +1,39 @@
+from matplotlib.backends.backend_gtkagg import FigureCanvasGTKagg# as\
+#    FigureCanvas
+
+
+class _NPointRunning(FigureCanvasGTKagg):
+    """ A N point running plot """
+
+    def __init__(self, number_of_points):
+        """ Init plot """
+        # Assign settings to variable
+        self.number_of_points = number_of_points
+
+        self.x = range(number_of_points)
+        self.y = [0.5]*number_of_points
+        self.line = None
+        self.background = None
+
+        fig = Figure(figsize=(5, 4), dpi=100)
+        fig.set_facecolor('white')
+        self.ax = fig.add_subplot(111)
+        FigureCanvasGTKAgg.__init__(self, fig)
+
+        self._reinit_plot()
+
+    def _reinit_plot(self):
+        self.line, = self.ax.plot(self.x, self.y, 'b', animated=True)
+        #self.ax.set_xlim(0, self.number_of_points - 1)
+        #self.ax.set_ylim(0, 1)
+        self.background = self.copy_from_bbox(self.ax.bbox)
+        self.draw()
+
+    def push_new_point(self, y):
+        self.y.append(y)
+        self.y = self.y[self.number_of_points * -1:]
+        self.restore_region(self.background)
+        self.line.set_ydata(self.y)
+        self.ax.draw_artist(self.line)
+        # just redraw the axes rectangle
+        self.blit(ax.bbox)
