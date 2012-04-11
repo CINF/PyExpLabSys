@@ -1,13 +1,26 @@
 import time
 import serial
+import random
 
 class SCPI:
 
     def __init__(self,device,port):
         self.device = device
         self.port = port
+        try:
+            if self.port == 'file':
+                f = open(self.device, 'w')
+            if self.port == 'serial':
+                f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
+            f.close()
+            self.debug = False
+        except:
+            self.debug = True
+
 
     def scpi_comm(self,command):
+        if self.debug:
+            return random.random()
         if self.port == 'file':
             f = open(self.device, 'w')
         if self.port == 'serial':
