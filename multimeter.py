@@ -31,13 +31,15 @@ class Multimeter:
         self.update_timer = None
         self.starttime = time.time()
 
-        name = self.device.readSoftwareVersion(short=True)
+        name = self.device.ReadSoftwareVersion(short=True)
         self.win = self.builder.get_object('window1')
         self.win.set_title(name) # SUBS with name from driver
 
         fig = Figure(figsize=(5, 4), dpi=100)
         fig.set_facecolor('white')
         self.ax = fig.add_subplot(111)
+        #self.line, = self.ax.plot(self.x, self.y, 'b')
+
         self.canvas = FigureCanvas(fig)
         hbox = self.builder.get_object('hbox1')
         hbox.pack_start(self.canvas)
@@ -162,6 +164,8 @@ class Multimeter:
         self.y = self.y[self.points * -1:]
         self.ax.clear()
         self.ax.plot(self.x, self.y, 'b')
+        #self.ax.plot([time.time() - self.starttime], [new_measurement], 'b')
+        #self.line.set_data(self.x, self.y)
         self.canvas.draw()
         delta = time.time() - start
         if delta < self.update_interval:
