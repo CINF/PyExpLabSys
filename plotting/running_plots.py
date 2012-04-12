@@ -7,38 +7,35 @@ import time
 
 class NPointRunning(FigureCanvasGTKAgg):
     """ A N point running plot """
-
-    def __init__(self, number_of_points, number_of_lines, x_pixel_size=500, y_pixel_size=400, **kw):
+    def __init__(self, number_of_points=100, number_of_lines=1, dpi=100,
+                 x_pixel_size=500, y_pixel_size=400, **kw):
         """ Init plot:
-        
         Parameters:
             number_of_points (int)
             number_of_lines (int)
+            dpi (int)
             x_pixel_size (int)
             y_pixel_size (int)
-         **kw can contain:
-          logscale (boolean)
-          title (string)
-          x_label (string)
-          y_label (string)
-          legends (list of strings)
-          styles (list of strings)
+          **kw can contain:
+            logscale (boolean)
+            title (string)
+            x_label (string)
+            y_label (string)
+            legends (list of strings)
+            styles (list of strings)
         """
-        # Assign settings to variable
-        self.settings = {'logscale': False, 'title': None, 'x_label': None,
-                         'y_label': None, 'legends': None, 'styles': None}
-        self.change_settings(number_of_points, number_of_lines, init=True, **kw)
-        
-        self.first_ever_update = True
-
-        fig = Figure(figsize=(x_pixel_size/100.1, y_pixel_size/100.0), dpi=100)
+        fig = Figure(figsize=(x_pixel_size/100.1, y_pixel_size/100.0), dpi=dpi)
         fig.set_facecolor('white')
         FigureCanvasGTKAgg.__init__(self, fig)
         self.ax = fig.add_subplot(111)
 
-        self._reinit_plot()
+        # Assign settings to variable
+        self.first_ever_update = True
+        self.settings = {'logscale': False, 'title': None, 'x_label': None,
+                         'y_label': None, 'legends': None, 'styles': None}
+        self.change_settings(number_of_points, number_of_lines, **kw)
 
-    def change_settings(self, number_of_points, number_of_lines, init=False, **kw):
+    def change_settings(self, number_of_points, number_of_lines, **kw):
         self.settings.update(kw)
         self.n_points = number_of_points
         self.n_lines = number_of_lines
@@ -47,8 +44,7 @@ class NPointRunning(FigureCanvasGTKAgg):
         self.y = [[1]+[None]*(number_of_points-1)]*number_of_lines
         self.lines = None
         self.background = None
-        if not init:
-            self._reinit_plot()
+        self._reinit_plot()
 
     def _reinit_plot(self):
         plot = self.ax.semilogy if self.settings['logscale'] else self.ax.plot
