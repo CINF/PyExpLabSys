@@ -3,6 +3,9 @@
 import gtk
 import gobject
 
+import random
+import time
+
 from running_plots import NPointRunning
 
 class NPointRunningTest:
@@ -19,25 +22,22 @@ class NPointRunningTest:
         self.win = self.builder.get_object('window')
 
         # Add a matplotlib graph
-        self.plot = NPointRunning(100)
-        self.win.add(self.plot.canvas)
+        self.plot = NPointRunning(100, 2, legends=['a', 'b'], logscale=True)
+        self.win.add(self.plot)
+
+        self.win.show_all()
+        gobject.idle_add(self.new_data_point)
+
+
+    def new_data_point(self):
+        self.plot.push_new_point([random.random()+0.1,random.random()+0.1])
+        time.sleep(0.1)
+        return True
 
     def on_window_destroy(self, widget):
         """ Window destroy """
         gtk.main_quit()
 
-    def update(self):
-        gobject.idle_add(self.tt)
-
-    def tt(self):
-        print 'hh'
-
 if __name__ == "__main__":
-    print 'start'
     n_point_running_test = NPointRunningTest()
-    print '2'
-    n_point_running_test.win.show_all()
-    print '3'
     gtk.main()
-    print 'before'
-    n_point_running_test.update()
