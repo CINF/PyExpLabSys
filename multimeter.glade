@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk+" version="2.24"/>
+  <!-- interface-naming-policy toplevel-contextual -->
+  <object class="GtkListStore" id="liststore_frequency">
+    <columns>
+      <!-- column-name gchararray_frequency -->
+      <column type="gchararray"/>
+      <!-- column-name gint_frequency -->
+      <column type="gint"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">As fast as possible</col>
+        <col id="1">-1</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">10 Hz</col>
+        <col id="1">100</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">5 Hz</col>
+        <col id="1">200</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">2 Hz</col>
+        <col id="1">500</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">1 Hz</col>
+        <col id="1">1000</col>
+      </row>
+    </data>
+  </object>
+  <object class="GtkListStore" id="liststore_internal_res">
+    <columns>
+      <!-- column-name gchararrayinternalres -->
+      <column type="gchararray"/>
+      <!-- column-name gboolean1internalresvalue -->
+      <column type="gboolean"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">Input Impedance LOW</col>
+        <col id="1">False</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Input Impedance AUTO HIGH</col>
+        <col id="1">True</col>
+      </row>
+    </data>
+  </object>
+  <object class="GtkListStore" id="liststore_points">
+    <columns>
+      <!-- column-name gchararraypoints -->
+      <column type="gchararray"/>
+      <!-- column-name gintpoints -->
+      <column type="gint"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">10 points</col>
+        <col id="1">10</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">20 points</col>
+        <col id="1">20</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">50 points</col>
+        <col id="1">50</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">100 points</col>
+        <col id="1">100</col>
+      </row>
+    </data>
+  </object>
+  <object class="GtkListStore" id="liststore_types">
+    <columns>
+      <!-- column-name gchararraytype -->
+      <column type="gchararray"/>
+      <!-- column-name gchararraytypename -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">Bias [V]</col>
+        <col id="1" translatable="yes">VOLTAGE</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Current [A]</col>
+        <col id="1" translatable="yes">CURRENT</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Resistance [Ohm]</col>
+        <col id="1" translatable="yes">RESISTANCE</col>
+      </row>
+    </data>
+  </object>
+  <object class="GtkWindow" id="window1">
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">X mouse click difference</property>
+    <property name="window_position">center</property>
+    <property name="default_width">800</property>
+    <property name="default_height">400</property>
+    <signal name="destroy" handler="on_window_destroy" swapped="no"/>
+    <child>
+      <object class="GtkHBox" id="hbox1">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <child>
+          <placeholder/>
+        </child>
+        <child>
+          <object class="GtkVBox" id="vbox1">
+            <property name="width_request">300</property>
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkToggleButton" id="toggle_update">
+                <property name="label" translatable="yes">Measure</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+                <property name="xalign">0</property>
+                <signal name="toggled" handler="set_update" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="label_measurement">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="xalign">0</property>
+                <property name="label" translatable="yes">N/A</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                  <attribute name="size" value="20000"/>
+                </attributes>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="combobox_type">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="model">liststore_types</property>
+                <property name="active">0</property>
+                <signal name="changed" handler="on_combobox_type_changed" swapped="no"/>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertext_type"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="combobox_internal_res">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="model">liststore_internal_res</property>
+                <property name="active">0</property>
+                <signal name="changed" handler="on_combobox_internal_res_changed" swapped="no"/>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertext_internal_res"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="label1">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="combobox_frequency">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="model">liststore_frequency</property>
+                <property name="active">1</property>
+                <signal name="changed" handler="set_update" swapped="no"/>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertext_frequency"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">5</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="combobox_points">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="model">liststore_points</property>
+                <property name="active">3</property>
+                <signal name="changed" handler="on_combobox_points_changed" swapped="no"/>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertext_points"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">6</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

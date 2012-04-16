@@ -1,20 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
-import matplotlib
-matplotlib.use('GTK')
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg as\
-    FigureCanvas
-
+from LivePlots.LivePlotsRunning import NPointRunning
+from agilent_34410A import Agilent34410ADriver
 import gtk
 import gobject
-
-from agilent_34410A import Agilent34410ADriver
-
-import time
-import random
 
 class Multimeter:
     """Small Agilent Multimeter Program"""
@@ -22,154 +12,119 @@ class Multimeter:
     def __init__(self):
         """ Initialisation of driver and gui """
 
+        # Get devide
         self.device = Agilent34410ADriver()
 
+        # Load gui
         self.builder = gtk.Builder()
-        self.builder.add_from_file("gui.glade")
+        self.builder.add_from_file("multimeter.glade")
+        # Update win title
+        name = self.device.ReadSoftwareVersion(short=True)
+        self.win = self.builder.get_object('window1')
+        self.win.set_title(name) # Set title: Name from driver
+
+        # Initiate variables
         self.x = []
         self.y = []
         self.update_timer = None
-        self.starttime = time.time()
+        # Convinience handles
+        self.combobox_type = self.builder.get_object('combobox_type')
+        self.combobox_internal_res = self.builder.get_object('combobox_internal_res')
+        self.combobox_frequency = self.builder.get_object('combobox_frequency')
+        self.combobox_points = self.builder.get_object('combobox_frequency')
 
-        name = self.device.ReadSoftwareVersion(short=True)
-        self.win = self.builder.get_object('window1')
-        self.win.set_title(name) # SUBS with name from driver
-
-        fig = Figure(figsize=(5, 4), dpi=100)
-        fig.set_facecolor('white')
-        self.ax = fig.add_subplot(111)
-        #self.line, = self.ax.plot(self.x, self.y, 'b')
-
-        self.canvas = FigureCanvas(fig)
+        # Read default n_points from the gui
+        model = self.combobox_points.get_model()
+        points = model[self.combobox_points.get_active()][1]
+        # Initiate plot and add it to the gui
+        self.plot_settings = {'colors': ['b'], 'x_label': 'Points'}
+        self.plot = NPointRunning(number_of_points = 100, **self.plot_settings)
         hbox = self.builder.get_object('hbox1')
-        hbox.pack_start(self.canvas)
-        hbox.reorder_child(self.canvas, 0)
+        hbox.pack_start(self.plot)
+        hbox.reorder_child(self.plot, 0)
 
-        types = ['Bias [V]', 'Current [A]', 'Resistance [Ohm]']
-        type_combo = self.build_combo('combobox1', types)
-
-        resistances = ['Input Impedance LOW', 'Input Impedance AUTO HIGH']
-        self.resistance_combo = self.build_combo('combobox2', resistances)
-
-        frequences = ['As fast as possible', '10 Hz', '5 Hz', '2 Hz', '1 Hz']
-        frequency_combo = self.build_combo('combobox3', frequences)
-        self.update_interval = -1
-
-        n_points = ['10 points', '20 points', '50 points', '100 points']
-        n_points_combo = self.build_combo('combobox4', n_points)
-        self.points = 10
-
-        type_combo.set_active(0)
-        self.resistance_combo.set_active(0)
-        self.device.setAutoInputZ(False)
-        frequency_combo.set_active(0)
-        n_points_combo.set_active(3)
+        # Get default settings from gui and set in device
+        self.on_combobox_type_changed(self.combobox_type)
+        self.on_combobox_internal_res_changed(self.combobox_internal_res)
 
         self.builder.connect_signals(self)
 
-    def build_combo(self, widget_name, options):
-        """ Convenience method to create a combobox """
-        # Comboboxes are not nice in GTK, or I'm to tired to figure out how to
-        # them in a nice way
-        combo = self.builder.get_object(widget_name)
-        liststore = gtk.ListStore(gobject.TYPE_STRING)
-        for item in options:
-            liststore.append([item])
-        combo.set_model(liststore)
-        cell = gtk.CellRendererText()
-        combo.pack_start(cell, True)
-        combo.add_attribute(cell, "text", 0)
-        return combo
-
-    def on_combobox1_changed(self, widget):
+    def on_combobox_type_changed(self, widget):
         """ Method that handles changes in what is measured """
-        before = self.builder.get_object('toggle_update').get_active()
-        self.set_update(None, False)
-        model = widget.get_model()
+        # Get the active selection and change the state
         active = widget.get_active()
         if active >= 0:
-            selection = model[active][0]
-            if selection == 'Bias [V]':
-                self.resistance_combo.set_sensitive(True)
-                self.device.selectMeasurementFunction('VOLTAGE')
-            elif selection == 'Current [A]':
-                self.resistance_combo.set_sensitive(False)
-                self.device.selectMeasurementFunction('CURRENT')
-            elif selection == 'Resistance [Ohm]':
-                self.resistance_combo.set_sensitive(False)
-                self.device.selectMeasurementFunction('RESISTANCE')
-        self.set_update(None, before)
+            model = widget.get_model()
+            selection = model[active][1]
+            self.device.selectMeasurementFunction(selection)
+            if selection == 'VOLTAGE':
+                self.combobox_internal_res.set_sensitive(True)
+            else:
+                self.combobox_internal_res.set_sensitive(False)
 
-    def on_combobox2_changed(self, widget):
+    def on_combobox_internal_res_changed(self, widget):
         """ Method that handles changes in the internal resistance for bias
         measurements
         """
-        before = self.builder.get_object('toggle_update').get_active()
-        self.set_update(None, False)
-        model = widget.get_model()
         active = widget.get_active()
         if active >= 0:
-            selection = model[active][0]
-            if selection == 'Input Impedance LOW':
-                self.device.setAutoInputZ(False)
-            elif selection == 'Input Impedance AUTO HIGH':
-                print 'test'
-                self.device.setAutoInputZ(True)
-        self.set_update(None, before)
+            model = widget.get_model()
+            selection = model[active][1]
+            self.device.setAutoInputZ(selection)
 
-    def on_combobox3_changed(self, widget):
-        """ Method that handles changes in the measurements speed """
-        model = widget.get_model()
-        active = widget.get_active()
-        if active >= 0:
-            selected = model[active][0]
-            if selected == 'As fast as possible':
-                self.update_interval = -1
-            else:
-                frequency = int(selected.split(' ')[0])
-                self.update_interval = 1.0 / frequency
-
-    def on_combobox4_changed(self, widget):
+    def on_combobox_points_changed(self, widget):
         """ Method that handles changes in the number of points """
-        model = widget.get_model()
         active = widget.get_active()
-        if active >= 0:
-            selected = model[active][0]
-            self.points = int(selected.split(' ')[0])
+        model = widget.get_model()
+        selection = model[active][1]
+        # Plot object is not thread safe, so we must pause updating ...
+        if self.update_timer is not None:
+            gobject.source_remove(self.update_timer)
+            self.update_timer = None
+        self.plot.__init__(number_of_points = selection,
+                           **self.plot_settings)
 
-    def set_update(self, widget=None, state=True):
-        """ Method to toggle whether we are asking for measurement for
-        measurements and updating the graph
+        self.win.show_all()
+        # and start it back up
+        self.set_update()
+
+    def on_RANGES(self, widget_name, options):
+        """ Change range REWRITE """
+        # Get list store from buidler, set the model
+        #combo.set_model(liststore)
+        # Figure out if we can use the same renderer, otherwise, change it
+        # and update
+        #cell = gtk.CellRendererText()
+        #combo.pack_start(cell, True)
+        #combo.add_attribute(cell, "text", 0)
+        #return combo
+        pass
+
+    def set_update(self, widget=None):
+        """ Method to change the timing of the update. It is called both from
+        'toggle_update' and 'combobox_frequency'
         """
-        if widget is not None:
-            active = widget.get_active()
-        else:
-            active = state
-
-        if self.update_timer is None and active:
-            self.update_timer = gobject.idle_add(self.update)
-        elif self.update_timer is not None and not active:
+        updating_active = self.builder.get_object('toggle_update').get_active()
+        if updating_active:
+            if self.update_timer is not None:
+                gobject.source_remove(self.update_timer)
+            frequency_active = self.combobox_frequency.get_active()
+            model = self.combobox_frequency.get_model()
+            selected = model[frequency_active][1]
+            if selected == -1:
+                self.update_timer = gobject.idle_add(self.update)
+            else:
+                self.update_timer = gobject.timeout_add(selected, self.update)
+        elif self.update_timer is not None and not updating_active:
             gobject.source_remove(self.update_timer)
             self.update_timer = None
 
     def update(self):
         """ Ask for measurement and update graph """
-        start = time.time()
         new_measurement = self.device.read()
         self.builder.get_object('label_measurement').\
             set_text(str(new_measurement))
-        self.x.append(time.time() - self.starttime)
-        self.y.append(new_measurement)
-        self.x = self.x[self.points * -1:]
-        self.y = self.y[self.points * -1:]
-        self.ax.clear()
-        self.ax.plot(self.x, self.y, 'b')
-        #self.ax.plot([time.time() - self.starttime], [new_measurement], 'b')
-        #self.line.set_data(self.x, self.y)
-        self.canvas.draw()
-        delta = time.time() - start
-        if delta < self.update_interval:
-            time.sleep(self.update_interval - delta)
+        self.plot.push_new_points([new_measurement])
         return True
 
     def on_window_destroy(self, widget):

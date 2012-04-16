@@ -109,3 +109,17 @@ class NPointRunning(Plot):
         self._quick_update()
         self.update_legends()
 
+    def set_number_of_points(self, n_points):
+        self.x[0] = range(n_points)
+        if n_points > self.n_points:
+            self.y = [[None] * (n_points - self.n_points) + y for y in self.y]
+        else:
+            self.y = [y[n_points * -1:] for y in self.y]
+        print len(self.x)
+        print len(self.x[0])
+        print len(self.y)
+        print len(self.y[0])
+        self.n_points = n_points
+        self.settings['x_bounds'] = (-1, n_points)
+        self.first_update = True
+        self._quick_update()

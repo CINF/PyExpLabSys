@@ -18,6 +18,8 @@ class Plot(gtk.HBox):
     
     def __init__(self, dpi=100, x_pixel_size=500, y_pixel_size=400):
         gtk.HBox.__init__(self)
+        # If the class is being reinitialized, we need to remove the old plot
+        [self.remove(child) for child in self.get_children()]
         self.vbox = gtk.VBox()
         self.pack_start(self.vbox)
         # this is bad with labels, I have to figure out why
@@ -49,7 +51,6 @@ class Plot(gtk.HBox):
             else ['']*self.n_lines
         self.line_colors = kw['line_colors'] if kw.has_key('line_colors')\
             else self._get_colors(self.n_lines)
-        print self.line_colors
         self.lines = None
         self.background = None
 
