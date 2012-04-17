@@ -25,7 +25,9 @@ class Plot(gtk.HBox):
         # this is bad with labels, I have to figure out why
         self.connect('size_allocate', self._full_update)
 
-        self.fig = Figure(figsize=(x_pixel_size/100.1, y_pixel_size/100.0), dpi=dpi)
+        self.fig = Figure(figsize=(float(x_pixel_size)/dpi,
+                                   float(y_pixel_size)/dpi),
+                          dpi=dpi)
         self.fig.set_facecolor('white')
         self.canvas = FigureCanvasGTKAgg(self.fig)
         self.ax = self.fig.add_subplot(111)

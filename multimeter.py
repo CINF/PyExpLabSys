@@ -5,6 +5,7 @@ from LivePlots.LivePlotsRunning import NPointRunning
 from agilent_34410A import Agilent34410ADriver
 import gtk
 import gobject
+import time
 
 class Multimeter:
     """Small Agilent Multimeter Program"""
@@ -20,34 +21,41 @@ class Multimeter:
         self.builder.add_from_file("multimeter.glade")
         # Update win title
         name = self.device.ReadSoftwareVersion(short=True)
-        self.win = self.builder.get_object('window1')
+        self.win = self.gui('window1')
         self.win.set_title(name) # Set title: Name from driver
 
         # Initiate variables
         self.x = []
         self.y = []
         self.update_timer = None
-        # Convinience handles
-        self.combobox_type = self.builder.get_object('combobox_type')
-        self.combobox_internal_res = self.builder.get_object('combobox_internal_res')
-        self.combobox_frequency = self.builder.get_object('combobox_frequency')
-        self.combobox_points = self.builder.get_object('combobox_frequency')
+        self.update_interval = None
+        self.number_format = self.gui('entry_format').get_text()
 
         # Read default n_points from the gui
-        model = self.combobox_points.get_model()
-        points = model[self.combobox_points.get_active()][1]
+        points = int(self.gui('spinbutton_points').get_value())
         # Initiate plot and add it to the gui
         self.plot_settings = {'colors': ['b'], 'x_label': 'Points'}
-        self.plot = NPointRunning(number_of_points = 100, **self.plot_settings)
-        hbox = self.builder.get_object('hbox1')
+        self.plot = NPointRunning(number_of_points = points,
+                                  **self.plot_settings)
+        hbox = self.gui('hbox1')
         hbox.pack_start(self.plot)
         hbox.reorder_child(self.plot, 0)
 
-        # Get default settings from gui and set in device
-        self.on_combobox_type_changed(self.combobox_type)
-        self.on_combobox_internal_res_changed(self.combobox_internal_res)
+        # Initiate gui with value from device
+        self.sync_gui_with_device()
 
         self.builder.connect_signals(self)
+
+    def gui(self, name):
+        """ Convinience function to get GUI objects """
+        return self.builder.get_object(name)
+
+    def sync_gui_with_device(self):
+        """ Synchronize the gui with values from the device."""
+        # Remember to:
+        #  Disable signals while updating widgets
+        #  Only update internal_res if type is VOLTAGE
+        pass
 
     def on_combobox_type_changed(self, widget):
         """ Method that handles changes in what is measured """
@@ -58,9 +66,9 @@ class Multimeter:
             selection = model[active][1]
             self.device.selectMeasurementFunction(selection)
             if selection == 'VOLTAGE':
-                self.combobox_internal_res.set_sensitive(True)
+                self.gui('combobox_internal_res').set_sensitive(True)
             else:
-                self.combobox_internal_res.set_sensitive(False)
+                self.gui('combobox_internal_res').set_sensitive(False)
 
     def on_combobox_internal_res_changed(self, widget):
         """ Method that handles changes in the internal resistance for bias
@@ -72,59 +80,64 @@ class Multimeter:
             selection = model[active][1]
             self.device.setAutoInputZ(selection)
 
-    def on_combobox_points_changed(self, widget):
+    def on_entry_format_changed(self, widget):
+        number_format = widget.get_text()
+        try:
+            '{{0:{0}}}'.format(number_format).format(float())
+            self.number_format = number_format
+        except ValueError:
+            pass
+
+    def on_spinbutton_points_value_changed(self, widget):
         """ Method that handles changes in the number of points """
-        active = widget.get_active()
-        model = widget.get_model()
-        selection = model[active][1]
+        points = int(self.gui('spinbutton_points').get_value())
         # Plot object is not thread safe, so we must pause updating ...
         if self.update_timer is not None:
             gobject.source_remove(self.update_timer)
             self.update_timer = None
-        self.plot.__init__(number_of_points = selection,
-                           **self.plot_settings)
-
+        #self.plot.__init__(number_of_points = points,
+        #                   **self.plot_settings)
+        hbox = self.gui('hbox1')
+        hbox.remove(self.plot)
+        self.plot = NPointRunning(number_of_points = points,
+                                  **self.plot_settings)
+        hbox.pack_start(self.plot)
+        hbox.reorder_child(self.plot, 0)
         self.win.show_all()
         # and start it back up
         self.set_update()
 
-    def on_RANGES(self, widget_name, options):
-        """ Change range REWRITE """
-        # Get list store from buidler, set the model
-        #combo.set_model(liststore)
-        # Figure out if we can use the same renderer, otherwise, change it
-        # and update
-        #cell = gtk.CellRendererText()
-        #combo.pack_start(cell, True)
-        #combo.add_attribute(cell, "text", 0)
-        #return combo
-        pass
-
     def set_update(self, widget=None):
         """ Method to change the timing of the update. It is called both from
-        'toggle_update' and 'combobox_frequency'
+        'toggle_update' and 'spinbutton_interval'
         """
-        updating_active = self.builder.get_object('toggle_update').get_active()
+        updating_active = self.gui('toggle_update').get_active()
         if updating_active:
             if self.update_timer is not None:
                 gobject.source_remove(self.update_timer)
-            frequency_active = self.combobox_frequency.get_active()
-            model = self.combobox_frequency.get_model()
-            selected = model[frequency_active][1]
-            if selected == -1:
-                self.update_timer = gobject.idle_add(self.update)
-            else:
-                self.update_timer = gobject.timeout_add(selected, self.update)
-        elif self.update_timer is not None and not updating_active:
+            self.update_interval = int(self.gui('spinbutton_interval')\
+                                           .get_value())
+            self.update_timer = gobject.idle_add(self.update)
+        elif not updating_active and self.update_timer is not None:
             gobject.source_remove(self.update_timer)
             self.update_timer = None
 
     def update(self):
         """ Ask for measurement and update graph """
-        new_measurement = self.device.read()
-        self.builder.get_object('label_measurement').\
-            set_text(str(new_measurement))
-        self.plot.push_new_points([new_measurement])
+        start = time.time()
+        measurement = self.device.read()
+        measurement_string = '{{0:{0}}}'.\
+            format(self.number_format).format(measurement)
+        self.gui('label_measurement').set_text(measurement_string)
+        self.plot.push_new_points([measurement])
+        delta = time.time() - start
+        if self.update_interval > 0:
+            sleeptime = self.update_interval/1000.0 - delta
+            if sleeptime > 0:
+                time.sleep(sleeptime)
+            else:
+                # We can't keep up, consider warning
+                pass
         return True
 
     def on_window_destroy(self, widget):
@@ -135,3 +148,16 @@ if __name__ == "__main__":
     t = Multimeter()
     t.win.show_all()
     gtk.main()
+
+    #def on_RANGES(self, widget_name, options):
+        #""" Change range REWRITE """
+        # Get list store from buidler, set the model
+        #combo.set_model(liststore)
+        # Figure out if we can use the same renderer, otherwise, change it
+        # and update
+        #cell = gtk.CellRendererText()
+        #combo.pack_start(cell, True)
+        #combo.add_attribute(cell, "text", 0)
+        #return combo
+        #pass
+

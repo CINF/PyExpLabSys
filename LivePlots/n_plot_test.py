@@ -25,6 +25,7 @@ class NPointRunningTest:
         self.nlines = 3
         # Add a matplotlib graph
         self.plot = NPointRunning(number_of_lines=self.nlines,
+                                  number_of_points=10000,
                                   #line_styles=['b', 'r', 'g'],
                                   #line_colors=['blue', 'red', 'green'],
                                   title='Handsome test plot',
@@ -44,7 +45,7 @@ class NPointRunningTest:
         data = [numpy.sin(time.time()*0.1+n)+random.random()*0.1\
                     for n in range(self.nlines)]
         self.plot.push_new_points(data)
-        time.sleep(0.1)
+        time.sleep(0.001)
         return True
     
     def on_window_destroy(self, widget):
