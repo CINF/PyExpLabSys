@@ -7,6 +7,7 @@ import gtk
 import gobject
 import time
 
+
 class Multimeter:
     """Small Agilent Multimeter Program"""
 
@@ -18,15 +19,13 @@ class Multimeter:
 
         # Load gui
         self.builder = gtk.Builder()
-        self.builder.add_from_file("multimeter.glade")
+        self.builder.add_from_file('gui/multimeter_agilent_34410A.glade')
         # Update win title
         name = self.device.ReadSoftwareVersion(short=True)
         self.win = self.gui('window1')
-        self.win.set_title(name) # Set title: Name from driver
+        self.win.set_title(name)  # Set title: Name from driver
 
         # Initiate variables
-        self.x = []
-        self.y = []
         self.update_timer = None
         self.update_interval = None
         self.number_format = self.gui('entry_format').get_text()
@@ -35,7 +34,7 @@ class Multimeter:
         points = int(self.gui('spinbutton_points').get_value())
         # Initiate plot and add it to the gui
         self.plot_settings = {'colors': ['b'], 'x_label': 'Points'}
-        self.plot = NPointRunning(number_of_points = points,
+        self.plot = NPointRunning(number_of_points=points,
                                   **self.plot_settings)
         hbox = self.gui('hbox1')
         hbox.pack_start(self.plot)
@@ -95,11 +94,11 @@ class Multimeter:
         if self.update_timer is not None:
             gobject.source_remove(self.update_timer)
             self.update_timer = None
-        #self.plot.__init__(number_of_points = points,
+        #self.plot.__init__(number_of_points=points,
         #                   **self.plot_settings)
         hbox = self.gui('hbox1')
         hbox.remove(self.plot)
-        self.plot = NPointRunning(number_of_points = points,
+        self.plot = NPointRunning(number_of_points=points,
                                   **self.plot_settings)
         hbox.pack_start(self.plot)
         hbox.reorder_child(self.plot, 0)
@@ -132,7 +131,7 @@ class Multimeter:
         self.plot.push_new_points([measurement])
         delta = time.time() - start
         if self.update_interval > 0:
-            sleeptime = self.update_interval/1000.0 - delta
+            sleeptime = self.update_interval / 1000.0 - delta
             if sleeptime > 0:
                 time.sleep(sleeptime)
             else:
@@ -145,8 +144,8 @@ class Multimeter:
         gtk.main_quit()
 
 if __name__ == "__main__":
-    t = Multimeter()
-    t.win.show_all()
+    MULTIMETER = Multimeter()
+    MULTIMETER.win.show_all()
     gtk.main()
 
     #def on_RANGES(self, widget_name, options):
@@ -160,4 +159,3 @@ if __name__ == "__main__":
         #combo.add_attribute(cell, "text", 0)
         #return combo
         #pass
-
