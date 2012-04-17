@@ -49,35 +49,49 @@ class Multimeter:
         """ Convinience function to get GUI objects """
         return self.builder.get_object(name)
 
+    def get_active_combo_element(self, widget):
+        """ Convinience function to get the avtive element from a combobox """
+        active = widget.get_active()
+        model = widget.get_model()
+        return model[active]
+
     def sync_gui_with_device(self):
         """ Synchronize the gui with values from the device."""
+        type_ = 'VOLTAGE'# Get type from device, 
+        type_model = self.gui('combobox_type').get_model()
+        number = dict([[m[1], n] for n, m in enumerate(type_model)])[type_]
+        self.gui('combobox_type').set_active(number)
+
+        #for items in self.__dict__:
+        #    print items
+        #print gobject.signal_lookup('on_change', gtk.ComboBox)
+        #print gobject.signal_lookup('on_combobox_type_changed', gtk.ComboBox)
         # Remember to:
         #  Disable signals while updating widgets
         #  Only update internal_res if type is VOLTAGE
-        pass
 
     def on_combobox_type_changed(self, widget):
         """ Method that handles changes in what is measured """
         # Get the active selection and change the state
         active = widget.get_active()
-        if active >= 0:
-            model = widget.get_model()
-            selection = model[active][1]
-            self.device.selectMeasurementFunction(selection)
-            if selection == 'VOLTAGE':
-                self.gui('combobox_internal_res').set_sensitive(True)
-            else:
-                self.gui('combobox_internal_res').set_sensitive(False)
+        model = widget.get_model()
+        selection = self.get_active_combo_element(widget)[1]
+        self.device.selectMeasurementFunction(selection)
+        if selection == 'VOLTAGE':
+            self.gui('combobox_internal_res').set_sensitive(True)
+        else:
+            self.gui('combobox_internal_res').set_sensitive(False)
 
     def on_combobox_internal_res_changed(self, widget):
         """ Method that handles changes in the internal resistance for bias
         measurements
         """
-        active = widget.get_active()
-        if active >= 0:
-            model = widget.get_model()
-            selection = model[active][1]
-            self.device.setAutoInputZ(selection)
+        selection = self.get_active_combo_element(widget)[1]
+        self.device.setAutoInputZ(selection)
+
+    def on_combobox_integration_time_changed(self, widget):
+        selection = self.get_active_combo_element(widget)[2]
+        print selection  # FIXME set in device
 
     def on_entry_format_changed(self, widget):
         number_format = widget.get_text()
