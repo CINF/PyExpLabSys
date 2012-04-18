@@ -45,31 +45,18 @@ class Multimeter:
 
         self.builder.connect_signals(self)
 
+    ########## CONVINIENCE METHODS
     def gui(self, name):
         """ Convinience function to get GUI objects """
         return self.builder.get_object(name)
 
     def get_active_combo_element(self, widget):
-        """ Convinience function to get the avtive element from a combobox """
+        """ Convinience function to get the active element from a combobox """
         active = widget.get_active()
         model = widget.get_model()
         return model[active]
 
-    def sync_gui_with_device(self):
-        """ Synchronize the gui with values from the device."""
-        type_ = 'VOLTAGE'# Get type from device, 
-        type_model = self.gui('combobox_type').get_model()
-        number = dict([[m[1], n] for n, m in enumerate(type_model)])[type_]
-        self.gui('combobox_type').set_active(number)
-
-        #for items in self.__dict__:
-        #    print items
-        #print gobject.signal_lookup('on_change', gtk.ComboBox)
-        #print gobject.signal_lookup('on_combobox_type_changed', gtk.ComboBox)
-        # Remember to:
-        #  Disable signals while updating widgets
-        #  Only update internal_res if type is VOLTAGE
-
+    ########## SIGNAL CALL BACKS
     def on_combobox_type_changed(self, widget):
         """ Method that handles changes in what is measured """
         # Get the active selection and change the state
@@ -83,15 +70,18 @@ class Multimeter:
             self.gui('combobox_internal_res').set_sensitive(False)
 
     def on_combobox_internal_res_changed(self, widget):
-        """ Method that handles changes in the internal resistance for bias
+        """ Signal call back settings the internal resistance for bias
         measurements
         """
         selection = self.get_active_combo_element(widget)[1]
         self.device.setAutoInputZ(selection)
 
     def on_combobox_integration_time_changed(self, widget):
-        selection = self.get_active_combo_element(widget)[2]
-        print selection  # FIXME set in device
+        """ Signal call back for setting the integration time """
+        selection = self.get_active_combo_element(widget)[1]
+        # FIXME set in device
+        print type(selection)
+        print "Set integration time {0} NPLC".format(selection)
 
     def on_entry_format_changed(self, widget):
         number_format = widget.get_text()
@@ -108,14 +98,8 @@ class Multimeter:
         if self.update_timer is not None:
             gobject.source_remove(self.update_timer)
             self.update_timer = None
-        #self.plot.__init__(number_of_points=points,
-        #                   **self.plot_settings)
-        hbox = self.gui('hbox1')
-        hbox.remove(self.plot)
-        self.plot = NPointRunning(number_of_points=points,
-                                  **self.plot_settings)
-        hbox.pack_start(self.plot)
-        hbox.reorder_child(self.plot, 0)
+        self.plot.__init__(number_of_points=points,
+                           **self.plot_settings)
         self.win.show_all()
         # and start it back up
         self.set_update()
@@ -135,6 +119,24 @@ class Multimeter:
             gobject.source_remove(self.update_timer)
             self.update_timer = None
 
+    def on_window_destroy(self, widget):
+        """ Mandatory gui method to quit when the window is destroyed """
+        gtk.main_quit()
+
+    ########## GUI UPDATING METHODS
+    def sync_gui_with_device(self):
+        """ Synchronize the gui with values from the device."""
+        # FIXME FIXME FIXME
+        #  Disable signals while updating widgets
+        #for items in self.__dict__:
+        #    print items
+        #print gobject.signal_lookup('on_change', gtk.ComboBox)
+        #print gobject.signal_lookup('on_combobox_type_changed', gtk.ComboBox)
+        type_ = 'VOLTAGE'# FIXME get type from device,
+        type_model = self.gui('combobox_type').get_model()
+        number = dict([[m[1], n] for n, m in enumerate(type_model)])[type_]
+        self.gui('combobox_type').set_active(number)
+
     def update(self):
         """ Ask for measurement and update graph """
         start = time.time()
@@ -149,13 +151,8 @@ class Multimeter:
             if sleeptime > 0:
                 time.sleep(sleeptime)
             else:
-                # We can't keep up, consider warning
-                pass
+                pass  # We can't keep up, consider warning
         return True
-
-    def on_window_destroy(self, widget):
-        """ Mandatory gui method to quit when the window is destroyed """
-        gtk.main_quit()
 
 if __name__ == "__main__":
     MULTIMETER = Multimeter()
