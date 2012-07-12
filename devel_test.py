@@ -1,6 +1,14 @@
-import agilent_34410A as dmm
+import CPX400DP as CPX
+import time
 
-driver  = dmm.Agilent34410ADriver()
+driver  = CPX.CPX400DPDriver(1)
 
-print driver.read()
-print driver.clearErrorQueue()
+print "1"
+print driver.ReadSetVoltage()
+print driver.ReadCurrentLimit()
+print driver.ReadSoftwareVersion()
+print driver.ReadCurrentLimit()
+print driver.ReadSetVoltage()
+print driver.OutputStatus(False)
+print "2"
+

@@ -27,19 +27,15 @@ class SCPI:
             f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
             command = command + '\n'    
         f.write(command)
-        f.close()
 
-        time.sleep(0.01)
+        time.sleep(0.1)
         return_string = ""    
         if command.endswith('?') or command.endswith('?\n'):
             a = ' '
-            if self.port == 'file':
-                f = open(self.device, 'r')
-            if self.port == 'serial':
-                f = serial.Serial(self.device, 9600, timeout=1)
-            while not (ord(a) == 10):
-                a = f.read(1)
-                return_string += a
+            try:
+                return_string = f.readline()
+            except:
+                return_string = "Communication error"
         f.close()
         return return_string
     

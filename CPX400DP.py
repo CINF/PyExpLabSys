@@ -1,4 +1,6 @@
+import time
 from SCPI import SCPI
+
 
 class InterfaceOutOfBoundsError(Exception):
     def __init__(self, value):
@@ -14,6 +16,7 @@ class CPX400DPDriver(SCPI):
             raise InterfaceOutOfBoundsError(output)
         else:
             self.output = str(output)
+        #print "SCPI Complete"
 
     def SetVoltage(self, value):
         """Sets the voltage """
