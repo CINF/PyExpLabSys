@@ -33,3 +33,5 @@ class ParallelPortBinaryOut:
         state = int(''.join(state), 2)
         self.parallel.setData(state)
         
+if __name__ == "__main__":
+    p = ParallelPortBinaryOut()
