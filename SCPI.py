@@ -9,34 +9,41 @@ class SCPI:
         self.port = port
         try:
             if self.port == 'file':
-                f = open(self.device, 'w')
+                self.f = open(self.device, 'w')
+                self.f.close()
             if self.port == 'serial':
-                f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
-            f.close()
+                self.f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
             self.debug = False
-        except:
+        except Exception,e:
             self.debug = True
-
+            print "Debug mode: " + str(e)
 
     def scpi_comm(self,command):
+        #print self.f.xonxoff
+        return_string = ""
         if self.debug:
             return str(random.random())
         if self.port == 'file':
-            f = open(self.device, 'w')
-        if self.port == 'serial':
-            f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
-            command = command + '\n'    
-        f.write(command)
+            self.f = open(self.device, 'w')
+            self.f.write(command)
+            time.sleep(0.02)
+            self.f.close()
+            time.sleep(0.1)
 
-        time.sleep(0.1)
-        return_string = ""    
-        if command.endswith('?') or command.endswith('?\n'):
-            a = ' '
-            try:
-                return_string = f.readline()
-            except:
-                return_string = "Communication error"
-        f.close()
+            if command.endswith('?'):
+                self.f = open(self.device, 'r')
+                return_string = self.f.readline()
+                self.f.close()
+                
+        if self.port == 'serial':
+            self.f.write(command + '\n')
+            time.sleep(0.05) 
+            if command.endswith('?'):
+                if self.f.inWaiting()==0:
+                    #print "wait!!!!!!!!!!!!!!!: " + command
+                    return_string = "-99999999"
+            while self.f.inWaiting()>0:
+                return_string += self.f.read(1)
         return return_string
     
     def ReadSoftwareVersion(self, short=False):
