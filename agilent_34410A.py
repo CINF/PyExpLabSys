@@ -14,7 +14,7 @@ class Agilent34410ADriver(SCPI):
         self.scpi_comm("CONFIGURE:RESISTANCE") #Take parameter to also be able to select 4W
         return(True)
 
-    def selectMeasurementFunction(self,function):
+    def SelectMeasurementFunction(self,function):
         values = ['CAPACITANCE','CONTINUITY','CURRENT','DIODE','FREQUENCY','RESISTANCE','TEMPERATURE','VOLTAGE']
         return_value = False
         if function in values:
@@ -37,7 +37,7 @@ class Agilent34410ADriver(SCPI):
         else:
             self.scpi_comm("VOLT:IMP:AUTO OFF")
 
-    def read(self):
+    def Read(self):
         value = float(self.scpi_comm("READ?"))
         return value
 

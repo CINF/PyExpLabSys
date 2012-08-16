@@ -1,3 +1,0 @@
-Simple serial driver for the Varian XGS600 Gauge Controller.
-The program has evolved slightly beyond a simple Serial Driver. If you are only interested in the XGS600 driver, simply checkout xgs600.py
-Other code is related to a larger (very undeveloped) framework of data-logging from various instruments.
