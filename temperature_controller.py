@@ -6,6 +6,8 @@ import subprocess
 import curses
 import RTD_Calculator
 import PID
+import NetworkComm
+
 
 #output = 'print'
 output = 'curses'
@@ -24,24 +26,23 @@ def TellTheWorld(message,pos=[0,0]):
         screen.addstr(pos[1], pos[0], message)
         screen.refresh()
 
-def VBoxWrite(name,value):
-    shell_string = '/usr/bin/VBoxControl -nologo guestproperty set '
-    if type(value) is str:
-        shell_string += name + ' ' + value
-    else:
-        shell_string += name + ' ' + str(value)
-    subprocess.call(shell_string,shell=True)
+class NetworkClass(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.network = NetworkComm.NetworkComm()
+        self.setpoint = -999
+        self.sample_temperature = -999
+        self.rtd_temperature = -999
+        self.power = -999
 
-def VBoxRead(name):
-    shell_string = '/usr/bin/VBoxControl -nologo guestproperty get '
-    shell_string += name
-    p = subprocess.Popen(shell_string,shell=True, stdout=subprocess.PIPE)
-    out, err = p.communicate()
-    read_val = out.strip()
-    read_val = float(read_val[7:].replace(",",".",1))
-    return(read_val)
+    def run(self):
+        while not quit:
+            outgoing_dict = {'rtd_temperature': str(self.rtd_temperature),'power': '-1'}
+            incomming_dict = self.network.network_sync(outgoing_dict)
+            self.setpoint = float(incomming_dict['setpoint'])
+            self.sample_temperature = float(incomming_dict['sample_temperature'])
+            time.sleep(0.5)
 
-    
 class TemperatureClass(threading.Thread):
     def __init__(self,cal_temperature):
         threading.Thread.__init__(self)
@@ -79,10 +80,16 @@ class PowerCalculatorClass(threading.Thread):
 
 quit = False
 setpoint = -999
+tc_temperature = -999
+
+Network = NetworkClass()
+Network.start()
 
 CPXdriver  = CPX.CPX400DPDriver(1)
 
-tc_temperature = VBoxRead('tc_temperature')
+while (tc_temperature<-100):
+    tc_temperature = Network.sample_temperature
+    time.sleep(0.5)
 
 T = TemperatureClass(tc_temperature)
 T.start()
@@ -102,7 +109,7 @@ while not quit:
     try:
         i = i+1
         time.sleep(0.25)
-        setpoint = VBoxRead('setpoint')
+        setpoint = Network.setpoint
         #setpoint = i/50.0
 
         
@@ -118,12 +125,12 @@ while not quit:
             CPXdriver  = CPX.CPX400DPDriver(1)
             I = CPXdriver.ReadActualCurrent()
         if I>0:
-            TellTheWorld("PS:" + str(U/I) + "         ",[2,5])
+            TellTheWorld("PS:" + str(U/I) + "                ",[2,5])
         else:
             TellTheWorld("PS: No current         ",[2,5])
 
         TellTheWorld("Setpoint: " + str(setpoint) + "        ",[2,4])
-        VBoxWrite("RTD_Temp",T.temperature)
+        Network.rtd_temperature = T.temperature
         TellTheWorld("Temperature: " + str(T.temperature) + "          ",[2,7])      
         TellTheWorld("Actual Current: " + str(I) + "                   ",[2,9])
         TellTheWorld("Actual Voltage: " + str(U) + "                  ",[2,10])

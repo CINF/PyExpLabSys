@@ -5,7 +5,7 @@ class PID():
         self.Kp = 0.05
         self.Ki = 0.005
         self.Kd = 0
-        self.Pmax = 5
+        self.Pmax = 15
         self.IntErr = 0
 
     def ResetIntError(self):
