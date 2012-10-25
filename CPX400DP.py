@@ -25,7 +25,7 @@ class CPX400DPDriver(SCPI):
 
     def SetCurrentLimit(self, value):
         """Sets the current limit"""
-        function_string = 'I ' + self.output
+        function_string = 'I' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
     def ReadSetVoltage(self):

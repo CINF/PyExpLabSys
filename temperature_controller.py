@@ -1,4 +1,5 @@
-import CPX400DP as CPX
+#import CPX400DP as CPX
+import HeaterClass
 import agilent_34410A as agilent
 import time
 import threading
@@ -24,7 +25,7 @@ def TellTheWorld(message,pos=[0,0]):
         print(message)
     if output == 'curses':
         screen.addstr(pos[1], pos[0], message)
-        screen.refresh()
+        #screen.refresh()
 
 class NetworkClass(threading.Thread):
     def __init__(self):
@@ -34,20 +35,28 @@ class NetworkClass(threading.Thread):
         self.sample_temperature = -999
         self.rtd_temperature = -999
         self.power = -999
+        self.last_sync = time.time()
+        self.network_errors = 0
 
     def run(self):
         while not quit:
             outgoing_dict = {'rtd_temperature': str(self.rtd_temperature),'power': '-1'}
+
             incomming_dict = self.network.network_sync(outgoing_dict)
-            self.setpoint = float(incomming_dict['setpoint'])
-            self.sample_temperature = float(incomming_dict['sample_temperature'])
-            time.sleep(0.5)
+            if incomming_dict['setpoint'] <> 'error':
+                self.setpoint = float(incomming_dict['setpoint'])
+                self.sample_temperature = float(incomming_dict['sample_temperature'])
+                self.last_sync = time.time()
+                time.sleep(1)
+            else:
+                self.network_errors += 1
 
 class TemperatureClass(threading.Thread):
     def __init__(self,cal_temperature):
         threading.Thread.__init__(self)
         self.AgilentDriver = agilent.Agilent34410ADriver()
-        self.AgilentDriver.SelectMeasurementFunction('RESISTANCE')
+        self.AgilentDriver.SelectMeasurementFunction('FRESISTANCE')
+        #self.AgilentDriver.SelectMeasurementFunction('RESISTANCE')
         self.rtd_value = self.AgilentDriver.Read()
         self.rtd = self.rtd = RTD_Calculator.RTD_Calculator(cal_temperature,self.rtd_value)
         self.temperature = self.rtd.FindTemperature(self.rtd_value)
@@ -82,11 +91,11 @@ quit = False
 setpoint = -999
 tc_temperature = -999
 
+#CPXdriver  = CPX.CPX400DPDriver(1)
+Heater = HeaterClass.CPXHeater(2)
+
 Network = NetworkClass()
 Network.start()
-
-CPXdriver  = CPX.CPX400DPDriver(1)
-
 while (tc_temperature<-100):
     tc_temperature = Network.sample_temperature
     time.sleep(0.5)
@@ -100,44 +109,64 @@ P.start()
 
 TellTheWorld("Calibration value: " + str(T.rtd.Rrt) + "ohm at " + str(T.rtd.Trt) + "C",[1,1])
 
-CPXdriver.SetVoltage(0)
-CPXdriver.OutputStatus(True)
+#CPXdriver.SetVoltage(0)
+#CPXdriver.OutputStatus(True)
+Heater.SetVoltage(0)
+Heater.OutputStatus(True)
 
 power = 0
-i = 22*50
+
 while not quit:
     try:
-        i = i+1
         time.sleep(0.25)
         setpoint = Network.setpoint
-        #setpoint = i/50.0
 
-        
         #RIGHT NOW WHENEVER POWER IS REPLACED WIDTH VOLTAGE!!!!!
-        CPXdriver.SetVoltage(P.power)
-        I = CPXdriver.ReadActualCurrent()
+        #CPXdriver.SetVoltage(P.power)
+        Heater.SetVoltage(P.power)
+        #I = CPXdriver.ReadActualCurrent()
+        (I1,I2) = Heater.ReadActualCurrent()
         #U = CPXdriver.ReadActualVoltage()
         U = P.power
-
-        if I<-99999998:
-            del CPXdriver
+        if I1<-99999998 or I2<-99999998:
+            #del CPXdriver
+            del Heater
             time.sleep(1)
-            CPXdriver  = CPX.CPX400DPDriver(1)
-            I = CPXdriver.ReadActualCurrent()
-        if I>0:
-            TellTheWorld("PS:" + str(U/I) + "                ",[2,5])
+            #CPXdriver  = CPX.CPX400DPDriver(1)
+            Heater = HeaterClass(2)
+            #I = CPXdriver.ReadActualCurrent()
+            (I1,I2) = Heater.ReadActualCurrent()
+        if I1>0:
+            TellTheWorld("Resistance1, PS:  {0:.5f}    ".format(U/I1),[2,5])
         else:
-            TellTheWorld("PS: No current         ",[2,5])
+            TellTheWorld("Pesistance1, PS: -   ",[2,5])
+        if I2>0:
+            TellTheWorld("Resistance2, PS:  {0:.5f}    ".format(U/I2),[35,5])
+        else:
+            TellTheWorld("Resistance2, PS: -   ",[35,5])
 
-        TellTheWorld("Setpoint: " + str(setpoint) + "        ",[2,4])
+
+        TellTheWorld("Setpoint: " + str(setpoint) + "     ",[2,4])
         Network.rtd_temperature = T.temperature
-        TellTheWorld("Temperature: " + str(T.temperature) + "          ",[2,7])      
-        TellTheWorld("Actual Current: " + str(I) + "                   ",[2,9])
-        TellTheWorld("Actual Voltage: " + str(U) + "                  ",[2,10])
-        TellTheWorld("Wanted power: " + str(P.power) + "              ",[2,11])
+        TellTheWorld("Temperature: {0:.4f}".format(T.temperature),[2,7])      
+        TellTheWorld("RTD resistance: {0:.5f}".format(T.rtd_value),[2,8])
+
+        TellTheWorld("Actual Current1: {0:.4f}".format(I1),[2,9])
+        TellTheWorld("Actual Current2: {0:.4f}".format(I2),[35,9])
+        TellTheWorld("Actual Voltage: {0:.4f}".format(U),[2,10])
+        TellTheWorld("Wanted power: {0:.4f}".format(P.power),[2,11])
+        time_since_sync = time.time() - Network.last_sync
+
+        TellTheWorld("Sync time: {0:.2f}".format(time_since_sync),[2,12])
+        TellTheWorld("Network resets: " + str(Network.network_errors) + "          ",[2,13])
+        if output == 'curses':
+            screen.refresh()
+
 
     except:
         quit = True
+        del Network
+
         if output == 'curses':
             curses.nocbreak()
             screen.keypad(0)
@@ -147,7 +176,8 @@ while not quit:
         print "Program terminated by user"
         #print str(e)
 
-CPXdriver.OutputStatus(False)
+#CPXdriver.OutputStatus(False)
+Heater.OutputStatus(False)
 
 
 #print driver.ReadSetVoltage()
