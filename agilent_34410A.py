@@ -15,7 +15,7 @@ class Agilent34410ADriver(SCPI):
         return(True)
 
     def SelectMeasurementFunction(self,function):
-        values = ['CAPACITANCE','CONTINUITY','CURRENT','DIODE','FREQUENCY','RESISTANCE','TEMPERATURE','VOLTAGE']
+        values = ['CAPACITANCE','CONTINUITY','CURRENT','DIODE','FREQUENCY','RESISTANCE','FRESISTANCE','TEMPERATURE','VOLTAGE']
         return_value = False
         if function in values:
             return_value = True
