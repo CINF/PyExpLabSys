@@ -1,4 +1,5 @@
 import CPX400DP as CPX
+import time
 
 class CPXHeater():
 
@@ -7,6 +8,7 @@ class CPXHeater():
         self.N = number_of_outputs
         self.CPX1  = CPX.CPX400DPDriver(1)
         if self.N == 2:
+            time.sleep(0.1)
             self.CPX2  = CPX.CPX400DPDriver(2)
 
     def SetVoltage(self, value):
@@ -31,6 +33,7 @@ class CPXHeater():
     def ReadActualCurrent(self):
         I1 = self.CPX1.ReadActualCurrent()
         if self.N == 2:
+            time.sleep(0.1)
             I2 = self.CPX2.ReadActualCurrent()
         else:
             I2 = 0

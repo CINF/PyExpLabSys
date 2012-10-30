@@ -8,7 +8,8 @@ a = time.time()
 #HOST, PORT = "130.225.87.189", 9999 #Kenneth
 #HOST, PORT = "130.225.87.191", 9999 #robertj
 #HOST, PORT = "130.225.86.242", 9999 #thomas
-HOST, PORT = "130.225.87.226", 9999 #robertj
+#HOST, PORT = "130.225.87.226", 9999 #robertj
+HOST, PORT = "rasppi04", 9999 #robertj
 data = " ".join(sys.argv[1:])
 
 # SOCK_DGRAM is the socket type to use for UDP sockets

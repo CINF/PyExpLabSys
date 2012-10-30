@@ -27,6 +27,15 @@ def TellTheWorld(message,pos=[0,0]):
         screen.addstr(pos[1], pos[0], message)
         #screen.refresh()
 
+def ReadTCTemperature():
+    HOST, PORT = "rasppi04", 9999 #robertj                                                          data = "tempNG"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(data + "\n", (HOST, PORT))
+    received = sock.recv(1024)
+    temp = float(received)
+    return(temp)
+
+
 class NetworkClass(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -89,7 +98,7 @@ class PowerCalculatorClass(threading.Thread):
 
 quit = False
 setpoint = -999
-tc_temperature = -999
+tc_temperature = ReadTCTemperatur()
 
 #CPXdriver  = CPX.CPX400DPDriver(1)
 Heater = HeaterClass.CPXHeater(2)
