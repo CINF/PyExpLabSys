@@ -1,0 +1,12 @@
+Time;0
+Temp;0
+
+Time;10
+Temp;100
+
+#Test
+Time;10
+Temp;0
+Ramp;100;1
+Time;5
+Temp;0
