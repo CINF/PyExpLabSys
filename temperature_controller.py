@@ -8,10 +8,11 @@ import curses
 import RTD_Calculator
 import PID
 import NetworkComm
+import SocketServer
+import socket
 
-
-#output = 'print'
-output = 'curses'
+output = 'print'
+#output = 'curses'
 
 if output == 'curses':
     screen = curses.initscr()
@@ -26,6 +27,27 @@ def TellTheWorld(message,pos=[0,0]):
     if output == 'curses':
         screen.addstr(pos[1], pos[0], message)
         #screen.refresh()
+
+def ReadTCTemperature():
+    HOST, PORT = "rasppi04", 9999
+    data = "tempNG"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(data + "\n", (HOST, PORT))
+    received = sock.recv(1024)
+    temp = float(received)
+    return(temp)
+
+
+class MyUDPHandler(SocketServer.BaseRequestHandler):
+
+    def handle(self):
+        recieved_data = self.request[0].strip()
+        socket = self.request[1]
+        if recieved_data == "rtdtemp":
+            data = temperature
+        if recieved_data == "setpoint":
+            data = "ok"
+        socket.sendto(data, self.client_address)
 
 class NetworkClass(threading.Thread):
     def __init__(self):
@@ -89,16 +111,22 @@ class PowerCalculatorClass(threading.Thread):
 
 quit = False
 setpoint = -999
-tc_temperature = -999
+tc_temperature = ReadTCTemperature()
 
 #CPXdriver  = CPX.CPX400DPDriver(1)
 Heater = HeaterClass.CPXHeater(2)
 
-Network = NetworkClass()
-Network.start()
-while (tc_temperature<-100):
-    tc_temperature = Network.sample_temperature
-    time.sleep(0.5)
+print "Dav 1"
+HOST, PORT = "130.225.86.143", 9999 #Agilent
+server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
+server.serve_forever()
+print "Dav 2"
+
+#Network = NetworkClass()
+#Network.start()
+#while (tc_temperature<-100):
+#    tc_temperature = Network.sample_temperature
+#    time.sleep(0.5)
 
 T = TemperatureClass(tc_temperature)
 T.start()
