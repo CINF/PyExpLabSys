@@ -2,6 +2,9 @@ import sys
 import SocketServer
 sys.path.append('../')
 import pentax_picture as pentax
+import omegabus
+
+TC_reader = omegabus.OmegaBus()
 
 #This specific raspberry pi handles temperature reading
 #And takes images with the pentax camera
@@ -20,9 +23,11 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             pentax.AcquireImage('/usr/share/mini-httpd/html/tmp.jpg')
             data = "http://rasppi04/tmp.jpg"
         if recieved_data == "tempNG":
-            print "tempNG"
+            data = str(TC_reader.ReadValue(1))
         if recieved_data == "tempOld":
-            print "tempOld"
+            data = str(TC_reader.ReadValue(2))
+        if recieved_data == "tempRoom":
+            data = str(TC_reader.ReadValue(3))
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
