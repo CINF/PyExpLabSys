@@ -1,10 +1,10 @@
 import threading
 import Queue
 import time
-import datetime
+from datetime import datetime
 import serial
 
-import pyodbc
+import MySQLdb
 
 #import nidaq
 import NGC2D
@@ -16,7 +16,8 @@ def sqlTime():
 
 def sqlInsert(query):
 	try:
-		cnxn = pyodbc.connect('DSN=new_db')
+		cnxn = MySQLdb.connect(host="servcinf",user="omicron",passwd="omicron",db="cinfdata")
+		#cnxn = pyodbc.connect('DSN=new_db')
 		#cnxn = pyodbc.connect('DSN=robertj')
 		cursor = cnxn.cursor()
 	except:
