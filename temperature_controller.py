@@ -7,12 +7,10 @@ import subprocess
 import curses
 import RTD_Calculator
 import PID
-import NetworkComm
-import SocketServer
 import socket
 
-output = 'print'
-#output = 'curses'
+#output = 'print'
+output = 'curses'
 
 if output == 'curses':
     screen = curses.initscr()
@@ -37,41 +35,26 @@ def ReadTCTemperature():
     temp = float(received)
     return(temp)
 
+def ReadSetpoint():
+    HOST, PORT = "agilent", 9999
+    data = "read_setpoint"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(data + "\n", (HOST, PORT))
+    received = sock.recv(1024)
+    temp = float(received)
+    return(temp)
 
-class MyUDPHandler(SocketServer.BaseRequestHandler):
+def set_rtdval(value):
+    HOST, PORT = "agilent", 9999
+    data = "set_rtdval " + str(value)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(data + "\n", (HOST, PORT))
+    received = sock.recv(1024)
+    return_val = False
+    if received == "ok":
+        return_val = True
+    return return_val
 
-    def handle(self):
-        recieved_data = self.request[0].strip()
-        socket = self.request[1]
-        if recieved_data == "rtdtemp":
-            data = temperature
-        if recieved_data == "setpoint":
-            data = "ok"
-        socket.sendto(data, self.client_address)
-
-class NetworkClass(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.network = NetworkComm.NetworkComm()
-        self.setpoint = -999
-        self.sample_temperature = -999
-        self.rtd_temperature = -999
-        self.power = -999
-        self.last_sync = time.time()
-        self.network_errors = 0
-
-    def run(self):
-        while not quit:
-            outgoing_dict = {'rtd_temperature': str(self.rtd_temperature),'power': '-1'}
-
-            incomming_dict = self.network.network_sync(outgoing_dict)
-            if incomming_dict['setpoint'] <> 'error':
-                self.setpoint = float(incomming_dict['setpoint'])
-                self.sample_temperature = float(incomming_dict['sample_temperature'])
-                self.last_sync = time.time()
-                time.sleep(1)
-            else:
-                self.network_errors += 1
 
 class TemperatureClass(threading.Thread):
     def __init__(self,cal_temperature):
@@ -80,7 +63,7 @@ class TemperatureClass(threading.Thread):
         self.AgilentDriver.SelectMeasurementFunction('FRESISTANCE')
         #self.AgilentDriver.SelectMeasurementFunction('RESISTANCE')
         self.rtd_value = self.AgilentDriver.Read()
-        self.rtd = self.rtd = RTD_Calculator.RTD_Calculator(cal_temperature,self.rtd_value)
+        self.rtd = RTD_Calculator.RTD_Calculator(cal_temperature,self.rtd_value)
         self.temperature = self.rtd.FindTemperature(self.rtd_value)
         
     def run(self):
@@ -110,17 +93,11 @@ class PowerCalculatorClass(threading.Thread):
 
 
 quit = False
-setpoint = -999
+setpoint = ReadSetpoint()
 tc_temperature = ReadTCTemperature()
 
 #CPXdriver  = CPX.CPX400DPDriver(1)
 Heater = HeaterClass.CPXHeater(2)
-
-print "Dav 1"
-HOST, PORT = "130.225.86.143", 9999 #Agilent
-server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
-server.serve_forever()
-print "Dav 2"
 
 #Network = NetworkClass()
 #Network.start()
@@ -132,22 +109,38 @@ T = TemperatureClass(tc_temperature)
 T.start()
 time.sleep(1)
 
+# Calibrate resistance of the heaters
+Heater.SetVoltage(3)
+Heater.OutputStatus(True)
+time.sleep(1)
+(I1_calib,I2_calib) = Heater.ReadActualCurrent()
+Heater.OutputStatus(False)
+R1_calib = 3/I1_calib
+R2_calib = 3/I2_calib
+Heater1_rtd = RTD_Calculator.RTD_Calculator(tc_temperature,R1_calib)
+Heater2_rtd = RTD_Calculator.RTD_Calculator(tc_temperature,R2_calib)
+
+time.sleep(1)
+
 P = PowerCalculatorClass()
 P.start()
 
-TellTheWorld("Calibration value: " + str(T.rtd.Rrt) + "ohm at " + str(T.rtd.Trt) + "C",[1,1])
+TellTheWorld("Calibration value: {0:.5f} ohm at {1:.1f}C".format(T.rtd.Rrt,T.rtd.Trt),[2,1])
+TellTheWorld("Calibration value, I1: {0:.3f} ohm at {1:.1f}C".format(Heater1_rtd.Rrt,T.rtd.Trt),[2,2])
+TellTheWorld("Calibration value, I2: {0:.3f} ohm at {1:.1f}C".format(Heater2_rtd.Rrt,T.rtd.Trt),[2,3])
 
 #CPXdriver.SetVoltage(0)
 #CPXdriver.OutputStatus(True)
 Heater.SetVoltage(0)
 Heater.OutputStatus(True)
 
+
 power = 0
 
 while not quit:
     try:
         time.sleep(0.25)
-        setpoint = Network.setpoint
+        setpoint = setpoint = ReadSetpoint()
 
         #RIGHT NOW WHENEVER POWER IS REPLACED WIDTH VOLTAGE!!!!!
         #CPXdriver.SetVoltage(P.power)
@@ -164,36 +157,37 @@ while not quit:
             Heater = HeaterClass(2)
             #I = CPXdriver.ReadActualCurrent()
             (I1,I2) = Heater.ReadActualCurrent()
-        if I1>0:
-            TellTheWorld("Resistance1, PS:  {0:.5f}    ".format(U/I1),[2,5])
+        if I1>0.01:
+            TellTheWorld("Resistance1, PS:  {0:.4f}               ".format(U/I1),[2,5])
+            TellTheWorld("Temperature 1: {0:.3f}                  ".format(Heater1_rtd.FindTemperature(U/I1)),[2,6])
         else:
-            TellTheWorld("Pesistance1, PS: -   ",[2,5])
-        if I2>0:
-            TellTheWorld("Resistance2, PS:  {0:.5f}    ".format(U/I2),[35,5])
+            TellTheWorld("Resistance1, PS: -                      ",[2,5])
+            TellTheWorld("Temperature 1: -                        ",[2,6])
+        if I2>0.01:
+            TellTheWorld("Resistance2, PS:  {0:.4f}               ".format(U/I2),[35,5])
+            TellTheWorld("Temperature 2: {0:.3f}                  ".format(Heater1_rtd.FindTemperature(U/I2)),[35,6])
         else:
-            TellTheWorld("Resistance2, PS: -   ",[35,5])
+            TellTheWorld("Resistance2, PS: -                      ",[35,5])
+            TellTheWorld("Temperature 2: -                        ",[35,6])
 
 
-        TellTheWorld("Setpoint: " + str(setpoint) + "     ",[2,4])
-        Network.rtd_temperature = T.temperature
-        TellTheWorld("Temperature: {0:.4f}".format(T.temperature),[2,7])      
-        TellTheWorld("RTD resistance: {0:.5f}".format(T.rtd_value),[2,8])
+        TellTheWorld("Setpoint: " + str(setpoint) + "     ",[2,8])
+        set_rtdval(T.temperature) # Check that the return value is actually true...
+        TellTheWorld("Temperature: {0:.4f}".format(T.temperature),[2,9])      
+        TellTheWorld("RTD resistance: {0:.5f}".format(T.rtd_value),[2,10])
 
-        TellTheWorld("Actual Current1: {0:.4f}".format(I1),[2,9])
-        TellTheWorld("Actual Current2: {0:.4f}".format(I2),[35,9])
-        TellTheWorld("Actual Voltage: {0:.4f}".format(U),[2,10])
-        TellTheWorld("Wanted power: {0:.4f}".format(P.power),[2,11])
-        time_since_sync = time.time() - Network.last_sync
+        TellTheWorld("Actual Current1: {0:.4f}".format(I1),[2,11])
+        TellTheWorld("Actual Current2: {0:.4f}".format(I2),[35,11])
+        TellTheWorld("Actual Voltage: {0:.4f}".format(U),[2,12])
+        TellTheWorld("Wanted power: {0:.4f}".format(P.power),[2,14])
+        #time_since_sync = time.time() - Network.last_sync
 
-        TellTheWorld("Sync time: {0:.2f}".format(time_since_sync),[2,12])
-        TellTheWorld("Network resets: " + str(Network.network_errors) + "          ",[2,13])
+        #TellTheWorld("Sync time: {0:.2f}".format(time_since_sync),[2,14])
+        #TellTheWorld("Network resets: " + str(Network.network_errors) + "          ",[2,16])
         if output == 'curses':
             screen.refresh()
-
-
     except:
         quit = True
-        del Network
 
         if output == 'curses':
             curses.nocbreak()
