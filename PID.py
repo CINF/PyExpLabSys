@@ -2,10 +2,10 @@ class PID():
     
     def __init__(self):
         self.setpoint = -9999
-        self.Kp = 0.05
+        self.Kp = 0.01
         self.Ki = 0.005
         self.Kd = 0
-        self.Pmax = 60
+        self.Pmax = 35
         self.IntErr = 0
 
     def ResetIntError(self):
