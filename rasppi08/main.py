@@ -6,9 +6,9 @@ import serial
 
 import MySQLdb
 
-#import nidaq
-import NGC2D
 
+import ../NGC2D
+import ../OmegaBus
 
 def sqlTime():
 	sqltime = datetime.now().isoformat(' ')[0:19]
@@ -44,6 +44,23 @@ class NGC2DClass(threading.Thread):
 			except:
 				print "av"
 
+class OmegaBusClass(threading.Thread):
+	def run(self):
+		global temp_oldclustersource
+		global temp_nanobeam
+		while not quit:
+			time.sleep(0.2)
+			temp0 = OmegaBus.ReadValue(0) + 273
+			time.sleep(0.2)
+			temp1 = OmegaBus.ReadValue(1) + 273
+			try:
+				temp_oldclustersource = temp0
+				isinstance(temp0, float)
+				temp_nanobeam = temp1
+				isinstance(temp1, float)
+			except:
+				print "av"
+
 class NGC2DSaver(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
@@ -67,22 +84,68 @@ class NGC2DSaver(threading.Thread):
 				gauge_sql = "insert into pressure_omicron_nanobeam set time=\"" +  meas_time + "\", pressure = " + val
 				print gauge_sql
 				sqlInsert(gauge_sql)
+
+class temp_oldclustersource_Saver(threading.Thread):
+	def __init__(self):
+		threading.Thread.__init__(self)
+		self.last_recorded_value = 0
+		self.last_recorded_time = 1
+	
+	def run(self):
+		while not quit:
+			time.sleep(1)
+			time_trigged = (time.time() - self.last_recorded_time) > 300
+			val_trigged = not (self.last_recorded_value - 2.0 < temp_oldclustersource < self.last_recorded_value + 2)
+			if (time_trigged or val_trigged):
+				self.last_recorded_value = temp_oldclustersource
+				self.last_recorded_time = time.time()
+				meas_time = sqlTime()
+				val = "%.5g" % temp_oldclustersource
+				gauge_sql = "insert into temperature_oldclusterce set time=\"" +  meas_time + "\", temperature = " + val
+				print gauge_sql
+				sqlInsert(gauge_sql)
+
+class temp_nanobeam_Saver(threading.Thread):
+	def __init__(self):
+		threading.Thread.__init__(self)
+		self.last_recorded_value = 0
+		self.last_recorded_time = 1
+	
+	def run(self):
+		while not quit:
+			time.sleep(1)
+			time_trigged = (time.time() - self.last_recorded_time) > 300
+			val_trigged = not (self.last_recorded_value - 2.0 < temp_nanobeam < self.last_recorded_value + 2.0)
+			if (time_trigged or val_trigged):
+				self.last_recorded_value = temp_nanobeam
+				self.last_recorded_time = time.time()
+				meas_time = sqlTime()
+				val = "%.5g" % temp_nanobeam
+				gauge_sql = "insert into temperature_omicron_nanobeam set time=\"" +  meas_time + "\", temperature = " + val
+				print gauge_sql
+				sqlInsert(gauge_sql)
 		
 
 quit = False
 ion_gauge_pressure = 0
-#ion_pump_pressure = 0
-#turbo_pump_temp = 0
+global temp_oldclustersource = 0
+global temp_nanobeam = 0
 
 	
 P = NGC2DClass()
-#A = AnalogClass()
+O = OmegaBusClass()
+
 PressSaver = NGC2DSaver()
-#IonSaver = IonPumpSaver()
-#TurboSaver = TurboTempSaver()
+TempSaver0 = temp_oldclustersource_Saver()
+TempSaver1 = temp_nanobeam_Saver()
+
 P.start()
-#A.start()
+O.start()
+
 PressSaver.start()
+TempSaver0.start()
+TempSaver1.start()
+
 #IonSaver.start()
 #TurboSaver.start()
 
