@@ -30,7 +30,7 @@ def sqlInsert(query):
 class AKclass(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        self.nga = nga.AK_comm('/dev/ttyUSB0')
+        self.nga = nga.AK_comm('/dev/ttyUSB1')
 
     def run(self):
         global ammonia_concentration
