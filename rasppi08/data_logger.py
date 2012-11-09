@@ -33,6 +33,9 @@ def sqlInsert(query):
 	cnxn.close()
 
 class NGC2DClass(threading.Thread):
+	def __init__(self):
+        	threading.Thread.__init__(self)
+        	self.NGC2D = NGC2D.NGC2D_comm('/dev/ttyUSB0')
 	def run(self):
 		global ion_gauge_pressure
 		while not quit:
@@ -46,6 +49,9 @@ class NGC2DClass(threading.Thread):
 				print "av-NGC2DClass"
 
 class OmegaBusClass(threading.Thread):
+	def __init__(self):
+        	threading.Thread.__init__(self)
+        	self.OmegaBus = OmegaBus.OmegaBus_comm('/dev/ttyUSB0')
 	def run(self):
 		global temp_oldclustersource
 		global temp_nanobeam
