@@ -36,7 +36,7 @@ def ReadTCTemperature():
     return(temp)
 
 def ReadSetpoint():
-    HOST, PORT = "agilent", 9999
+    HOST, PORT = "rasppi05", 9999
     data = "read_setpoint"
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(data + "\n", (HOST, PORT))
@@ -45,7 +45,7 @@ def ReadSetpoint():
     return(temp)
 
 def set_rtdval(value):
-    HOST, PORT = "agilent", 9999
+    HOST, PORT = "rasppi05", 9999
     data = "set_rtdval " + str(value)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(data + "\n", (HOST, PORT))
