@@ -4,8 +4,8 @@ import SocketServer
 
 class InficonSQM160():
 
-    def __init__(self,port):
-        self.f = serial.Serial(port='com6',baudrate=9600,timeout=2,bytesize=serial.EIGHTBITS,xonxoff=True)
+    def __init__(self):
+        self.f = serial.Serial(port='/dev/ttyUSB0',baudrate=9600,timeout=2,bytesize=serial.EIGHTBITS,xonxoff=True)
         
     def comm(self,command):
         length = chr(len(command) + 34)
@@ -61,26 +61,32 @@ class InficonSQM160():
         
     def rate(self,channel):
         command = 'L' + str(channel)
-        rate_string = self.comm(command)
-        rate = float(rate_string)
+        value_string = self.comm(command)
+        rate = float(value_string)
         return(rate)
 
     def thickness(self,channel):
         command = 'N' + str(channel)
-        print self.comm(command)
+        value_string = self.comm(command)
+        thickness = float(value_string)        
+        return(thickness)
         
     def frequency(self,channel):
         command = 'P' + str(channel)
-        print self.comm(command)
+        value_string = self.comm(command)
+        frequency = float(value_string)        
+        return(frequency)
 
     def CrystalLife(self,channel):
         command = 'R' + str(channel)
-        print self.comm(command)
+        value_string = self.comm(command)
+        life = float(value_string)        
+        return(life)
+
         
 
+inficon = InficonSQM160()
 class MyUDPHandler(SocketServer.BaseRequestHandler):
-
-    inficon = InficonSQM160('com6')
 
     def handle(self):
         recieved_data = self.request[0].strip()
@@ -98,15 +104,12 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 		
-
-
-		
 if __name__ == "__main__":
-    HOST, PORT = "130.225.87.188", 9999
+    HOST, PORT = "agilent", 9999
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()
-	#inficon = InficonSQM160('com6')
+    #inficon = InficonSQM160()
     #inficon.show_version()
     #inficon.rate(1)
     #inficon.thickness(1)
