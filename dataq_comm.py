@@ -6,9 +6,11 @@ class dataq_comm():
     def __init__(self,port):
         self.f = serial.Serial(port)
 	time.sleep(0.1)
+	slist_counter = 0 
+#There is no check on slist_counter and it can hence be overflowed!
 
     def comm(self,command):
-	end_string = chr(13) #Carriage return
+	end_string = chr(13) # carriage return
 	self.f.write(command + end_string)
 	time.sleep(0.5)
 	return_string = self.f.read(self.f.inWaiting())
@@ -40,15 +42,21 @@ class dataq_comm():
 	self.comm(command)
 
     def ch1Analog(self):
-	command = 'slist 0 x0000'
+	global slist_counter
+	command = 'slist ' + str(slist_counter) + ' x0000'
+	slist_counter = slist_counter + 1
 	self.comm(command)
 
     def ch2Analog(self):
-	command = 'slist 1 x0001'
+	global slist_counter
+	command = 'slist ' + str(slist_counter) + ' x0001'
+	slist_counter = slist_counter + 1
 	self.comm(command)
 
     def ch3Analog(self):
-	command = 'slist 2 x0002'
+	global slist_counter
+	command = 'slist ' + str(slist_counter) + ' x0002'
+	slist_counter = slist_counter + 1
 	self.comm(command)
 
     def setASCIIMode(self):
@@ -58,6 +66,14 @@ class dataq_comm():
     def setFloatMode(self):
 	command = 'float'
 	self.comm(command)
+
+    def resetSlist(self):
+	global slist_counter
+	for i in range(0,5)
+	    command = 'slist ' + str(i) + ' 0xffff'
+	    self.comm(command)
+	else:
+            slist_counter = 0
 
 if __name__ == '__main__':
     dataq = dataq_comm('/dev/ttyACM0')
