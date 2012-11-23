@@ -3,10 +3,13 @@ import time
 
 class dataq_comm():
 
+    
+
     def __init__(self,port):
         self.f = serial.Serial(port)
 	time.sleep(0.1)
-	slist_counter = 0 
+        self.slist_counter = 0
+	
 #There is no check on slist_counter and it can hence be overflowed!
 
     def comm(self,command):
@@ -42,21 +45,20 @@ class dataq_comm():
 	self.comm(command)
 
     def ch1Analog(self):
-	global slist_counter
-	command = 'slist ' + str(slist_counter) + ' x0000'
-	slist_counter = slist_counter + 1
+	command = 'slist ' + str(self.slist_counter) + ' x0000'
+	self.slist_counter = self.slist_counter + 1
+	print command, self.slist_counter
 	self.comm(command)
 
     def ch2Analog(self):
-	global slist_counter
-	command = 'slist ' + str(slist_counter) + ' x0001'
-	slist_counter = slist_counter + 1
+	command = 'slist ' + str(self.slist_counter) + ' x0001'
+	self.slist_counter = self.slist_counter + 1
 	self.comm(command)
 
     def ch3Analog(self):
 	global slist_counter
-	command = 'slist ' + str(slist_counter) + ' x0002'
-	slist_counter = slist_counter + 1
+	command = 'slist ' + str(self.slist_counter) + ' x0002'
+	self.slist_counter = self.slist_counter + 1
 	self.comm(command)
 
     def setASCIIMode(self):
@@ -69,7 +71,7 @@ class dataq_comm():
 
     def resetSlist(self):
 	global slist_counter
-	for i in range(0,5)
+	for i in range(0,5):
 	    command = 'slist ' + str(i) + ' 0xffff'
 	    self.comm(command)
 	else:
