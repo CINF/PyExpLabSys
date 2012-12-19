@@ -180,6 +180,7 @@ while not quit:
         TellTheWorld("Actual Current2: {0:.4f}".format(I2),[35,11])
         TellTheWorld("Actual Voltage: {0:.4f}".format(U),[2,12])
         TellTheWorld("Wanted power: {0:.4f}".format(P.power),[2,14])
+        TellTheWorld("Actual power: {0:.4f}".format(P.power*(I1+I2)),[2,15])
         #time_since_sync = time.time() - Network.last_sync
 
         #TellTheWorld("Sync time: {0:.2f}".format(time_since_sync),[2,14])
