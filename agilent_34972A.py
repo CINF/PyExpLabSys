@@ -1,17 +1,28 @@
 from SCPI import SCPI
-
+import time
     
 class Agilent34972ADriver(SCPI):
 
     def __init__(self):
-        SCPI.__init__(self,'/dev/usbtmc1','file')
+        #SCPI.__init__(self,'/dev/usbtmc1','file')
+        SCPI.__init__(self,'agilent-34972a','lan')
 
     def read_single_scan(self):
         self.scpi_comm("TRIG:SOURCE TIMER")
+
+        print self.scpi_comm("TRIG:SOURCE?")
         self.scpi_comm("TRIG:COUNT 1")
         self.scpi_comm("INIT")
+        time.sleep(0.1)
+        status = int(self.scpi_comm("STATUS:OPERATION:CONDITION?"))
+        status_bin = bin(status)[2:].zfill(16)
+        while status_bin[11] == '1':
+            status = int(self.scpi_comm("STATUS:OPERATION:CONDITION?"))
+            status_bin = bin(status)[2:].zfill(16)
+            time.sleep(0.5)
         response = self.scpi_comm("FETCH?")
         response = response.split(',')
+        print response
         return_values = []
         for val in response:
             return_values.append(float(val))
@@ -74,9 +85,9 @@ if __name__ == "__main__":
 
     driver = Agilent34972ADriver()
     #driver = driver.ResetDevice()
-    #driver.set_scan_list(scan_list)
+    print driver.read_scan_list()
     #driver.set_integration_time(106,20)
-    #print driver.read_configuration()
+    print driver.read_configuration()
 
     #print driver.read_scan_list()
     print driver.read_single_scan()

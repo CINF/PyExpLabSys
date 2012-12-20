@@ -1,6 +1,7 @@
 import time
 import serial
 import random
+import telnetlib
 
 class SCPI:
 
@@ -13,6 +14,8 @@ class SCPI:
                 self.f.close()
             if self.port == 'serial':
                 self.f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
+            if self.port == 'lan':
+                self.f = telnetlib.Telnet('agilent-34972a',5025)
             self.debug = False
         except Exception,e:
             self.debug = True
@@ -29,7 +32,6 @@ class SCPI:
             time.sleep(0.02)
             self.f.close()
             time.sleep(0.1)
-
             if command.endswith('?'):
                 self.f = open(self.device, 'r')
                 return_string = self.f.readline()
@@ -44,6 +46,12 @@ class SCPI:
                     return_string = "-99999999"
             while self.f.inWaiting()>0:
                 return_string += self.f.read(1)
+
+        if self.port == 'lan':
+            self.f.write(command + '\n')
+            if command.endswith('?'):
+                return_string = self.f.read_until(chr(10),2)
+
         return return_string
     
     def ReadSoftwareVersion(self, short=False):
