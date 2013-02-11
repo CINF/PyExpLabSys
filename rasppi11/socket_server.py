@@ -31,7 +31,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.87.213", 9999 #Rasppi04
+    HOST, PORT = "130.225.86.180", 9999 #Rasppi11
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()
