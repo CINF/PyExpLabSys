@@ -4,7 +4,8 @@ from SCPI import SCPI
 class Agilent34410ADriver(SCPI):
 
     def __init__(self):
-        SCPI.__init__(self,'/dev/usbtmc0','file')
+        #SCPI.__init__(self,'/dev/usbtmc0','file')
+        SCPI.__init__(self,'microreactor-agilent-34410A','lan')
 
     def configCurrentMeasurement(self):
         self.scpi_comm("CONFIGURE:CURRENT:DC") #Take parameter to also be able to select AC
