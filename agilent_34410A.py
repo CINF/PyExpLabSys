@@ -4,8 +4,8 @@ from SCPI import SCPI
 class Agilent34410ADriver(SCPI):
 
     def __init__(self):
-        #SCPI.__init__(self, '/dev/usbtmc0', 'file')
-        SCPI.__init__(self, 'microreactor-agilent-34410A', 'lan')
+        #SCPI.__init__(self,'/dev/usbtmc0','file')
+        SCPI.__init__(self,'microreactor-agilent-34410A','lan')
 
     def config_current_measurement(self):
         """ Configures the instrument to measure current. """
