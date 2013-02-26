@@ -27,7 +27,7 @@ def TellTheWorld(message,pos=[0,0]):
         #screen.refresh()
 
 def ReadTCTemperature():
-    HOST, PORT = "rasppi04", 9999
+    HOST, PORT = "rasppi12", 9999
     data = "tempNG"
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(data + "\n", (HOST, PORT))

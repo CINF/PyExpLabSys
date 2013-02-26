@@ -15,7 +15,8 @@ class SCPI:
             if self.port == 'serial':
                 self.f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
             if self.port == 'lan':
-                self.f = telnetlib.Telnet('agilent-34972a',5025)
+                #self.f = telnetlib.Telnet('agilent-34972a',5025)
+                self.f = telnetlib.Telnet(device,5025)
             self.debug = False
         except Exception,e:
             self.debug = True

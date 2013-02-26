@@ -4,14 +4,14 @@ import time
 class OmegaBus():
 
     def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB0',300)
+        self.f = serial.Serial('/dev/ttyUSB1',300)
         time.sleep(0.1)
 
     def ReadValue(self,channel):
         self.f.write("$" + str(channel) + "RD" + "\r")
         time.sleep(1)
         value_string = self.f.read(self.f.inWaiting())
-        print value_string
+        #print value_string
         if value_string[1] == "*":
             value_string = value_string[3:]
         current_value = float(value_string)
