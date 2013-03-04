@@ -60,16 +60,16 @@ class TemperatureClass(threading.Thread):
     def __init__(self,cal_temperature):
         threading.Thread.__init__(self)
         self.AgilentDriver = agilent.Agilent34410ADriver()
-        self.AgilentDriver.SelectMeasurementFunction('FRESISTANCE')
-        #self.AgilentDriver.SelectMeasurementFunction('RESISTANCE')
-        self.rtd_value = self.AgilentDriver.Read()
+        self.AgilentDriver.select_measurement_function('FRESISTANCE')
+        #self.AgilentDriver.select_measurement_function('RESISTANCE')
+        self.rtd_value = self.AgilentDriver.read()
         self.rtd = RTD_Calculator.RTD_Calculator(cal_temperature,self.rtd_value)
         self.temperature = self.rtd.FindTemperature(self.rtd_value)
         
     def run(self):
         global temperature
         while not quit:
-            self.rtd_value = self.AgilentDriver.Read()
+            self.rtd_value = self.AgilentDriver.read()
             self.temperature = self.rtd.FindTemperature(self.rtd_value)
             temperature = self.temperature
             time.sleep(0.25)

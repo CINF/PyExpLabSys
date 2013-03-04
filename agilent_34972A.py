@@ -5,7 +5,7 @@ class Agilent34972ADriver(SCPI):
 
     def __init__(self):
         #SCPI.__init__(self,'/dev/usbtmc1','file')
-        SCPI.__init__(self,'agilent-34972a','lan')
+        SCPI.__init__(self,'microreactor-agilent-34972a','lan')
 
     def read_single_scan(self):
         self.scpi_comm("TRIG:SOURCE TIMER")

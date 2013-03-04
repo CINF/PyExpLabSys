@@ -8,6 +8,16 @@ import RTD_Calculator
 import cv
 import scipy
 import scipy.ndimage
+import socket
+
+def ReadTCTemperature():
+    HOST, PORT = "rasppi12", 9999
+    data = "tempNG"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(data + "\n", (HOST, PORT))
+    received = sock.recv(1024)
+    temp = float(received)
+    return(temp)
 
 def snapshot(name):
     c = cv.CaptureFromCAM(0)
@@ -47,12 +57,14 @@ def update_heater_output(value,enable):
         heater_drivers[i].SetVoltage(value)
         if i == 1:
             heater_drivers[i].SetVoltage(value*1.2)
+        if i == 3:
+            heater_drivers[i].SetVoltage(value*0.85)
         heater_drivers[i].OutputStatus(enable)
     time.sleep(0.2)
 
 def read_electrical_status():
     return_string = ""
-    res = dmm.Read()
+    res = dmm.read()
     heaters = update_heater_iv()
     t = {}
 
@@ -60,11 +72,15 @@ def read_electrical_status():
     return_string += "PS_Voltage: " + str(Vpulse)                   + "\t"
     return_string += "RTD_value:  " + str(res)                      + "\t"
     return_string += "RTD_temp:   " + str(rtd.FindTemperature(res)) + "\t"
+    return_string += "TC_temp:    " + str(ReadTCTemperature())      + "\t"
 
     for channel in [1,2,3]:
         I = heaters['I'][channel]
         V = heaters['V'][channel]
-        R = V/I
+        if I>0:
+            R = V/I
+        else:
+            R = 99999999
         T = heater_rtd[channel].FindTemperature(R)
         return_string += "I" + str(channel) + ": " + str(I) + "\t"
         return_string += "V" + str(channel) + ": " + str(V) + "\t"
@@ -80,15 +96,16 @@ data_file = ""
 
 mul = multiplexer.Agilent34972ADriver()
 dmm = agilent.Agilent34410ADriver()
-dmm.SelectMeasurementFunction('FRESISTANCE')
+#dmm.select_measurement_function('FRESISTANCE')
+dmm.select_measurement_function('RESISTANCE')
 heater_drivers = {}
 heater_drivers[1] = CPX.CPX400DPDriver(1,1)
 heater_drivers[2] = CPX.CPX400DPDriver(1,0)
 heater_drivers[3] = CPX.CPX400DPDriver(2,0)
 
-data_file += "RTD: " + str(dmm.Read()) + "\n"
+data_file += "RTD: " + str(dmm.read()) + "\n"
 
-print str(dmm.Read())
+print str(dmm.read())
 
 Vpulse = 0.15
 data_file += "Probe voltage: " + str(Vpulse) + "\n"
@@ -96,10 +113,10 @@ data_file += "Probe voltage: " + str(Vpulse) + "\n"
 update_heater_output(Vpulse,True)
 print Vpulse
 
-start_temp = 20
+start_temp = ReadTCTemperature()
 
 heaters = update_heater_iv()
-rtd = RTD_Calculator.RTD_Calculator(start_temp,dmm.Read())
+rtd = RTD_Calculator.RTD_Calculator(start_temp,dmm.read(),material='Mo')
 heater_rtd = {}
 
 for channel in [1,2,3]:
@@ -108,7 +125,7 @@ for channel in [1,2,3]:
     R = V/I
     status_string = "Heater {}. Current: {:.4f}mA, Voltage: {:.4f}V, Resistance: {:.4f}\n".format(channel, I*1000,V,R)
     data_file += status_string
-    heater_rtd[channel] = RTD_Calculator.RTD_Calculator(start_temp,R)
+    heater_rtd[channel] = RTD_Calculator.RTD_Calculator(start_temp,R,material='Mo')
 
 time.sleep(2)
 
@@ -118,7 +135,7 @@ for i in range(0,50):
 filename = str(time.time() - t_zero)
 snapshot(filename)
 
-for Vpulse in range(1,21):
+for Vpulse in range(1,40,2):
     #Vpulse = 1
     update_heater_output(Vpulse,True)
     print Vpulse
@@ -133,6 +150,9 @@ for Vpulse in range(1,21):
     for i in range(0,5):
         time.sleep(0.1)
         data_file += read_electrical_status()
+    f = open('datafile.txt','w')
+    f.write(data_file)
+    f.close()
 
 
 Vpulse = 0.15
@@ -151,16 +171,6 @@ filename = str(time.time() - t_zero)
 snapshot(filename)
 for i in range(0,60):
     time.sleep(10)
-    data_file += read_electrical_status()
-filename = str(time.time() - t_zero)
-snapshot(filename)
-for i in range(0,60):
-    time.sleep(60)
-    data_file += read_electrical_status()
-filename = str(time.time() - t_zero)
-snapshot(filename)
-for i in range(0,60):
-    time.sleep(60)
     data_file += read_electrical_status()
 filename = str(time.time() - t_zero)
 snapshot(filename)
