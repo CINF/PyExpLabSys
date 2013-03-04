@@ -1,8 +1,12 @@
 class RTD_Calculator():
 
-    def __init__(self,Trt,Rrt):
-        self.A = 3.9803e-3
-        self.B = -5.775e-7
+    def __init__(self,Trt,Rrt,material='Pt'):
+        if material == 'Pt':
+            self.A = 3.9803e-3
+            self.B = -5.775e-7
+        if material == 'Mo':
+            self.A = 4.579e-3
+            self.B = 0#Not correct
         self.Trt = Trt
         self.Rrt = Rrt
         self.R0 = self.FindR0(Trt,Rrt)
@@ -22,7 +26,10 @@ class RTD_Calculator():
     def FindTemperature(self,R):
         A = self.A
         B = self.B
-
         R0 = self.R0
-        T = (-1*R0*A + ((R0*A)**2 - 4*R0*B*(R0-R))**(0.5)) / (2*R0*B);
+
+        if B>0: #Check this calculation, dividing by B must be bad nummerics!!
+            T = (-1*R0*A + ((R0*A)**2 - 4*R0*B*(R0-R))**(0.5)) / (2*R0*B);
+        else:
+            T = (R/R0 - 1)/A
         return T
