@@ -4,25 +4,42 @@ import time
 class OmegaBus():
 
     def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB1',300)
+        self.f = serial.Serial('/dev/ttyS0',9600)
         time.sleep(0.1)
 
     def ReadValue(self,channel):
         self.f.write("$" + str(channel) + "RD" + "\r")
-        time.sleep(1)
-        value_string = self.f.read(self.f.inWaiting())
-        #print value_string
-        if value_string[1] == "*":
-            value_string = value_string[3:]
-        current_value = float(value_string)
-        return float(current_value)
+        time.sleep(0.1)
+        temp_string = self.f.read(self.f.inWaiting())
+        if temp_string[1] == "*":
+            temp_string = temp_string[3:]
+        temp_fahrenheit = float(temp_string)
+        temp_celsius = 5*(temp_fahrenheit-32)/9
+        return float(temp_celsius)
+
+    def ReadMax(self,channel):
+        self.f.write("$" + str(channel) + "RMX" + "\r")
+        time.sleep(0.25)
+        temp_string = self.f.read(self.f.inWaiting())
+        if temp_string[1] == "*":
+            temp_string = temp_string[3:]
+        return float(temp_string)
+
+    def ReadMin(self,channel):
+        self.f.write("$" + str(channel) + "RMN" + "\r")
+        time.sleep(0.25)
+        temp_string = self.f.read(self.f.inWaiting())
+        if temp_string[1] == "*":
+            temp_string = temp_string[2:]
+        return float(temp_string)
 
     def ReadSetup(self):
         self.f.write("$" + "1RS" + "\r")
-        time.sleep(1)
+        time.sleep(0.25)
         rs_string = self.f.read(self.f.inWaiting())
         if rs_string[1] == "*":
             rs_string = rs_string[2:]
+        print rs_string
         byte1 = rs_string[0:2]
         byte2 = rs_string[2:4]
         byte3 = rs_string[4:6]
@@ -53,10 +70,18 @@ class OmegaBus():
         
         return setupstring
 
+    def ChangeTemperatureScale(self,scale):
+        if not (scale=='f' or scale=='c'):
+            return(False)
+
 if __name__ == "__main__":
     omega = OmegaBus()
     print omega.ReadValue(1)
     print omega.ReadValue(2)
     print omega.ReadValue(3)
-    print omega.ReadValue(4)
-    #print omega.ReadSetup()
+    #print omega.ReadMin(1)
+    #print omega.ReadMax(1)
+
+    print omega.ReadSetup()
+
+    #print ChangeTemperatureScale('f')
