@@ -5,6 +5,20 @@ from datetime import datetime
 import MySQLdb
 import xgs600
 import omegabus
+import socket
+
+def set_value(keyword,value):
+    print value
+    HOST, PORT = "127.0.0.1", 9999
+    data = "set_" + keyword +" " + str(value)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(data + "\n", (HOST, PORT))
+    received = sock.recv(1024)
+    return_val = False
+    if received == "ok":
+        return_val = True
+    return return_val
+
 
 
 def sqlTime():
@@ -54,8 +68,11 @@ class omegaClass(threading.Thread):
         while not quit:
             time.sleep(2.5)
 	    temp_furnace_outside = self.omega.ReadValue(1)
+            set_value("temperature_outside",temp_furnace_outside)
 	    temp_furnace_1 = self.omega.ReadValue(2)
+            set_value("temperature_1",temp_furnace_1)
 	    temp_furnace_2 = self.omega.ReadValue(3)
+            set_value("temperature_2",temp_furnace_2)
 
 	    
 class XGSSaver(threading.Thread):

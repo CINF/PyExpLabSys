@@ -4,12 +4,12 @@ import time
 class OmegaBus():
 
     def __init__(self):
-        self.f = serial.Serial('/dev/ttyS0',9600)
-        time.sleep(0.1)
+        self.f = serial.Serial('/dev/ttyS0',300)
+        time.sleep(0.5)
 
     def ReadValue(self,channel):
         self.f.write("$" + str(channel) + "RD" + "\r")
-        time.sleep(0.1)
+        time.sleep(0.75)
         temp_string = self.f.read(self.f.inWaiting())
         if temp_string[1] == "*":
             temp_string = temp_string[3:]
@@ -19,7 +19,7 @@ class OmegaBus():
 
     def ReadMax(self,channel):
         self.f.write("$" + str(channel) + "RMX" + "\r")
-        time.sleep(0.25)
+        time.sleep(0.5)
         temp_string = self.f.read(self.f.inWaiting())
         if temp_string[1] == "*":
             temp_string = temp_string[3:]
@@ -27,7 +27,7 @@ class OmegaBus():
 
     def ReadMin(self,channel):
         self.f.write("$" + str(channel) + "RMN" + "\r")
-        time.sleep(0.25)
+        time.sleep(0.5)
         temp_string = self.f.read(self.f.inWaiting())
         if temp_string[1] == "*":
             temp_string = temp_string[2:]
@@ -35,7 +35,7 @@ class OmegaBus():
 
     def ReadSetup(self):
         self.f.write("$" + "1RS" + "\r")
-        time.sleep(0.25)
+        time.sleep(0.5)
         rs_string = self.f.read(self.f.inWaiting())
         if rs_string[1] == "*":
             rs_string = rs_string[2:]
@@ -82,6 +82,6 @@ if __name__ == "__main__":
     #print omega.ReadMin(1)
     #print omega.ReadMax(1)
 
-    print omega.ReadSetup()
+    #print omega.ReadSetup()
 
     #print ChangeTemperatureScale('f')
