@@ -29,7 +29,7 @@ class sql_saver(threading.Thread):
 
 class qmg422_status_output(threading.Thread):
 
-    def __init__(self, qmg_instance,sql_saver_instance = None):
+    def __init__(self, qmg_instance,sql_saver_instance=None):
         threading.Thread.__init__(self)
 
         self.qmg = qmg_instance
@@ -78,7 +78,7 @@ class qmg422_status_output(threading.Thread):
 
 class QMG422():
 
-    def __init__(self,sqlqueue=None,curses_print=False):
+    def __init__(self, sqlqueue=None, loglevel=logging.ERROR):
         self.f = serial.Serial('/dev/ttyS1',19200)
         if not sqlqueue == None:
             self.sqlqueue = sqlqueue
@@ -88,18 +88,30 @@ class QMG422():
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
-
+        
+        #Clear log file
+        with open('qms.txt', 'w'):
+            pass
+        logging.basicConfig(filename="qms.txt", level=logging.INFO)
+        logging.info("Program started. Log level: " + str(loglevel))
+        logging.basicConfig(level=logging.INFO)
+        
     def comm(self,command,debug=False):
+        """ Communicates with Baltzers/Pferiffer Mass Spectrometer
+        
+        Implements the low-level protocol for RS-232 communication with the
+        instrument. High-level protocol can be implemented using this as a
+        helper
+        
+        """
         t = time.time()
-        if debug:
-            print "Bebug! Begin!"
-            print "Debug! Command in progress: " + command
+        logging.debug("Command in progress: " + command)
 
         n = self.f.inWaiting()
         if n>0: #Skip characters that are currently waiting in line
             debug_info = self.f.read(n)
-            if debug: #Remember this!!! After some MDB commands, this string is not empty!
-                print "Elements not read: " + str(n) + ": Contains: " + debug_info
+            logging.debug("Elements not read: " + str(n) + 
+                          ": Contains: " + debug_info")
             
         ret = " "
         error_counter = 0
@@ -108,45 +120,38 @@ class QMG422():
             self.f.write(command + '\r')
             ret = self.f.readline()
 
-            if debug:
-                print "Debug: Error counter: " + str(error_counter)
-                print "Debug! In waiting: " + str(n)
-                #print "Debug! Value of ret: "
-                #for i in range(0,n):
-                #    print ord(ret[i])
-            if error_counter > 3:
-                print "Communication error: " + str(error_counter)
+            logging.debug("Debug: Error counter: " + str(error_counter))
+            logging.debug("Debug! In waiting: " + str(n))
 
+            if error_counter > 3:
+                logging.warning("Communication error: " + str(error_counter))
+            if error_counter > 10:
+                logging.error("Communication error: " + str(error_counter))
+            if error_counter > 50:
+                logging.error("Communication error! Quit program!")
+                quit()
+                
         #We are now quite sure the instrument is ready to give back data        
         self.f.write(chr(5))
         ret = self.f.readline()
 
-        if debug:
-            print "Debug! Number in waiting after enq: " + str(n)
-            print "Debug! Return value after enq:" + ret
-            print "Debug! Ascii value of last char in ret: " + str(ord(ret[-1]))
+        logging.debug("Number in waiting after enq: " + str(n))
+        logging.debug("Return value after enq:" + ret)
+        logging.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
         
         if (ret[-1] == chr(10)) or (ret[-1] == chr(13)):
-            #print ord(ret[-1])
             ret_string = ret.strip()
         else:
-            #ret_string = "Communication error"
-            print "Hmmmm"
+            logging.info("Wrong line termination")
             self.f.write(chr(5))
             time.sleep(0.05)
             n = self.f.inWaiting()
             ret = self.f.read(n)
-            print n
-            print ret
-            print "+++++++++++++++++"
-        
-        if debug:
-            print "Debug! Debug end!!!!!!!\n\n\n\n\n"
-        #print time.time() - t
+
         return ret_string
 
-    def communication_mode(self,computer_control=False):
-        #Returns the communication mode
+    def communication_mode(self, computer_control=False):
+        """ Returns and sets the communication mode """
         if computer_control:
             ret_string = self.comm('CMO ,1')
         else:
@@ -165,7 +170,8 @@ class QMG422():
             comm_mode = 'LAN'
         return comm_mode
 
-    def emission_status(self,current=-1,turn_off=False,turn_on=False):
+    def emission_status(self, current=-1, turn_off=False, turn_on=False):
+        """ Get or set the emission status. """
         if current>-1:
             ret_string = self.comm('EMI ,' + str(current))
         else:
@@ -182,7 +188,8 @@ class QMG422():
         filament_on = ret_string == '1'
         return emission_current,filament_on
 
-    def sem_status(self,voltage=-1,turn_off=False,turn_on=False):
+    def sem_status(self, voltage=-1, turn_off=False, turn_on=False):
+        """ Get or set the SEM status """
         if voltage>-1:
             ret_string = self.comm('SHV ,' + str(voltage))
         else:
@@ -201,7 +208,8 @@ class QMG422():
         
         return sem_voltage, sem_on
 
-    def detector_status(self,SEM=False,faraday_cup=False):
+    def detector_status(self, SEM=False, faraday_cup=False):
+        """ Choose between SEM and Faraday cup measurements"""
         if SEM ^ faraday_cup:
             if SEM:
                 ret_string = self.comm('SDT ,1')
@@ -218,6 +226,7 @@ class QMG422():
         return detector
 
     def read_voltages(self):
+        """ Print all MS voltages """
         print "V01: " + self.comm('VO1') #0..150,   1V steps
         print "V02: " + self.comm('VO2') #0..125,   0.5V steps
         print "V03: " + self.comm('VO3') #-30..30,  0.25V steps
@@ -228,7 +237,36 @@ class QMG422():
         print "V08: " + self.comm('VO8') #-125..125,1V steps 
         print "V09: " + self.comm('VO9') #0..60    ,0.25V steps
 
-    def config_channel(self,channel,mass=-1,speed=-1,enable=""):
+    def simulation(self):
+        """ Chekcs wheter the instruments returns real or simulated data """
+        ret_string = self.comm('TSI ,0')
+        if int(ret_string) == 0:
+            sim_state = "Simulation not running"
+        else:
+            sim_state = "Simulation running"
+        return sim_state
+
+    def qms_status(self):
+        """ Returns a string with the current status of the instrument """
+        ret_string = self.comm('ESQ')
+        n = ret_string.find(',')
+
+        sn = int(ret_string[0:n]) #status_number
+        st = "" #Status txt
+
+        st += 'Cycle ' + ('Run' if (sn % 2) == 1 else 'Halt')
+        sn = sn/2
+        st = st + '\n' + ('Multi' if (sn % 2) == 1 else 'Mono')
+        sn = sn/2
+        st = st + '\n' + 'Emission ' + ('on' if (sn % 2) == 1 else 'off')
+        sn = sn/2
+        st += '\nSEM ' + ('on' if (sn % 2) == 1 else 'off')
+        sn = sn/2
+        #The rest of the status bits is not currently used
+        return st
+
+    def config_channel(self, channel, mass=-1, speed=-1, enable=""):
+        """ Config a MS channel for measurement """
         self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
         
         if mass>-1:
@@ -249,23 +287,39 @@ class QMG422():
         self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
         self.comm('MRE ,15') #Peak resolution
 
-    def create_mysql_measurement(self,channel,timestamp,masslabel,comment):
-        cnxn = MySQLdb.connect(host="servcinf",user="microreactor",passwd="microreactor",db="cinfdata")
+    def create_mysql_measurement(self, channel, timestamp, masslabel, comment,
+                                 metachannel=False):
+        """ Creates a MySQL row for a channel.
+        
+        Create a row in the measurements table and populates it with the
+        information from the arguments as well as what can be
+        auto-generated.
+        
+        """
+        cnxn = MySQLdb.connect(host="servcinf", user="microreactor", 
+                               passwd="microreactor", db="cinfdata")
         cursor = cnxn.cursor()
         
-        self.comm('SPC ,' + str(channel))
-        
-        sem_voltage = self.comm('SHV')
-        preamp_range = self.comm('AMO')
-        if preamp_range == '2':
-            preamp_range = '0' #Idicates auto-range in mysql-table
+        if not metachannel:
+            self.comm('SPC ,' + str(channel)) #Select the relevant channel       
+            sem_voltage = self.comm('SHV')
+            preamp_range = self.comm('AMO')
+            if preamp_range == '2':
+                preamp_range = '0' #Idicates auto-range in mysql-table
+            else:
+                preamp_range = "" #TODO: Here we should read the actual range
         else:
-            preamp_range = "" #Here we should read the actual fixed range
+            sem_voltage = ""
+            preamp_range = ""
         
-        timestep = self.comm('MSD') #Here we need a look-up table, this number is not physical
+        #TODO: We need a look-up table, this number is not physical
+        timestep = self.comm('MSD') 
+        
         query = ""
-        query += 'insert into measurements_dummy set mass_label="' + masslabel + '"'
-        query += ', sem_voltage="' + sem_voltage + '", preamp_range="' + preamp_range + '", time="' + timestamp + '", type="5"'
+        query += 'insert into measurements_dummy set mass_label="' 
+        query += masslabel + '"'
+        query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
+        query += preamp_range + '", time="' + timestamp + '", type="5"'
         query += ', comment="' + comment + '"'
         cursor.execute(query)
         cnxn.commit()
@@ -277,16 +331,17 @@ class QMG422():
         cnxn.close()
         return(id_number)
     
-    def create_ms_channellist(self,channel_list,no_save=False):
+    def create_ms_channellist(self, channel_list, no_save=False):
         """ This function creates the channel-list and the associated mysql-entries """
         #TODO: Implement various ways of creating the channel-list
+
         ids = {}
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         comment = channel_list[0]['comment']
         for i in range(1,len(channel_list)):
             ch = channel_list[i]
             self.config_channel(channel=i, mass=ch['mass'], speed=ch['speed'], enable="yes")
-        
+
             if no_save == False:
                 ids[i] = self.create_mysql_measurement(i,timestamp,ch['masslabel'],comment)
             else:
@@ -295,7 +350,6 @@ class QMG422():
         
         return ids
         
-
     def mass_time(self,ms_channel_list):
         self.operating_mode = "Mass Time"
         self.stop = False
@@ -461,31 +515,6 @@ class QMG422():
         axis.plot(data28,'r-')        
         plt.show(block=True)
 
-    def simulation(self):
-        ret_string = self.comm('TSI ,0')
-        if int(ret_string) == 0:
-            sim_state = "Simulation not running"
-        else:
-            sim_state = "Simulation running"
-        return sim_state
-
-    def qms_status(self):
-        ret_string = self.comm('ESQ')
-        n = ret_string.find(',')
-
-        sn = int(ret_string[0:n]) #status_number
-        st = "" #Status txt
-
-        st += 'Cycle ' + ('Run' if (sn % 2) == 1 else 'Halt')
-        sn = sn/2
-        st = st + '\n' + ('Multi' if (sn % 2) == 1 else 'Mono')
-        sn = sn/2
-        st = st + '\n' + 'Emission ' + ('on' if (sn % 2) == 1 else 'off')
-        sn = sn/2
-        st += '\nSEM ' + ('on' if (sn % 2) == 1 else 'off')
-        sn = sn/2
-        #The rest of the status bits is not currently used
-        return st
 
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
@@ -495,7 +524,8 @@ if __name__ == "__main__":
     sql_saver.start()
 
     qmg = QMG422(sql_queue)
-
+    qmg.communication_mode(computer_control=True)
+    
     #printer = qmg422_status_output(qmg,sql_saver_instance=sql_saver)
     #printer.daemon = True
     #printer.start()
@@ -511,8 +541,8 @@ if __name__ == "__main__":
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     #print qmg.create_mysql_measurement(1, timestamp, "M18","Test measurement")
-    #print qmg.communication_mode(computer_control=True)
-    print qmg.qms_status()
+
+    #print qmg.qms_status()
     #print qmg.sem_status(turn_on=True)
     #print qmg.emission_status(current=0.8,turn_on=True)
     #print qmg.detector_status()
