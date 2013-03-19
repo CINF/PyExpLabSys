@@ -2,19 +2,92 @@ import threading
 import Queue
 import serial
 import time
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import MySQLdb
 import curses
+import logging
 
-#class sql_saver(threading.Thread()):
-#    def 
+class sql_saver(threading.Thread):
+    def __init__(self, queue):
+        threading.Thread.__init__(self)
+        self.queue = queue
+        self.cnxn = MySQLdb.connect(host="servcinf",user="microreactor",passwd="microreactor",db="cinfdata")
+        self.cursor = self.cnxn.cursor()
+        self.commits = 0
+        self.commit_time = 0
+        
+    def run(self):
+        while True:
+            self.queue
+            start = time.time()
+            query = self.queue.get()
+            self.cursor.execute(query)
+            self.cnxn.commit()
+            self.commits += 1
+            self.commit_time = time.time() - start
+        self.cnxn.close()
+
+class qmg422_status_output(threading.Thread):
+
+    def __init__(self, qmg_instance,sql_saver_instance = None):
+        threading.Thread.__init__(self)
+
+        self.qmg = qmg_instance
+        if not sql_saver_instance == None:
+            self.sql = sql_saver_instance
+        else:
+            self.sql = None
+
+        self.screen = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        curses.curs_set(False)
+        self.screen.keypad(1)
+        self.screen.nodelay(1)
+        
+    def run(self):
+        while True:
+            operating_mode = "Operating mode: " + self.qmg.operating_mode
+            self.screen.addstr(1, 1, self.qmg.operating_mode)
+            
+            if self.qmg.operating_mode == "Mass Time":
+                timestamp = "Timestamp: " + self.qmg.current_timestamp
+                self.screen.addstr(3, 1, timestamp)
+                runtime = "Experiment runtime: {0:.1f}s".format(qmg.measurement_runtime)
+                self.screen.addstr(4, 1, runtime)
+            
+            if not self.sql == None:
+                commits = "SQL commits: {0:.0f}".format(self.sql.commits)
+                self.screen.addstr(3, 40, commits)
+                commit_time = "Last commit duration: {0:.1f}".format(self.sql.commit_time) 
+                self.screen.addstr(4, 40, commit_time)
+            
+            n = self.screen.getch()
+            if n == ord('q'):
+                qmg.stop = True
+                
+            self.screen.refresh()
+            time.sleep(1)
+
+    def stop(self):
+        curses.nocbreak()
+        self.screen.keypad(0)
+        curses.echo()
+        curses.endwin()    
 
 
 class QMG422():
 
-    def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB0',19200)
-        self.sqlqueue = Queue.Queue()
+    def __init__(self,sqlqueue=None,curses_print=False):
+        self.f = serial.Serial('/dev/ttyS1',19200)
+        if not sqlqueue == None:
+            self.sqlqueue = sqlqueue
+        else: #We make a dummy queue to make the program work
+            self.sqlqueue = Queue.Queue()
+        self.operating_mode = "Idling"
+        self.current_timestamp = "None"
+        self.measurement_runtime = 0
+        self.stop = False
 
     def comm(self,command,debug=False):
         t = time.time()
@@ -72,9 +145,8 @@ class QMG422():
         #print time.time() - t
         return ret_string
 
-
-    #Returns the communication mode
     def communication_mode(self,computer_control=False):
+        #Returns the communication mode
         if computer_control:
             ret_string = self.comm('CMO ,1')
         else:
@@ -93,7 +165,6 @@ class QMG422():
             comm_mode = 'LAN'
         return comm_mode
 
-
     def emission_status(self,current=-1,turn_off=False,turn_on=False):
         if current>-1:
             ret_string = self.comm('EMI ,' + str(current))
@@ -110,7 +181,6 @@ class QMG422():
 
         filament_on = ret_string == '1'
         return emission_current,filament_on
-
 
     def sem_status(self,voltage=-1,turn_off=False,turn_on=False):
         if voltage>-1:
@@ -207,45 +277,41 @@ class QMG422():
         cnxn.close()
         return(id_number)
     
-    """ This function creates the channel-list and the associated mysql-entries """
-    def create_channellist(self,dummy=False):
-        #TODO: Implement various ways of creating the channel-list instead of hard-coding it
-        id = {}
+    def create_ms_channellist(self,channel_list,no_save=False):
+        """ This function creates the channel-list and the associated mysql-entries """
+        #TODO: Implement various ways of creating the channel-list
+        ids = {}
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        self.config_channel(channel=1, mass=18, speed=11, enable="yes")
-        self.config_channel(channel=2, mass=28, speed=11, enable="yes")
-        self.config_channel(channel=3, mass=32, speed=11, enable="yes")
-        self.config_channel(channel=4, mass=7,  speed=11, enable="yes")
+        comment = channel_list[0]['comment']
+        for i in range(1,len(channel_list)):
+            ch = channel_list[i]
+            self.config_channel(channel=i, mass=ch['mass'], speed=ch['speed'], enable="yes")
         
-        if dummy == False:
-            id[1] = self.create_mysql_measurement(1,timestamp,"M18","First python mass-spec")
-            id[2] = self.create_mysql_measurement(2,timestamp,"M28","First python mass-spec")
-            id[3] = self.create_mysql_measurement(3,timestamp,"M32","First python mass-spec")
-            id[4] = self.create_mysql_measurement(4,timestamp,"M7","First python mass-spec")
-        else:
-            id[1] = 1
-            id[2] = 2
-            id[3] = 3
-            id[4] = 4
-
-        return id
+            if no_save == False:
+                ids[i] = self.create_mysql_measurement(i,timestamp,ch['masslabel'],comment)
+            else:
+                ids[i] = i
+        ids[0] = timestamp
+        
+        return ids
         
 
-    def show_channel(self,channel):
+    def mass_time(self,ms_channel_list):
+        self.operating_mode = "Mass Time"
+        self.stop = False
+        
+        ns = len(ms_channel_list) - 1
         self.comm('CYM ,1') #0, single. 1, multi
-        self.comm('CBE ,1') #First measurement channel in multi mode
-        self.comm('CEN ,4') #Last measurement channel in multi mod
         self.comm('CTR ,0') #Trigger mode, 0=auto trigger
         self.comm('CYS ,1') #Number of repetitions
-        start_time = time.time()
-          
-        id = self.create_channellist(dummy=True)
-        
-        #cnxn = MySQLdb.connect(host="servcinf",user="microreactor",passwd="microreactor",db="cinfdata")
-        #cursor = cnxn.cursor()
+        self.comm('CBE ,1') #First measurement channel in multi mode
+        self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
 
-        for iteration in range(0,100000000):
-            print self.sqlqueue.qsize()
+        start_time = time.time()
+        ids = self.create_ms_channellist(ms_channel_list,no_save=False)
+        self.current_timestamp = ids[0]
+    
+        while self.stop == False:
             self.comm('CRU ,2') #Start measurement
             time.sleep(0.1)
             status = self.comm('MBH')
@@ -267,24 +333,23 @@ class QMG422():
                     print "Error in converting status bit to int"
                 if len(status)>3:
                     for j in range(0,int(status[3])):
+                        self.measurement_runtime = time.time()-start_time
                         value = self.comm('MDB')
                         channel = channel + 1
                         sqltime = str((time.time() - start_time) * 1000)
-                        query = 'insert into xy_values_dummy set measurement="' + str(id[channel]) + '", x="' + sqltime + '", y="' + value + '"'
+                        query = 'insert into xy_values_dummy set measurement="' + str(ids[channel]) + '", x="' + sqltime + '", y="' + value + '"'
                         if ord(value[0]) == 134:
                             running = 1
                             print query
                             break
                         else:
                             self.sqlqueue.put(query)
-                            #cursor.execute(query)
-                            #cnxn.commit()
                         channel = channel % 4
                         time.sleep(0.05)
                     time.sleep(0.1)
                 else:
                     print "Status error, continuing measurement"
-        cnxn.close()
+        self.operating_mode = "Idling"
         
     def scan_test(self):
         first_mass = 0
@@ -423,11 +488,31 @@ class QMG422():
         return st
 
 if __name__ == "__main__":
-    qmg = QMG422()
+    sql_queue = Queue.Queue()
+    
+    sql_saver = sql_saver(sql_queue)
+    sql_saver.daemon = True
+    sql_saver.start()
+
+    qmg = QMG422(sql_queue)
+
+    #printer = qmg422_status_output(qmg,sql_saver_instance=sql_saver)
+    #printer.daemon = True
+    #printer.start()
+ 
+    time.sleep(1)
+    channel_list = {}
+    channel_list[0] = {'comment':'Slightly more fancy program now'}
+    channel_list[1] = {'mass':18,'speed':11, 'masslabel':'M18'}
+    channel_list[2] = {'mass':28,'speed':11, 'masslabel':'M28'}
+    channel_list[3] = {'mass':32,'speed':11, 'masslabel':'M32'}
+    channel_list[4] = {'mass':44,'speed':11, 'masslabel':'M44'}
+    channel_list[4] = {'mass':7,'speed':11, 'masslabel':'M7'}
+
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     #print qmg.create_mysql_measurement(1, timestamp, "M18","Test measurement")
-    #print qmg.communication_mode()
-    #print qmg.qms_status()
+    #print qmg.communication_mode(computer_control=True)
+    print qmg.qms_status()
     #print qmg.sem_status(turn_on=True)
     #print qmg.emission_status(current=0.8,turn_on=True)
     #print qmg.detector_status()
@@ -435,4 +520,6 @@ if __name__ == "__main__":
     #print qmg.simulation()
     #print qmg.scan_test()
     #print qmg.single_mass()
-    print qmg.show_channel(1)
+    #print qmg.mass_time(channel_list)
+
+    #printer.stop()
