@@ -29,6 +29,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         if recieved_data[0:13] == "read_setpoint":
             print "read_setpoint"
             data = str(setpoint)
+        
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
-#import CPX400DP as CPX
-import HeaterClass
+import CPX400DP as CPX
+#import HeaterClass
 import agilent_34410A as agilent
 import time
 import threading
@@ -8,6 +8,7 @@ import curses
 import RTD_Calculator
 import PID
 import socket
+import sys
 
 #output = 'print'
 output = 'curses'
@@ -27,7 +28,7 @@ def TellTheWorld(message,pos=[0,0]):
         #screen.refresh()
 
 def ReadTCTemperature():
-    HOST, PORT = "rasppi04", 9999
+    HOST, PORT = "rasppi12", 9999
     data = "tempNG"
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(data + "\n", (HOST, PORT))
@@ -60,16 +61,16 @@ class TemperatureClass(threading.Thread):
     def __init__(self,cal_temperature):
         threading.Thread.__init__(self)
         self.AgilentDriver = agilent.Agilent34410ADriver()
-        self.AgilentDriver.SelectMeasurementFunction('FRESISTANCE')
-        #self.AgilentDriver.SelectMeasurementFunction('RESISTANCE')
-        self.rtd_value = self.AgilentDriver.Read()
+        self.AgilentDriver.select_measurement_function('FRESISTANCE')
+        #self.AgilentDriver.select_measurement_function('RESISTANCE')
+        self.rtd_value = self.AgilentDriver.read()
         self.rtd = RTD_Calculator.RTD_Calculator(cal_temperature,self.rtd_value)
         self.temperature = self.rtd.FindTemperature(self.rtd_value)
         
     def run(self):
         global temperature
         while not quit:
-            self.rtd_value = self.AgilentDriver.Read()
+            self.rtd_value = self.AgilentDriver.read()
             self.temperature = self.rtd.FindTemperature(self.rtd_value)
             temperature = self.temperature
             time.sleep(0.25)
@@ -96,29 +97,29 @@ quit = False
 setpoint = ReadSetpoint()
 tc_temperature = ReadTCTemperature()
 
-#CPXdriver  = CPX.CPX400DPDriver(1)
-Heater = HeaterClass.CPXHeater(2)
-
-#Network = NetworkClass()
-#Network.start()
-#while (tc_temperature<-100):
-#    tc_temperature = Network.sample_temperature
-#    time.sleep(0.5)
+#Heater positions are NOT automatically updated on re-start!!!!!
+Heater = {}
+Heater[1] = CPX.CPX400DPDriver(1,usbchannel=1)
+Heater[2] = CPX.CPX400DPDriver(2,usbchannel=0)
+Heater[3] = CPX.CPX400DPDriver(1,usbchannel=0)
 
 T = TemperatureClass(tc_temperature)
 T.start()
 time.sleep(1)
 
 # Calibrate resistance of the heaters
-Heater.SetVoltage(3)
-Heater.OutputStatus(True)
-time.sleep(1)
-(I1_calib,I2_calib) = Heater.ReadActualCurrent()
-Heater.OutputStatus(False)
-R1_calib = 3/I1_calib
-R2_calib = 3/I2_calib
-Heater1_rtd = RTD_Calculator.RTD_Calculator(tc_temperature,R1_calib)
-Heater2_rtd = RTD_Calculator.RTD_Calculator(tc_temperature,R2_calib)
+I_calib = {}
+R_calib = {}
+RTD = {}
+
+for i in range(1,4):
+    Heater[i].SetVoltage(3)
+    Heater[i].OutputStatus(True)
+    time.sleep(1)
+    I_calib[i] = Heater[i].ReadActualCurrent()
+    Heater[i].OutputStatus(False)
+    R_calib[i] = 3/I_calib[i]
+    RTD[i] = RTD_Calculator.RTD_Calculator(tc_temperature,R_calib[i])
 
 time.sleep(1)
 
@@ -126,65 +127,64 @@ P = PowerCalculatorClass()
 P.start()
 
 TellTheWorld("Calibration value: {0:.5f} ohm at {1:.1f}C".format(T.rtd.Rrt,T.rtd.Trt),[2,1])
-TellTheWorld("Calibration value, I1: {0:.3f} ohm at {1:.1f}C".format(Heater1_rtd.Rrt,T.rtd.Trt),[2,2])
-TellTheWorld("Calibration value, I2: {0:.3f} ohm at {1:.1f}C".format(Heater2_rtd.Rrt,T.rtd.Trt),[2,3])
+TellTheWorld("Calibration value, I1: {0:.3f} ohm at {1:.1f}C".format(RTD[1].Rrt,T.rtd.Trt),[2,2])
+TellTheWorld("Calibration value, I2: {0:.3f} ohm at {1:.1f}C".format(RTD[2].Rrt,T.rtd.Trt),[2,3])
+TellTheWorld("Calibration value, I3: {0:.3f} ohm at {1:.1f}C".format(RTD[3].Rrt,T.rtd.Trt),[2,4])
 
-#CPXdriver.SetVoltage(0)
-#CPXdriver.OutputStatus(True)
-Heater.SetVoltage(0)
-Heater.OutputStatus(True)
+for i in range(1,4):
+    Heater[i].SetVoltage(0)
+    Heater[i].OutputStatus(True)
 
 
 power = 0
-
+I = {}
 while not quit:
     try:
         time.sleep(0.25)
         setpoint = setpoint = ReadSetpoint()
 
         #RIGHT NOW WHENEVER POWER IS REPLACED WIDTH VOLTAGE!!!!!
-        #CPXdriver.SetVoltage(P.power)
-        Heater.SetVoltage(P.power)
-        #I = CPXdriver.ReadActualCurrent()
-        (I1,I2) = Heater.ReadActualCurrent()
-        #U = CPXdriver.ReadActualVoltage()
+        Heater[1].SetVoltage(P.power)
+        Heater[2].SetVoltage(P.power)
+        Heater[3].SetVoltage(P.power*0.8)
+        for i in range(1,4):
+            I[i] = Heater[i].ReadActualCurrent()
+
         U = P.power
-        if I1<-99999998 or I2<-99999998:
-            #del CPXdriver
-            del Heater
-            time.sleep(1)
-            #CPXdriver  = CPX.CPX400DPDriver(1)
-            Heater = HeaterClass(2)
-            #I = CPXdriver.ReadActualCurrent()
-            (I1,I2) = Heater.ReadActualCurrent()
-        if I1>0.01:
-            TellTheWorld("Resistance1, PS:  {0:.4f}               ".format(U/I1),[2,5])
-            TellTheWorld("Temperature 1: {0:.3f}                  ".format(Heater1_rtd.FindTemperature(U/I1)),[2,6])
-        else:
-            TellTheWorld("Resistance1, PS: -                      ",[2,5])
-            TellTheWorld("Temperature 1: -                        ",[2,6])
-        if I2>0.01:
-            TellTheWorld("Resistance2, PS:  {0:.4f}               ".format(U/I2),[35,5])
-            TellTheWorld("Temperature 2: {0:.3f}                  ".format(Heater1_rtd.FindTemperature(U/I2)),[35,6])
-        else:
-            TellTheWorld("Resistance2, PS: -                      ",[35,5])
-            TellTheWorld("Temperature 2: -                        ",[35,6])
+        if I[1]<-99999998 or I[2]<-99999998 or I[3]<-99999998:
+            
+            for i in range(1,4):
+                del Heater[i]
+
+            Heater[1] = CPX.CPX400DPDriver(1,usbchannel=1)
+            Heater[2] = CPX.CPX400DPDriver(2,usbchannel=0)
+            Heater[3] = CPX.CPX400DPDriver(1,usbchannel=0)
+            for i in range(1,4):
+                I[i] = Heater[i].ReadActualCurrent()
+
+        for i in range(1,4):
+            if I[i]>0.01:
+                TellTheWorld("R" + str(i) + ":  {0:.2f}           ".format(U/I[i]),[15*i-13,7])
+                TellTheWorld("T" + str(i) + ": {0:.2f}     ".format(RTD[i].FindTemperature(U/I[i])),[15*i-13,8])
+            else:
+                TellTheWorld("R" + str(i) + ": -                  ",[15*i-13,7])
+                TellTheWorld("T" + str(i) + ": -                      ",[15*i-13,8])
 
 
-        TellTheWorld("Setpoint: " + str(setpoint) + "     ",[2,8])
+        TellTheWorld("Setpoint: " + str(setpoint) + "     ",[2,10])
         set_rtdval(T.temperature) # Check that the return value is actually true...
-        TellTheWorld("Temperature: {0:.4f}".format(T.temperature),[2,9])      
-        TellTheWorld("RTD resistance: {0:.5f}".format(T.rtd_value),[2,10])
+        TellTheWorld("Temperature: {0:.4f}".format(T.temperature),[2,11])      
+        TellTheWorld("RTD resistance: {0:.5f}".format(T.rtd_value),[2,12])
 
-        TellTheWorld("Actual Current1: {0:.4f}".format(I1),[2,11])
-        TellTheWorld("Actual Current2: {0:.4f}".format(I2),[35,11])
-        TellTheWorld("Actual Voltage: {0:.4f}".format(U),[2,12])
-        TellTheWorld("Wanted power: {0:.4f}".format(P.power),[2,14])
-        TellTheWorld("Actual power: {0:.4f}".format(P.power*(I1+I2)),[2,15])
+        TellTheWorld("I1: {0:.3f}".format(I[1]),[2,14])
+        TellTheWorld("I2: {0:.3f}".format(I[2]),[17,14])
+        TellTheWorld("I3: {0:.3f}".format(I[3]),[32,14])
+
+        TellTheWorld("Actual Voltage: {0:.4f}".format(U),[2,16])
+        TellTheWorld("Wanted power: {0:.4f}".format(P.power),[2,17])
+        TellTheWorld("Actual power: {0:.4f}".format(P.power*I[1]+ P.power*I[2] + 0.8*P.power*I[3]),[2,18])
         #time_since_sync = time.time() - Network.last_sync
 
-        #TellTheWorld("Sync time: {0:.2f}".format(time_since_sync),[2,14])
-        #TellTheWorld("Network resets: " + str(Network.network_errors) + "          ",[2,16])
         if output == 'curses':
             screen.refresh()
     except:
@@ -197,15 +197,9 @@ while not quit:
             curses.endwin()
         
         print "Program terminated by user"
-        #print str(e)
+        print sys.exc_info()[0]
+        print sys.exc_info()[1]
+        print sys.exc_info()[2]
 
-#CPXdriver.OutputStatus(False)
-Heater.OutputStatus(False)
-
-
-#print driver.ReadSetVoltage()
-#print driver.ReadCurrentLimit()
-#print driver.ReadSoftwareVersion()
-#print driver.ReadCurrentLimit()
-#print driver.ReadSetVoltage()
-#print driver.OutputStatus(False)
+for i in range(1,4):
+    Heater[i].OutputStatus(False)

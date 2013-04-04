@@ -5,12 +5,10 @@ class Agilent34972ADriver(SCPI):
 
     def __init__(self):
         #SCPI.__init__(self,'/dev/usbtmc1','file')
-        SCPI.__init__(self,'agilent-34972a','lan')
+        SCPI.__init__(self,'microreactor-agilent-34972a','lan')
 
     def read_single_scan(self):
         self.scpi_comm("TRIG:SOURCE TIMER")
-
-        print self.scpi_comm("TRIG:SOURCE?")
         self.scpi_comm("TRIG:COUNT 1")
         self.scpi_comm("INIT")
         time.sleep(0.1)
@@ -22,7 +20,6 @@ class Agilent34972ADriver(SCPI):
             time.sleep(0.5)
         response = self.scpi_comm("FETCH?")
         response = response.split(',')
-        print response
         return_values = []
         for val in response:
             return_values.append(float(val))

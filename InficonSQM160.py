@@ -12,7 +12,7 @@ class InficonSQM160():
         crc = self.crc_calc(length + command)        
         command = '!' + length + command + crc[0] + crc[1]
         self.f.write(command)
-        time.sleep(0.5)
+        time.sleep(0.1)
         reply = self.f.read(self.f.inWaiting())
 
         crc = self.crc_calc(reply[1:-2])
