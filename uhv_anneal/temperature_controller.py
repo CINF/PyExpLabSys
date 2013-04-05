@@ -1,82 +1,12 @@
 import time
 import ParallelPortBinaryOut
 import socket
-
-class PID:
-	#Discrete PID control
-		
-	def __init__(self, P=2.0, I=0.0, D=1.0, Derivator=0, Integrator=0, Integrator_max=500, Integrator_min=-500):
-
-		self.Kp=P
-		self.Ki=I
-		self.Kd=D
-		self.Derivator=Derivator
-		self.Integrator=Integrator
-		self.Integrator_max=Integrator_max
-		self.Integrator_min=Integrator_min
-
-		self.set_point=0.0
-		self.error=0.0
-
-	def update(self,current_value):
-		#Calculate PID output value for given reference input and feedback
-		
-		self.error = self.set_point - current_value
-
-		self.P_value = self.Kp * self.error
-		self.D_value = self.Kd * (self.error - self.Derivator)
-		self.Derivator = self.error
-
-		self.Integrator = self.Integrator + self.error
-
-		if self.Integrator > self.Integrator_max:
-			self.Integrator = self.Integrator_max
-		elif self.Integrator < self.Integrator_min:
-			self.Integrator = self.Integrator_min
-
-		self.I_value = self.Integrator * self.Ki
-
-		PID = self.P_value + self.I_value + self.D_value
-
-		return PID
-
-	def setPoint(self,set_point):
-		#Initilize the setpoint of PID
-		
-		self.set_point = set_point
-		self.Integrator=0
-		self.Derivator=0
-
-	def setIntegrator(self, Integrator):
-		self.Integrator = Integrator
-
-	def setDerivator(self, Derivator):
-		self.Derivator = Derivator
-
-	def setKp(self,P):
-		self.Kp=P
-
-	def setKi(self,I):
-		self.Ki=I
-
-	def setKd(self,D):
-		self.Kd=D
-
-	def getPoint(self):
-		return self.set_point
-
-	def getError(self):
-		return self.error
-
-	def getIntegrator(self):
-		return self.Integrator
-
-	def getDerivator(self):
-		return self.Derivator
-
+import PID
+import threading
+import curses
 
 def read_value(keyword):
-    HOST, PORT = "127.0.0.1", 9999
+    HOST, PORT = "130.225.87.230", 9999 #uhvanneal IP
     data = "read_" + keyword
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(data + "\n", (HOST, PORT))
@@ -84,31 +14,89 @@ def read_value(keyword):
     temp = float(received)
     return temp
 
-def control_temperature(setpoint):
-    while True:
-        temperature_outside = read_value("temperature_outside")
-        temperature_1 = read_value("temperature_1")
-        temperature_2 = read_value("temperature_2")
-        print "Temperature outside: " + str(temperature_outside)
-        print "Temperature 1: " + str(temperature_1)
-        print "Temperature 2: " + str(temperature_2)
-        if temperature_1 < setpoint:
-            parallel.setState(0,True)
-            time.sleep(5)
-        else:
-            parallel.setState(0,False)
-            time.sleep(5)
+class status_output(threading.Thread):
 
+    def __init__(self, heater_instance, setpoint):
+        threading.Thread.__init__(self)
+        
+        self.heater = heater_instance
+        self.setpoint = setpoint
+
+        self.screen = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        curses.curs_set(False)
+        self.screen.keypad(1)
+        self.screen.nodelay(1)
+        
+    def run(self):
+        while True:
+            headline = "Status of the UHV furnace"
+            self.screen.addstr(1, 1, headline, curses.A_BOLD)
+            
+            setpoint_string = "Current setpoint: " + str(self.setpoint)
+            self.screen.addstr(2, 1, setpoint_string)
+            
+            temperature_1 = "Temperature 1: " + str(read_value("temperature_1"))
+            self.screen.addstr(3, 1, temperature_1)
+            
+            temperature_2 = "Temperature 2: " + str(read_value("temperature_2"))
+            self.screen.addstr(4, 1, temperature_2)
+            
+            temperature_outside = "Temperature outside: " + str(read_value("temperature_outside"))
+            self.screen.addstr(5, 1, temperature_outside)
+                       
+            n = self.screen.getch()
+            if n == ord('q'):
+                self.screen.addstr(6, 1, "Quitting...", curses.A_BOLD)
+                heater.stop = True
+                                
+            self.screen.refresh()
+            time.sleep(1)
+
+    def stop(self):
+        curses.nocbreak()
+        self.screen.keypad(0)
+        curses.echo()
+        curses.endwin()
+
+class heating_control():
+
+    def __init__(self):
+        self.parallel = ParallelPortBinaryOut.ParallelPortBinaryOut()
+        self.pid_control = PID.PID()
+        self.heart_beat = 10
+        self.stop = False
+        
+    def set_setpoint(self,setpoint):
+        self.setpoint = setpoint
+        return self.setpoint
+
+    def control_temperature(self,setpoint):
+        self.stop = False
+        while self.stop == False:
+            self.pid_control.UpdateSetpoint(setpoint)
+
+            temperature_outside = read_value("temperature_outside")
+            temperature_1 = read_value("temperature_1")
+            temperature_2 = read_value("temperature_2")
+            #print temperature_1
+            #print temperature_2
+            #print temperature_outside
+            self.pid_output = self.pid_control.WantedPower(temperature_1)
+            self.parallel.setState(0,True)
+            time.sleep(self.pid_output/self.heart_beat)
+            self.parallel.setState(0,False)
+            time.sleep(self.heart_beat-(self.pid_output/self.heart_beat))
 
 if __name__ == "__main__":
-   parallel = ParallelPortBinaryOut.ParallelPortBinaryOut()
-   #parallel.setState(0,False)
-   control_temperature(300)
-   
-   #p=PID(3.0,0.4,1.2) # P, I, D
-   #p.setPoint(300)    # Temperature
-   #while True:
-   #	temperature_outside = read_value("temperature_outside")
-   #    temperature_1 = read_value("temperature_1")
-   #    temperature_2 = read_value("temperature_2")	
-   #	pid = p.update(temperature_1)
+    temperature_setpoint = 0
+    heater = heating_control()
+    
+    printer = status_output(heater,temperature_setpoint)
+    printer.daemon = True
+    printer.start()
+    
+    heater.control_temperature(temperature_setpoint)
+    
+    printer.stop()

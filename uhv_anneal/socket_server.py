@@ -9,13 +9,19 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         global temperature_outside
         global temperature_1
         global temperature_2
+        global pressure
 
         recieved_data = self.request[0].strip()
         data = "test"
         socket = self.request[1]
+        
+        if recieved_data[0:12] == "set_pressure":
+            val = float(recieved_data[12:].strip())
+            pressure = val
+            print val
 
         if recieved_data[0:23] == "set_temperature_outside":
-            val = float(recieved_data[24:].strip())
+            val = float(recieved_data[23:].strip())
             temperature_outside = val
             print val
 
@@ -30,6 +36,10 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             temperature_2 = val
             print val
             data = "ok"
+            
+        if recieved_data[0:13] == "read_pressure":
+            print "pressure"
+            data = str(temperature_outside)
 
         if recieved_data[0:24] == "read_temperature_outside":
             print "temperature_outside"
@@ -46,7 +56,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-   HOST, PORT = "127.0.0.1", 9999 #localhost
+   HOST, PORT = "130.225.87.230", 9999 #localhost
    temperature_outside = -1
    temperature_1 = -1
    temperature_2 = -1
