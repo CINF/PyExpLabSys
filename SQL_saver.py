@@ -1,6 +1,7 @@
 import threading
 import Queue
 import MySQLdb
+import time
 
 class sql_saver(threading.Thread):
     def __init__(self, queue, username):
