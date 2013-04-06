@@ -4,37 +4,100 @@ import threading
 import Queue
 from datetime import datetime
 import MySQLdb
+import curses
+import logging
 
 sys.path.append('../')
 import agilent_34972A as A
 
+#TODO: These Non-class functions should be combined into a common module, as
+#      they are used by other modules
 def sqlTime():
     sqltime = datetime.now().isoformat(' ')[0:19]
     return(sqltime)
 
-class XPS():
-    def __init__(self, hostname, anode):
+def sqlInsert(query, return_value=False):
+    try:
+        cnxn = MySQLdb.connect(host="servcinf",user="volvo",passwd="volvo",db="cinfdata")
+	cursor = cnxn.cursor()
+    except:
+	print "Unable to connect to database"
+	return()
+    try:
+	cursor.execute(query)
+	cnxn.commit()
+
+        if return_value: #TODO: AVOID HARD_CODED VALUES HERE!!!!!!!!
+            query = "select id from measurements_dummy order by id desc limit 1"
+            cursor.execute(query)
+            id_number = cursor.fetchone()
+            id_number = id_number[0]
+        else:
+            id_number = None
+
+    except:
+	print "SQL-error, query written below:"
+	print query
+        id_number = None
+
+    cnxn.close()
+    return(id_number)
+    
+
+def ReadNetwork(host, message):
+    HOST, PORT = host, 9999
+    data = message
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(data + "\n", (HOST, PORT))
+    received = sock.recv(1024)
+    val = float(received)
+    return(val)
+
+
+#Dummy implementation of the sample-current reader
+class SampleCurrent(threading.Thread):
+    def __init__(self, table_id):
+        threading.Thread.__init__(self)
+        self.table_id = table_id
+
+    def run():
+        current = ReadNetwork('127.0.0.1', 'read_samplecurrent')
+        print current
+        time.sleep(5)
+
+class XPS(threading.Thread):
+    def __init__(self, hostname, anode, loglevel=logging.ERROR):
+        threading.Thread.__init__(self)
+
         self.agilent = A.Agilent34972ADriver(address=hostname, method='lan')
 	self.calib = 500 #Analyser voltage pr. input voltage
 	self.meas_time = time.time()
-        self.measuement_id = -1
-        self.table_name = "measurements_dummy"
+        self.chamber_name = "dummy"
+        self.table_id = -1
 	if anode == 'Mg':
             self.x_ray = 1253.44
         if anode == 'Al':
             self.x_ray = 1487
         #TODO: Make an error if no correct anode is chosen
 
-    def create_table(self, timestamp, comment):
+        #Clear log file
+        with open('xps.txt', 'w'):
+            pass
+        logging.basicConfig(filename="xps.txt", level=logging.INFO)
+        logging.info("Program started. Log level: " + str(loglevel))
+        logging.basicConfig(level=logging.INFO)
+
+
+    def create_table(self, masslabel, timestamp, comment):
         """ Create a new table for XPS data """
         #TODO: Add a bunch of meta-data to the insert statement
         query  = "insert into "
-        query += self.table_name
-        query += " set type=2, timestamp=" + timestamp + ", comment = \"" + comment + "\""
-        #execute mysql
-	#Get id
-        self.measurement_id = -1
-	return True #Return False if something went wrong
+        query += "measurements_" + self.chamber_name
+        query += " set type=2, time=\"" + timestamp + "\", " 
+        query += "comment = \"" + comment + "\", mass_label=\"" + masslabel + "\""
+        id_number = sqlInsert(query, True)
+
+        return(id_number)
 
     def scan(self, start_energy, end_energy, step, queue=None):
         """ Perform a scan.
@@ -58,10 +121,30 @@ class XPS():
 	    self.meas_time = time.time()
 
 	    count_rate = count / int_time
-            print binding_energy, count_rate
+
+            if queue == None:
+                print binding_energy, count_rate
+            else:
+                query  = "insert into xy_values_" + self.chamber_name
+                query += "set x=" + str(binding_energy) + ", "
+                query += "y=" + str(count_rate)
+                queue.put(query)
 
 
 
 if __name__ == "__main__":
+    timestamp = sqlTime()
+    comment = 'Test-scan'
+
+    sql_queue = Queue.Queue()
+
     xps = XPS('volvo-agilent-34972a','Mg')
-    xps.scan(1295,1300,1)
+    xps_id = xps.create_table('XPS data', timestamp, comment)
+    current_id = xps.create_table('Sample current', timestamp, comment)
+
+    print xps_id
+    print current_id
+
+    xps.scan(1295,1300,1, sql_queue)
+
+    print sql_queue.qsize()
