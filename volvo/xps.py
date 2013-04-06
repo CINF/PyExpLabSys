@@ -9,6 +9,7 @@ import logging
 
 sys.path.append('../')
 import agilent_34972A as A
+import SQL_saver
 
 #TODO: These Non-class functions should be combined into a common module, as
 #      they are used by other modules
@@ -113,7 +114,7 @@ class XPS(threading.Thread):
             self.agilent.scpi_comm(string)
 
             #TODO: Make the integration time configurable
-	    time.sleep(1)
+	    time.sleep(0.25)
 
             count_string = self.agilent.scpi_comm("SENS:TOT:DATA? (@203)")
             count = int(float(count_string.strip()))
@@ -125,8 +126,9 @@ class XPS(threading.Thread):
             if queue == None:
                 print binding_energy, count_rate
             else:
-                query  = "insert into xy_values_" + self.chamber_name
-                query += "set x=" + str(binding_energy) + ", "
+                query  = "insert into xy_values_" + self.chamber_name + " "
+                query += "set measurement = " + str(self.table_id) + ", "
+                query += "x=" + str(binding_energy) + ", "
                 query += "y=" + str(count_rate)
                 queue.put(query)
 
@@ -138,13 +140,20 @@ if __name__ == "__main__":
 
     sql_queue = Queue.Queue()
 
+    sql_saver = SQL_saver.sql_saver(sql_queue, 'volvo')
+    sql_saver.daemon = True
+    sql_saver.start()
+
     xps = XPS('volvo-agilent-34972a','Mg')
     xps_id = xps.create_table('XPS data', timestamp, comment)
     current_id = xps.create_table('Sample current', timestamp, comment)
+    xps.table_id = xps_id
 
     print xps_id
     print current_id
 
-    xps.scan(1295,1300,1, sql_queue)
+    xps.scan(1100,1300,1, sql_queue)
+
+    time.sleep(1)
 
     print sql_queue.qsize()
