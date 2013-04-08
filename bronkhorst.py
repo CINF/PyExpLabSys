@@ -2,10 +2,10 @@ import serial
 import time
 import threading
 
-class Bronkhorst(threading.Thread):
+class Bronkhorst():
     
     def __init__(self,port):
-        ser = serial.Serial(port,38400)
+        self.ser = serial.Serial(port,38400)
         time.sleep(0.1)
 
     def comm(self,command):
@@ -16,45 +16,30 @@ class Bronkhorst(threading.Thread):
 
     def read_setpoint(self):
         read_setpoint = ':06030401210121\r\n' # Read setpoint
-        val = self.comm(read_setpoint)
-        val = [-6:]
-        num = int(val,16)
-        setpoint = range * num / 32000
-        return setpoint
+        response = self.comm(read_setpoint)
+        response = int(response[11:], 16)
+        return str(response)
 
-    def read_pressure(self):
+    def read_measure(self,max_flow):
         read_pressure = ':06030401210120\r\n' # Read pressure
         val = self.comm(read_pressure)
-        val = [-6:]
+        val = val[-6:]
         num = int(val,16)
-        pressure = 2.5 * num / 32000
+        pressure = max_flow * num / 32000.0
         return pressure
 
-    def set_setpoint(self,setpoint,range):
-        setpoint = setpoint / range * 32000
-        setpoint = hex(setpoint)
-        setpoint = '%setpoint' % 255
-        set_setpoint = ':0603010121' + setpoint + '\r\n' #Set setpoint
+    def set_setpoint(self,setpoint,max_flow):
+        setpoint = (setpoint / max_flow) * 32000.0
+        print setpoint
+        setpoint = hex(int(setpoint))
+        setpoint = setpoint.upper()
+        setpoint = setpoint[2:].rstrip('L')
+        set_setpoint = ':0603010121' + setpoint + '\r\n' # Set setpoint
         response = self.comm(set_setpoint)
+        return response
         
 if __name__ == '__main__':
-    bh = Bronkhorst('/dev/ttyUSB0')
-    print str( bh.read_setpoint())
-
-
-
-        
-'''
-f = serial.Serial('/dev/ttyS0',38400)
-
-a = ':06030401210121\r\n' # Read setpoint
-b = ':06030401210120\r\n' # Read pressure
-
-for i in range(0,50):
-    f.write(b)
-    time.sleep(0.1)
-    val = f.read(f.inWaiting())
-    val = val[-6:]
-    num =  int(val,16)
-    pressure = 2.5 * num / 32000
-    print pressure '''
+    bh = Bronkhorst('/dev/ttyUSB4')
+    #bh.set_setpoint(5,10)
+    #print str(bh.read_setpoint())
+    print str(bh.read_measure())
