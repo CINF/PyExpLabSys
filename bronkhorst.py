@@ -30,7 +30,6 @@ class Bronkhorst():
 
     def set_setpoint(self,setpoint,max_flow):
         setpoint = (setpoint / max_flow) * 32000.0
-        print setpoint
         setpoint = hex(int(setpoint))
         setpoint = setpoint.upper()
         setpoint = setpoint[2:].rstrip('L')
@@ -40,6 +39,6 @@ class Bronkhorst():
         
 if __name__ == '__main__':
     bh = Bronkhorst('/dev/ttyUSB4')
-    #bh.set_setpoint(5,10)
+    print str(bh.set_setpoint(5,10))
     #print str(bh.read_setpoint())
-    print str(bh.read_measure())
+    #print str(bh.read_measure())
