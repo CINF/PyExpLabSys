@@ -35,10 +35,41 @@ class Bronkhorst():
         setpoint = setpoint[2:].rstrip('L')
         set_setpoint = ':0603010121' + setpoint + '\r\n' # Set setpoint
         response = self.comm(set_setpoint)
-        return response
+        return str(response)
+
+    def read_counter_value(self):
+        read_counter = ':06030401210141\r\n'
+        response = self.comm(read_counter)
+        return str(response)
+
+    def read_serial(self):
+        read_serial = ':1A0304F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
+        response = self.comm(read_serial)
+        response = response[13:-84]
+        response = response.decode('hex')
+        return str(response)
+
+    def read_unit(self):
+        read_capacity = ':1A0304F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
+        response = self.comm(read_capacity)
+        response = response[77:-26]
+        response = response.decode('hex')
+        return str(response)
+
+    def read_capacity(self):
+        read_capacity = ':1A0304F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
+        response = self.comm(read_capacity)
+        response = response[65:-44]
+        #response = response.decode('hex')
+        return str(response)
+
         
 if __name__ == '__main__':
     bh = Bronkhorst('/dev/ttyUSB4')
-    print str(bh.set_setpoint(5,10))
+    print bh.set_setpoint(5.0,10)
+    print bh.read_serial()
+    print bh.read_unit()
+    print bh.read_capacity()
+    #print bh.read_counter_value()
     #print str(bh.read_setpoint())
     #print str(bh.read_measure())

@@ -3,14 +3,71 @@ import SocketServer
 sys.path.append('../')
 import bronkhorst
 
-# This list is magical! ttyUSB numbers are changed upon reboot
-flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB0')
-flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB1')
-flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB2')
-flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB3')
-flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB4')
-flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB5')
-pressure = bronkhorst.Bronkhorst('/dev/ttyUSB6')
+# Code for assigning the controllers to proper /dev/tty*
+name = {}
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB0')
+name[0] = bronk.read_serial()
+name[0] = name[0].strip()
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB1')
+name[1] = bronk.read_serial()
+name[1] = name[1].strip()
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB2')
+name[2] = bronk.read_serial()
+name[2] = name[2].strip()
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB3')
+name[3] = bronk.read_serial()
+name[3] = name[3].strip()
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB4')
+name[4] = bronk.read_serial()
+name[4] = name[4].strip()
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB5')
+name[5] = bronk.read_serial()
+name[5] = name[5].strip()
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB6')
+name[6] = bronk.read_serial()
+name[6] = name[6].strip()
+
+bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
+name[7] = bronk.read_serial()
+name[7] = name[7].strip()
+
+#bronkhorst = {}
+
+for i in range(0,6):
+    if name[i] == 'M11200362H':
+        pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        print("pressure: /dev/ttyUSB" + str(i))
+
+    if name[i] == 'x':
+        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        print("flow1: /dev/ttyUSB" + str(i))
+
+    if name[i] == 'x':
+        flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        print("flow2: /dev/ttyUSB" + str(i))
+
+    if name[i] == 'x':
+        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        print("flow3: /dev/ttyUSB" + str(i))
+
+    if name[i] == 'x':
+        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        print("flow4: /dev/ttyUSB" + str(i))
+
+    if name[i] == 'x':
+        flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        print("flow5: /dev/ttyUSB" + str(i))
+
+    if name[i] == 'x':
+        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        print("flow6: /dev/ttyUSB" + str(i))
 
 
 #This specific raspberry pi communication with mass flow and pressure controllers
@@ -40,8 +97,8 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             print "read_flow_6"
             data = str(flow6.read_measure(10))
         if received_data == "read_pressure":
-            print "read_flow_pressure"
-            data = str(pressure.read_measure(10))
+            print "read_pressure"
+            data = str(pressure.read_measure(2.5))
         if received_data[0:11] == "set_flow_1:":
             val = float(received_data[11:].strip())
             flow1.set_setpoint(val,10)
