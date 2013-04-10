@@ -7,27 +7,7 @@ import MySQLdb
 import curses
 import logging
 import socket
-
-#TODO: This class is now seperated into a new module, use this!
-class sql_saver(threading.Thread):
-    def __init__(self, queue):
-        threading.Thread.__init__(self)
-        self.queue = queue
-        self.cnxn = MySQLdb.connect(host="servcinf",user="microreactor",passwd="microreactor",db="cinfdata")
-        self.cursor = self.cnxn.cursor()
-        self.commits = 0
-        self.commit_time = 0
-        
-    def run(self):
-        while True:
-            self.queue
-            start = time.time()
-            query = self.queue.get()
-            self.cursor.execute(query)
-            self.cnxn.commit()
-            self.commits += 1
-            self.commit_time = time.time() - start
-        self.cnxn.close()
+import SQL_saver
 
 class qmg422_status_output(threading.Thread):
 
@@ -455,7 +435,7 @@ class QMG422():
                         channel = channel + 1
                         sqltime = str((time.time() - start_time) * 1000)
                         query  = 'insert into '
-                        query += 'xy_values_' + self.chamber + ' 'y
+                        query += 'xy_values_' + self.chamber + ' '
                         query += 'set measurement="' + str(ids[channel])
                         query += '", x="' + sqltime + '", y="' + value + '"'
                         if ord(value[0]) == 134:
@@ -585,7 +565,7 @@ class QMG422():
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
     
-    sql_saver = sql_saver(sql_queue)
+    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
     sql_saver.daemon = True
     sql_saver.start()
 
