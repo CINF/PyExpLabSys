@@ -27,14 +27,19 @@ class Bronkhorst():
         val = self.comm(read_pressure)
         val = val[-6:]
         num = int(val,16)
-        pressure = (num / 32000) * self.max_setting
+        pressure = (1.0 * num / 32000) * self.max_setting
         return pressure
 
     def set_setpoint(self,setpoint):
-        setpoint = (setpoint / self.max_setting) * 32000
-        setpoint = hex(int(setpoint))
-        setpoint = setpoint.upper()
-        setpoint = setpoint[2:].rstrip('L')
+        if setpoint > 0:
+            setpoint = (1.0 * setpoint / self.max_setting) * 32000
+            setpoint = hex(int(setpoint))
+            setpoint = setpoint.upper()
+            setpoint = setpoint[2:].rstrip('L')
+            if len(setpoint) == 3:
+                setpoint = '0' + setpoint
+        else:
+            setpoint = '0000'
         set_setpoint = ':0680010121' + setpoint + '\r\n' # Set setpoint
         response = self.comm(set_setpoint)
         return response
@@ -67,11 +72,12 @@ class Bronkhorst():
 
         
 if __name__ == '__main__':
-    bh = Bronkhorst('/dev/ttyS0',2.5)
-    #print bh.set_setpoint(1.55)
+    bh = Bronkhorst('/dev/ttyUSB5',10)
+    #print bh.set_setpoint(0.5)
+    time.sleep(1)
     #print bh.read_serial()
     #print bh.read_unit()
     #print bh.read_capacity()
     #print bh.read_counter_value()
-    print bh.read_setpoint()
-    #print str(bh.read_measure(2.5))
+    #print bh.read_setpoint()
+    print str(bh.read_measure())

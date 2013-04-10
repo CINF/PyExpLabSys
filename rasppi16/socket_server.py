@@ -38,14 +38,17 @@ bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
 name[7] = bronk.read_serial()
 name[7] = name[7].strip()
 
+for i in range(0,8):
+    print name[i]
+
 #bronkhorst = {}
 
 for i in range(0,6):
-    if name[i] == 'M11200362H':
+    if name[i] == 'x':
         pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
         print("pressure: /dev/ttyUSB" + str(i))
 
-    if name[i] == 'x':
+    if name[i] == 'M11200362C':
         flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow1: /dev/ttyUSB" + str(i))
 
@@ -80,52 +83,53 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 
         if received_data == "read_flow_1":
             print "read_flow_1"
-            data = str(flow1.read_measure(10))
+            data = str(flow1.read_measure())
         if received_data == "read_flow_2":
             print "read_flow_2"
-            data = str(flow2.read_measure(10))
+            data = str(flow2.read_measure())
         if received_data == "read_flow_3":
             print "read_flow_3"
-            data = str(flow3.read_measure(10))
+            data = str(flow3.read_measure())
         if received_data == "read_flow_4":
             print "read_flow_4"
-            data = str(flow4.read_measure(10))
+            data = str(flow4.read_measure())
         if received_data == "read_flow_5":
             print "read_flow_5"
-            data = str(flow5.read_measure(2.5))
+            data = str(flow5.read_measure())
         if received_data == "read_flow_6":
             print "read_flow_6"
-            data = str(flow6.read_measure(10))
+            data = str(flow6.read_measure())
         if received_data == "read_pressure":
             print "read_pressure"
-            data = str(pressure.read_measure(2.5))
+            data = str(pressure.read_measure())
         if received_data[0:11] == "set_flow_1:":
             val = float(received_data[11:].strip())
-            flow1.set_setpoint(val,10)
+            print val
+            flow1.set_setpoint(val)
             data = "ok"
         if received_data[0:11] == "set_flow_2:":
             val = float(received_data[11:].strip())
-            flow2.set_setpoint(val,10)
+            flow2.set_setpoint(val)
             data = "ok"
         if received_data[0:11] == "set_flow_3:":
             val = float(received_data[11:].strip())
-            flow3.set_setpoint(val,10)
+            flow3.set_setpoint(val)
             data = "ok"
         if received_data[0:11] == "set_flow_4:":
             val = float(received_data[11:].strip())
-            flow4.set_setpoint(val,10)
+            flow4.set_setpoint(val)
             data = "ok"
         if received_data[0:11] == "set_flow_5:":
             val = float(received_data[11:].strip())
-            flow5.set_setpoint(val,10)
+            flow5.set_setpoint(val)
             data = "ok"
         if received_data[0:11] == "set_flow_6:":
             val = float(received_data[11:].strip())
-            flow6.set_setpoint(val,10)
+            flow6.set_setpoint(val)
             data = "ok"
         if received_data[0:13] == "set_pressure:":
             val = float(received_data[13:].strip())
-            pressure.set_setpoint(val,10)
+            pressure.set_setpoint(val)
             data = "ok"
 
         socket.sendto(data, self.client_address)
