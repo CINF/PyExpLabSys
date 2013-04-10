@@ -42,31 +42,31 @@ name[7] = name[7].strip()
 
 for i in range(0,6):
     if name[i] == 'M11200362H':
-        pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
         print("pressure: /dev/ttyUSB" + str(i))
 
     if name[i] == 'x':
-        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow1: /dev/ttyUSB" + str(i))
 
     if name[i] == 'x':
-        flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow2: /dev/ttyUSB" + str(i))
 
     if name[i] == 'x':
-        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow3: /dev/ttyUSB" + str(i))
 
     if name[i] == 'x':
-        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow4: /dev/ttyUSB" + str(i))
 
     if name[i] == 'x':
-        flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow5: /dev/ttyUSB" + str(i))
 
     if name[i] == 'x':
-        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow6: /dev/ttyUSB" + str(i))
 
 
