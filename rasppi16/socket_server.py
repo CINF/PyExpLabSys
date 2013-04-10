@@ -38,40 +38,52 @@ bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
 name[7] = bronk.read_serial()
 name[7] = name[7].strip()
 
-for i in range(0,8):
-    print name[i]
+bronk_present = {}
 
-#bronkhorst = {}
-
+counter = 0
 for i in range(0,6):
+
     if name[i] == 'x':
         pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
-        print("pressure: /dev/ttyUSB" + str(i))
+        print("pressure:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
+        bronk_present[counter] = 'pressure'
+        counter = counter + 1
 
     if name[i] == 'M11200362C':
         flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow1: /dev/ttyUSB" + str(i))
+        print("flow1:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
+        bronk_present[counter] = 'flow1'
+        counter = counter + 1
 
     if name[i] == 'x':
         flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow2: /dev/ttyUSB" + str(i))
+        print("flow2:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
+        bronk_present[counter] = 'flow2'
+        counter = counter + 1
 
-    if name[i] == 'x':
+    if name[i] == 'M11200362E':
         flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow3: /dev/ttyUSB" + str(i))
+        print("flow3:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
+        bronk_present[counter] = 'flow3'
+        counter = counter + 1
 
     if name[i] == 'x':
         flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow4: /dev/ttyUSB" + str(i))
+        print("flow4:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
+        bronk_present[counter] = 'flow4'
+        counter = counter + 1
 
     if name[i] == 'x':
         flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow5: /dev/ttyUSB" + str(i))
+        print("flow5:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
+        bronk_present[counter] = 'flow5'
+        counter = counter + 1
 
     if name[i] == 'x':
         flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow6: /dev/ttyUSB" + str(i))
-
+        print("flow6:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
+        bronk_present[counter] = 'flow6'
+        counter = counter + 1
 
 #This specific raspberry pi communication with mass flow and pressure controllers
 class MyUDPHandler(SocketServer.BaseRequestHandler):
@@ -102,6 +114,25 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         if received_data == "read_pressure":
             print "read_pressure"
             data = str(pressure.read_measure())
+        if received_data == "read_all":
+            print "read_all"
+            data = ''
+            for i in range(0, len(bronk_present)):
+                if bronk_present[i] == 'flow1':
+                    data = data + '1:' + str(flow1.read_measure()) + ','
+                if bronk_present[i] == 'flow2':
+                    data = data + '2:' + str(flow2.read_measure()) + ','
+                if bronk_present[i] == 'flow3':
+                    data = data + '3:' + str(flow3.read_measure()) + ','
+                if bronk_present[i] == 'flow4':
+                    data = data + '4:' + str(flow4.read_measure()) + ','
+                if bronk_present[i] == 'flow5':
+                    data = data + '5:' + str(flow5.read_measure()) + ','
+                if bronk_present[i] == 'flow6':
+                    data = data + '6:' + str(flow6.read_measure()) + ','
+                if bronk_present[i] == 'pressure':
+                    data = data + 'p:' + str(pressure.read_measure()) + ','
+
         if received_data[0:11] == "set_flow_1:":
             val = float(received_data[11:].strip())
             print val
