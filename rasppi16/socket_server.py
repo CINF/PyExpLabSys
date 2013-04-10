@@ -38,6 +38,7 @@ bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
 name[7] = bronk.read_serial()
 name[7] = name[7].strip()
 
+# Array containing the controllers actually connected
 bronk_present = {}
 
 counter = 0
@@ -132,6 +133,30 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
                     data = data + '6:' + str(flow6.read_measure()) + ','
                 if bronk_present[i] == 'pressure':
                     data = data + 'p:' + str(pressure.read_measure()) + ','
+            #Remove trailing comma
+            data = data[:-1]
+
+        if received_data == "read_setpoint_1":
+            print "read_setpoint_1"
+            data = str(flow1.read_setpoint())
+        if received_data == "read_setpoint_2":
+            print "read_setpoint_2"
+            data = str(flow2.read_setpoint())
+        if received_data == "read_setpoint_3":
+            print "read_setpoint_2"
+            data = str(flow3.read_setpoint())
+        if received_data == "read_setpoint_4":
+            print "read_setpoint_2"
+            data = str(flow4.read_setpoint())
+        if received_data == "read_setpoint_5":
+            print "read_setpoint_2"
+            data = str(flow5.read_setpoint())
+        if received_data == "read_setpoint_6":
+            print "read_setpoint_2"
+            data = str(flow6.read_setpoint())
+        if received_data == "read_setpoint_pressure":
+            print "read_setpoint_pressure"
+            data = str(pressure.read_setpoint())
 
         if received_data[0:11] == "set_flow_1:":
             val = float(received_data[11:].strip())
