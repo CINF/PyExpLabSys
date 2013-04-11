@@ -6,26 +6,8 @@ import time
 import MySQLdb
 import curses
 import logging
-
-class sql_saver(threading.Thread):
-    def __init__(self, queue):
-        threading.Thread.__init__(self)
-        self.queue = queue
-        self.cnxn = MySQLdb.connect(host="servcinf",user="microreactor",passwd="microreactor",db="cinfdata")
-        self.cursor = self.cnxn.cursor()
-        self.commits = 0
-        self.commit_time = 0
-        
-    def run(self):
-        while True:
-            self.queue
-            start = time.time()
-            query = self.queue.get()
-            self.cursor.execute(query)
-            self.cnxn.commit()
-            self.commits += 1
-            self.commit_time = time.time() - start
-        self.cnxn.close()
+import socket
+import SQL_saver
 
 class qmg422_status_output(threading.Thread):
 
@@ -76,6 +58,67 @@ class qmg422_status_output(threading.Thread):
         curses.endwin()    
 
 
+class udp_meta_channel(threading.Thread):
+    """ A class to handle meta data for the QMS program.
+
+    Each instance of this class will communicate with several hosts via udp.
+    Only a single update_interval can be used for all hosts in the channel list.
+    """
+
+    def __init__(self, qmg, timestamp, comment, update_interval):
+        """ Initalize the instance of the class
+        
+        Timestamps and comments are currently identical for all channels, since
+        this is anyway the typical way the channels are used.
+        """
+
+        threading.Thread.__init__(self)
+        self.ui = update_interval
+        self.time = timestamp
+        self.comment = comment
+        self.qmg = qmg
+        self.channel_list = []
+
+
+    def create_channel(self, masslabel, host, udp_string):
+        """ Create a meta channel.
+
+        Uses the SQL-communication function of the qmg class to create a
+        SQL-entry for the meta-channel.
+        """
+
+        id = self.qmg.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
+        channel = {}
+        channel['id']   = id
+        channel['host'] = host
+        channel['cmd']  = udp_string
+        self.channel_list.append(channel)
+
+    def run(self):
+        start_time= time.time()
+        while True:
+            PORT = 9999
+            t0 = time.time()
+            for channel in self.channel_list:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.sendto(channel['cmd'] + "\n", (channel['host'], PORT))
+                received = sock.recv(1024)
+                try:
+                    value = float(received)
+                    sqltime = str((time.time() - start_time) * 1000)
+                except ValueError:
+                    logging.warn('Meta-channel, could not convert to float: ' + received)
+                    value = None
+
+                if not value == None:
+                    query  = 'insert into xy_values_dummy set measurement="'
+                    query += str(channel['id']) + '", x="' + sqltime + '", y="' + str(value) + '"'
+                    qmg.sqlqueue.put(query)
+
+            time_spend = time.time() - t0
+            if time_spend < self.ui:
+                time.sleep(self.ui - time_spend)
+
 class QMG422():
 
     def __init__(self, sqlqueue=None, loglevel=logging.ERROR):
@@ -88,6 +131,7 @@ class QMG422():
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
+        self.chamber = 'dummy'
         
         #Clear log file
         with open('qms.txt', 'w'):
@@ -111,7 +155,7 @@ class QMG422():
         if n>0: #Skip characters that are currently waiting in line
             debug_info = self.f.read(n)
             logging.debug("Elements not read: " + str(n) + 
-                          ": Contains: " + debug_info")
+                          ": Contains: " + debug_info)
             
         ret = " "
         error_counter = 0
@@ -194,7 +238,6 @@ class QMG422():
             ret_string = self.comm('SHV ,' + str(voltage))
         else:
             ret_string = self.comm('SHV')
-        print "SEM_STATUS: " + ret_string
         sem_voltage = int(ret_string)
 
 
@@ -309,8 +352,8 @@ class QMG422():
             else:
                 preamp_range = "" #TODO: Here we should read the actual range
         else:
-            sem_voltage = ""
-            preamp_range = ""
+            sem_voltage = "-1"
+            preamp_range = "-1"
         
         #TODO: We need a look-up table, this number is not physical
         timestep = self.comm('MSD') 
@@ -321,6 +364,7 @@ class QMG422():
         query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
         query += preamp_range + '", time="' + timestamp + '", type="5"'
         query += ', comment="' + comment + '"'
+
         cursor.execute(query)
         cnxn.commit()
         
@@ -375,8 +419,7 @@ class QMG422():
                 running = int(status[0])
             except:
                 running = 1
-                #print "Error in converting status bit to int"
-                #print status
+                logging.warn('Could not read status, continuing measurement')
             while running == 0: 
                 status = self.comm('MBH',debug=False)
                 status = status.split(',')
@@ -384,17 +427,20 @@ class QMG422():
                     running = int(status[0])
                 except:
                     running = 1
-                    print "Error in converting status bit to int"
+                    logging.warn('Could not read status, continuing measurement')
                 if len(status)>3:
                     for j in range(0,int(status[3])):
                         self.measurement_runtime = time.time()-start_time
                         value = self.comm('MDB')
                         channel = channel + 1
                         sqltime = str((time.time() - start_time) * 1000)
-                        query = 'insert into xy_values_dummy set measurement="' + str(ids[channel]) + '", x="' + sqltime + '", y="' + value + '"'
+                        query  = 'insert into '
+                        query += 'xy_values_' + self.chamber + ' '
+                        query += 'set measurement="' + str(ids[channel])
+                        query += '", x="' + sqltime + '", y="' + value + '"'
                         if ord(value[0]) == 134:
                             running = 1
-                            print query
+                            logging.warn('Bad value: ' + query)
                             break
                         else:
                             self.sqlqueue.put(query)
@@ -402,7 +448,7 @@ class QMG422():
                         time.sleep(0.05)
                     time.sleep(0.1)
                 else:
-                    print "Status error, continuing measurement"
+                    logging.error("Status error, continuing measurement")
         self.operating_mode = "Idling"
         
     def scan_test(self):
@@ -519,16 +565,17 @@ class QMG422():
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
     
-    sql_saver = sql_saver(sql_queue)
+    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
     sql_saver.daemon = True
     sql_saver.start()
 
     qmg = QMG422(sql_queue)
     qmg.communication_mode(computer_control=True)
     
-    #printer = qmg422_status_output(qmg,sql_saver_instance=sql_saver)
-    #printer.daemon = True
-    #printer.start()
+
+    printer = qmg422_status_output(qmg,sql_saver_instance=sql_saver)
+    printer.daemon = True
+    printer.start()
  
     time.sleep(1)
     channel_list = {}
@@ -540,6 +587,11 @@ if __name__ == "__main__":
     channel_list[4] = {'mass':7,'speed':11, 'masslabel':'M7'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    meta_udp = udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
+    meta_udp.create_channel('Temp NG', '130.225.86.181', 'tempNG')
+    meta_udp.create_channel('Temp Old', '130.225.86.181', 'tempOld')
+    meta_udp.daemon = True
+    meta_udp.start()
     #print qmg.create_mysql_measurement(1, timestamp, "M18","Test measurement")
 
     #print qmg.qms_status()
@@ -550,6 +602,6 @@ if __name__ == "__main__":
     #print qmg.simulation()
     #print qmg.scan_test()
     #print qmg.single_mass()
-    #print qmg.mass_time(channel_list)
+    print qmg.mass_time(channel_list)
 
-    #printer.stop()
+    printer.stop()
