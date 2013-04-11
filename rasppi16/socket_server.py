@@ -42,9 +42,9 @@ name[7] = name[7].strip()
 bronk_present = {}
 
 counter = 0
-for i in range(0,6):
+for i in range(0,8):
 
-    if name[i] == 'x':
+    if name[i] == 'M11213502A':
         pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
         print("pressure:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'pressure'
@@ -63,25 +63,25 @@ for i in range(0,6):
         counter = counter + 1
 
     if name[i] == 'M11200362E':
-        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
+        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
         print("flow3:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'flow3'
         counter = counter + 1
 
-    if name[i] == 'x':
-        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
+    if name[i] == 'M11200362D':
+        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
         print("flow4:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'flow4'
         counter = counter + 1
 
-    if name[i] == 'x':
+    if name[i] == 'M11210022B':
         flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow5:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'flow5'
         counter = counter + 1
 
-    if name[i] == 'x':
-        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
+    if name[i] == 'M11200362G':
+        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
         print("flow6:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'flow6'
         counter = counter + 1
@@ -122,7 +122,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
                 if bronk_present[i] == 'flow1':
                     data = data + '1:' + str(flow1.read_measure()) + ','
                 if bronk_present[i] == 'flow2':
-                    data = data + '2:' + str(flow2.read_measure()) + ','
+                    data = data + '2:' +str(flow2.read_measure()) + ','
                 if bronk_present[i] == 'flow3':
                     data = data + '3:' + str(flow3.read_measure()) + ','
                 if bronk_present[i] == 'flow4':
@@ -132,7 +132,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
                 if bronk_present[i] == 'flow6':
                     data = data + '6:' + str(flow6.read_measure()) + ','
                 if bronk_present[i] == 'pressure':
-                    data = data + 'p:' + str(pressure.read_measure()) + ','
+                    data = data + '0:' + str(pressure.read_measure()) + ','
             #Remove trailing comma
             data = data[:-1]
 
@@ -158,9 +158,36 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             print "read_setpoint_pressure"
             data = str(pressure.read_setpoint())
 
+        if received_data[0:10] == "write_all:":
+            print "write_all"
+            val = received_data[10:].split(',')
+            data = ''
+            for i in range(0,len(bronk_present)):
+                if bronk_present[i] == 'flow1':
+                    flow1.set_setpoint(float(val[0]))
+                    data = data + 'flow1,'
+                if bronk_present[i] == 'flow2':
+                    flow2.set_setpoint(val[1])
+                    data = data + 'flow2,'
+                if bronk_present[i] == 'flow3':
+                    flow3.set_setpoint(float(val[2]))
+                    data = data + 'flow3,'
+                if bronk_present[i] == 'flow4':
+                    flow4.set_setpoint(float(val[3]))
+                    data = data + 'flow4,'
+                if bronk_present[i] == 'flow5':
+                    flow5.set_setpoint(float(val[4]))
+                    data = data + 'flow5,'
+                if bronk_present[i] == 'flow6':
+                    flow6.set_setpoint(float(val[5]))
+                    data = data + 'flow6,'
+                if bronk_present[i] == 'pressure':
+                    pressure.set_setpoint(float(val[6]))
+                    data = data + 'pressure,'
+            data = data[:-1]
+
         if received_data[0:11] == "set_flow_1:":
             val = float(received_data[11:].strip())
-            print val
             flow1.set_setpoint(val)
             data = "ok"
         if received_data[0:11] == "set_flow_2:":
@@ -191,7 +218,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.86.185", 9999 #Rasppi16
+    HOST, PORT = "130.225.86.185", 9998 #Rasppi16
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()

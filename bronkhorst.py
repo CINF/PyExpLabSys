@@ -78,10 +78,10 @@ class Bronkhorst():
 
         
 if __name__ == '__main__':
-    bh = Bronkhorst('/dev/ttyUSB5',10)
-    print bh.set_setpoint(0.0)
+    bh = Bronkhorst('/dev/ttyUSB7',10)
+    #print bh.set_setpoint(0.0)
     #time.sleep(1)
-    #print bh.read_serial()
+    print bh.read_serial()
     #print bh.read_unit()
     #print bh.read_capacity()
     #print bh.read_counter_value()
