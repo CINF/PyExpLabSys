@@ -48,6 +48,7 @@ for i in range(0,8):
         pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
         print("pressure:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'pressure'
+        pressure.set_control_mode() #Change to accept setpoint from rs232 interface
         counter = counter + 1
 
     if name[i] == 'M11200362C':

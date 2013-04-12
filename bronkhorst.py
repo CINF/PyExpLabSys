@@ -55,6 +55,11 @@ class Bronkhorst():
         response = self.comm(read_counter)
         return str(response)
 
+    def set_control_mode(self):
+        set_control = ':058001010412\r\n'
+        response = self.comm(set_control)
+        return str(response)
+
     def read_serial(self):
         read_serial = ':1A8004F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
         response = self.comm(read_serial)
@@ -78,12 +83,12 @@ class Bronkhorst():
 
         
 if __name__ == '__main__':
-    bh = Bronkhorst('/dev/ttyUSB7',10)
-    #print bh.set_setpoint(0.0)
+    bh = Bronkhorst('/dev/ttyUSB4',2.5)
+    print bh.set_setpoint(1.0)
     #time.sleep(1)
-    print bh.read_serial()
+    #print bh.read_serial()
     #print bh.read_unit()
     #print bh.read_capacity()
     #print bh.read_counter_value()
-    #print bh.read_setpoint()
+    print bh.read_setpoint()
     #print bh.read_measure()
