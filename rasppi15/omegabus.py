@@ -3,8 +3,10 @@ import time
 
 class OmegaBus():
 
-    def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB1',300)
+    def __init__(self,port=None):
+        if port == None:
+            port = '/dev/ttyUSB0'
+        self.f = serial.Serial(port,300)
         time.sleep(0.1)
 
     def ReadValue(self,channel):
@@ -16,6 +18,24 @@ class OmegaBus():
             value_string = value_string[3:]
         current_value = float(value_string)
         return float(current_value)
+
+    def set_name(self,string):
+        self.f.write('$1WE\r')
+        time.sleep(1)
+        self.f.write("$1ID" + string + "\r")
+        time.sleep(1)
+        value_string = self.f.read(self.f.inWaiting())
+        if value_string[1] == "*":
+            success  = True
+        else:
+            success = False
+        return success
+
+    def read_name(self):
+        self.f.write("$1RID" + "\r")
+        time.sleep(1)
+        value_string = self.f.read(self.f.inWaiting())
+        return value_string
 
     def ReadSetup(self):
         self.f.write("$" + "1RS" + "\r")
@@ -55,6 +75,9 @@ class OmegaBus():
 
 if __name__ == "__main__":
     omega = OmegaBus()
+    #print omega.set_name('ch_13')
+    print omega.read_name()
+
     print omega.ReadValue(1)
     print omega.ReadValue(2)
     print omega.ReadValue(3)
