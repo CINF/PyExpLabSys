@@ -37,6 +37,12 @@ class qmg422_status_output(threading.Thread):
                 self.screen.addstr(3, 1, timestamp)
                 runtime = "Experiment runtime: {0:.1f}s".format(qmg.measurement_runtime)
                 self.screen.addstr(4, 1, runtime)
+                
+                #self.screen.addstr(5,20, qmg.channel_list[0]['comment'])
+                self.screen.addstr(6,1, 'QMS-channels')
+                for i in range(1,len(qmg.channel_list)+1):
+                    ch = qmg.channel_list[i]
+                    self.screen.addstr(7+i,1,ch['masslabel'] + ': ' + ch['value'] + '    ')
             
             if not self.sql == None:
                 commits = "SQL commits: {0:.0f}".format(self.sql.commits)
@@ -111,8 +117,10 @@ class udp_meta_channel(threading.Thread):
                     value = None
 
                 if not value == None:
-                    query  = 'insert into xy_values_dummy set measurement="'
-                    query += str(channel['id']) + '", x="' + sqltime + '", y="' + str(value) + '"'
+                    query  = 'insert into xy_values_' + qmg.chamber + ' '
+                    query += 'set measurement="'
+                    query += str(channel['id']) + '", x="' + sqltime
+                    query += '", y="' + str(value) + '"'
                     qmg.sqlqueue.put(query)
 
             time_spend = time.time() - t0
@@ -132,6 +140,7 @@ class QMG422():
         self.measurement_runtime = 0
         self.stop = False
         self.chamber = 'dummy'
+        self.channel_list = {}
         
         #Clear log file
         with open('qms.txt', 'w'):
@@ -385,13 +394,14 @@ class QMG422():
         for i in range(1,len(channel_list)):
             ch = channel_list[i]
             self.config_channel(channel=i, mass=ch['mass'], speed=ch['speed'], enable="yes")
-
+            self.channel_list[i] = {'masslabel':ch['masslabel'],'value':'-'}
+            
             if no_save == False:
                 ids[i] = self.create_mysql_measurement(i,timestamp,ch['masslabel'],comment)
             else:
                 ids[i] = i
         ids[0] = timestamp
-        
+        logging.error(ids)
         return ids
         
     def mass_time(self,ms_channel_list):
@@ -433,6 +443,7 @@ class QMG422():
                         self.measurement_runtime = time.time()-start_time
                         value = self.comm('MDB')
                         channel = channel + 1
+                        self.channel_list[channel]['value'] = value
                         sqltime = str((time.time() - start_time) * 1000)
                         query  = 'insert into '
                         query += 'xy_values_' + self.chamber + ' '
@@ -444,7 +455,7 @@ class QMG422():
                             break
                         else:
                             self.sqlqueue.put(query)
-                        channel = channel % 4
+                        channel = channel % (len(ids)-1)
                         time.sleep(0.05)
                     time.sleep(0.1)
                 else:
@@ -584,7 +595,7 @@ if __name__ == "__main__":
     channel_list[2] = {'mass':28,'speed':11, 'masslabel':'M28'}
     channel_list[3] = {'mass':32,'speed':11, 'masslabel':'M32'}
     channel_list[4] = {'mass':44,'speed':11, 'masslabel':'M44'}
-    channel_list[4] = {'mass':7,'speed':11, 'masslabel':'M7'}
+    channel_list[5] = {'mass':7,'speed':11, 'masslabel':'M7'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     meta_udp = udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
