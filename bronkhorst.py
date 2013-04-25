@@ -18,7 +18,6 @@ class Bronkhorst():
     def read_setpoint(self):
         read_setpoint = ':06800401210121\r\n' # Read setpoint
         response = self.comm(read_setpoint)
-        print response
         response = int(response[11:], 16)
         response = (response / 32000.0) * self.max_setting
         return response
@@ -83,12 +82,12 @@ class Bronkhorst():
 
         
 if __name__ == '__main__':
-    bh = Bronkhorst('/dev/ttyUSB4',2.5)
-    print bh.set_setpoint(1.0)
+    bh = Bronkhorst('/dev/ttyUSB0',2.5)
+    #print bh.set_setpoint(1.0)
     #time.sleep(1)
-    #print bh.read_serial()
+    print bh.read_serial()
     #print bh.read_unit()
     #print bh.read_capacity()
     #print bh.read_counter_value()
-    print bh.read_setpoint()
-    #print bh.read_measure()
+    #print bh.read_setpoint()
+    print bh.read_measure()
