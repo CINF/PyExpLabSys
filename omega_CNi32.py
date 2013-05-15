@@ -28,9 +28,15 @@ class omega_comm():
     def ReadTemperature(self):
         command = 'X01'
 	signal = self.comm(command)
-	return(signal)
+        val = -9999
+        while val < -9998:
+            try:
+                val = float(signal)
+            except ValueError:
+                val = -9999
+	return(val)
 
 
 if __name__ == '__main__':
-    omega = omega_comm('/dev/ttyS0')
+    omega = omega_comm('/dev/ttyUSB0')
     print "Temperature: " + str(omega.ReadTemperature())
