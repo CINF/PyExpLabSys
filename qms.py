@@ -85,7 +85,6 @@ class udp_meta_channel(threading.Thread):
         self.qmg = qmg
         self.channel_list = []
 
-
     def create_channel(self, masslabel, host, udp_string):
         """ Create a meta channel.
 
@@ -108,13 +107,19 @@ class udp_meta_channel(threading.Thread):
             for channel in self.channel_list:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(channel['cmd'] + "\n", (channel['host'], PORT))
+                #try:
                 received = sock.recv(1024)
+                #sock.shutdown(socket.SHUT_RDWR)
+                sock.close
                 try:
                     value = float(received)
                     sqltime = str((time.time() - start_time) * 1000)
                 except ValueError:
                     logging.warn('Meta-channel, could not convert to float: ' + received)
                     value = None
+                #except:
+                #    logging.warn('Meta-channel timeout: Host: ' + channel['host'])
+                #    value = None
 
                 if not value == None:
                     query  = 'insert into xy_values_' + qmg.chamber + ' '
@@ -127,10 +132,91 @@ class udp_meta_channel(threading.Thread):
             if time_spend < self.ui:
                 time.sleep(self.ui - time_spend)
 
+
+class compound_udp_meta_channel(threading.Thread):
+    """ A class to handle meta data for the QMS program.
+
+    Each instance of this class will query a signle udp command, parse
+    the output and log into as many seperate channels as wanted.
+    """
+
+    def __init__(self, qmg, timestamp, comment, update_interval,hostname, udp_string, port):
+        """ Initalize the instance of the class
+        """
+
+        threading.Thread.__init__(self)
+        self.ui = update_interval
+        self.time = timestamp
+        self.comment = comment
+        self.qmg = qmg
+        self.channel_list = []
+        self.hostname = hostname
+        self.udp_string = udp_string
+        self.port = port
+
+    def create_channel(self, masslabel, position):
+        """ Create a meta channel.
+
+        Uses the SQL-communication function of the qmg class to create a
+        SQL-entry for the meta-channel.
+        """
+
+        id = self.qmg.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
+        channel = {}
+        channel['id']   = id
+        channel['position'] = position
+        self.channel_list.append(channel)
+
+    def run(self):
+        start_time= time.time()
+        while True:
+            t0 = time.time()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            #sock.setblocking(0)
+            #try:
+            sock.sendto(self.udp_string + "\n", (self.hostname, self.port))
+            received = sock.recv(1024)
+            #except:
+            #    time.sleep(0.1)
+            #    logging.warn('udp read time-out')
+            #    break #Re-start the loop and query the udp server again
+
+            sqltime = str((time.time() - start_time) * 1000)
+            
+            
+            try:
+                val_array = received.split(',')
+                values = {}
+                for channel in val_array:
+                    val = channel.split(':')
+                    values[int(val[0])] = float(val[1])
+            except ValueError:
+                logging.warn('Unable to parse udp compound string')
+                break
+                
+            for channel in self.channel_list:
+                try:
+                    value = values[channel['position']]
+                except:
+                    value = None
+                    logging.warn('Not enough values in compound udp string')
+ 
+                if not value == None:
+                    query  = 'insert into xy_values_' + qmg.chamber + ' '
+                    query += 'set measurement="'
+                    query += str(channel['id']) + '", x="' + sqltime
+                    query += '", y="' + str(value) + '"'
+                    qmg.sqlqueue.put(query)
+
+            time_spend = time.time() - t0
+            if time_spend < self.ui:
+                time.sleep(self.ui - time_spend)
+
+
 class QMG422():
 
     def __init__(self, sqlqueue=None, loglevel=logging.ERROR):
-        self.f = serial.Serial('/dev/ttyS1',19200)
+        self.f = serial.Serial('/dev/ttyUSB0',19200)
         if not sqlqueue == None:
             self.sqlqueue = sqlqueue
         else: #We make a dummy queue to make the program work
@@ -384,12 +470,11 @@ class QMG422():
         cnxn.close()
         return(id_number)
     
-    def create_ms_channellist(self, channel_list, no_save=False):
+    def create_ms_channellist(self, channel_list, timestamp, no_save=False):
         """ This function creates the channel-list and the associated mysql-entries """
         #TODO: Implement various ways of creating the channel-list
 
         ids = {}
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         comment = channel_list[0]['comment']
         for i in range(1,len(channel_list)):
             ch = channel_list[i]
@@ -404,7 +489,7 @@ class QMG422():
         logging.error(ids)
         return ids
         
-    def mass_time(self,ms_channel_list):
+    def mass_time(self,ms_channel_list, timestamp):
         self.operating_mode = "Mass Time"
         self.stop = False
         
@@ -416,7 +501,7 @@ class QMG422():
         self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
 
         start_time = time.time()
-        ids = self.create_ms_channellist(ms_channel_list,no_save=False)
+        ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=False)
         self.current_timestamp = ids[0]
     
         while self.stop == False:
@@ -575,44 +660,52 @@ class QMG422():
 
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
-    
     sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
     sql_saver.daemon = True
     sql_saver.start()
 
     qmg = QMG422(sql_queue)
     qmg.communication_mode(computer_control=True)
-    
-
+      
     printer = qmg422_status_output(qmg,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
  
     time.sleep(1)
+    
     channel_list = {}
     channel_list[0] = {'comment':'Slightly more fancy program now'}
     channel_list[1] = {'mass':18,'speed':11, 'masslabel':'M18'}
     channel_list[2] = {'mass':28,'speed':11, 'masslabel':'M28'}
     channel_list[3] = {'mass':32,'speed':11, 'masslabel':'M32'}
     channel_list[4] = {'mass':44,'speed':11, 'masslabel':'M44'}
-    channel_list[5] = {'mass':7,'speed':11, 'masslabel':'M7'}
+    #channel_list[5] = {'mass':7,'speed':11, 'masslabel':'M7'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     meta_udp = udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
-    meta_udp.create_channel('Temp NG', '130.225.86.181', 'tempNG')
-    meta_udp.create_channel('Temp Old', '130.225.86.181', 'tempOld')
+    #meta_udp.create_channel('Temp, TC', 'rasppi12', 'tempNG')
+    meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 'read_buffer')
+    meta_udp.create_channel('Pirani containment', 'rasppi07', 'read_containment')
+    meta_udp.create_channel('RTD Temperature', 'rasppi05', 'read_rtdval')
     meta_udp.daemon = True
     meta_udp.start()
-    #print qmg.create_mysql_measurement(1, timestamp, "M18","Test measurement")
 
+    meta_flow = compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16','read_all',9998)
+    meta_flow.create_channel('Sample Pressure',0)
+    meta_flow.create_channel('Flow 1',1)
+    meta_flow.create_channel('Flow 3',3)
+    meta_flow.daemon = True
+    meta_flow.start()
+    
+    print qmg.mass_time(channel_list, timestamp)
+    printer.stop()
+    
     #print qmg.qms_status()
-    #print qmg.sem_status(turn_on=True)
-    #print qmg.emission_status(current=0.8,turn_on=True)
+    print qmg.sem_status(voltage=1600, turn_on=True)
+    print qmg.emission_status(current=0.1,turn_on=True)
     #print qmg.detector_status()
     #qmg.read_voltages()
     #print qmg.simulation()
     #print qmg.scan_test()
     #print qmg.single_mass()
-    print qmg.mass_time(channel_list)
-
-    printer.stop()
+    print qmg.qms_status()
