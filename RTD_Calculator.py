@@ -7,6 +7,10 @@ class RTD_Calculator():
         if material == 'Mo':
             self.A = 4.579e-3
             self.B = 0#Not correct
+        if material == 'W':
+            self.A = 4.403e-3
+            self.B = 0#Not correct
+
         self.Trt = Trt
         self.Rrt = Rrt
         self.R0 = self.FindR0(Trt,Rrt)
