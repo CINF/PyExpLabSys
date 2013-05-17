@@ -1,4 +1,6 @@
 import threading
+import time
+import socket
 
 class udp_meta_channel(threading.Thread):
     """ A class to handle meta data for the QMS program.
@@ -58,11 +60,11 @@ class udp_meta_channel(threading.Thread):
                 #    value = None
 
                 if not value == None:
-                    query  = 'insert into xy_values_' + qmg.chamber + ' '
+                    query  = 'insert into xy_values_' + self.qmg.chamber + ' '
                     query += 'set measurement="'
                     query += str(channel['id']) + '", x="' + sqltime
                     query += '", y="' + str(value) + '"'
-                    qmg.sqlqueue.put(query)
+                    self.qmg.sqlqueue.put(query)
 
             time_spend = time.time() - t0
             if time_spend < self.ui:
@@ -138,11 +140,11 @@ class compound_udp_meta_channel(threading.Thread):
                     logging.warn('Not enough values in compound udp string')
  
                 if not value == None:
-                    query  = 'insert into xy_values_' + qmg.chamber + ' '
+                    query  = 'insert into xy_values_' + self.qmg.chamber + ' '
                     query += 'set measurement="'
                     query += str(channel['id']) + '", x="' + sqltime
                     query += '", y="' + str(value) + '"'
-                    qmg.sqlqueue.put(query)
+                    self.qmg.sqlqueue.put(query)
 
             time_spend = time.time() - t0
             if time_spend < self.ui:

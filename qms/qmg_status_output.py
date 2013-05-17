@@ -1,4 +1,6 @@
 import threading
+import curses
+import time
 
 class qmg_status_output(threading.Thread):
 
@@ -26,13 +28,13 @@ class qmg_status_output(threading.Thread):
             if self.qmg.operating_mode == "Mass Time":
                 timestamp = "Timestamp: " + self.qmg.current_timestamp
                 self.screen.addstr(3, 1, timestamp)
-                runtime = "Experiment runtime: {0:.1f}s".format(qmg.measurement_runtime)
+                runtime = "Experiment runtime: {0:.1f}s".format(self.qmg.measurement_runtime)
                 self.screen.addstr(4, 1, runtime)
                 
-                #self.screen.addstr(5,20, qmg.channel_list[0]['comment'])
+                #self.screen.addstr(5,20, self.qmg.channel_list[0]['comment'])
                 self.screen.addstr(6,1, 'QMS-channels')
-                for i in range(1,len(qmg.channel_list)+1):
-                    ch = qmg.channel_list[i]
+                for i in range(1,len(self.qmg.channel_list)+1):
+                    ch = self.qmg.channel_list[i]
                     self.screen.addstr(7+i,1,ch['masslabel'] + ': ' + ch['value'] + '    ')
             
             if not self.sql == None:
@@ -43,7 +45,7 @@ class qmg_status_output(threading.Thread):
             
             n = self.screen.getch()
             if n == ord('q'):
-                qmg.stop = True
+                self.qmg.stop = True
                 
             self.screen.refresh()
             time.sleep(1)
