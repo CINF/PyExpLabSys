@@ -1,0 +1,149 @@
+import threading
+
+class udp_meta_channel(threading.Thread):
+    """ A class to handle meta data for the QMS program.
+
+    Each instance of this class will communicate with several hosts via udp.
+    Only a single update_interval can be used for all hosts in the channel list.
+    """
+
+    def __init__(self, qmg, timestamp, comment, update_interval):
+        """ Initalize the instance of the class
+        
+        Timestamps and comments are currently identical for all channels, since
+        this is anyway the typical way the channels are used.
+        """
+
+        threading.Thread.__init__(self)
+        self.ui = update_interval
+        self.time = timestamp
+        self.comment = comment
+        self.qmg = qmg
+        self.channel_list = []
+
+    def create_channel(self, masslabel, host, udp_string):
+        """ Create a meta channel.
+
+        Uses the SQL-communication function of the qmg class to create a
+        SQL-entry for the meta-channel.
+        """
+
+        id = self.qmg.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
+        channel = {}
+        channel['id']   = id
+        channel['host'] = host
+        channel['cmd']  = udp_string
+        self.channel_list.append(channel)
+
+    def run(self):
+        start_time= time.time()
+        while True:
+            PORT = 9999
+            t0 = time.time()
+            for channel in self.channel_list:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.sendto(channel['cmd'] + "\n", (channel['host'], PORT))
+                #try:
+                received = sock.recv(1024)
+                #sock.shutdown(socket.SHUT_RDWR)
+                sock.close
+                try:
+                    value = float(received)
+                    sqltime = str((time.time() - start_time) * 1000)
+                except ValueError:
+                    logging.warn('Meta-channel, could not convert to float: ' + received)
+                    value = None
+                #except:
+                #    logging.warn('Meta-channel timeout: Host: ' + channel['host'])
+                #    value = None
+
+                if not value == None:
+                    query  = 'insert into xy_values_' + qmg.chamber + ' '
+                    query += 'set measurement="'
+                    query += str(channel['id']) + '", x="' + sqltime
+                    query += '", y="' + str(value) + '"'
+                    qmg.sqlqueue.put(query)
+
+            time_spend = time.time() - t0
+            if time_spend < self.ui:
+                time.sleep(self.ui - time_spend)
+
+
+class compound_udp_meta_channel(threading.Thread):
+    """ A class to handle meta data for the QMS program.
+
+    Each instance of this class will query a signle udp command, parse
+    the output and log into as many seperate channels as wanted.
+    """
+
+    def __init__(self, qmg, timestamp, comment, update_interval,hostname, udp_string, port):
+        """ Initalize the instance of the class
+        """
+
+        threading.Thread.__init__(self)
+        self.ui = update_interval
+        self.time = timestamp
+        self.comment = comment
+        self.qmg = qmg
+        self.channel_list = []
+        self.hostname = hostname
+        self.udp_string = udp_string
+        self.port = port
+
+    def create_channel(self, masslabel, position):
+        """ Create a meta channel.
+
+        Uses the SQL-communication function of the qmg class to create a
+        SQL-entry for the meta-channel.
+        """
+
+        id = self.qmg.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
+        channel = {}
+        channel['id']   = id
+        channel['position'] = position
+        self.channel_list.append(channel)
+
+    def run(self):
+        start_time= time.time()
+        while True:
+            t0 = time.time()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            #sock.setblocking(0)
+            #try:
+            sock.sendto(self.udp_string + "\n", (self.hostname, self.port))
+            received = sock.recv(1024)
+            #except:
+            #    time.sleep(0.1)
+            #    logging.warn('udp read time-out')
+            #    break #Re-start the loop and query the udp server again
+
+            sqltime = str((time.time() - start_time) * 1000)
+            
+            
+            try:
+                val_array = received.split(',')
+                values = {}
+                for channel in val_array:
+                    val = channel.split(':')
+                    values[int(val[0])] = float(val[1])
+            except ValueError:
+                logging.warn('Unable to parse udp compound string')
+                break
+                
+            for channel in self.channel_list:
+                try:
+                    value = values[channel['position']]
+                except:
+                    value = None
+                    logging.warn('Not enough values in compound udp string')
+ 
+                if not value == None:
+                    query  = 'insert into xy_values_' + qmg.chamber + ' '
+                    query += 'set measurement="'
+                    query += str(channel['id']) + '", x="' + sqltime
+                    query += '", y="' + str(value) + '"'
+                    qmg.sqlqueue.put(query)
+
+            time_spend = time.time() - t0
+            if time_spend < self.ui:
+                time.sleep(self.ui - time_spend)
