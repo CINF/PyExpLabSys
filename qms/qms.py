@@ -470,7 +470,7 @@ if __name__ == "__main__":
     qmg = QMG422(sql_queue)
     qmg.communication_mode(computer_control=True)
       
-    printer = qmg_status_output(qmg,sql_saver_instance=sql_saver)
+    printer = qmg_status_output.qmg_status_output(qmg,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
  
@@ -485,7 +485,7 @@ if __name__ == "__main__":
     #channel_list[5] = {'mass':7,'speed':11, 'masslabel':'M7'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    meta_udp = udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
+    meta_udp = qmg.meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
     #meta_udp.create_channel('Temp, TC', 'rasppi12', 'tempNG')
     meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 'read_buffer')
     meta_udp.create_channel('Pirani containment', 'rasppi07', 'read_containment')
@@ -493,7 +493,7 @@ if __name__ == "__main__":
     meta_udp.daemon = True
     meta_udp.start()
 
-    meta_flow = compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16','read_all',9998)
+    meta_flow = qmg.meta_channels.compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16','read_all',9998)
     meta_flow.create_channel('Sample Pressure',0)
     meta_flow.create_channel('Flow 1',1)
     meta_flow.create_channel('Flow 3',3)
