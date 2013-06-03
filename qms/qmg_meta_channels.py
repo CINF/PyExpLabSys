@@ -23,7 +23,7 @@ class udp_meta_channel(threading.Thread):
         self.qmg = qmg
         self.channel_list = []
 
-    def create_channel(self, masslabel, host, udp_string):
+    def create_channel(self, masslabel, host, port, udp_string):
         """ Create a meta channel.
 
         Uses the SQL-communication function of the qmg class to create a
@@ -34,15 +34,16 @@ class udp_meta_channel(threading.Thread):
         channel = {}
         channel['id']   = id
         channel['host'] = host
+        channel['port'] = port
         channel['cmd']  = udp_string
         self.channel_list.append(channel)
 
     def run(self):
         start_time= time.time()
         while True:
-            PORT = 9999
             t0 = time.time()
             for channel in self.channel_list:
+                PORT = channel['port']
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(channel['cmd'] + "\n", (channel['host'], PORT))
                 #try:
@@ -55,9 +56,8 @@ class udp_meta_channel(threading.Thread):
                 except ValueError:
                     logging.warn('Meta-channel, could not convert to float: ' + received)
                     value = None
-                #except:
-                #    logging.warn('Meta-channel timeout: Host: ' + channel['host'])
-                #    value = None
+                except TypeError:
+                    logging.warn('Type error from meta channel, most likely during shutdown')
 
                 if not value == None:
                     query  = 'insert into xy_values_' + self.qmg.chamber + ' '
@@ -78,7 +78,7 @@ class compound_udp_meta_channel(threading.Thread):
     the output and log into as many seperate channels as wanted.
     """
 
-    def __init__(self, qmg, timestamp, comment, update_interval,hostname, udp_string, port):
+    def __init__(self, qmg, timestamp, comment, update_interval,hostname, port, udp_string):
         """ Initalize the instance of the class
         """
 

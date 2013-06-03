@@ -257,7 +257,7 @@ class QMG422():
         timestep = self.comm('MSD') 
         
         query = ""
-        query += 'insert into measurements_dummy set mass_label="' 
+        query += 'insert into measurements_' + self.chamber + ' set mass_label="' 
         query += masslabel + '"'
         query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
         query += preamp_range + '", time="' + timestamp + '", type="5"'
@@ -352,9 +352,11 @@ class QMG422():
         
     def scan_test(self):
         first_mass = 0
-        scan_width = 150
-        self.comm('MMO, 1')  #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST ,1') #Steps
+        scan_width = 50
+        self.comm('CYM, 0') #0, single. 1, multi
+        self.comm('SMC, 0') #Channel 0
+        self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
+        self.comm('MST ,2') #Steps
         self.comm('MSD ,10') #Speed
         self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
@@ -386,8 +388,8 @@ class QMG422():
         print header[3]
         output_string = ""
 
-        fig = plt.figure()
-        axis = fig.add_subplot(1,1,1)
+        #fig = plt.figure()
+        #axis = fig.add_subplot(1,1,1)
 
         start = time.time()
         number_of_samples = int(header[3])
@@ -402,14 +404,14 @@ class QMG422():
             output_string += val + '\n'
         print time.time() - start
         #print output_string
-        axis.plot(datax,datay, 'r-')
-        plt.show()
-        """
+        #axis.plot(datax,datay, 'r-')
+        #plt.show()
+        
         datfile = open('ms.dat','w')
         datfile.write(output_string)
         datfile.close()
         print time.time() - start
-        """
+        
 
     def single_mass(self):
         self.comm('CYM ,0') #0, single. 1, multi
@@ -477,32 +479,33 @@ if __name__ == "__main__":
     time.sleep(1)
     
     channel_list = {}
-    channel_list[0] = {'comment':'Slightly more fancy program now'}
-    channel_list[1] = {'mass':18,'speed':11, 'masslabel':'M18'}
-    channel_list[2] = {'mass':28,'speed':11, 'masslabel':'M28'}
-    channel_list[3] = {'mass':32,'speed':11, 'masslabel':'M32'}
-    channel_list[4] = {'mass':44,'speed':11, 'masslabel':'M44'}
-    #channel_list[5] = {'mass':7,'speed':11, 'masslabel':'M7'}
+    channel_list[0] = {'comment':'Attempt at methanation on Pt'}
+    channel_list[1] = {'mass':2,'speed':9, 'masslabel':'M2'}
+    channel_list[2] = {'mass':4,'speed':9, 'masslabel':'M15'}
+    channel_list[3] = {'mass':15,'speed':10, 'masslabel':'M18'}
+    channel_list[4] = {'mass':28,'speed':10, 'masslabel':'M28'}
+    channel_list[5] = {'mass':44,'speed':11, 'masslabel':'M44'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     meta_udp = qmg_meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
-    #meta_udp.create_channel('Temp, TC', 'rasppi12', 'tempNG')
-    meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 'read_buffer')
-    meta_udp.create_channel('Pirani containment', 'rasppi07', 'read_containment')
-    meta_udp.create_channel('RTD Temperature', 'rasppi05', 'read_rtdval')
+    meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
+    meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
+    meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
+    meta_udp.create_channel('RTD Temperature', 'rasppi05', 9993, 'read_rtdval')
     meta_udp.daemon = True
     meta_udp.start()
 
     meta_flow = qmg_meta_channels.compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16','read_all',9998)
     meta_flow.create_channel('Sample Pressure',0)
-    meta_flow.create_channel('Flow 1',1)
-    meta_flow.create_channel('Flow 3',3)
+    meta_flow.create_channel('Flow, H2',4)
+    meta_flow.create_channel('Flow, CO',6)
     meta_flow.daemon = True
     meta_flow.start()
     
     print qmg.mass_time(channel_list, timestamp)
+    #qmg.scan_test()
     printer.stop()
-    
+    #print qmg.read_voltages()
     #print qmg.qms_status()
     print qmg.sem_status(voltage=1600, turn_on=True)
     print qmg.emission_status(current=0.1,turn_on=True)
