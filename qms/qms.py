@@ -28,7 +28,7 @@ class QMG422():
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
-        self.chamber = 'dummy'
+        self.chamber = 'microreactorNG'
         self.channel_list = {}
         
         #Clear log file
@@ -237,8 +237,11 @@ class QMG422():
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user="microreactor", 
-                               passwd="microreactor", db="cinfdata")
+        #cnxn = MySQLdb.connect(host="servcinf", user="microreactor", 
+        #                       passwd="microreactor", db="cinfdata")
+        cnxn = MySQLdb.connect(host="servcinf", user=self.chamber, 
+                               passwd=self.chamber, db="cinfdata")
+
         cursor = cnxn.cursor()
         
         if not metachannel:
@@ -266,7 +269,7 @@ class QMG422():
         cursor.execute(query)
         cnxn.commit()
         
-        query = "select id from measurements_dummy order by id desc limit 1"
+        query = 'select id from measurements_' + self.chamber + ' order by id desc limit 1'
         cursor.execute(query)
         id_number = cursor.fetchone()
         id_number = id_number[0]
@@ -465,7 +468,7 @@ class QMG422():
 
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
-    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
+    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactorNG')
     sql_saver.daemon = True
     sql_saver.start()
 
@@ -479,7 +482,7 @@ if __name__ == "__main__":
     time.sleep(1)
     
     channel_list = {}
-    channel_list[0] = {'comment':'Attempt at methanation on Pt'}
+    channel_list[0] = {'comment':'DELETE'}
     channel_list[1] = {'mass':2,'speed':9, 'masslabel':'M2'}
     channel_list[2] = {'mass':4,'speed':9, 'masslabel':'M15'}
     channel_list[3] = {'mass':15,'speed':10, 'masslabel':'M18'}
