@@ -28,7 +28,7 @@ class QMG422():
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
-        self.chamber = 'microreactorNG'
+        self.chamber = 'dummy'
         self.channel_list = {}
         
         #Clear log file
@@ -229,7 +229,7 @@ class QMG422():
         self.comm('MRE ,15') #Peak resolution
 
     def create_mysql_measurement(self, channel, timestamp, masslabel, comment,
-                                 metachannel=False):
+                                 metachannel=False, type=5):
         """ Creates a MySQL row for a channel.
         
         Create a row in the measurements table and populates it with the
@@ -263,7 +263,7 @@ class QMG422():
         query += 'insert into measurements_' + self.chamber + ' set mass_label="' 
         query += masslabel + '"'
         query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
-        query += preamp_range + '", time="' + timestamp + '", type="5"'
+        query += preamp_range + '", time="' + timestamp + '", type="' + str(type) + '"'
         query += ', comment="' + comment + '"'
 
         cursor.execute(query)
@@ -353,7 +353,7 @@ class QMG422():
                     logging.error("Status error, continuing measurement")
         self.operating_mode = "Idling"
         
-    def scan_test(self):
+    def mass_scan(self):
         first_mass = 0
         scan_width = 50
         self.comm('CYM, 0') #0, single. 1, multi
@@ -366,6 +366,10 @@ class QMG422():
         self.comm('MWI, ' + str(scan_width)) #Scan width
         #print "Mass-scan:   " + self.comm('MMO, 5')  #Magic mass-scan
         print "Resolution:  " + self.comm('MRE ,20')   #Resolution
+
+        comment = 'Test mass scan'
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        id = self.create_mysql_measurement(i,timestamp,'Mass Scan',comment, type=4)
 
         start = time.time()
         self.comm('CRU ,2') #Start measurement
@@ -415,57 +419,6 @@ class QMG422():
         datfile.close()
         print time.time() - start
         
-
-    def single_mass(self):
-        self.comm('CYM ,0') #0, single. 1, multi
-        self.comm('SPC ,0')
-        self.comm('SMC ,0')
-        self.comm('MMO, 3')  #Single mass
-        self.comm('MSD ,9') #Speed, 8:0.2s, 10:1.0s, 12:5s, 14:20s
-        self.comm('AMO, 2')  #Auto range electromter
-        self.comm('MFM, 18') #First mass
-
-        fig = plt.figure()
-        axis = fig.add_subplot(1,1,1)
-
-        data18 = []
-        data28 = []
-
-        for i in range(0,3):
-            self.comm('MFM, 18') #First mass
-            self.comm('CRU ,2') #Start measurement
-            status = self.comm('MBH',debug=False)
-            status = status.split(',')
-            running = status[0]
-            while  int(running) == 0:
-                status = self.comm('MBH',debug=False)
-                #print "Status: " + status + " !"
-                status = status.split(',')
-                running = status[0]
-                time.sleep(0.2)    
-            value = float(self.comm('MDB'))
-            data18.append(value)
-            
-            self.comm('MFM, 28') #First mass
-            self.comm('CRU ,2') #Start measurement
-            status = self.comm('MBH',debug=False)
-            status = status.split(',')
-            running = status[0]
-            while  int(running) == 0:
-                status = self.comm('MBH',debug=False)
-                #print "Status: " + status + " !"
-                status = status.split(',')
-                running = status[0]
-                time.sleep(0.2)    
-            value = float(self.comm('MDB'))
-            data28.append(value)
-            
-
-        axis.plot(data18,'b-')        
-        axis.plot(data28,'r-')        
-        plt.show(block=True)
-
-
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
     sql_saver = SQL_saver.sql_saver(sql_queue,'microreactorNG')
