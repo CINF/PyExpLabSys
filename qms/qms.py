@@ -483,19 +483,20 @@ if __name__ == "__main__":
     channel_list[1] = {'mass':2,'speed':9, 'masslabel':'M2'}
     channel_list[2] = {'mass':4,'speed':9, 'masslabel':'M15'}
     channel_list[3] = {'mass':15,'speed':10, 'masslabel':'M18'}
-    channel_list[4] = {'mass':28,'speed':10, 'masslabel':'M28'}
-    channel_list[5] = {'mass':44,'speed':11, 'masslabel':'M44'}
+    channel_list[4] = {'mass':28,'speed':9, 'masslabel':'M28'}
+    channel_list[5] = {'mass':32,'speed':9, 'masslabel':'M32'}
+    channel_list[6] = {'mass':44,'speed':10, 'masslabel':'M44'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     meta_udp = qmg_meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
     meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
     meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
     meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
-    meta_udp.create_channel('RTD Temperature', 'rasppi05', 9993, 'read_rtdval')
+    meta_udp.create_channel('RTD Temperature', 'rasppi05', 9992, 'read_rtdval')
     meta_udp.daemon = True
     meta_udp.start()
 
-    meta_flow = qmg_meta_channels.compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16','read_all',9998)
+    meta_flow = qmg_meta_channels.compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16',9998, 'read_all')
     meta_flow.create_channel('Sample Pressure',0)
     meta_flow.create_channel('Flow, H2',4)
     meta_flow.create_channel('Flow, CO',6)
