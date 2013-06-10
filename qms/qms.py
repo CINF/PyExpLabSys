@@ -229,7 +229,7 @@ class QMG422():
         self.comm('MRE ,15') #Peak resolution
 
     def create_mysql_measurement(self, channel, timestamp, masslabel, comment,
-                                 metachannel=False):
+                                 metachannel=False, type=5):
         """ Creates a MySQL row for a channel.
         
         Create a row in the measurements table and populates it with the
@@ -237,8 +237,11 @@ class QMG422():
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user="microreactor", 
-                               passwd="microreactor", db="cinfdata")
+        #cnxn = MySQLdb.connect(host="servcinf", user="microreactor", 
+        #                       passwd="microreactor", db="cinfdata")
+        cnxn = MySQLdb.connect(host="servcinf", user=self.chamber, 
+                               passwd=self.chamber, db="cinfdata")
+
         cursor = cnxn.cursor()
         
         if not metachannel:
@@ -257,16 +260,16 @@ class QMG422():
         timestep = self.comm('MSD') 
         
         query = ""
-        query += 'insert into measurements_dummy set mass_label="' 
+        query += 'insert into measurements_' + self.chamber + ' set mass_label="' 
         query += masslabel + '"'
         query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
-        query += preamp_range + '", time="' + timestamp + '", type="5"'
+        query += preamp_range + '", time="' + timestamp + '", type="' + str(type) + '"'
         query += ', comment="' + comment + '"'
 
         cursor.execute(query)
         cnxn.commit()
         
-        query = "select id from measurements_dummy order by id desc limit 1"
+        query = 'select id from measurements_' + self.chamber + ' order by id desc limit 1'
         cursor.execute(query)
         id_number = cursor.fetchone()
         id_number = id_number[0]
@@ -350,17 +353,23 @@ class QMG422():
                     logging.error("Status error, continuing measurement")
         self.operating_mode = "Idling"
         
-    def scan_test(self):
+    def mass_scan(self):
         first_mass = 0
-        scan_width = 150
-        self.comm('MMO, 1')  #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST ,1') #Steps
+        scan_width = 50
+        self.comm('CYM, 0') #0, single. 1, multi
+        self.comm('SMC, 0') #Channel 0
+        self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
+        self.comm('MST ,2') #Steps
         self.comm('MSD ,10') #Speed
         self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
         #print "Mass-scan:   " + self.comm('MMO, 5')  #Magic mass-scan
         print "Resolution:  " + self.comm('MRE ,20')   #Resolution
+
+        comment = 'Test mass scan'
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        id = self.create_mysql_measurement(i,timestamp,'Mass Scan',comment, type=4)
 
         start = time.time()
         self.comm('CRU ,2') #Start measurement
@@ -386,8 +395,8 @@ class QMG422():
         print header[3]
         output_string = ""
 
-        fig = plt.figure()
-        axis = fig.add_subplot(1,1,1)
+        #fig = plt.figure()
+        #axis = fig.add_subplot(1,1,1)
 
         start = time.time()
         number_of_samples = int(header[3])
@@ -402,68 +411,17 @@ class QMG422():
             output_string += val + '\n'
         print time.time() - start
         #print output_string
-        axis.plot(datax,datay, 'r-')
-        plt.show()
-        """
+        #axis.plot(datax,datay, 'r-')
+        #plt.show()
+        
         datfile = open('ms.dat','w')
         datfile.write(output_string)
         datfile.close()
         print time.time() - start
-        """
-
-    def single_mass(self):
-        self.comm('CYM ,0') #0, single. 1, multi
-        self.comm('SPC ,0')
-        self.comm('SMC ,0')
-        self.comm('MMO, 3')  #Single mass
-        self.comm('MSD ,9') #Speed, 8:0.2s, 10:1.0s, 12:5s, 14:20s
-        self.comm('AMO, 2')  #Auto range electromter
-        self.comm('MFM, 18') #First mass
-
-        fig = plt.figure()
-        axis = fig.add_subplot(1,1,1)
-
-        data18 = []
-        data28 = []
-
-        for i in range(0,3):
-            self.comm('MFM, 18') #First mass
-            self.comm('CRU ,2') #Start measurement
-            status = self.comm('MBH',debug=False)
-            status = status.split(',')
-            running = status[0]
-            while  int(running) == 0:
-                status = self.comm('MBH',debug=False)
-                #print "Status: " + status + " !"
-                status = status.split(',')
-                running = status[0]
-                time.sleep(0.2)    
-            value = float(self.comm('MDB'))
-            data18.append(value)
-            
-            self.comm('MFM, 28') #First mass
-            self.comm('CRU ,2') #Start measurement
-            status = self.comm('MBH',debug=False)
-            status = status.split(',')
-            running = status[0]
-            while  int(running) == 0:
-                status = self.comm('MBH',debug=False)
-                #print "Status: " + status + " !"
-                status = status.split(',')
-                running = status[0]
-                time.sleep(0.2)    
-            value = float(self.comm('MDB'))
-            data28.append(value)
-            
-
-        axis.plot(data18,'b-')        
-        axis.plot(data28,'r-')        
-        plt.show(block=True)
-
-
+        
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
-    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
+    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactorNG')
     sql_saver.daemon = True
     sql_saver.start()
 
@@ -477,32 +435,34 @@ if __name__ == "__main__":
     time.sleep(1)
     
     channel_list = {}
-    channel_list[0] = {'comment':'Slightly more fancy program now'}
-    channel_list[1] = {'mass':18,'speed':11, 'masslabel':'M18'}
-    channel_list[2] = {'mass':28,'speed':11, 'masslabel':'M28'}
-    channel_list[3] = {'mass':32,'speed':11, 'masslabel':'M32'}
-    channel_list[4] = {'mass':44,'speed':11, 'masslabel':'M44'}
-    #channel_list[5] = {'mass':7,'speed':11, 'masslabel':'M7'}
+    channel_list[0] = {'comment':'DELETE'}
+    channel_list[1] = {'mass':2,'speed':9, 'masslabel':'M2'}
+    channel_list[2] = {'mass':4,'speed':9, 'masslabel':'M15'}
+    channel_list[3] = {'mass':15,'speed':10, 'masslabel':'M18'}
+    channel_list[4] = {'mass':28,'speed':9, 'masslabel':'M28'}
+    channel_list[5] = {'mass':32,'speed':9, 'masslabel':'M32'}
+    channel_list[6] = {'mass':44,'speed':10, 'masslabel':'M44'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     meta_udp = qmg_meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
-    #meta_udp.create_channel('Temp, TC', 'rasppi12', 'tempNG')
-    meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 'read_buffer')
-    meta_udp.create_channel('Pirani containment', 'rasppi07', 'read_containment')
-    meta_udp.create_channel('RTD Temperature', 'rasppi05', 'read_rtdval')
+    meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
+    meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
+    meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
+    meta_udp.create_channel('RTD Temperature', 'rasppi05', 9992, 'read_rtdval')
     meta_udp.daemon = True
     meta_udp.start()
 
-    meta_flow = qmg_meta_channels.compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16','read_all',9998)
+    meta_flow = qmg_meta_channels.compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16',9998, 'read_all')
     meta_flow.create_channel('Sample Pressure',0)
-    meta_flow.create_channel('Flow 1',1)
-    meta_flow.create_channel('Flow 3',3)
+    meta_flow.create_channel('Flow, H2',4)
+    meta_flow.create_channel('Flow, CO',6)
     meta_flow.daemon = True
     meta_flow.start()
     
     print qmg.mass_time(channel_list, timestamp)
+    #qmg.scan_test()
     printer.stop()
-    
+    #print qmg.read_voltages()
     #print qmg.qms_status()
     print qmg.sem_status(voltage=1600, turn_on=True)
     print qmg.emission_status(current=0.1,turn_on=True)
