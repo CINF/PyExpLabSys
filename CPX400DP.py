@@ -107,3 +107,10 @@ class CPX400DPDriver(SCPI):
             return_message = "Lock acquired"
         return(return_message)
 
+
+if __name__ == '__main__':
+    cpx = CPX400DPDriver(1)
+    print cpx.ReadCurrentLimit()
+
+    cpx = CPX400DPDriver(2)
+    print cpx.ReadCurrentLimit()
