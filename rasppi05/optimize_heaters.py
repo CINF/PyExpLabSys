@@ -5,6 +5,7 @@ import scipy
 import scipy.ndimage
 from scipy import interpolate
 import numpy as np
+import pickle
 
 import socket
 import cv
@@ -14,6 +15,8 @@ import subprocess
 import sys
 sys.path.append('../')
 import agilent_34972A as multiplexer
+
+
 
 class optimize():
 
@@ -90,19 +93,31 @@ class optimize():
         subprocess.check_output(['uvcdynctrl', '--set=Brightness', str(brightness)])
 
     def ocr(self, filename):
-        subprocess.check_output(["convert", "-crop", "60x33+650+154", filename, '_' + filename])    #convert -crop 60x35+650+154 coords.png coords.png 
+        subprocess.check_output(["sh", "convert_high.sh"])
+        #subprocess.check_output(["convert", "-crop", "60x33+650+154", filename, '_' + filename])
         #subprocess.check_output(['convert', '-negate', '_' + filename, '_' + filename])
-        subprocess.check_output(['convert', '-contrast', '-contrast', '-contrast', '-contrast', '_' + filename, '_' + filename])
-        subprocess.check_output(['convert', '_' + filename, '_' + filename + '.pgm'])
+        #subprocess.check_output(['convert', '-contrast', '-contrast', '-contrast', '-contrast', '_' + filename, '_' + filename])
+        #subprocess.check_output(['convert', '_' + filename, '_' + filename + '.pgm'])
         high = subprocess.check_output(['ocrad', '--filter', 'numbers_only', '_' + filename + '.pgm'])
         high_number = int(high)
-        
-        subprocess.check_output(["convert", "-crop", "60x32+650+411", filename, '_' + filename])
+        if high_number < 21:
+            subprocess.check_output(["convert", "-crop", "7x2+666+166", filename, '__' + filename])
+            img = scipy.misc.imread('__' + filename)
+            if np.mean(img) > 30:
+                high_number = high_number * -1
+
+        subprocess.check_output(["sh", "convert_low.sh"])
+        #subprocess.check_output(["convert", "-crop", "60x32+650+411", filename, '_' + filename])
         #subprocess.check_output(['convert', '-negate', '_' + filename, '_' + filename])
-        subprocess.check_output(['convert', '-contrast', '-contrast', '-contrast', '-contrast', '_' + filename, '_' + filename])
-        subprocess.check_output(['convert', '_' + filename, '_' + filename + '.pgm'])
+        #subprocess.check_output(['convert', '-contrast', '-contrast', '-contrast', '-contrast', '_' + filename, '_' + filename])
+        #subprocess.check_output(['convert', '_' + filename, '_' + filename + '.pgm'])
         low = subprocess.check_output(['ocrad', '--filter', 'numbers_only', '_' + filename + '.pgm'])
         low_number = int(low)
+        if low_number < 21:
+            subprocess.check_output(["convert", "-crop", "7x2+666+422", filename, '__' + filename])
+            img = scipy.misc.imread('__' + filename)
+            if np.mean(img) > 30:
+                low_number = low_number * -1
         return (high_number, low_number)
 
     def update_trace(self):
@@ -143,14 +158,54 @@ if __name__ == '__main__':
     top = (145,75)
     bottom = (250, 75)
     optimizer = optimize(top=top, bottom=bottom)
-    for i in range(2,7):
-        for j in range(1,6):
-            optimizer.set_brightness_and_contrast(brightness=(i*1000), contrast=(j*100))
-            time.sleep(3)
-            optimizer.find_coordinates()
-            (high, low) = optimizer.ocr('coords.png')
-            print i, j, high, low
 
+    klaf = open('data.pkl','rb')
+    result = pickle.load(klaf)
+    klaf.close()
+
+    fine_result = np.zeros((200,200,2))
+    
+
+    """
+    for i in range(0,50):
+        for j in range(0,50):
+            if result[i,j,0] > -19.0 and result[i,j,0] < 0:
+                print i,j    
+    """
+
+    """
+    optimizer.set_brightness_and_contrast(brightness=(a*200), contrast=(b*200))
+    print result[a,b,0]
+    result[a,b,0] = 17
+    output = open('data.pkl','wb')
+    pickle.dump(result, output, 1)
+    output.close()
+    """
+
+
+    """
+    #result = np.zeros((50,50,2))
+    for i in range(0,25):
+        for j in range(10,15):
+            b = i * 200
+            c = j * 200
+            optimizer.set_brightness_and_contrast(brightness=(b), contrast=(c))
+            time.sleep(2)
+            optimizer.find_coordinates()
+            optimizer.find_coordinates()
+            time.sleep(4)
+            (high, low) = optimizer.ocr('coords.png')
+            result[i, j, 0] = low
+            result[i, j, 1] = high
+            print b, c, high, low
+    """
+    #output = open('data.pkl','wb')
+    #pickle.dump(result, output, 1)
+    #output.close()
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111,projection='3d')
+    
+    #ax.plot_surface(result[0
     """
     optimizer.low_range_temp  = low
     optimizer.high_range_temp = high
