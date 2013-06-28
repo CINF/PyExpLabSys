@@ -33,6 +33,13 @@ class Polyscience_4100():
         success = value == '!'
         return success
 
+    def turn_unit_on(self, turn_on): 
+        if turn_on == True:
+            value = self.comm('SO1')
+        if turn_on == False:
+            value = self.comm('SO0')
+        return value
+
     def read_setpoint(self): 
         value = self.comm('RS')
         return float(value)
@@ -55,7 +62,7 @@ class Polyscience_4100():
             value = self.comm('RK')
         else:
             value = -99
-        return float(value)
+        return float(value)/100.0
 
     def read_flow_rate(self): 
         status = self.comm('RW')
@@ -85,9 +92,11 @@ class Polyscience_4100():
 
 if __name__ == '__main__':
     chiller = Polyscience_4100('/dev/ttyUSB0')
+
+    print chiller.turn_unit_on(True)
+
     print 'Setpoint: {0:.1f}'.format(chiller.read_setpoint())
     print 'Temperature: {0:.1f}'.format(chiller.read_temperature())
-    print 'Pressure: {0:.4f}'.format(chiller.read_pressure())
+    print 'Pressure: {0:.3f}'.format(chiller.read_pressure())
     print 'Status: ' + chiller.read_status()
-    print chiller.set_setpoint(22)
     print 'Ambient temperature: {0:.2f}'.format(chiller.read_ambient_temperature()) 
