@@ -7,19 +7,19 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         global setpoint
-        global rtd_val
+        global hp_temp
 
         recieved_data = self.request[0].strip()
         data = "test"
         socket = self.request[1]
 
-        if recieved_data[0:10] == "set_rtdval":
+        if recieved_data[0:11] == "set_hp_temp":
             val = float(recieved_data[11:].strip())
-            rtd_val = val
+            hp_temp = val
             data = "ok"
-        if recieved_data[0:11] == "read_rtdval":
-            print "read_rtdval"
-            data = str(rtd_val)
+        if recieved_data[0:12] == "read_hp_temp":
+            print "read_hp_temp"
+            data = str(hp_temp)
 
         if recieved_data[0:12] == "set_setpoint":
             val = float(recieved_data[13:].strip())
@@ -35,8 +35,8 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 if __name__ == "__main__":
     HOST, PORT = "130.225.86.188", 9990 #rasppi19
 
-    setpoint = -998
-    rtd_val = -888
+    hp_temp = -998
+    setpoint = -888
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()
