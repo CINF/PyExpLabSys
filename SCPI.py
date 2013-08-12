@@ -20,7 +20,7 @@ class SCPI:
             self.debug = False
         except Exception,e:
             self.debug = True
-            print "Debug mode: " + str(e)
+            #print "Debug mode: " + str(e)
 
     def scpi_comm(self,command):
         #print self.f.xonxoff

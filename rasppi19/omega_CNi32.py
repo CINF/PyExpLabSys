@@ -44,11 +44,45 @@ class omega_comm():
 
 
 if __name__ == '__main__':
-    #STM (ID: 02)
-    omega = omega_comm('/dev/ttyUSB0')
+
+    for i in range(0,10):
+        try:
+            print 'ttyUSB: ' + str(i)
+            omega = omega_comm('/dev/ttyUSB' + str(i))
+            print str(omega.IdentifyDevice().strip())
+            print "Temperature: " + str(omega.ReadTemperature())
+        except:
+            pass
+
+"""
+    # High pressure cell (ID: 01)
+    print 'ttyUSB1: '
+    omega = omega_comm('/dev/ttyUSB1')
+    print str(omega.IdentifyDevice().strip())
     print "Temperature: " + str(omega.ReadTemperature())
+    print ''
 
     # High pressure cell (ID: 01)
+    #print 'ttyUSB3: '
+    #omega = omega_comm('/dev/ttyUSB3')
+    #print str(omega.IdentifyDevice().strip())
+    #print "Temperature: " + str(omega.ReadTemperature())
+
+    # OldClusterSource (ID: 02)
+    print 'ttyUSB2: '
     omega = omega_comm('/dev/ttyUSB2')
+    print str(omega.IdentifyDevice().strip())
+    print "Temperature: " + str(omega.ReadTemperature())
+    print ''
+
+    # OldClusterSource (ID: 02)
+    print 'ttyUSB3: '
+    omega = omega_comm('/dev/ttyUSB3')
+    print str(omega.IdentifyDevice().strip())
     print "Temperature: " + str(omega.ReadTemperature())
 
+    print 'ttyUSB4: '
+    omega = omega_comm('/dev/ttyUSB3')
+    print str(omega.IdentifyDevice().strip())
+    print "Temperature: " + str(omega.ReadTemperature())
+"""
