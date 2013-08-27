@@ -23,32 +23,32 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 
         if recieved_data[0:13] == "read_setpoint":
             val = chiller.read_setpoint()
-            print "read_setpoint"
+            #print "read_setpoint"
             data = str(val)
 
         if recieved_data[0:11] == "read_status":
             val = chiller.read_status()
-            print "read_status"
+            #print "read_status"
             data = val
 
         if recieved_data[:] == "read_ambient_temperature":
             val = chiller.read_ambient_temperature()
-            print "read_ambient_temperature"
+            #print "read_ambient_temperature"
             data = str(val)
 
         if recieved_data[:] == "read_temperature":
             val = chiller.read_temperature()
-            print "read_temperature"
+            #print "read_temperature"
             data = str(val)
 
         if recieved_data[:] == "read_pressure":
             val = chiller.read_pressure()
-            print "read_pressure"
+            #print "read_pressure"
             data = str(val)
         
         if recieved_data[:] == "read_flow_rate":
             val = chiller.read_flow_rate()
-            print "read_flow_rate"
+            #print "read_flow_rate"
             data = str(val)
 
 

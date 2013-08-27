@@ -95,7 +95,10 @@ if __name__ == '__main__':
 
     #print chiller.turn_unit_on(True)
 
+    print '1'
     print 'Setpoint: {0:.1f}'.format(chiller.read_setpoint())
+    print '2'
+
     print 'Temperature: {0:.1f}'.format(chiller.read_temperature())
     print 'Flow rate: {0:.2f}'.format(chiller.read_flow_rate())
     print 'Pressure: {0:.3f}'.format(chiller.read_pressure())
