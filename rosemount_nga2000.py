@@ -46,6 +46,8 @@ class AK_comm():
         print "Signal: " + signal
         if signal[0] == "#":
             signal = signal[1:]
+        signal = signal.strip()
+        signal = signal.strip(chr(3))
 	return(float(signal))
 
     def ReadTemperature(self):
@@ -56,8 +58,15 @@ class AK_comm():
     def ReadUncorrelatedAnalogValue(self):
         command = 'AUKA K1'
 	signal = self.comm(command)
-	range = int(signal[1])
+        #print "Signal: " + signal
+	#range = int(signal[1])
 	sensor_output = signal[3:]
+        #for i in range(0, len(sensor_output)):
+        #    print ord(sensor_output[i])
+        sensor_output = sensor_output.strip()
+        sensor_output = sensor_output.strip(chr(3))
+
+        #print "Sensor output: " + sensor_output
 	return(int(sensor_output))
 
     def ReadOperationalHours(self):

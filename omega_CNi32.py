@@ -1,10 +1,11 @@
 import serial
 import time
+import FindSerialPorts
 
 class omega_comm():
 
     def __init__(self,port):
-        self.f = serial.Serial(port,9600,bytesize=serial.SEVENBITS,parity=serial.PARITY_ODD,timeout=2)
+        self.f = serial.Serial(port,9600,bytesize=serial.SEVENBITS,parity=serial.PARITY_ODD,timeout=1)
 	time.sleep(0.1)
 
     def comm(self,command):
@@ -29,14 +30,21 @@ class omega_comm():
         command = 'X01'
 	signal = self.comm(command)
         val = -9999
-        while val < -9998:
+        while val < -9998: #This error handling must be improved...
             try:
                 val = float(signal)
             except ValueError:
-                val = -9999
+                val = -9997
 	return(val)
 
 
 if __name__ == '__main__':
-    omega = omega_comm('/dev/ttyUSB0')
-    print "Temperature: " + str(omega.ReadTemperature())
+    ports = FindSerialPorts.find_ports()
+    for p in ports:
+        print p
+        omega = omega_comm('/dev/' + p)
+        if omega.ReadTemperature() > -9000:
+            print omega.ReadTemperature()
+            break
+
+    print omega.ReadTemperature()

@@ -57,8 +57,6 @@ class OmegaBus():
             setupstring += "Baud rate: 9600"  + "\n"
 
         bits_3 = (bin(int(byte3,16))[2:]).zfill(8)
-        print bits_3
-        print bits_3[0]
 
         setupstring += "Channel 3 enabled\n" if bits_3[0] == '1' else "Channel 3 disabled\n"
         setupstring += "Channel 2 enabled\n" if bits_3[1] == '1' else "Channel 2 disabled\n"
@@ -91,7 +89,10 @@ if __name__ == "__main__":
 
 
     #omega = OmegaBus()
-    #print omega.ReadValue(1)
+    print omega.ReadValue(1)
+    print omega.ReadValue(2)
+    print omega.ReadValue(3)
+    print omega.ReadValue(4)
     #print omega.ReadMin(1)
     #print omega.ReadMax(1)
 
