@@ -4,9 +4,29 @@ sys.path.append('../')
 import pentax_picture as pentax
 import omegabus
 import omega_CNi32
+import FindSerialPorts
 
-TC_reader = omegabus.OmegaBus()
-omega = omega_CNi32.omega_comm('/dev/ttyUSB0')
+ports = FindSerialPorts.find_ports()
+print ports
+for p in ports:
+    bus = omegabus.OmegaBus('/dev/' + p)
+    try:
+        break
+    except:
+        pass
+print 'Omegabus: ' + p
+
+for p in ports:
+    omegaCN = omega_CNi32.omega_comm('/dev/' + p)
+    if (omegaCN.ReadTemperature() > -9000):
+        break
+print 'Omega CNi: ' + p
+
+#TC_reader = omegabus.OmegaBus()
+TC_reader = bus
+
+#omega = omega_CNi32.omega_comm('/dev/ttyUSB0')
+omega = omegaCN
 
 #This specific raspberry pi handles temperature reading
 #And takes images with the pentax camera
