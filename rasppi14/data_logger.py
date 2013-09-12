@@ -13,7 +13,7 @@ import omega_CNi32
 
 
 def set_value(keyword,value):
-    print value
+    #print value
     HOST, PORT = "rasppi14", 9999
     data = "set_" + keyword +" " + str(value)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -46,19 +46,20 @@ def sqlInsert(query):
 class AKclass(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        ports = FindSerialPorts.find_ports()
         for p in ports:
             AK = nga.AK_comm('/dev/' + p)
             id = AK.IdentifyDevice()
             if not (id == 'Error'):
+                ports.remove(p)
                 break
         print 'IR measurement: ' + p
-        #self.nga = nga.AK_comm('/dev/ttyUSB3')
         self.nga = AK
 
     def run(self):
+        print self.nga.ReadConcentration()
         global ammonia_concentration
         global ammonia_raw_signal
+
         while not quit:
 	    ammonia_concentration = self.nga.ReadConcentration()
             set_value('rosemount_calibrated',ammonia_concentration)
@@ -69,11 +70,11 @@ class AKclass(threading.Thread):
 class omegaClass(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        ports = FindSerialPorts.find_ports()
         for p in ports:
             omega = omegabus.OmegaBus('/dev/' + p)
             try:
                 omega.ReadSetup()
+                ports.remove(p)
                 break
             except:
                 pass
@@ -100,10 +101,10 @@ class omegaClass(threading.Thread):
 class omegaCNClass(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        ports = FindSerialPorts.find_ports()
         for p in ports:
             omegaCN = omega_CNi32.omega_comm('/dev/' + p)
             if omegaCN.ReadTemperature() > -9000:
+                ports.remove(p)
                 break
         print 'Omega CNi: ' + p
         self.omega_CN = omegaCN
@@ -115,7 +116,7 @@ class omegaCNClass(threading.Thread):
             try:
                 time.sleep(3)
                 temp_5 = float(self.omega_CN.ReadTemperature())
-                print temp_5
+                #print temp_5
                 set_value('temperature_5',temp_5)
             except:
                 print sys.exc_info()[0]
@@ -142,12 +143,12 @@ class AKSaver(threading.Thread):
 		meas_time = sqlTime()
 		val = "%.7g" % ammonia_concentration
 		sql = "insert into ir_nh3_concentration_NH3Synth set time=\"" +  meas_time + "\", concentration = \"" + val + "\""
-                print sql
+                #print sql
 		sqlInsert(sql)
 
 		val = "%.9g" % ammonia_raw_signal
 		sql = "insert into ir_nh3_raw_NH3Synth set time=\"" +  meas_time + "\", value = \"" + val + "\""
-                print sql
+                #print sql
 		sqlInsert(sql)
 
 class omegaSaver(threading.Thread):
@@ -179,10 +180,10 @@ class omegaSaver(threading.Thread):
                 temp_2_sql = "insert into temperature2_NH3Synth set time=\"" +  meas_time + "\", temperature = " + val_temp_2
                 temp_3_sql = "insert into temperature3_NH3Synth set time=\"" +  meas_time + "\", temperature = " + val_temp_3
                 temp_4_sql = "insert into temperature4_NH3Synth set time=\"" +  meas_time + "\", temperature = " + val_temp_4
-                print temp_1_sql
-                print temp_2_sql
-                print temp_3_sql
-                print temp_4_sql
+                #print temp_1_sql
+                #print temp_2_sql
+                #print temp_3_sql
+                #print temp_4_sql
                 sqlInsert(temp_1_sql)
                 sqlInsert(temp_2_sql)
                 sqlInsert(temp_3_sql)
@@ -205,9 +206,11 @@ class omegaCNSaver(threading.Thread):
                 meas_time = sqlTime()
                 val_temp_5 = "%.2f" % temp_5
                 temp_5_sql = "insert into temperature5_NH3Synth set time=\"" +  meas_time + "\", temperature = " + val_temp_5
-                print temp_5_sql
+                #print temp_5_sql
                 sqlInsert(temp_5_sql)
 
+
+ports = FindSerialPorts.find_ports()
 				
 quit = False
 ammonia_concentration = 0
