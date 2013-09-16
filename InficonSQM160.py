@@ -54,7 +54,7 @@ class InficonSQM160():
         
     def show_version(self):
         command = '@'
-        print self.comm(command)
+        return(self.comm(command))
 
     def show_film_parameters(self,film):
         command = 'A1?'
@@ -66,19 +66,19 @@ class InficonSQM160():
         rate = float(value_string)
         return(rate)
 
-    def thickness(self,channel):
+    def thickness(self,channel=1):
         command = 'N' + str(channel)
         value_string = self.comm(command)
         thickness = float(value_string)        
         return(thickness)
         
-    def frequency(self,channel):
+    def frequency(self,channel=1):
         command = 'P' + str(channel)
         value_string = self.comm(command)
         frequency = float(value_string)        
         return(frequency)
 
-    def CrystalLife(self,channel):
+    def crystal_life(self,channel=1):
         command = 'R' + str(channel)
         value_string = self.comm(command)
         life = float(value_string)        
