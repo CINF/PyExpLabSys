@@ -2,92 +2,52 @@ import sys
 import SocketServer
 sys.path.append('../')
 import bronkhorst
+import mks_925_pirani as mks
 
 # Code for assigning the controllers to proper /dev/tty*
 name = {}
 
 bronk = bronkhorst.Bronkhorst('/dev/ttyUSB0')
-name[0] = bronk.read_serial()
-name[0] = name[0].strip()
+serial_name = bronk.read_serial()
+serial_name = serial_name.strip()
+if serial_name != '':
+    name[0] = serial_name
 
-'''
 bronk = bronkhorst.Bronkhorst('/dev/ttyUSB1')
-name[1] = bronk.read_serial()
-name[1] = name[1].strip()
+serial_name = bronk.read_serial()
+serial_name = serial_name.strip()
+if serial_name != '':
+    name[1] = serial_name
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB2')
-name[2] = bronk.read_serial()
-name[2] = name[2].strip()
+pirani = mks.mks_comm('/dev/ttyUSB0')
+serial_name = pirani.read_serial()
+serial_name = serial_name.strip()
+if serial_name != '':
+    name[0] = serial_name
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB3')
-name[3] = bronk.read_serial()
-name[3] = name[3].strip()
+pirani = mks.mks_comm('/dev/ttyUSB1')
+serial_name = pirani.read_serial()
+serial_name = serial_name.strip()
+if serial_name != '':
+    name[1] = serial_name
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB4')
-name[4] = bronk.read_serial()
-name[4] = name[4].strip()
+print name[0]
+print name[1]
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB5')
-name[5] = bronk.read_serial()
-name[5] = name[5].strip()
+## Array containing the controllers actually connected
+#bronk_present = {}
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB6')
-name[6] = bronk.read_serial()
-name[6] = name[6].strip()
+#counter = 0
+for i in range(0,2):
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
-name[7] = bronk.read_serial()
-name[7] = name[7].strip()
-'''
-
-# Array containing the controllers actually connected
-bronk_present = {}
-
-counter = 0
-for i in range(0,1):
-
-    if name[i] == 'M11210022A':
+    if name[i] == 'M8203814C':
         pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
-        print("pressure:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'pressure'
+        print("pressure: /dev/ttyUSB" + str(i) + ', serial:' + name[i])
         pressure.set_control_mode() #Change to accept setpoint from rs232 interface
-        counter = counter + 1
 
-    if name[i] == 'x':
-        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow1:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow1'
-        counter = counter + 1
-
-    if name[i] == 'x':
-        flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow2:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow2'
-        counter = counter + 1
-
-    if name[i] == 'x':
-        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
-        print("flow3:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow3'
-        counter = counter + 1
-
-    if name[i] == 'x':
-        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
-        print("flow4:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow4'
-        counter = counter + 1
-
-    if name[i] == 'x':
-        flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow5:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow5'
-        counter = counter + 1
-
-    if name[i] == 'x':
-        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
-        print("flow6:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow6'
-        counter = counter + 1
+    if name[i] == '1305957886':
+        pirani = mks.mks_comm('/dev/ttyUSB' + str(i))
+        print("pirani: /dev/ttyUSB" + str(i) + ', serial:' + name[i])
 
 #This specific raspberry pi communication with mass flow and pressure controllers
 class MyUDPHandler(SocketServer.BaseRequestHandler):
@@ -97,17 +57,21 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         data = "test"
         socket = self.request[1]
 
+        if received_data == "read_pirani":
+            print "read_pirani"
+            data = str(pirani.read_pressure())
+
         if received_data == "read_pressure":
             print "read_pressure"
-            data = str(pressure.read_measure())
+            data = str(pressure.read_measure()*1000)
 
         if received_data == "read_setpoint_pressure":
             print "read_setpoint_pressure"
-            data = str(pressure.read_setpoint())
+            data = str(pressure.read_setpoint()*1000)
 
         if received_data[0:13] == "set_pressure:":
             val = float(received_data[13:].strip())
-            pressure.set_setpoint(val)
+            pressure.set_setpoint(val / 1000.0)
             print "set_pressure"
             data = "ok"
 
