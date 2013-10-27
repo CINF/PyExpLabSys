@@ -178,6 +178,27 @@ class qmg_422():
         print "V08: " + self.comm('VO8') #-125..125,1V steps 
         print "V09: " + self.comm('VO9') #0..60    ,0.25V steps
 
+    def config_channel(self, channel, mass=-1, speed=-1, enable=""):
+        """ Config a MS channel for measurement """
+        self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
+        
+        if mass>-1:
+            self.comm('MFM ,' + str(mass))
+            
+        if speed>-1:
+            self.comm('MSD ,' + str(speed))
+            
+        if enable == "yes":
+            self.comm('AST ,0')
+        if enable == "no":
+            self.comm('AST ,1')
+
+        #Default values, not currently choosable from function parameters
+        self.comm('DSE ,0')  #Use default SEM voltage
+        self.comm('DTY ,1')  #Use SEM for ion detection
+        self.comm('AMO ,2')  #Auto-range
+        self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
+        self.comm('MRE ,15') #Peak resolution
 
     def mass_scan(self, first_mass, scan_width):
         self.qmg.comm('CYM, 0') #0, single. 1, multi

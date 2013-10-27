@@ -57,46 +57,9 @@ class qms():
         """ Chekcs wheter the instruments returns real or simulated data """
         self.qmg.simulation()
 
-    def qms_status(self):
-        """ Returns a string with the current status of the instrument """
-        ret_string = self.comm('ESQ')
-        n = ret_string.find(',')
-
-        sn = int(ret_string[0:n]) #status_number
-        st = "" #Status txt
-
-        st += 'Cycle ' + ('Run' if (sn % 2) == 1 else 'Halt')
-        sn = sn/2
-        st = st + '\n' + ('Multi' if (sn % 2) == 1 else 'Mono')
-        sn = sn/2
-        st = st + '\n' + 'Emission ' + ('on' if (sn % 2) == 1 else 'off')
-        sn = sn/2
-        st += '\nSEM ' + ('on' if (sn % 2) == 1 else 'off')
-        sn = sn/2
-        #The rest of the status bits is not currently used
-        return st
-
     def config_channel(self, channel, mass=-1, speed=-1, enable=""):
-        """ Config a MS channel for measurement """
-        self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
-        
-        if mass>-1:
-            self.comm('MFM ,' + str(mass))
-            
-        if speed>-1:
-            self.comm('MSD ,' + str(speed))
-            
-        if enable == "yes":
-            self.comm('AST ,0')
-        if enable == "no":
-            self.comm('AST ,1')
+        self.qmg.config_channel(channel, mass, speed, enable)
 
-        #Default values, not currently choosable from function parameters
-        self.comm('DSE ,0')  #Use default SEM voltage
-        self.comm('DTY ,1')  #Use SEM for ion detection
-        self.comm('AMO ,2')  #Auto-range
-        self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
-        self.comm('MRE ,15') #Peak resolution
 
     def create_mysql_measurement(self, channel, timestamp, masslabel, comment,
                                  metachannel=False, type=5):
@@ -107,8 +70,6 @@ class qms():
         auto-generated.
         
         """
-        #cnxn = MySQLdb.connect(host="servcinf", user="microreactor", 
-        #                       passwd="microreactor", db="cinfdata")
         cnxn = MySQLdb.connect(host="servcinf", user=self.chamber, 
                                passwd=self.chamber, db="cinfdata")
 
@@ -225,10 +186,7 @@ class qms():
 
         comment = 'Test scan - qgm420'
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4, metachannel=True)
-        #NOT A META-CHANNEL. Update create_mysql_measurement
-        print id
-        print len(data['x'])
+        id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
         for i in range(0, len(data['x'])):
             query = 'insert into xy_values_' + self.chamber + ' set measurement = ' + str(id) + ', x = ' + str(data['x'][i]) + ', y = ' + str(data['y'][i])
             self.sqlqueue.put(query)

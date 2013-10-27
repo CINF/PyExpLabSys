@@ -4,6 +4,27 @@ import logging
 
 class qmg_420():
 
+    def speeds(self, n):
+        speeds = {}
+        speeds[0]  = 0.0005
+        speeds[1]  = 0.001
+        speeds[2]  = 0.002
+        speeds[3]  = 0.005
+        speeds[4]  = 0.01
+        speeds[5]  = 0.02
+        speeds[6]  = 0.05
+        speeds[7]  = 0.1
+        speeds[8]  = 0.2
+        speeds[9]  = 0.5
+        speeds[10] = 1
+        speeds[11] = 2
+        speeds[12] = 5
+        speeds[13] = 10
+        speeds[14] = 20
+        speeds[15] = 60
+        return speeds[n]
+
+
     def __init__(self):
         self.f = serial.Serial('/dev/ttyUSB0',9600)
         self.type = '420'
@@ -26,7 +47,7 @@ class qmg_420():
                           ": Contains: " + debug_info)            
         ret = " "
 
-        commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA', 'CHM', 'SPE', 'FIR', 'WID','RUN', 'STP', 'RAN']
+        commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA', 'CHM', 'SPE', 'FIR', 'WID','RUN', 'STP', 'RAN', 'CHA', 'SYN']
         self.f.write(command + '\r')
         mem = command.split(' ')[0]
         if not mem in commands_without_reply:
@@ -35,6 +56,13 @@ class qmg_420():
             ret_string = ""
         ret_string = ret_string.replace('\n','')
         ret_string = ret_string.replace('\r','')
+        return ret_string
+
+
+    def status(self, command, index):
+        status = self.comm(command)
+        data = status[:-2].split(',')
+        ret_string = data[index]
         return ret_string
 
 
@@ -66,6 +94,13 @@ class qmg_420():
         
         return sem_voltage, sem_on
 
+
+    def speed(self, speed):
+        if speed > 3:
+            self.comm('SPE ' + str(speed))
+        return self.speeds(speed)
+
+
     def emission_status(self, current=-1, turn_off=False, turn_on=False):
         """ Get or set the emission status. """
 
@@ -84,14 +119,27 @@ class qmg_420():
     def detector_status(self, SEM=False, faraday_cup=False):
        return 'Not possible on this model'
 
+
     def read_voltages(self):
         print 'Not possible on this QMG model'
 
-    def status(self, command, index):
-        status = self.comm(command)
-        data = status[:-2].split(',')
-        ret_string = data[index]
-        return ret_string
+
+    def set_channel(self, channel):
+        self.comm('CHA ' + str(channel)) #Select the relevant channel       
+
+
+    def read_sem_voltage(self):
+        sem_voltage = self.status('RDE', 4)
+        return sem_voltage
+
+    def read_preamp_range(self):
+        preamp_range = self.status('RDE', 1)
+        return preamp_range
+
+    def read_timestep(self):
+        timestep = self.status('RSC', 5)
+        return timestep
+
 
     def mass_scan(self, first_mass, scan_width):
         self.comm('FIR ' + str(first_mass))
@@ -100,14 +148,28 @@ class qmg_420():
         self.comm('CHA 0')
         self.comm('CHM 0') # Mass scan, to enable FIR filter, set value to 1
 
-        steps = self.comm('RSC').split(',')[7]
+        self.speed(5)
+
+        status = self.comm('RSC').split(',')
+        steps = status[7]
+        speed = status[5]
+        print status
+        print speed
+
         if steps == '0':
            measurements_pr_step = 64
         if steps == '1':
            measurements_pr_step = 32
         if steps == '2':
            measurements_pr_step = 16
+
+        if speed < 3:
+            measurements_pr_step = measurements_pr_step / 2    
             
+        if speed < 1:
+            measurements_pr_step = measurements_pr_step / 2    
+
+
         number_of_samples = measurements_pr_step * scan_width
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
         print samples_pr_unit
@@ -117,9 +179,8 @@ class qmg_420():
         print self.comm('STW')[8]
         running = self.comm('STW')[6] == '0'
         while running:
-           print self.comm('HEA')
            running = self.comm('STW')[6] == '0'
-           time.sleep(0.5)
+           time.sleep(1)
 
         t = time.time()
         header = self.comm('HEA').split(',')
@@ -130,7 +191,7 @@ class qmg_420():
         
         for i in range(0,number_of_samples):
            val = self.comm(chr(5))
-           data['y'].append(float(val))
+           data['y'].append(float(val) + 1e-5)
            data['x'].append(first_mass + i / samples_pr_unit)
 
         return data

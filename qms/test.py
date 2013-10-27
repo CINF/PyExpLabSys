@@ -15,6 +15,8 @@ sql_saver.start()
 
 
 qmg = qmg420.qmg_420()
+qmg.comm('SYN 1') #Power line supression
+
 qmg.comm('RAN 5')
 qms = qms.qms(qmg, sql_queue)
 
@@ -22,9 +24,9 @@ print qms.emission_status(turn_on = True)
 
 print qms.sem_status(turn_on = True)
 
-qms.mass_scan()
+qms.mass_scan(0, 20)
 
-time.sleep(10) # Allow time for the sql_saver to empty
+time.sleep(2) # Allow time for the sql_saver to empty
 
 #print qmg.comm('RSC')
 
