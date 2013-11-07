@@ -60,7 +60,7 @@ class qms():
         self.qmg.simulation()
 
     def config_channel(self, channel, mass=-1, speed=-1, amp_range=0, enable=""):
-        self.qmg.config_channel(channel, mass, speed, enable)
+        self.qmg.config_channel(channel, mass=mass, speed=speed, amp_range=amp_range, enable=enable)
 
 
     def create_mysql_measurement(self, channel, timestamp, masslabel, comment,
@@ -110,7 +110,7 @@ class qms():
 
         ids = {}
         
-        for i in range(0,64):
+        for i in range(0,16):
             self.config_channel(i, mass=99, speed=1, amp_range=-1,enable='no')
 
         comment = channel_list[0]['comment']
@@ -130,63 +130,54 @@ class qms():
     def mass_time(self,ms_channel_list, timestamp):
         self.operating_mode = "Mass Time"
         self.stop = False
-   
         ns = len(ms_channel_list) - 1
+        logging.warn(ns)
         self.qmg.mass_time(ns)
 
         start_time = time.time()
         ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=False)
         self.current_timestamp = ids[0]
+        
+        self.qmg.set_channel(1)
+        logging.error(self.qmg.comm('RSC'))
     
         while self.stop == False:
             logging.warn('Dav Dav')
+            logging.error('Value before starting: ' + self.qmg.comm(chr(5)))
             self.qmg.start_measurement()
             time.sleep(0.1)
             channel = 0
-            try:
-                running = self.qmg.measurement_running()
-            except:
-                running = True
-                logging.warn('Could not read status, continuing measurement')
-            while running: 
-                try:
-                    running = self.qmg.measurement_running()
-                    logging.warn(running)
-                except:
-                    running = False
-                    logging.warn('Could not read status, continuing measurement')
-                #for j in range(0,int(status[3])):
-                #for j in range(0, qmg.waiting_samples()):
-                logging.error(ns)
-                for j in range(0, ns):
-                    self.measurement_runtime = time.time()-start_time
-                    #value = self.comm('MDB')
-                    error = 0
-                    logging.warn('Iteration: ' + str(j))
-                    while (qmg.waiting_samples() == 0) and (error < 40):
-                        time.sleep(0.2)
-                        error = error + 1
-                        logging.warn(error)
-                    if error > 39:
-                        break
-                    value = self.qmg.comm(chr(5))
-                    channel = channel + 1
-                    self.channel_list[channel]['value'] = value
-                    sqltime = str((time.time() - start_time) * 1000)
-                    query  = 'insert into '
-                    query += 'xy_values_' + self.chamber + ' '
-                    query += 'set measurement="' + str(ids[channel])
-                    query += '", x="' + sqltime + '", y="' + value + '"'
-                    #if ord(value[0]) == 134:
-                    #    running = 1
-                    #    logging.warn('Bad value: ' + query)
-                    #    break
-                    #else:
-                    #logging.warn(query)
-                    self.sqlqueue.put(query)
-                    channel = channel % (len(ids)-1)
-                    time.sleep(0.5)
-                time.sleep(0.1)
+            for j in range(0, ns):
+                self.measurement_runtime = time.time()-start_time
+                #value = self.comm('MDB')
+                error = 0
+                logging.warn('Iteration: ' + str(j))
+                while (qmg.waiting_samples() == 0) and (error < 40):
+                    time.sleep(0.2)
+                    error = error + 1
+                    logging.warn(error)
+                if error > 39:
+                    break
+                value = self.qmg.comm(chr(5))
+                logging.warn(value)
+                channel = channel + 1
+                self.channel_list[channel]['value'] = value
+                sqltime = str((time.time() - start_time) * 1000)
+                query  = 'insert into '
+                query += 'xy_values_' + self.chamber + ' '
+                query += 'set measurement="' + str(ids[channel])
+                query += '", x="' + sqltime + '", y="' + value + '"'
+                #if ord(value[0]) == 134:
+                #    running = 1
+                #    logging.warn('Bad value: ' + query)
+                #    break
+                #else:
+                #logging.warn(query)
+                self.sqlqueue.put(query)
+                #channel = channel % (len(ids)-1)
+                #channel = channel + 1
+                time.sleep(0.5)
+            time.sleep(0.1)
         self.operating_mode = "Idling"
         
 
@@ -200,6 +191,7 @@ class qms():
         for i in range(0, len(data['x'])):
             query = 'insert into xy_values_' + self.chamber + ' set measurement = ' + str(id) + ', x = ' + str(data['x'][i]) + ', y = ' + str(data['y'][i])
             self.sqlqueue.put(query)
+        time.sleep(10)
         
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
@@ -211,7 +203,8 @@ if __name__ == "__main__":
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
-      
+    #qms.mass_scan()
+    
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
@@ -224,8 +217,15 @@ if __name__ == "__main__":
     channel_list[2] = {'mass':4,'speed':9, 'amp_range':5, 'masslabel':'M4'}
     channel_list[3] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
     channel_list[4] = {'mass':28,'speed':9, 'amp_range':5, 'masslabel':'M28'}
-    channel_list[5] = {'mass':32,'speed':9, 'amp_range':5, 'masslabel':'M32'}
-    channel_list[6] = {'mass':44,'speed':10, 'amp_range':5, 'masslabel':'M44'}
+    channel_list[5] = {'mass':28,'speed':9, 'amp_range':5, 'masslabel':'M28'}
+    channel_list[6] = {'mass':28,'speed':9, 'amp_range':5, 'masslabel':'M28'}
+    channel_list[7] = {'mass':32,'speed':9, 'amp_range':5, 'masslabel':'M32'}
+    channel_list[8] = {'mass':44,'speed':10, 'amp_range':5, 'masslabel':'M44'}
+    channel_list[9] = {'mass':28,'speed':10, 'amp_range':5, 'masslabel':'M28S'}
+    channel_list[10] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
+    channel_list[11] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
+    channel_list[12] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
+    channel_list[13] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -247,3 +247,4 @@ if __name__ == "__main__":
     print qms.mass_time(channel_list, timestamp)
     #qmg.scan_test()
     printer.stop()
+

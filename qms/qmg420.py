@@ -186,7 +186,7 @@ class qmg_420():
             self.comm('STA 1')
         if enable == "no":
             self.comm('STA 0')
-
+ 
         #Default values, not currently choosable from function parameters
         #self.comm('DSE ,0')  #Use default SEM voltage
         #self.comm('DTY ,1')  #Use SEM for ion detection
@@ -195,14 +195,16 @@ class qmg_420():
         #self.comm('MRE ,15') #Peak resolution
 
 
+
     def mass_scan(self, first_mass, scan_width):
         self.comm('FIR ' + str(first_mass))
         self.comm('WID ' + str(scan_width))
         self.comm('OPM 0')
         self.comm('CHA 0')
         self.comm('CHM 0') # Mass scan, to enable FIR filter, set value to 1
+        self.comm('STA 1')
 
-        self.speed(5)
+        self.speed(8)
 
         status = self.comm('RSC').split(',')
         steps = status[7]
@@ -230,6 +232,7 @@ class qmg_420():
         running = self.measurement_running()
         while running:
            running = self.measurement_running()
+           print running
            time.sleep(1)
 
         t = time.time()
@@ -241,6 +244,7 @@ class qmg_420():
         
         for i in range(0,number_of_samples):
            val = self.comm(chr(5))
+           print i
            data['y'].append(float(val) + 1e-5)
            data['x'].append(first_mass + i / samples_pr_unit)
 
