@@ -14,6 +14,8 @@ import SQL_saver
 import qmg_status_output
 import qmg_meta_channels
 
+import qmg420
+
 
 class qms():
 
@@ -57,7 +59,7 @@ class qms():
         """ Chekcs wheter the instruments returns real or simulated data """
         self.qmg.simulation()
 
-    def config_channel(self, channel, mass=-1, speed=-1, enable=""):
+    def config_channel(self, channel, mass=-1, speed=-1, amp_range=0, enable=""):
         self.qmg.config_channel(channel, mass, speed, enable)
 
 
@@ -107,10 +109,14 @@ class qms():
         #TODO: Implement various ways of creating the channel-list
 
         ids = {}
+        
+        for i in range(0,64):
+            self.config_channel(i, mass=99, speed=1, amp_range=-1,enable='no')
+
         comment = channel_list[0]['comment']
         for i in range(1,len(channel_list)):
             ch = channel_list[i]
-            self.config_channel(channel=i, mass=ch['mass'], speed=ch['speed'], enable="yes")
+            self.config_channel(channel=i, mass=ch['mass'], speed=ch['speed'], amp_range=ch['amp_range'], enable="yes")
             self.channel_list[i] = {'masslabel':ch['masslabel'],'value':'-'}
             
             if no_save == False:
@@ -124,59 +130,63 @@ class qms():
     def mass_time(self,ms_channel_list, timestamp):
         self.operating_mode = "Mass Time"
         self.stop = False
-        
+   
         ns = len(ms_channel_list) - 1
-        self.comm('CYM ,1') #0, single. 1, multi
-        self.comm('CTR ,0') #Trigger mode, 0=auto trigger
-        self.comm('CYS ,1') #Number of repetitions
-        self.comm('CBE ,1') #First measurement channel in multi mode
-        self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
+        self.qmg.mass_time(ns)
 
         start_time = time.time()
         ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=False)
         self.current_timestamp = ids[0]
     
         while self.stop == False:
-            self.comm('CRU ,2') #Start measurement
+            logging.warn('Dav Dav')
+            self.qmg.start_measurement()
             time.sleep(0.1)
-            status = self.comm('MBH')
-            status = status.split(',')
             channel = 0
             try:
-                running = int(status[0])
+                running = self.qmg.measurement_running()
             except:
-                running = 1
+                running = True
                 logging.warn('Could not read status, continuing measurement')
-            while running == 0: 
-                status = self.comm('MBH',debug=False)
-                status = status.split(',')
+            while running: 
                 try:
-                    running = int(status[0])
+                    running = self.qmg.measurement_running()
+                    logging.warn(running)
                 except:
-                    running = 1
+                    running = False
                     logging.warn('Could not read status, continuing measurement')
-                if len(status)>3:
-                    for j in range(0,int(status[3])):
-                        self.measurement_runtime = time.time()-start_time
-                        value = self.comm('MDB')
-                        channel = channel + 1
-                        self.channel_list[channel]['value'] = value
-                        sqltime = str((time.time() - start_time) * 1000)
-                        query  = 'insert into '
-                        query += 'xy_values_' + self.chamber + ' '
-                        query += 'set measurement="' + str(ids[channel])
-                        query += '", x="' + sqltime + '", y="' + value + '"'
-                        if ord(value[0]) == 134:
-                            running = 1
-                            logging.warn('Bad value: ' + query)
-                            break
-                        else:
-                            self.sqlqueue.put(query)
-                        channel = channel % (len(ids)-1)
-                        time.sleep(0.05)
-                    time.sleep(0.1)
-                else:
-                    logging.error("Status error, continuing measurement")
+                #for j in range(0,int(status[3])):
+                #for j in range(0, qmg.waiting_samples()):
+                logging.error(ns)
+                for j in range(0, ns):
+                    self.measurement_runtime = time.time()-start_time
+                    #value = self.comm('MDB')
+                    error = 0
+                    logging.warn('Iteration: ' + str(j))
+                    while (qmg.waiting_samples() == 0) and (error < 40):
+                        time.sleep(0.2)
+                        error = error + 1
+                        logging.warn(error)
+                    if error > 39:
+                        break
+                    value = self.qmg.comm(chr(5))
+                    channel = channel + 1
+                    self.channel_list[channel]['value'] = value
+                    sqltime = str((time.time() - start_time) * 1000)
+                    query  = 'insert into '
+                    query += 'xy_values_' + self.chamber + ' '
+                    query += 'set measurement="' + str(ids[channel])
+                    query += '", x="' + sqltime + '", y="' + value + '"'
+                    #if ord(value[0]) == 134:
+                    #    running = 1
+                    #    logging.warn('Bad value: ' + query)
+                    #    break
+                    #else:
+                    #logging.warn(query)
+                    self.sqlqueue.put(query)
+                    channel = channel % (len(ids)-1)
+                    time.sleep(0.5)
+                time.sleep(0.1)
         self.operating_mode = "Idling"
         
 
@@ -197,10 +207,12 @@ if __name__ == "__main__":
     sql_saver.daemon = True
     sql_saver.start()
 
-    qms = qms(sql_queue)
+    qmg = qmg420.qmg_420()
+
+    qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
       
-    printer = qmg_status_output.qmg_status_output(qmg,sql_saver_instance=sql_saver)
+    printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
  
@@ -208,39 +220,30 @@ if __name__ == "__main__":
     
     channel_list = {}
     channel_list[0] = {'comment':'DELETE'}
-    channel_list[1] = {'mass':2,'speed':9, 'masslabel':'M2'}
-    channel_list[2] = {'mass':4,'speed':9, 'masslabel':'M15'}
-    channel_list[3] = {'mass':15,'speed':10, 'masslabel':'M18'}
-    channel_list[4] = {'mass':28,'speed':9, 'masslabel':'M28'}
-    channel_list[5] = {'mass':32,'speed':9, 'masslabel':'M32'}
-    channel_list[6] = {'mass':44,'speed':10, 'masslabel':'M44'}
+    channel_list[1] = {'mass':2,'speed':9, 'amp_range':5, 'masslabel':'M2'}
+    channel_list[2] = {'mass':4,'speed':9, 'amp_range':5, 'masslabel':'M4'}
+    channel_list[3] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
+    channel_list[4] = {'mass':28,'speed':9, 'amp_range':5, 'masslabel':'M28'}
+    channel_list[5] = {'mass':32,'speed':9, 'amp_range':5, 'masslabel':'M32'}
+    channel_list[6] = {'mass':44,'speed':10, 'amp_range':5, 'masslabel':'M44'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    meta_udp = qmg_meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
-    meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
-    meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
-    meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
-    meta_udp.create_channel('RTD Temperature', 'rasppi05', 9992, 'read_rtdval')
-    meta_udp.daemon = True
-    meta_udp.start()
 
-    meta_flow = qmg_meta_channels.compound_udp_meta_channel(qmg, timestamp, channel_list[0]['comment'],5,'rasppi16',9998, 'read_all')
-    meta_flow.create_channel('Sample Pressure',0)
-    meta_flow.create_channel('Flow, H2',4)
-    meta_flow.create_channel('Flow, CO',6)
-    meta_flow.daemon = True
-    meta_flow.start()
+    #meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list[0]['comment'], 5)
+    #meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
+    #meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
+    #meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
+    #meta_udp.create_channel('RTD Temperature', 'rasppi05', 9992, 'read_rtdval')
+    #meta_udp.daemon = True
+    #meta_udp.start()
+
+    #meta_flow = qmg_meta_channels.compound_udp_meta_channel(qms, timestamp, channel_list[0]['comment'],5,'rasppi16',9998, 'read_all')
+    #meta_flow.create_channel('Sample Pressure',0)
+    #meta_flow.create_channel('Flow, H2',4)
+    #meta_flow.create_channel('Flow, CO',6)
+    #meta_flow.daemon = True
+    #meta_flow.start()
     
-    print qmg.mass_time(channel_list, timestamp)
+    print qms.mass_time(channel_list, timestamp)
     #qmg.scan_test()
     printer.stop()
-    #print qmg.read_voltages()
-    #print qmg.qms_status()
-    print qmg.sem_status(voltage=1600, turn_on=True)
-    print qmg.emission_status(current=0.1,turn_on=True)
-    #print qmg.detector_status()
-    #qmg.read_voltages()
-    #print qmg.simulation()
-    #print qmg.scan_test()
-    #print qmg.single_mass()
-    print qmg.qms_status()

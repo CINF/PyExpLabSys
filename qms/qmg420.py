@@ -47,7 +47,7 @@ class qmg_420():
                           ": Contains: " + debug_info)            
         ret = " "
 
-        commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA', 'CHM', 'SPE', 'FIR', 'WID','RUN', 'STP', 'RAN', 'CHA', 'SYN']
+        commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA', 'CHM', 'SPE', 'FIR', 'WID','RUN', 'STP', 'RAN', 'CHA', 'SYN', 'CYC', 'STA']
         self.f.write(command + '\r')
         mem = command.split(' ')[0]
         if not mem in commands_without_reply:
@@ -140,6 +140,60 @@ class qmg_420():
         timestep = self.status('RSC', 5)
         return timestep
 
+    def measurement_running(self):
+        running = self.comm('STW')[6] == '0'
+        return running
+
+    def mass_time(self, ns):
+        self.comm('OPM 1') #0, single. 1, multi
+        #self.comm('CTR ,0') #Trigger mode, 0=auto trigger
+        self.comm('CYC 1') #Number of repetitions
+        #self.comm('CBE ,1') #First measurement channel in multi mode
+        #self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
+
+    def start_measurement(self):
+        self.comm('RUN')
+
+    def waiting_samples(self):
+        length = int(self.comm('RBC'))
+        if length > 2:
+            samples = length - 2
+        else:
+            length = 0
+        return length
+
+    def communication_mode(self, computer_control=False):
+        return ''
+
+    def first_mass(self, mass):
+        self.comm('FIR ' + str(mass))
+
+    def config_channel(self, channel, mass=-1, speed=-1, amp_range=-1,enable=""):
+        """ Config a MS channel for measurement """
+        self.set_channel(channel)
+        self.comm('OPM 1')
+        
+        if mass>-1:
+            self.first_mass(mass)
+            
+        if speed>-1:
+            self.speed(speed)
+
+        if amp_range>-1:
+            self.comm('RAN ' + str(amp_range))
+            
+        if enable == "yes":
+            self.comm('STA 1')
+        if enable == "no":
+            self.comm('STA 0')
+
+        #Default values, not currently choosable from function parameters
+        #self.comm('DSE ,0')  #Use default SEM voltage
+        #self.comm('DTY ,1')  #Use SEM for ion detection
+        self.comm('CHM 2')  #Single mass measurement (opposed to mass-scan)
+        #self.comm('CHM 3')  #peak processor
+        #self.comm('MRE ,15') #Peak resolution
+
 
     def mass_scan(self, first_mass, scan_width):
         self.comm('FIR ' + str(first_mass))
@@ -169,17 +223,13 @@ class qmg_420():
         if speed < 1:
             measurements_pr_step = measurements_pr_step / 2    
 
-
         number_of_samples = measurements_pr_step * scan_width
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
-        print samples_pr_unit
-        self.comm('RUN')
+        self.start_measurement()
         time.sleep(0.5)
-        print self.comm('HEA')
-        print self.comm('STW')[8]
-        running = self.comm('STW')[6] == '0'
+        running = self.measurement_running()
         while running:
-           running = self.comm('STW')[6] == '0'
+           running = self.measurement_running()
            time.sleep(1)
 
         t = time.time()

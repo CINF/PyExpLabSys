@@ -178,6 +178,9 @@ class qmg_422():
         print "V08: " + self.comm('VO8') #-125..125,1V steps 
         print "V09: " + self.comm('VO9') #0..60    ,0.25V steps
 
+    def start_measurement(self):
+        self.comm('CRU ,2') 
+
     def config_channel(self, channel, mass=-1, speed=-1, enable=""):
         """ Config a MS channel for measurement """
         self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
@@ -199,6 +202,7 @@ class qmg_422():
         self.comm('AMO ,2')  #Auto-range
         self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
         self.comm('MRE ,15') #Peak resolution
+
 
     def mass_scan(self, first_mass, scan_width):
         self.qmg.comm('CYM, 0') #0, single. 1, multi
@@ -248,3 +252,11 @@ class qmg_422():
             data['x'].append(first_mass + i / samples_pr_unit)
                         output_string += val + '\n'
         print time.time() - start
+
+
+    def mass_time(self, ns):
+        self.comm('CYM ,1') #0, single. 1, multi
+        self.comm('CTR ,0') #Trigger mode, 0=auto trigger
+        self.comm('CYS ,1') #Number of repetitions
+        self.comm('CBE ,1') #First measurement channel in multi mode
+        self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
