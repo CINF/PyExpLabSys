@@ -107,13 +107,14 @@ class qms():
     def create_ms_channellist(self, channel_list, timestamp, no_save=False):
         """ This function creates the channel-list and the associated mysql-entries """
         #TODO: Implement various ways of creating the channel-list
-
+        #TODO: Implement version 2.0 of autorange with deeper autorange
         ids = {}
         
         for i in range(0,16):
             self.config_channel(i, mass=99, speed=1, amp_range=-1,enable='no')
 
         comment = channel_list[0]['comment']
+        autorange = channel_list[0]['autorange']
         for i in range(1,len(channel_list)):
             ch = channel_list[i]
             self.config_channel(channel=i, mass=ch['mass'], speed=ch['speed'], amp_range=ch['amp_range'], enable="yes")
@@ -150,7 +151,6 @@ class qms():
                 while (qmg.waiting_samples() == 0) and (error < 40):
                     time.sleep(0.2)
                     error = error + 1
-                    logging.warn(error)
                 if error > 39:
                     logging.error('Sample did arrive on time')
                     break
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     time.sleep(1)
     
     channel_list = {}
-    channel_list[0] = {'comment':'DELETE'}
+    channel_list[0] = {'comment':'DELETE','autorange':True}
     channel_list[1] = {'mass':2,'speed':10, 'amp_range':6, 'masslabel':'M2'}
     channel_list[2] = {'mass':4,'speed':10, 'amp_range':6, 'masslabel':'M4'}
     channel_list[3] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
