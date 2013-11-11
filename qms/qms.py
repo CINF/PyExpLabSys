@@ -138,12 +138,8 @@ class qms():
         ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=False)
         self.current_timestamp = ids[0]
         
-        self.qmg.set_channel(1)
-        logging.error(self.qmg.comm('RSC'))
-    
         while self.stop == False:
-            logging.warn('Dav Dav')
-            logging.error('Value before starting: ' + self.qmg.comm(chr(5)))
+            self.qmg.set_channel(1)
             self.qmg.start_measurement()
             time.sleep(0.1)
             channel = 0
@@ -151,32 +147,29 @@ class qms():
                 self.measurement_runtime = time.time()-start_time
                 #value = self.comm('MDB')
                 error = 0
-                logging.warn('Iteration: ' + str(j))
                 while (qmg.waiting_samples() == 0) and (error < 40):
                     time.sleep(0.2)
                     error = error + 1
                     logging.warn(error)
                 if error > 39:
+                    logging.error('Sample did arrive on time')
                     break
                 value = self.qmg.comm(chr(5))
                 logging.warn(value)
                 channel = channel + 1
                 self.channel_list[channel]['value'] = value
                 sqltime = str((time.time() - start_time) * 1000)
-                query  = 'insert into '
-                query += 'xy_values_' + self.chamber + ' '
-                query += 'set measurement="' + str(ids[channel])
-                query += '", x="' + sqltime + '", y="' + value + '"'
-                #if ord(value[0]) == 134:
-                #    running = 1
-                #    logging.warn('Bad value: ' + query)
-                #    break
-                #else:
-                #logging.warn(query)
+                if value == "":
+                    break
+                else:
+                    value = float(value)
+                    value = value / 10**(ms_channel_list[j+1]['amp_range']+5)
+                    query  = 'insert into '
+                    query += 'xy_values_' + self.chamber + ' '
+                    query += 'set measurement="' + str(ids[channel])
+                    query += '", x="' + sqltime + '", y="' + str(value) + '"'
                 self.sqlqueue.put(query)
-                #channel = channel % (len(ids)-1)
-                #channel = channel + 1
-                time.sleep(0.5)
+                time.sleep(0.25)
             time.sleep(0.1)
         self.operating_mode = "Idling"
         
@@ -213,19 +206,13 @@ if __name__ == "__main__":
     
     channel_list = {}
     channel_list[0] = {'comment':'DELETE'}
-    channel_list[1] = {'mass':2,'speed':9, 'amp_range':5, 'masslabel':'M2'}
-    channel_list[2] = {'mass':4,'speed':9, 'amp_range':5, 'masslabel':'M4'}
+    channel_list[1] = {'mass':2,'speed':10, 'amp_range':6, 'masslabel':'M2'}
+    channel_list[2] = {'mass':4,'speed':10, 'amp_range':6, 'masslabel':'M4'}
     channel_list[3] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
-    channel_list[4] = {'mass':28,'speed':9, 'amp_range':5, 'masslabel':'M28'}
-    channel_list[5] = {'mass':28,'speed':9, 'amp_range':5, 'masslabel':'M28'}
-    channel_list[6] = {'mass':28,'speed':9, 'amp_range':5, 'masslabel':'M28'}
-    channel_list[7] = {'mass':32,'speed':9, 'amp_range':5, 'masslabel':'M32'}
-    channel_list[8] = {'mass':44,'speed':10, 'amp_range':5, 'masslabel':'M44'}
-    channel_list[9] = {'mass':28,'speed':10, 'amp_range':5, 'masslabel':'M28S'}
-    channel_list[10] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
-    channel_list[11] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
-    channel_list[12] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
-    channel_list[13] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
+    channel_list[4] = {'mass':28,'speed':10, 'amp_range':5, 'masslabel':'M28'}
+    channel_list[5] = {'mass':28,'speed':10, 'amp_range':6, 'masslabel':'M28L'}
+    channel_list[6] = {'mass':32,'speed':10, 'amp_range':6, 'masslabel':'M32'}
+    channel_list[7] = {'mass':44,'speed':10, 'amp_range':6, 'masslabel':'M44'}
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 
