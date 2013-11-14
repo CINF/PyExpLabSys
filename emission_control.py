@@ -41,9 +41,13 @@ class CursesTui(threading.Thread):
             n = self.screen.getch()
             if n == ord('q'):
                 self.eci.running = False
+            if n == ord('i'):
+                self.eci.setpoint = self.eci.setpoint + 0.1
+            if n == ord('d'):
+                self.eci.setpoint = self.eci.setpoint - 0.1
 
             self.screen.refresh()
-            time.sleep(1)
+            time.sleep(0.2)
 
     def stop(self):
         curses.nocbreak()
@@ -67,10 +71,10 @@ class EmissionControl(threading.Thread):
         self.setpoint = 0.2
         self.emission_current = 999
         self.pid = PID.PID()
-        self.pid.Kp = 2
-        self.pid.Ki = 0.5
+        self.pid.Kp = 1
+        self.pid.Ki = 0.1
         self.pid.Kd = 0
-        self.pid.Pmax = 11
+        self.pid.Pmax = 9
         self.pid.UpdateSetpoint(self.setpoint)
 
     def set_bias(self, bias):
@@ -113,9 +117,9 @@ class EmissionControl(threading.Thread):
             self.grid_voltage = self.read_grid_voltage()
             self.grid_current = self.read_grid_current()
             #print 'Voltage: ' + str(voltage) + '   , emission current: ' +  str(self.emission_current)
-        #self.setpoint = 0
-        #self.set_filament_voltage(0)
-        #self.set_bias(0)
+        self.setpoint = 0
+        self.set_filament_voltage(0)
+        self.set_bias(0)
 
 
 
