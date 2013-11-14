@@ -167,6 +167,18 @@ class qmg_420():
 
     def first_mass(self, mass):
         self.comm('FIR ' + str(mass))
+        
+    def get_single_sample(self):
+        error = 0
+        while (self.waiting_samples() == 0) and (error < 40):
+            time.sleep(0.2)
+            error = error + 1
+        if error > 39:
+            logging.error('Sample did arrive on time')
+            value = ""
+        else:
+            value = self.comm(chr(5))
+        return value
 
     def config_channel(self, channel, mass=-1, speed=-1, amp_range=-1,enable=""):
         """ Config a MS channel for measurement """

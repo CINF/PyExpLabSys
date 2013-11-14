@@ -16,7 +16,6 @@ import qmg_meta_channels
 
 import qmg420
 
-
 class qms():
 
     def __init__(self, qmg, sqlqueue=None, loglevel=logging.ERROR):
@@ -26,6 +25,7 @@ class qms():
         else: #We make a dummy queue to make the program work
             self.sqlqueue = Queue.Queue()
         self.operating_mode = "Idling"
+        self.autorange = False
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
@@ -114,7 +114,10 @@ class qms():
             self.config_channel(i, mass=99, speed=1, amp_range=-1,enable='no')
 
         comment = channel_list[0]['comment']
-        autorange = channel_list[0]['autorange']
+        self.autorange = channel_list[0]['autorange']
+        logging.info('Autorange: ' + str(self.autorange))
+        #Check for qmg-version 422 will do hardware autorange!
+
         for i in range(1,len(channel_list)):
             ch = channel_list[i]
             self.config_channel(channel=i, mass=ch['mass'], speed=ch['speed'], amp_range=ch['amp_range'], enable="yes")
@@ -132,7 +135,6 @@ class qms():
         self.operating_mode = "Mass Time"
         self.stop = False
         ns = len(ms_channel_list) - 1
-        logging.warn(ns)
         self.qmg.mass_time(ns)
 
         start_time = time.time()
@@ -140,30 +142,55 @@ class qms():
         self.current_timestamp = ids[0]
         
         while self.stop == False:
+            if self.autorange:
+                for i in range(1, ns+1):
+                    #TODO: Decrease measurement time during autorange
+                    self.config_channel(channel=i, amp_range=4)
+                self.qmg.set_channel(1)
+                self.qmg.start_measurement()
+                time.sleep(0.1)
+                ranges = {}
+                autorange_complete = False
+                while not autorange_complete:
+                    for i in range(1, ns+1):
+                        value = qmg.get_single_sample()
+                        #logging.info(value)
+                        try:
+                            value = float(value)
+                        except:
+                            logging.warn('Missing value during auto-range')
+                            break
+                        if value>0.9:
+                            ranges[i] = 2
+                        if (value<0.9) and (value>0.09):
+                            ranges[i] = 4
+                        if (value<0.09) and (value>0.009):
+                            ranges[i] = 5
+                        if (value<0.009) and (value>0.0009):
+                            ranges[i] = 6
+                        if value < 0.0009:
+                            ranges[i] = 7
+                        autorange_complete = True
+                if autorange_complete:
+                    for i in range(1, ns+1):
+                        self.config_channel(channel=i, amp_range=ranges[i])
+                        ms_channel_list[i]['amp_range'] = ranges[i]
+                        #logging.info('Value: ' + str(value) + '  Range: ' + str(ranges[i]))
+    
             self.qmg.set_channel(1)
             self.qmg.start_measurement()
             time.sleep(0.1)
-            channel = 0
-            for j in range(0, ns):
+            for channel in range(1, ns+1):
                 self.measurement_runtime = time.time()-start_time
                 #value = self.comm('MDB')
-                error = 0
-                while (qmg.waiting_samples() == 0) and (error < 40):
-                    time.sleep(0.2)
-                    error = error + 1
-                if error > 39:
-                    logging.error('Sample did arrive on time')
-                    break
-                value = self.qmg.comm(chr(5))
-                logging.warn(value)
-                channel = channel + 1
+                value = qmg.get_single_sample()
                 self.channel_list[channel]['value'] = value
                 sqltime = str((time.time() - start_time) * 1000)
                 if value == "":
                     break
                 else:
                     value = float(value)
-                    value = value / 10**(ms_channel_list[j+1]['amp_range']+5)
+                    value = value / 10**(ms_channel_list[channel]['amp_range']+5)
                     query  = 'insert into '
                     query += 'xy_values_' + self.chamber + ' '
                     query += 'set measurement="' + str(ids[channel])
