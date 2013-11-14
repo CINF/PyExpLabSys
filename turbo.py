@@ -126,7 +126,7 @@ class TurboController():
 if __name__ == '__main__':
     T = TurboController()
     T.read_rotation_speed()
-    T.turn_pump_on()
+    #T.turn_pump_on()
     time.sleep(10)
     T.read_rotation_speed()
     print 'Pump is accelerating: '  + str(T.is_pump_accelerating())
