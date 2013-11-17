@@ -159,6 +159,7 @@ class qms():
                             value = float(value)
                         except:
                             logging.warn('Missing value during auto-range')
+                            autorange_complete = False
                             break
                         if value>0.9:
                             ranges[i] = 2
