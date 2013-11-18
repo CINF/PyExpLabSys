@@ -45,6 +45,9 @@ class omega_comm():
 
 if __name__ == '__main__':
 
+    #omega = omega_comm('/dev/ttyUSB0')
+    #omega.NameDevice('09')
+
     for i in range(0,10):
         try:
             print 'ttyUSB: ' + str(i)

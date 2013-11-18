@@ -4,6 +4,8 @@ import threading
 import curses
 import socket
 import serial 
+from datetime import datetime
+import MySQLdb
 
 import sys
 sys.path.append('../')
@@ -12,6 +14,27 @@ import PID
 
 #output = 'print'
 output = 'curses'
+
+def sqlTime():
+    sqltime = datetime.now().isoformat(' ')[0:19]
+    return(sqltime)
+
+
+def sqlInsert(query):
+    try:
+        cnxn = MySQLdb.connect(host="servcinf",user="stm312",passwd="stm312",db="cinfdata")
+	cursor = cnxn.cursor()
+    except:
+	print "Unable to connect to database"
+	return()
+    try:
+	cursor.execute(query)
+	cnxn.commit()
+    except:
+	print "SQL-error, query written below:"
+	print query
+    cnxn.close()
+
 
 if output == 'curses':
     screen = curses.initscr()
@@ -58,12 +81,12 @@ class PowerCalculatorClass(threading.Thread):
     def __init__(self, temp_class):
         threading.Thread.__init__(self)
         self.power = 0
-        self.setpoint = -9999
+        self.setpoint = -200
         self.pid = PID.PID()
-        self.pid.Kp = 0.02
-        self.pid.Ki = 0.0005
+        self.pid.Kp = 0.03
+        self.pid.Ki = 0.00025
         self.pid.Kd = 0
-        self.pid.Pmax = 17
+        self.pid.Pmax = 80
         self.pid.UpdateSetpoint(self.setpoint)
         self.temp_class = temp_class
         
@@ -106,6 +129,7 @@ heater.OutputStatus(True)
 
 start_time = time.time()
 usb_reset = 0
+trigger = 0
 while not quit:
     try:
         time.sleep(0.25)
@@ -115,6 +139,15 @@ while not quit:
             heater.SetVoltage(P.power) #Power means voltage in this case...
             I = heater.ReadActualCurrent()
             U = heater.ReadActualVoltage()
+            trigger = trigger + 1
+            if trigger > 20:
+                meas_time = sqlTime()
+                sql = "insert into dateplots_stm312 set type=\"hp_psu_voltage\", time=\"" +  meas_time + "\", value = \"" + str(U) + "\""
+                sqlInsert(sql)
+                sql = "insert into dateplots_stm312 set type=\"hp_psu_current\", time=\"" +  meas_time + "\", value = \"" + str(I) + "\""
+                sqlInsert(sql)
+                trigger = 0
+
             if heater.debug:
                 raise serial.serialutil.SerialException
         except serial.serialutil.SerialException:

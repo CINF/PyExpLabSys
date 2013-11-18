@@ -74,7 +74,7 @@ class OCSReader(threading.Thread):
     def run(self):
         while not quit:
             time.sleep(1)
-            self.ocs_temp = self.ocs.ReadTemperature()
+            self.ocs_temp = self.ocs.ReadTemperature(address=2)
             #print self.stm_temp
 
 class HPReader(threading.Thread):
@@ -86,7 +86,7 @@ class HPReader(threading.Thread):
     def run(self):
         while not quit:
             #time.sleep(1)
-            self.hp_temp = self.hp.ReadTemperature()
+            self.hp_temp = self.hp.ReadTemperature(address=1)
             if self.hp_temp >-998:
                 try:
                     network_comm('rasppi19', 9990, 'set_hp_temp ' + str(self.hp_temp))
@@ -127,7 +127,7 @@ class STMTemperatureSaver(threading.Thread):
     def run(self):
         while not quit:
             time.sleep(1)
-            time_trigged = (time.time() - self.last_recorded_time) > 600
+            time_trigged = (time.time() - self.last_recorded_time) > 2
             temp = self.reader.stm_temp
             val_trigged = not (self.last_recorded_value - 2 < temp < self.last_recorded_value + 2 )
             if (time_trigged or val_trigged):
@@ -163,6 +163,7 @@ class OCSTemperatureSaver(threading.Thread):
 
 
 if __name__ == '__main__':
+    """
     ports = FindSerialPorts.find_ports()
     for port in ports:
         print port
@@ -171,21 +172,27 @@ if __name__ == '__main__':
         except serial.serialutil.SerialException:
             continue
         id = tc_read.IdentifyDevice().strip()
-        if id == '01':
+        print id
+        if id == '09':
             print 'High pressure cell: /dev/' + port
             hp = tc_read
-        if id == '02':
-            print 'STM: /dev/' + port
-            stm = tc_read
-        if id == '04':
-            print 'OCS: /dev/' + port
-            ocs = tc_read
+        #if id == '09':
+        #    print 'STM: /dev/' + port
+        #    stm = tc_read
+        #if id == '04':
+        #    print 'OCS: /dev/' + port
+        #    ocs = tc_read
+    """
+    tc_read = omega.omega_comm('/dev/ttyUSB0')
+
 
     quit = False
     hp_reader = HPReader(hp)
     hp_reader.start()
-    stm_reader = STMReader(stm)
-    stm_reader.start()
+
+    #stm_reader = STMReader(stm)
+    #stm_reader.start()
+
     ocs_reader = OCSReader(ocs)
     ocs_reader.start()
     
@@ -193,8 +200,10 @@ if __name__ == '__main__':
 
     hp_saver = HighPressureTemperatureSaver(hp_reader)
     hp_saver.start()
-    stm_saver = STMTemperatureSaver(stm_reader)
-    stm_saver.start()
+
+    #stm_saver = STMTemperatureSaver(stm_reader)
+    #stm_saver.start()
+
     ocs_saver = OCSTemperatureSaver(ocs_reader)
     ocs_saver.start()
     

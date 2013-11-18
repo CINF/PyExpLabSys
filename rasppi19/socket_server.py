@@ -15,10 +15,12 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 
         if recieved_data[0:11] == "set_hp_temp":
             val = float(recieved_data[11:].strip())
+            print val
             hp_temp = val
             data = "ok"
         if recieved_data[0:12] == "read_hp_temp":
             print "read_hp_temp"
+            print hp_temp
             data = str(hp_temp)
 
         if recieved_data[0:12] == "set_setpoint":
@@ -36,7 +38,7 @@ if __name__ == "__main__":
     HOST, PORT = "130.225.86.188", 9990 #rasppi19
 
     hp_temp = -998
-    setpoint = -888
+    setpoint = -8888
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()
