@@ -1,20 +1,18 @@
 import serial
 import time
+import FindSerialPorts
 
 class Polyscience_4100():
 
     def __init__(self, port='/dev/ttyUSB0'):
-        self.f = serial.Serial(port,9600)
+        self.f = serial.Serial(port,9600,timeout=0.5)
         self.max_setpoint = 30
         self.min_setpoint = 10
         assert(self.min_setpoint<self.max_setpoint)
 
     def comm(self, command):
         self.f.write(command + '\r')
-        reply = a = ''
-        while not (a == '\r'):
-            a = self.f.read(1)
-            reply = reply + a 
+        reply = self.f.readline()
         return reply[:-1]
 
     def set_setpoint(self, value): 
@@ -91,13 +89,21 @@ class Polyscience_4100():
         return status
 
 if __name__ == '__main__':
-    chiller = Polyscience_4100('/dev/ttyUSB0')
+    ports = FindSerialPorts.find_ports()
 
-    #print chiller.turn_unit_on(True)
+    #chiller = Polyscience_4100('/dev/ttyUSB0')
+    #print chiller.read_status()
 
+    for port in ports:
+        chiller = Polyscience_4100('/dev/' + port)
+        if not (chiller.read_status() == 'error'):
+            print port
+            break
+        
     print 'Setpoint: {0:.1f}'.format(chiller.read_setpoint())
     print 'Temperature: {0:.1f}'.format(chiller.read_temperature())
     print 'Flow rate: {0:.2f}'.format(chiller.read_flow_rate())
     print 'Pressure: {0:.3f}'.format(chiller.read_pressure())
     print 'Status: ' + chiller.read_status()
     print 'Ambient temperature: {0:.2f}'.format(chiller.read_ambient_temperature()) 
+

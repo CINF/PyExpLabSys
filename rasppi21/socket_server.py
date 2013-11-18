@@ -67,7 +67,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.86.189", 9759 #rasppi20
+    HOST, PORT = "130.225.86.120", 9759 #rasppi21
     chiller = polyscience_4100.Polyscience_4100()
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)

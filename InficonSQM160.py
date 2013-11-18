@@ -1,11 +1,12 @@
 import serial
 import time
 import SocketServer
+import FindSerialPorts
 
 class InficonSQM160():
 
-    def __init__(self):
-        self.f = serial.Serial(port='/dev/ttyUSB0',baudrate=9600,timeout=2,bytesize=serial.EIGHTBITS,xonxoff=True)
+    def __init__(self, port='/dev/ttyUSB0'):
+        self.f = serial.Serial(port=port,baudrate=9600,timeout=2,bytesize=serial.EIGHTBITS,xonxoff=True)
         
     def comm(self,command):
         length = chr(len(command) + 34)
@@ -53,7 +54,7 @@ class InficonSQM160():
         
     def show_version(self):
         command = '@'
-        print self.comm(command)
+        return(self.comm(command))
 
     def show_film_parameters(self,film):
         command = 'A1?'
@@ -65,52 +66,37 @@ class InficonSQM160():
         rate = float(value_string)
         return(rate)
 
-    def thickness(self,channel):
+    def thickness(self,channel=1):
         command = 'N' + str(channel)
         value_string = self.comm(command)
         thickness = float(value_string)        
         return(thickness)
         
-    def frequency(self,channel):
+    def frequency(self,channel=1):
         command = 'P' + str(channel)
         value_string = self.comm(command)
         frequency = float(value_string)        
         return(frequency)
 
-    def CrystalLife(self,channel):
+    def crystal_life(self,channel=1):
         command = 'R' + str(channel)
         value_string = self.comm(command)
         life = float(value_string)        
         return(life)
-
-        
-
-inficon = InficonSQM160()
-class MyUDPHandler(SocketServer.BaseRequestHandler):
-
-    def handle(self):
-        recieved_data = self.request[0].strip()
-        data = "test"
-        socket = self.request[1]
-        print recieved_data
-        if recieved_data == "rate":
-            data = str(inficon.rate(1))
-        if recieved_data == "thickness":
-            data = str(inficon.thickness(1))
-        if recieved_data == "frequency":
-            data = str(inficon.frequency(1))
-        if recieved_data == "crystallife":
-            data = str(inficon.CrystalLife(1))
-        socket.sendto(data, self.client_address)
-
 		
 if __name__ == "__main__":
-    HOST, PORT = "agilent", 9999
+    ports = FindSerialPorts.find_ports()
 
-    server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
-    server.serve_forever()
-    #inficon = InficonSQM160()
-    #inficon.show_version()
+    for port in ports:
+        try:
+            inficon = InficonSQM160('/dev/' + port)
+            inficon.show_version()
+            print port
+            break
+        except IndexError:
+            pass
+        
+
     #inficon.rate(1)
     #inficon.thickness(1)
     #inficon.frequency(1)

@@ -1,10 +1,11 @@
 import serial
 import time
+import FindSerialPorts
 
 class OmegaBus():
 
-    def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB0',9600)
+    def __init__(self, device='/dev/ttyUSB0'):
+        self.f = serial.Serial(device,9600)
         time.sleep(0.1)
 
     def ReadValue(self,channel):
@@ -56,8 +57,6 @@ class OmegaBus():
             setupstring += "Baud rate: 9600"  + "\n"
 
         bits_3 = (bin(int(byte3,16))[2:]).zfill(8)
-        print bits_3
-        print bits_3[0]
 
         setupstring += "Channel 3 enabled\n" if bits_3[0] == '1' else "Channel 3 disabled\n"
         setupstring += "Channel 2 enabled\n" if bits_3[1] == '1' else "Channel 2 disabled\n"
@@ -74,11 +73,29 @@ class OmegaBus():
             return(False)
 
 if __name__ == "__main__":
-    omega = OmegaBus()
-    print omega.ReadValue(1)
-    print omega.ReadMin(1)
-    print omega.ReadMax(1)
+    ports = FindSerialPorts.find_ports()
+    print ports
+    for p in ports:
+        print p
+        omega = OmegaBus('/dev/' + p)
+        try:
+            print omega.ReadSetup()
+            break
+        except:
+            pass
+        #id = AK.IdentifyDevice()
+        #if not (id == 'Error'):
+        #    break
 
-    print omega.ReadSetup()
+
+    #omega = OmegaBus()
+    print omega.ReadValue(1)
+    print omega.ReadValue(2)
+    print omega.ReadValue(3)
+    print omega.ReadValue(4)
+    #print omega.ReadMin(1)
+    #print omega.ReadMax(1)
+
+    #print omega.ReadSetup()
 
     #print ChangeTemperatureScale('f')

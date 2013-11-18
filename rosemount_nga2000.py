@@ -1,5 +1,6 @@
 import serial
 import time
+import FindSerialPorts
 
 class AK_comm():
 
@@ -16,26 +17,37 @@ class AK_comm():
 
         #The first two and the last character is not part of the message
         #print ord(return_string[-1]) #Check that last character is chr(3)
-	return_string = return_string[2:]
-	return_string = return_string[:-1]
-	error_byte = return_string[5] #Check error byte!
-	return_string = return_string[7:] #The first part of the message is an echo of the command
-	
+        try:
+            return_string = return_string[2:]
+            return_string = return_string[:-1]
+            error_byte = return_string[5] #Check error byte!
+            return_string = return_string[7:] #The first part of the message is an echo of the command
+        except IndexError:
+            return_string = "Serial Error"
+            #Here we should properly raise a home-made error
 	return return_string
 		
     def IdentifyDevice(self):
         command = 'AGID K0'
 	id = self.comm(command)
 	return_string = ''
-	dev_id = id.split('/')
-	return_string += "Name and s/n: " + dev_id[0] + "\n"
-	return_string += "Program version: " + dev_id[1] + "\n"
-	return_string += "Data: " + dev_id[2] + "\n"
+        try: 
+            dev_id = id.split('/')
+            return_string += "Name and s/n: " + dev_id[0] + "\n"
+            return_string += "Program version: " + dev_id[1] + "\n"
+            return_string += "Data: " + dev_id[2] + "\n"
+        except:
+            return_string = 'Error'
 	return return_string
 		
     def ReadConcentration(self):
         command = 'AKON K1'
 	signal = self.comm(command)
+        print "Signal: " + signal
+        if signal[0] == "#":
+            signal = signal[1:]
+        signal = signal.strip()
+        signal = signal.strip(chr(3))
 	return(float(signal))
 
     def ReadTemperature(self):
@@ -46,8 +58,15 @@ class AK_comm():
     def ReadUncorrelatedAnalogValue(self):
         command = 'AUKA K1'
 	signal = self.comm(command)
-	range = int(signal[1])
+        #print "Signal: " + signal
+	#range = int(signal[1])
 	sensor_output = signal[3:]
+        #for i in range(0, len(sensor_output)):
+        #    print ord(sensor_output[i])
+        sensor_output = sensor_output.strip()
+        sensor_output = sensor_output.strip(chr(3))
+
+        #print "Sensor output: " + sensor_output
 	return(int(sensor_output))
 
     def ReadOperationalHours(self):
@@ -57,8 +76,15 @@ class AK_comm():
 
 
 if __name__ == '__main__':
-    AK = AK_comm('/dev/ttyUSB0')
-    #print AK.IdentifyDevice()
+    ports = FindSerialPorts.find_ports()
+    print ports
+    for p in ports:
+        print p
+        AK = AK_comm('/dev/' + p)
+        id = AK.IdentifyDevice()
+        if not (id == 'Error'):
+            break
+
     print "Concentration: " + str(AK.ReadConcentration())
     print "Temperature: " + str(AK.ReadTemperature())
     print "Raw signal: " + str(AK.ReadUncorrelatedAnalogValue())

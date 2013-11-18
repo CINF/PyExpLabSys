@@ -2,7 +2,7 @@ import threading
 import curses
 import time
 
-class qmg_status_output(threading.Thread):
+class qms_status_output(threading.Thread):
 
     def __init__(self, qmg_instance,sql_saver_instance=None):
         threading.Thread.__init__(self)
