@@ -6,11 +6,10 @@ import MySQLdb
 import socket
 import serial
 
-import omega_CNi32 as omega
-
 import sys
 sys.path.append('../')
 import FindSerialPorts
+import omega_CNi32 as omega
 
 def network_comm(host, port, string):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -73,8 +72,11 @@ class OCSReader(threading.Thread):
 
     def run(self):
         while not quit:
-            time.sleep(1)
-            self.ocs_temp = self.ocs.ReadTemperature(address=2)
+            time.sleep(0.9)
+            temp = self.ocs.ReadTemperature(address=2)
+            print temp
+            if temp > -9000:
+                self.ocs_temp = temp
             #print self.stm_temp
 
 class HPReader(threading.Thread):
@@ -85,14 +87,39 @@ class HPReader(threading.Thread):
 
     def run(self):
         while not quit:
-            #time.sleep(1)
-            self.hp_temp = self.hp.ReadTemperature(address=1)
+            time.sleep(1)
+            temp = self.hp.ReadTemperature(address=1)
+            if temp > -998:
+                self.hp_temp = temp
             if self.hp_temp >-998:
                 try:
                     network_comm('rasppi19', 9990, 'set_hp_temp ' + str(self.hp_temp))
                 except:
                     print 'Timeout'
-            print self.hp_temp
+
+class Reader(threading.Thread):
+    def __init__(self, reader):
+        threading.Thread.__init__(self)
+        self.reader = reader
+        self.hp_temp = -9999
+
+    def run(self):
+        while not quit:
+            time.sleep(1)
+            hp_temp = self.reader.ReadTemperature(address=1)
+            ocs_temp = self.reader.ReadTemperature(address=2)
+            #print hp_temp
+            #print ocs_temp
+            if ocs_temp > -998:
+                self.ocs_temp = ocs_temp
+            if hp_temp > -998:
+                self.hp_temp = hp_temp
+            if self.hp_temp >-998:
+                try:
+                    network_comm('rasppi19', 9990, 'set_hp_temp ' + str(self.hp_temp))
+                except:
+                    print 'Timeout'
+
 
 class HighPressureTemperatureSaver(threading.Thread):
     def __init__(self, reader):
@@ -183,10 +210,16 @@ if __name__ == '__main__':
         #    print 'OCS: /dev/' + port
         #    ocs = tc_read
     """
-    tc_read = omega.omega_comm('/dev/ttyUSB0')
-
+    tc_reader = omega.omega_comm(port='/dev/ttyUSB0', comm_stnd='rs485')
+    temperature_reader = Reader(tc_reader)
+    temperature_reader.start()
 
     quit = False
+
+    """
+    hp = tc_read
+    ocs = tc_read
+
     hp_reader = HPReader(hp)
     hp_reader.start()
 
@@ -195,16 +228,16 @@ if __name__ == '__main__':
 
     ocs_reader = OCSReader(ocs)
     ocs_reader.start()
-    
+    """
     time.sleep(5)
 
-    hp_saver = HighPressureTemperatureSaver(hp_reader)
+    hp_saver = HighPressureTemperatureSaver(temperature_reader)
     hp_saver.start()
 
     #stm_saver = STMTemperatureSaver(stm_reader)
     #stm_saver.start()
 
-    ocs_saver = OCSTemperatureSaver(ocs_reader)
+    ocs_saver = OCSTemperatureSaver(temperature_reader)
     ocs_saver.start()
     
     while not quit:
