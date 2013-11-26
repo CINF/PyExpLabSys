@@ -1,11 +1,70 @@
 import serial
 import time
+import curses
+import threading
 
-class TurboController():
-    def __init__(self, port='/dev/ttyUSB0'):
+
+class CursesTui(threading.Thread):
+    def __init__(self, turbo_instance):
+        #TODO: Add support for several pumps in one gui
+        threading.Thread.__init__(self)
+        self.turbo = turbo_instance
+        self.screen = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        curses.curs_set(False)
+        self.screen.keypad(1)
+        self.screen.nodelay(1)
+
+    def run(self):
+        while True:
+            self.screen.addstr(3, 2, 'Turbo controller running') 
+            if self.turbo.status['pump_accelerating']:
+                self.screen.addstr(3, 20, 'Pump accelerating     ')
+            else:
+                self.screen.addstr(3, 20, 'Pump at constant speed')
+            self.screen.addstr(4, 2, 'Gas mode: ' + self.turbo.status['gas_mode'] + '      ')
+
+            self.screen.addstr(7, 2, "Rotation speed: {0:.1f}Hz      ".format(self.turbo.status['rotation_speed']))
+            self.screen.addstr(8, 2, "Driver power: {0:.1f}Hz      ".format(self.turbo.status['drive_power']))
+
+            self.screen.addstr(12, 2, "Temperature, Electronics: {0:.1f}Hz      ".format(self.turbo.status['temp_electronics']))
+            self.screen.addstr(13, 2, "Temperature, Bottom: {0:.1f}Hz           ".format(self.turbo.status['temp_bottom']))
+            self.screen.addstr(14, 2, "Temperature, Bearings: {0:.1f}Hz         ".format(self.turbo.status['temp_bearings']))
+            self.screen.addstr(15, 2, "Temperature, Motor: {0:.1f}Hz            ".format(self.turbo.status['temp_motor']))
+
+
+            n = self.screen.getch()
+            if n == ord('q'):
+                self.turbo.running = False
+            self.screen.refresh()
+            time.sleep(0.2)
+
+    def stop(self):
+        curses.nocbreak()
+        self.screen.keypad(0)
+        curses.echo()
+        curses.endwin()    
+
+
+class TurboDriver(threading.Thread):
+    def __init__(self, adress=1, port='/dev/ttyUSB0'):
+        threading.Thread.__init__(self)
         self.f = serial.Serial(port,9600)
         self.f.stopbits = 2
-        self.adress = 1
+        self.adress = adress
+        self.status = {} #Hold parameters to be accessible by gui
+        self.status['rotation_speed'] = 0
+        self.status['pump_accelerating'] = False
+        self.status['gas_mode'] = ''
+        self.status['drive_current'] = 0
+        self.status['drive_power'] = 0
+        self.status['temp_electronics'] = 0
+        self.status['temp_bottom'] = 0
+        self.status['temp_bearings'] = 0
+        self.status['temp_motor'] = 0
+        self.running = True
+        
 
     def comm(self, command, read=True):
         adress_string = str(self.adress).zfill(3)
@@ -15,8 +74,6 @@ class TurboController():
             datatype = '=?'
             length = str(len(datatype)).zfill(2)
             command = action + command + length + datatype
-
-        #print command
         crc = self.crc_calc(adress_string + command)
         self.f.write(adress_string + command + crc + '\r')
         a = ''
@@ -24,15 +81,9 @@ class TurboController():
         while not (a == '\r'):
             a = self.f.read()
             response += a
-        #print 'Adress: ' + response[0:3]
-        #print 'Action: '  + response[3:5]
-        #print 'Parameter: ' + response[5:8]
-        #print 'Length: ' + response[8:10]
         length = int(response[8:10])
-        #print length
         reply = response[10:10+length]
         crc = response[10+length:10+length+3]
-        #print self.crc_calc(response[0:10+length]) == crc
         if crc:
             return reply
         else:
@@ -123,7 +174,29 @@ class TurboController():
         return_val['power'] = power
         return return_val
 
+    def run(self):
+        while self.running:
+            time.sleep(0.5)
+            temp = self.read_temperature()
+            self.status['temp_electroics'] = temp['elec']
+            self.status['temp_bottom'] = temp['bottom']
+
+
+
 if __name__ == '__main__':
+
+    mainpump = TurboDriver(adress=1)
+    mainpump.start()
+
+    tui = CursesTui(mainpump)
+    tui.daemon = True
+    tui.start()
+
+    time.sleep(10)
+    mainpump.running = False
+#controller = Tur
+
+"""
     T = TurboController()
     T.read_rotation_speed()
     #T.turn_pump_on()
@@ -145,16 +218,4 @@ if __name__ == '__main__':
     time.sleep(2)
     T.read_rotation_speed()
 
-
-"""
-s = '001'
-
-#command = s + '0030902=?'
-command = s + '0034902=?'
-crc_string = crc_calc(command)
-
-f.write(command + crc_string + '\r')
-time.sleep(0.2)
-print f.inWaiting()
-print f.read(f.inWaiting())
 """
