@@ -20,18 +20,19 @@ class CursesTui(threading.Thread):
         while True:
             self.screen.addstr(3, 2, 'Turbo controller running') 
             if self.turbo.status['pump_accelerating']:
-                self.screen.addstr(3, 20, 'Pump accelerating     ')
+                self.screen.addstr(3, 30, 'Pump accelerating')
+                self.screen.clrtoeol()
             else:
-                self.screen.addstr(3, 20, 'Pump at constant speed')
+                self.screen.addstr(3, 30, 'Pump at constant speed')
             self.screen.addstr(4, 2, 'Gas mode: ' + self.turbo.status['gas_mode'] + '      ')
 
             self.screen.addstr(7, 2, "Rotation speed: {0:.1f}Hz      ".format(self.turbo.status['rotation_speed']))
-            self.screen.addstr(8, 2, "Driver power: {0:.1f}Hz      ".format(self.turbo.status['drive_power']))
+            self.screen.addstr(8, 2, "Driver power: {0:.1f}W      ".format(self.turbo.status['drive_power']))
 
-            self.screen.addstr(12, 2, "Temperature, Electronics: {0:.1f}Hz      ".format(self.turbo.status['temp_electronics']))
-            self.screen.addstr(13, 2, "Temperature, Bottom: {0:.1f}Hz           ".format(self.turbo.status['temp_bottom']))
-            self.screen.addstr(14, 2, "Temperature, Bearings: {0:.1f}Hz         ".format(self.turbo.status['temp_bearings']))
-            self.screen.addstr(15, 2, "Temperature, Motor: {0:.1f}Hz            ".format(self.turbo.status['temp_motor']))
+            self.screen.addstr(12, 2, "Temperature, Electronics: {0:.1f}C      ".format(self.turbo.status['temp_electronics']))
+            self.screen.addstr(13, 2, "Temperature, Bottom: {0:.1f}C           ".format(self.turbo.status['temp_bottom']))
+            self.screen.addstr(14, 2, "Temperature, Bearings: {0:.1f}C         ".format(self.turbo.status['temp_bearings']))
+            self.screen.addstr(15, 2, "Temperature, Motor: {0:.1f}C            ".format(self.turbo.status['temp_motor']))
 
 
             n = self.screen.getch()
@@ -48,7 +49,7 @@ class CursesTui(threading.Thread):
 
 
 class TurboDriver(threading.Thread):
-    def __init__(self, adress=1, port='/dev/ttyUSB0'):
+    def __init__(self, adress=1, port='/dev/ttyUSB2'):
         threading.Thread.__init__(self)
         self.f = serial.Serial(port,9600)
         self.f.stopbits = 2
@@ -161,7 +162,6 @@ class TurboDriver(threading.Thread):
 
         command = '313'
         reply = self.comm(command, True)
-        print reply
         voltage = int(reply)/100.0
 
         command = '316'
@@ -177,23 +177,31 @@ class TurboDriver(threading.Thread):
     def run(self):
         while self.running:
             time.sleep(0.5)
+            self.status['gas_mode'] = self.read_gas_mode()
+
+            power = self.read_drive_power()
+            self.status['drive_current'] = power['current']
+            self.status['drive_power'] = power['power']
+
             temp = self.read_temperature()
-            self.status['temp_electroics'] = temp['elec']
+            self.status['temp_electronics'] = temp['elec']
             self.status['temp_bottom'] = temp['bottom']
+            self.status['temp_bearings'] = temp['bearings']
+            self.status['temp_motor'] = temp['motor']
 
 
 
 if __name__ == '__main__':
 
-    mainpump = TurboDriver(adress=1)
+    mainpump = TurboDriver(adress=2)
     mainpump.start()
 
     tui = CursesTui(mainpump)
     tui.daemon = True
     tui.start()
 
-    time.sleep(10)
-    mainpump.running = False
+    #time.sleep(10)
+    #mainpump.running = False
 #controller = Tur
 
 """
