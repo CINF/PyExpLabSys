@@ -4,7 +4,7 @@ import time
 class XGS600Driver():
 
     def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB0')
+        self.f = serial.Serial('/dev/ttyUSB1')
 
     def xgs_comm(self,command):
         comm = "#00" + command + "\r"
@@ -17,7 +17,7 @@ class XGS600Driver():
         return(complete_string)
 
 
-    def ReadAllPressures(self):
+    def read_all_pressures(self):
         pressure_string = self.xgs_comm("0F")
         #print pressure_string
         if len(pressure_string)>0:
@@ -60,7 +60,7 @@ class XGS600Driver():
         return(gauge_string)
 
 
-    def ReadPressureUnit(self):
+    def read_pressure_unit(self):
         gauge_string = self.xgs_comm("13")
         unit = gauge_string.replace(' ','')
         if unit == "00":
@@ -72,9 +72,9 @@ class XGS600Driver():
         return(unit)
 
 
-
-
-
-    #print readAllPressures()
+if __name__ == '__main__':
+    xgs = XGS600Driver()
+    print xgs.read_all_pressures()
+    print xgs.read_pressure_unit()
 
     #print listAllGauges()
