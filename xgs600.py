@@ -22,7 +22,6 @@ class XGS600Driver():
         #print pressure_string
         if len(pressure_string)>0:
             temp_pressure = pressure_string.replace(' ','').split(',')
-
             pressures = []
             for press in temp_pressure:
                 if press == 'OPEN':
@@ -36,9 +35,9 @@ class XGS600Driver():
             pressures = [-3]
         return(pressures)
 
-    def ListAllGauges(self):
-        gauge_string = self.xgs_comm("01")
 
+    def list_all_gauges(self):
+        gauge_string = self.xgs_comm("01")
         gauges = ""
         for i in range(0,len(gauge_string),2):
             gauge = gauge_string[i:i+2]
@@ -50,12 +49,39 @@ class XGS600Driver():
                 gauges = gauges + str(i/2) + ": Convection Board\n"
             if gauge == "3A":
                 gauges = gauges + str(i/2) + ": Inverted Magnetron Board\n"
-
-
         return(gauges)
 
+    def read_pressure(self, id):
+        pressure = self.xgs_comm('02' + id)
+        try:
+            val = float(pressure)
+        except ValueError:
+            val = -1.0
+        return(val)
 
-    def ReadSoftwareVersion(self):
+    def filament_lit(self, id):
+        filament = self.xgs_comm('34' + id) 
+        return(int(filament))
+
+    def emission_status(self, id):
+        status = self.xgs_comm('32' + id)
+        emission = status == '01'
+        return emission
+
+    def set_smission_off(self, id):
+        self.xgs_comm('30' + id)
+        time.sleep(0.1)
+        return self.emission_status(id)
+
+    def set_emission_on(self, id, filament):
+        if filament == 1:
+            command = '31'
+        if filament == 2:
+            command = '33'
+        self.xgs_comm(command + id)
+        return self.emission_status(id)
+
+    def read_software_version(self):
         gauge_string = self.xgs_comm("05")
         return(gauge_string)
 
@@ -75,6 +101,12 @@ class XGS600Driver():
 if __name__ == '__main__':
     xgs = XGS600Driver()
     print xgs.read_all_pressures()
-    print xgs.read_pressure_unit()
+    #print xgs.read_pressure_unit()
 
-    #print listAllGauges()
+    xgs.set_emission_on('I1',1)
+    time.sleep(0.2)
+    print xgs.read_pressure('I1')
+    time.sleep(0.2)
+    print xgs.emission_status('I1')
+    print xgs.read_pressure('I1')
+
