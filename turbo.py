@@ -2,7 +2,7 @@ import serial
 import time
 import curses
 import threading
-
+import logging
 
 class CursesTui(threading.Thread):
     def __init__(self, turbo_instance):
@@ -19,25 +19,32 @@ class CursesTui(threading.Thread):
     def run(self):
         while True:
             self.screen.addstr(3, 2, 'Turbo controller running') 
-            if self.turbo.status['pump_accelerating']:
-                self.screen.addstr(3, 30, 'Pump accelerating')
-                self.screen.clrtoeol()
-            else:
-                self.screen.addstr(3, 30, 'Pump at constant speed')
+            #if self.turbo.status['pump_accelerating']:
+            #    self.screen.addstr(3, 30, 'Pump accelerating')
+            #    self.screen.clrtoeol()
+            #else:
+            #    self.screen.addstr(3, 30, 'Pump at constant speed')
             self.screen.addstr(4, 2, 'Gas mode: ' + self.turbo.status['gas_mode'] + '      ')
 
-            self.screen.addstr(7, 2, "Rotation speed: {0:.1f}Hz      ".format(self.turbo.status['rotation_speed']))
-            self.screen.addstr(8, 2, "Driver power: {0:.1f}W      ".format(self.turbo.status['drive_power']))
+            self.screen.addstr(6, 2, "Rotation speed: {0:.2f}Hz      ".format(self.turbo.status['rotation_speed']))
+            self.screen.addstr(7, 2, "Drive current: {0:.2f}A        ".format(self.turbo.status['drive_current']))
+            self.screen.addstr(8, 2, "Drive power: {0:.0f}W          ".format(self.turbo.status['drive_power']))
 
-            self.screen.addstr(12, 2, "Temperature, Electronics: {0:.1f}C      ".format(self.turbo.status['temp_electronics']))
-            self.screen.addstr(13, 2, "Temperature, Bottom: {0:.1f}C           ".format(self.turbo.status['temp_bottom']))
-            self.screen.addstr(14, 2, "Temperature, Bearings: {0:.1f}C         ".format(self.turbo.status['temp_bearings']))
-            self.screen.addstr(15, 2, "Temperature, Motor: {0:.1f}C            ".format(self.turbo.status['temp_motor']))
+            self.screen.addstr(10, 2, "Temperature, Electronics: {0:.0f}C      ".format(self.turbo.status['temp_electronics']))
+            self.screen.addstr(11, 2, "Temperature, Bottom: {0:.0f}C           ".format(self.turbo.status['temp_bottom']))
+            self.screen.addstr(12, 2, "Temperature, Bearings: {0:.0f}C         ".format(self.turbo.status['temp_bearings']))
+            self.screen.addstr(13, 2, "Temperature, Motor: {0:.0f}C            ".format(self.turbo.status['temp_motor']))
 
+            self.screen.addstr(15,2, 'q: quit, u: spin up, d: spin down')
 
             n = self.screen.getch()
             if n == ord('q'):
                 self.turbo.running = False
+            if n == ord('d'):
+                self.turbo.status['spin_down'] = True
+            if n == ord('u'):
+                self.turbo.status['spin_up'] = True
+
             self.screen.refresh()
             time.sleep(0.2)
 
@@ -51,6 +58,13 @@ class CursesTui(threading.Thread):
 class TurboDriver(threading.Thread):
     def __init__(self, adress=1, port='/dev/ttyUSB2'):
         threading.Thread.__init__(self)
+
+        with open('turbo.txt', 'w'):
+            pass
+        logging.basicConfig(filename="turbo.txt", level=logging.INFO)
+        logging.info('Program started.')
+        logging.basicConfig(level=logging.INFO)
+
         self.f = serial.Serial(port,9600)
         self.f.stopbits = 2
         self.adress = adress
@@ -64,6 +78,8 @@ class TurboDriver(threading.Thread):
         self.status['temp_bottom'] = 0
         self.status['temp_bearings'] = 0
         self.status['temp_motor'] = 0
+        self.status['spin_down'] = False
+        self.status['spin_up'] = False
         self.running = True
         
 
@@ -99,9 +115,14 @@ class TurboDriver(threading.Thread):
         return crc_string
 
     def read_rotation_speed(self):
-        command = '309'
+        command = '398'
         reply = self.comm(command, True)
-        print int(reply)
+        val = int(reply)/60.0
+        logging.warn(val)
+        #command = '309'
+        #reply = self.comm(command, True)
+        #logging.warn(reply)       
+        return(val)
 
     def read_gas_mode(self):
         command = '027'
@@ -123,10 +144,8 @@ class TurboDriver(threading.Thread):
             return False
 
     def turn_pump_on(self, off=False):
-        print off
         if not off:
             command = '1001006111111'
-            print 'On'
         else:
             command = '1001006000000'
         self.comm(command, False)
@@ -177,6 +196,8 @@ class TurboDriver(threading.Thread):
     def run(self):
         while self.running:
             time.sleep(0.5)
+            self.status['pump_accelerating'] = self.is_pump_accelerating()
+            self.status['rotation_speed'] = self.read_rotation_speed()
             self.status['gas_mode'] = self.read_gas_mode()
 
             power = self.read_drive_power()
@@ -189,6 +210,13 @@ class TurboDriver(threading.Thread):
             self.status['temp_bearings'] = temp['bearings']
             self.status['temp_motor'] = temp['motor']
 
+            if self.status['spin_up']:
+                self.turn_pump_on()
+                self.status['spin_up'] = False
+            if self.status['spin_down']:
+                self.turn_pump_on(off=True)
+                self.status['spin_down'] = False
+
 
 
 if __name__ == '__main__':
@@ -200,30 +228,3 @@ if __name__ == '__main__':
     tui.daemon = True
     tui.start()
 
-    #time.sleep(10)
-    #mainpump.running = False
-#controller = Tur
-
-"""
-    T = TurboController()
-    T.read_rotation_speed()
-    #T.turn_pump_on()
-    time.sleep(10)
-    T.read_rotation_speed()
-    print 'Pump is accelerating: '  + str(T.is_pump_accelerating())
-    print 'Gas mode: ' + T.read_gas_mode()
-    print 'Power: ' + str(T.read_drive_power())
-    print 'Temperature: ' + str(T.read_temperature())
-    time.sleep(2)
-    #T.read_rotation_speed()
-    T.turn_pump_on(off = True)
-    #time.sleep(2)
-    #T.read_rotation_speed()
-    #time.sleep(2)
-    #T.read_rotation_speed()
-    #time.sleep(2)
-    #T.read_rotation_speed()
-    time.sleep(2)
-    T.read_rotation_speed()
-
-"""
