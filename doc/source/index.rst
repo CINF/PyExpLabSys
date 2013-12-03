@@ -6,6 +6,8 @@
 Welcome to PyExpLabSys's documentation!
 =======================================
 
+This page serves as documentation for the software activities at CINF. Of interest to the public are hardware drivers for experimental equipment and data logging clients but the page also contain documentation for setup specific code.
+
 Contents:
 
 .. toctree::
