@@ -1,0 +1,19 @@
+#!/bin/bash
+
+user="Kenneth Nielsen"
+email="k.nielsen81@gmail.com"
+
+current_user=`git config --global user.name`
+current_email=`git config --global user.email`
+
+if [ "$current_user" != "$user" ];then
+    echo "--> Updating username to ""$user"
+    git config --global user.name "$user"
+fi
+
+if [ $current_email != $email ];then
+    echo "--> Updating user email to $email"
+    git config --global user.email $email
+fi
+
+git "$@"
