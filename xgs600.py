@@ -4,7 +4,7 @@ import time
 class XGS600Driver():
 
     def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB1')
+        self.f = serial.Serial('/dev/ttyUSB0')
 
     def xgs_comm(self,command):
         comm = "#00" + command + "\r"
