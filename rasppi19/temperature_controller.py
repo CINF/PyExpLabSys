@@ -83,8 +83,8 @@ class PowerCalculatorClass(threading.Thread):
         self.power = 0
         self.setpoint = -200
         self.pid = PID.PID()
-        self.pid.Kp = 0.03
-        self.pid.Ki = 0.00025
+        self.pid.Kp = 0.035
+        self.pid.Ki = 0.00022
         self.pid.Kd = 0
         self.pid.Pmax = 80
         self.pid.UpdateSetpoint(self.setpoint)
