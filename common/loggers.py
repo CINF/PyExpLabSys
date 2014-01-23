@@ -38,7 +38,17 @@ class InterruptableThread(threading.Thread):
 
 
 def timeout_query(cursor, query, timeout_duration=3):
-    """Run a mysql query with a timeout"""
+    """Run a mysql query with a timeout
+
+    :param cursor: The database cursor
+    :type cursor: MySQLdb cursor
+    :param query: The query to execute
+    :type qeury: str
+    :param timeout_duration: The timeout duration
+    :type timeout_duration: int
+    :return: A tuple of results from the query or ``loggers.NONE_RESPONSE`` if
+        the query timed out
+    """
     # Spawn a thread for the query
     query_thread = InterruptableThread(cursor, query)
     # Start and join
@@ -53,15 +63,15 @@ class StartupException(Exception):
         super(StartupException, self).__init__(*args, **kwargs)
 
 
-class ContinousLogger(threading.Thread):
+class ContinuousLogger(threading.Thread):
     """A logger for continous data as a function of datetime. The class can
     ONLY be used with the new layout of tables for continous data, where there
     is only one table per setup, as apposed to the old layout where there was
     one table per measurement type per setup. The class sends data to the
     ``cinfdata`` database at host ``servcinf``.
 
-    :vari host: Database host, value is ``servcinf``.
-    :vari database: Database name, value is ``cinfdata``.
+    :var host: Database host, value is ``servcinf``.
+    :var database: Database name, value is ``cinfdata``.
     """
 
     host = 'servcinf'
@@ -89,11 +99,12 @@ class ContinousLogger(threading.Thread):
             attempts to re-connect to the MySQL database, if the connection has
             been lost
         :type reconnect_waittime: float or int
-        :raises: StartupException
+        :raises StartupException: if it is not possible to start the database
+            connection or translate the code names
         """
         logger.info('__init__ called')
         # Initialize thread
-        super(ContinousLogger, self).__init__()
+        super(ContinuousLogger, self).__init__()
         self.daemon = True
         self._stop = False
         # Initialize local variables
@@ -150,7 +161,7 @@ class ContinousLogger(threading.Thread):
         logger.info('Stop requested')
 
     def run(self):
-        """Start the thread"""
+        """Start the thread. Must be run before points are added."""
         while not self._stop:
             try:
                 point = self.data_queue.get(block=True, timeout=0.1)
@@ -186,13 +197,28 @@ class ContinousLogger(threading.Thread):
             time.sleep(60)
 
     def enqueue_point_now(self, codename, value):
-        """Add a point to the queue and use the current time as the time."""
+        """Add a point to the queue and use the current time as the time
+
+        :param codename: The measurement codename that this point will be saved
+            under
+        :type codename: str
+        :param value: The value to be logged
+        :type value: float
+        """
         unixtime = time.time()
         logger.debug('Adding timestamp {} to point'.format(unixtime))
         self.enqueue_point(codename, unixtime, value)
 
     def enqueue_point(self, codename, unixtime, value):
-        """Add a point to the queue."""
+        """Add a point to the queue
+
+        :param codename: The measurement codename that this point will be saved
+            under
+        :type codename: str
+        :param unixtime: The timestamp for the point
+        :type unixtime: float
+        :param value: The value to be logged
+        :type value: float"""
         meas_number = self._codename_translation[codename]
         query = ('INSERT INTO {} (type, time, value) VALUES '
                  '({}, FROM_UNIXTIME({}), {});')
@@ -200,23 +226,3 @@ class ContinousLogger(threading.Thread):
         self.data_queue.put(query)
         logger.info('Point added to queue. Queue size: {}'.format(
             self.data_queue.qsize()))
-
-
-def main():
-    """Main method"""
-    db_logger = ContinousLogger('dateplots_dummy', 'dummy', 'dummy',
-                                ['dummy_sine_one', 'dummy_sine_two'])
-    db_logger.start()
-    import math
-    try:
-        for i in range(10):
-            time.sleep(1)
-            point = math.sin(time.time())
-            db_logger.enqueue_point_now('dummy_sine_one', point)
-    except KeyboardInterrupt:
-        pass
-    time.sleep(1)
-    db_logger.stop()
-
-if __name__ == '__main__':
-    main()

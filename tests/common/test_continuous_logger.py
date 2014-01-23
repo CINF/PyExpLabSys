@@ -22,8 +22,8 @@ CURSOR = CONNECTION.cursor()
 
 def test_enqueue_point_now():
     """Test the continous logger by sending data without timestamps"""
-    db_logger = loggers.ContinousLogger('dateplots_dummy', 'dummy', 'dummy',
-                                        ['dummy_sine_one', 'dummy_sine_two'])
+    db_logger = loggers.ContinuousLogger('dateplots_dummy', 'dummy', 'dummy',
+                                         ['dummy_sine_one', 'dummy_sine_two'])
     db_logger.start()
     # Lists to store the data locally
     data1 = []
@@ -65,8 +65,8 @@ def test_enqueue_point_now():
 
 def test_enqueue_point():
     """Test the continous logger by sending data with timestamps"""
-    db_logger = loggers.ContinousLogger('dateplots_dummy', 'dummy', 'dummy',
-                                        ['dummy_sine_one', 'dummy_sine_two'])
+    db_logger = loggers.ContinuousLogger('dateplots_dummy', 'dummy', 'dummy',
+                                         ['dummy_sine_one', 'dummy_sine_two'])
     db_logger.start()
     # Lists to store the data locally
     data1 = []
