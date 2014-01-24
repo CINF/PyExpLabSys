@@ -18,9 +18,8 @@ docstrings = re.findall('"""([^"]*)"""', src, re.MULTILINE | re.DOTALL)
 PACKAGE = 'PyExpLabSys'
 
 MODULES = (
-        'PyExpLabSys',
-        'PyExpLabSys.common',
-        'PyExpLabSys.common.loggers'
+
+        'PyExpLabSys.common.loggers',
 )
 
 REQUIREMENTS = list(open('requirements.txt'))
