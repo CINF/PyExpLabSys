@@ -18,7 +18,8 @@ PACKAGE = 'PyExpLabSys'
 
 MODULES = (
         'PyExpLabSys',
-        'PyExpLabSys.common'
+        'PyExpLabSys.common',
+        'PyExpLabSys.common.loggers'
 )
 
 REQUIREMENTS = list(open('requirements.txt'))
