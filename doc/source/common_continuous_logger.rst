@@ -51,7 +51,7 @@ If code already exists to retrieve the data (e.g. a driver to interface a piece 
     while True:
 	new_value = driver.get_value()
 	if contition_to_log_is_true:
-	    db_logger.enqueue_point_now('dummy_sine_one', point)
+	    db_logger.enqueue_point_now('dummy_sine_one', new_value)
 
 or if it is preferred to keep track of the timestamp manually:
 
@@ -71,7 +71,7 @@ or if it is preferred to keep track of the timestamp manually:
 	new_value = driver.get_value()
         now = time.time()
 	if contition_to_log_is_true:
-	    db_logger.enqueue_point_now('dummy_sine_one', now, point)
+	    db_logger.enqueue_point_now('dummy_sine_one', now, new_value)
 
 loggers module
 --------------
