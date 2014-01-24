@@ -18,7 +18,6 @@ docstrings = re.findall('"""([^"]*)"""', src, re.MULTILINE | re.DOTALL)
 PACKAGE = 'PyExpLabSys'
 
 MODULES = (
-
         'PyExpLabSys.common.loggers',
 )
 
@@ -51,5 +50,6 @@ setup(name=PACKAGE,
       license=LICENSE,
       url=WEBSITE,
       py_modules=MODULES,
+      zip_safe=False,
       **OPTIONS
 )
