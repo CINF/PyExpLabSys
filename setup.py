@@ -50,6 +50,6 @@ setup(name=PACKAGE,
       license=LICENSE,
       url=WEBSITE,
       py_modules=MODULES,
-      zip_safe=False,
+      zip_safe=True,
       **OPTIONS
 )
