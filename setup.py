@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import re
 import warnings
 try:
@@ -10,7 +11,7 @@ except ImportError:
     from distutils.core import setup
     has_setuptools = False
 
-src = open('__init__.py').read()
+src = open(os.path.join('PyExpLabSys', '__init__.py')).read()
 metadata = dict(re.findall("__([a-z]+)__ = '([^']+)'", src))
 docstrings = re.findall('"""([^"]*)"""', src, re.MULTILINE | re.DOTALL)
 
