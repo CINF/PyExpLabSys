@@ -14,7 +14,8 @@ import SQL_saver
 import qmg_status_output
 import qmg_meta_channels
 
-import qmg420
+#import qmg420
+import  qmg422
 
 class qms():
 
@@ -191,7 +192,8 @@ class qms():
                     break
                 else:
                     value = float(value)
-                    value = value / 10**(ms_channel_list[channel]['amp_range']+5)
+                    if qmg.type == '420':
+                        value = value / 10**(ms_channel_list[channel]['amp_range']+5)
                     query  = 'insert into '
                     query += 'xy_values_' + self.chamber + ' '
                     query += 'set measurement="' + str(ids[channel])
@@ -206,7 +208,7 @@ class qms():
 
         data = self.qmg.mass_scan(first_mass, scan_width)
 
-        comment = 'Test scan - qgm420'
+        comment = 'Test scan - qgm422'
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
         for i in range(0, len(data['x'])):
@@ -220,7 +222,7 @@ if __name__ == "__main__":
     sql_saver.daemon = True
     sql_saver.start()
 
-    qmg = qmg420.qmg_420()
+    qmg = qmg422.qmg_422()
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
@@ -233,7 +235,8 @@ if __name__ == "__main__":
     time.sleep(1)
     
     channel_list = {}
-    channel_list[0] = {'comment':'DELETE','autorange':True}
+    #channel_list[0] = {'comment':'DELETE','autorange':True}
+    channel_list[0] = {'comment':'DELETE','autorange':False}
     channel_list[1] = {'mass':2,'speed':10, 'amp_range':6, 'masslabel':'M2'}
     channel_list[2] = {'mass':4,'speed':10, 'amp_range':6, 'masslabel':'M4'}
     channel_list[3] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
