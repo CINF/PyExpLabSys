@@ -49,7 +49,7 @@ def main():
             ### UV gun
             if code_uv[0] in [0, 1]:  # If measurement is OK or underranged
                 if logging_criteria(value_uv, uvgun_last):
-                    LOGGER.info('Add value {} for load lock'.format(value_ll))
+                    LOGGER.info('Add value {} for UV gun'.format(value_uv))
                     now_uv = db_logger.enqueue_point_now(
                         'thetaprobe_pressure_uvgun',
                         value_uv)
