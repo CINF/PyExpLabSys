@@ -26,6 +26,8 @@ class qms():
         else: #We make a dummy queue to make the program work
             self.sqlqueue = Queue.Queue()
         self.operating_mode = "Idling"
+        self.current_action = 'Idling'
+        self.message = ''
         self.autorange = False
         self.current_timestamp = "None"
         self.measurement_runtime = 0
@@ -203,20 +205,19 @@ class qms():
         self.operating_mode = "Idling"
         
 
-    def mass_scan(self, first_mass=0, scan_width=50):
+    def mass_scan(self, first_mass=0, scan_width=50, comment='Mass-scan'):
         start_time = time.time()
-        self.operating_mode = 'Mass-scan'
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.operating_mode = 'Mass-scan'
+        id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
+        self.message = 'ID number: ' + str(id) + '. Scanning from ' + str(first_mass) + ' to ' + str(first_mass+scan_width) + 'amu'
         self.current_timestamp = timestamp
         self.qmg.mass_scan(first_mass, scan_width)
 
         self.measurement_runtime = time.time()-start_time
 
-        data = {}
-        data['x'] = []
-        data['y'] = []
-
         self.qmg.start_measurement()
+        self.current_action = 'Performing scan'
         time.sleep(0.1) #Allow slow qmg models time to start measurement
         while self.qmg.measurement_running():
             self.measurement_runtime = time.time()-start_time
@@ -227,24 +228,20 @@ class qms():
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
 
         samples = []
+        self.current_action = 'Downloading samples from device'
         for i in range(0,number_of_samples/100):
             samples.extend(self.qmg.get_multiple_samples(100))
             self.measurement_runtime = time.time()-start_time
         samples.extend(self.qmg.get_multiple_samples(number_of_samples%100))
 
+        query  = '' 
+        query += 'insert into xy_values_' + self.chamber 
+        query += ' set measurement = ' + str(id) + ', x = '
         for i in range(0,len(samples)):
-            self.measurement_runtime = time.time()-start_time
-            val = samples[i]
-            data['y'].append(float(val))
-            data['x'].append(first_mass + i / samples_pr_unit)
+            new_query = query + str(first_mass + i / samples_pr_unit) + ', y = ' + str(samples[i])
+            self.sqlqueue.put(new_query)
 
-        comment = 'Test scan - qgm420'
-        id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
-        for i in range(0, len(data['x'])):
-            self.measurement_runtime = time.time()-start_time
-            query = 'insert into xy_values_' + self.chamber + ' set measurement = ' + str(id) + ', x = ' + str(data['x'][i]) + ', y = ' + str(data['y'][i])
-            self.sqlqueue.put(query)
-        
+        self.current_action = 'Emptying Queue'
         while not self.sqlqueue.empty():
             self.measurement_runtime = time.time()-start_time
             time.sleep(0.1)
@@ -263,7 +260,7 @@ if __name__ == "__main__":
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
-    qms.mass_scan(0,50)
+    qms.mass_scan(0,10,comment = 'Test scan - qgm420')
 
     time.sleep(1)
     """

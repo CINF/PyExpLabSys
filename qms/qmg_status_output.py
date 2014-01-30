@@ -38,10 +38,13 @@ class qms_status_output(threading.Thread):
                     self.screen.addstr(7+i,1,ch['masslabel'] + ': ' + ch['value'] + '    ')
             
             if self.qmg.operating_mode == 'Mass-scan':
+                self.screen.addstr(2, 1, self.qmg.message)
                 timestamp = "Timestamp: " + self.qmg.current_timestamp
                 self.screen.addstr(3, 1, timestamp)
                 runtime = "Experiment runtime: {0:.1f}s".format(self.qmg.measurement_runtime)
                 self.screen.addstr(4, 1, runtime)
+                self.screen.addstr(5, 1, 'Current action: ' + self.qmg.current_action)
+                self.screen.clrtoeol()
 
 
             if not self.sql == None:
