@@ -9,32 +9,37 @@ import Queue
 import threading
 import MySQLdb
 import time
-import logging as logger
-logger.basicConfig(level=logger.DEBUG,
-                   format='%(asctime)s:%(levelname)s:%(message)s')
+import logging
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
 
 
 class NoneResponse:
     """NoneResponse"""
     def __init__(self):
-        pass
+        LOGGER.debug('NoneResponse class instantiated')
 NONE_RESPONSE = NoneResponse()
 
 
 class InterruptableThread(threading.Thread):
     """Class to run a MySQL query with a time out"""
     def __init__(self, cursor, query):
+        LOGGER.debug('InterruptableThread.__init__ start')
         threading.Thread.__init__(self)
         self.cursor = cursor
         self.query = query
         self.result = NONE_RESPONSE
         self.daemon = True
+        LOGGER.debug('InterruptableThread.__init__ end')
 
     def run(self):
         """Start the thread"""
+        LOGGER.debug('InterruptableThread.run start')
         self.cursor.execute(self.query)
         self.result = self.cursor.fetchall()
-        logger.debug('Executed query: {}'.format(self.query))
+        LOGGER.debug('InterruptableThread.run end. Executed query: {}'
+                     ''.format(self.query))
 
 
 def timeout_query(cursor, query, timeout_duration=3):
@@ -49,17 +54,21 @@ def timeout_query(cursor, query, timeout_duration=3):
     :return: A tuple of results from the query or ``loggers.NONE_RESPONSE`` if
         the query timed out
     """
+    LOGGER.debug('timeout_query start')
     # Spawn a thread for the query
     query_thread = InterruptableThread(cursor, query)
     # Start and join
     query_thread.start()
     query_thread.join(timeout_duration)
+    LOGGER.debug('timeout_query end')
     return query_thread.result
 
 
 class StartupException(Exception):
     """Exception raised when the continous logger fails to start up"""
     def __init__(self, *args, **kwargs):
+        LOGGER.debug('StartupException instantiated with args, kwargs: {}, {}'
+                     ''.format(str(args), str(kwargs)))
         super(StartupException, self).__init__(*args, **kwargs)
 
 
@@ -102,11 +111,12 @@ class ContinuousLogger(threading.Thread):
         :raises StartupException: if it is not possible to start the database
             connection or translate the code names
         """
-        logger.info('__init__ called')
+        LOGGER.info('CL: __init__ called')
         # Initialize thread
         super(ContinuousLogger, self).__init__()
         self.daemon = True
         self._stop = False
+        LOGGER.debug('CL: thread initialized')
         # Initialize local variables
         self.mysql = \
             {'table': table, 'username': username, 'password': password}
@@ -115,71 +125,79 @@ class ContinuousLogger(threading.Thread):
         self._cursor = None
         self._connection = None
         self.data_queue = Queue.Queue()
+        LOGGER.debug('CL: instance attributes initialized')
         # Dict used to translate code_names to measurement numbers
         self._codename_translation = {}
         # Init database connection and get measurement numbers from codenames
         self._init_connection()
         self._init_measurement_numbers(measurement_codenames)
-        logger.info('__init__ done')
+        LOGGER.info('CL: __init__ done')
 
     def _init_connection(self):
         """Initialize the database connection."""
         try:
-            print MySQLdb
             self._connection = MySQLdb.connect(host=self.host,
                                                user=self.mysql['username'],
                                                passwd=self.mysql['password'],
                                                db=self.database)
             self._cursor = self._connection.cursor()
-            logger.info('Database connection initialized')
+            LOGGER.info('CL: Database connection initialized')
         except MySQLdb.OperationalError:
             message = 'Could not connect to database'
-            logger.warning(message)
+            LOGGER.warning('CL: ' + message)
             raise StartupException(message)
 
     def _init_measurement_numbers(self, measurement_codenames):
         """Get the measurement numbers that corresponds to the measurement
         codenames
         """
+        LOGGER.debug('CL: init measurements numbers')
         for codename in measurement_codenames:
             query = 'SELECT id FROM dateplots_descriptions '\
                 'WHERE codename=\'{}\''.format(codename)
             self._cursor.execute(query)
             results = self._cursor.fetchall()
+            LOGGER.debug('CL: query for {} returned {}'
+                         ''.format(codename, str(results)))
             if len(results) != 1:
                 message = 'Measurement code name \'{}\' does not have exactly'\
                     ' one entry in dateplots_descriptions'.format(codename)
-                logger.critical(message)
+                LOGGER.critical('CL: ' + message)
                 raise StartupException(message)
             self._codename_translation[codename] = results[0][0]
-        logger.info('Codenames translated to measurement numbers: {}'
+        LOGGER.info('Codenames translated to measurement numbers: {}'
                     ''.format(str(self._codename_translation)))
 
     def stop(self):
         """Stop the thread"""
+        LOGGER.info('CL: Set stop. Wait before returning')
         self._stop = True
-        logger.info('Stop requested')
+        time.sleep(max(1, 1.2 * self._dequeue_timeout))
+        LOGGER.debug('CL: Stop finished')
 
     def run(self):
         """Start the thread. Must be run before points are added."""
         while not self._stop:
             try:
-                point = self.data_queue.get(block=True, timeout=0.1)
-                print 'good point'
+                point = self.data_queue.get(block=True,
+                                            timeout=self._dequeue_timeout)
                 result = self._send_point(point)
+                LOGGER.info('CL: Point "{}" dequeued and sent'.format(point))
                 if result is False:
                     self.data_queue.put(point)
+                    LOGGER.debug('CL: Point could not be sent. Re-queued')
                     self._reinit_connection()
             except Queue.Empty:
                 pass
         # When we stop the logger
         self._connection.close()
-        logger.info('Database connection closed. Remaining in queue: {}'\
+        LOGGER.info('Database connection closed. Remaining in queue: {}'
             .format(self.data_queue.qsize()))
 
     def _send_point(self, point):
         """Send all points in the queue to the data base"""
         result = timeout_query(self._cursor, point)
+        LOGGER.debug('CL: timeout_query called from send_point')
         # If the query was un successfully executed, put the points back in
         # the queue and raise and set succes to False
         success = False if (result is NONE_RESPONSE) else True
@@ -190,11 +208,13 @@ class ContinuousLogger(threading.Thread):
         database_up = False
         while not database_up:
             try:
+                LOGGER.debug('CL: Try to re-open database connection')
                 self._init_connection()
                 database_up = True
             except StartupException:
                 pass
-            time.sleep(60)
+            time.sleep(self._reconnect_waittime)
+        LOGGER.debug('CL: Database connection re-opened')
 
     def enqueue_point_now(self, codename, value):
         """Add a point to the queue and use the current time as the time
@@ -204,10 +224,13 @@ class ContinuousLogger(threading.Thread):
         :type codename: str
         :param value: The value to be logged
         :type value: float
+        :return: the Unixtime used
+        :rtype: float
         """
         unixtime = time.time()
-        logger.debug('Adding timestamp {} to point'.format(unixtime))
+        LOGGER.debug('CL: Adding timestamp {} to point'.format(unixtime))
         self.enqueue_point(codename, unixtime, value)
+        return unixtime
 
     def enqueue_point(self, codename, unixtime, value):
         """Add a point to the queue
@@ -224,5 +247,6 @@ class ContinuousLogger(threading.Thread):
                  '({}, FROM_UNIXTIME({}), {});')
         query = query.format(self.mysql['table'], meas_number, unixtime, value)
         self.data_queue.put(query)
-        logger.info('Point added to queue. Queue size: {}'.format(
-            self.data_queue.qsize()))
+        LOGGER.info('CL: Point ({}, {}, {}) added to queue. Queue size: {}'
+                    ''.format(codename, unixtime, value,
+                              self.data_queue.qsize()))
