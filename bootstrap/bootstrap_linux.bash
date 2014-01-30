@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 # NOTE pip is placed here, because right now it pulls in python2.6, which
 # I prefer is complete before installing python packages
-apt1="openssh-server emacs python-pip"
+apt1="openssh-server emacs python-pip graphviz"
 
 # apt install packages line 2, python extensions
 apt2="python-mysqldb python-serial"
