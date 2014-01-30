@@ -192,6 +192,13 @@ class qmg_422():
         value = self.comm('MDB')
         return value
 
+    def get_multiple_samples(self, number):
+        values = {}
+        for i in range(0, number):
+            values[i] = self.comm('MDB')
+        return values
+
+
     def config_channel(self, channel, mass=-1, speed=-1, enable="", amp_range=""):
         """ Config a MS channel for measurement """
         self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
@@ -214,6 +221,17 @@ class qmg_422():
         self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
         self.comm('MRE ,15') #Peak resolution
 
+    def measurement_running(self):
+        status = self.comm('MBH')
+        status = status.split(',')
+        running = int(status[0])
+        return(running == 0)
+        
+    def waiting_samples(self):
+        header = self.comm('MBH')
+        header = header.split(',')
+        number_of_samples = int(header[3])
+        return(number_of_samples)
 
     def mass_scan(self, first_mass, scan_width):
         self.comm('CYM, 0') #0, single. 1, multi
@@ -224,45 +242,6 @@ class qmg_422():
         self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
-
-        data = {}
-        data['x'] = []
-        data['y'] = []
-
-        self.comm('CRU ,2') #Start measurement
-        status = self.comm('MBH')
-        status = status.split(',')
-        running = status[0]
-        current_sample = 0
-        while  int(running) == 0:
-            #print "A"
-            status = self.comm('MBH')
-            #print "B"
-            print "Status: " + status
-            status = status.split(',')
-            running = status[0]
-            time.sleep(1)
-        #print len(datay)
-        print "---"
-        header = self.comm('MBH')
-        print header
-        header = header.split(',')
-        print header[3]
-        output_string = ""
-
-        start = time.time()
-        number_of_samples = int(header[3])
-        samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
-        print "Number of samples: " + str(number_of_samples)
-        print "Samples pr. unit: " + str(samples_pr_unit)
-        for i in range(0,number_of_samples):
-            val = self.comm('MDB')
-            data['y'].append(float(val))
-            data['x'].append(first_mass + i / samples_pr_unit)
-            output_string += val + '\n'
-        print time.time() - start
-        return data
-
 
     def mass_time(self, ns):
         self.comm('CYM ,1') #0, single. 1, multi

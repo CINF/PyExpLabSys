@@ -205,7 +205,28 @@ class qms():
 
     def mass_scan(self, first_mass=0, scan_width=50):
 
-        data = self.qmg.mass_scan(first_mass, scan_width)
+        self.qmg.mass_scan(first_mass, scan_width)
+
+        data = {}
+        data['x'] = []
+        data['y'] = []
+
+        self.qmg.start_measurement()
+        while self.qmg.measurement_running():
+            time.sleep(1)
+
+        start = time.time()
+        number_of_samples = self.qmg.waiting_samples()
+        samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
+        print "Number of samples: " + str(number_of_samples)
+        print "Samples pr. unit: " + str(samples_pr_unit)
+        samples = self.qmg.get_multiple_samples(number_of_samples)
+        for i in range(0,number_of_samples):
+            val = samples[i]
+            data['y'].append(float(val))
+            data['x'].append(first_mass + i / samples_pr_unit)
+        print time.time() - start
+
         comment = 'Test scan - qgm422'
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
@@ -224,7 +245,7 @@ if __name__ == "__main__":
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
-    qms.mass_scan(0,50)
+    qms.mass_scan(0,2)
 
     """
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
