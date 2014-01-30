@@ -168,6 +168,15 @@ class qmg_420():
     def first_mass(self, mass):
         self.comm('FIR ' + str(mass))
         
+    def get_multiple_samples(self, number):
+        values = [0] * number
+        for i in range(0, number):
+            val = self.comm(chr(5))
+            if not (val == ''):
+                values[i] = val
+        return values
+        
+        
     def get_single_sample(self):
         error = 0
         while (self.waiting_samples() == 0) and (error < 40):
@@ -216,6 +225,7 @@ class qmg_420():
         self.comm('CHM 0') # Mass scan, to enable FIR filter, set value to 1
         self.comm('STA 1')
 
+        """
         self.speed(8)
 
         status = self.comm('RSC').split(',')
@@ -261,3 +271,4 @@ class qmg_420():
            data['x'].append(first_mass + i / samples_pr_unit)
 
         return data
+        """

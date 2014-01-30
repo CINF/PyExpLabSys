@@ -193,7 +193,7 @@ class qmg_422():
         return value
 
     def get_multiple_samples(self, number):
-        values = {}
+        values = [0] * number
         for i in range(0, number):
             values[i] = self.comm('MDB')
         return values

@@ -14,8 +14,8 @@ import SQL_saver
 import qmg_status_output
 import qmg_meta_channels
 
-#import qmg420
-import  qmg422
+import qmg420
+#import  qmg422
 
 class qms():
 
@@ -217,6 +217,7 @@ class qms():
         data['y'] = []
 
         self.qmg.start_measurement()
+        time.sleep(0.1) #Allow slow qmg models time to start measurement
         while self.qmg.measurement_running():
             self.measurement_runtime = time.time()-start_time
             time.sleep(1)
@@ -224,19 +225,23 @@ class qms():
         start = time.time()
         number_of_samples = self.qmg.waiting_samples()
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
-        #print "Number of samples: " + str(number_of_samples)
-        #print "Samples pr. unit: " + str(samples_pr_unit)
-        samples = self.qmg.get_multiple_samples(number_of_samples)
-        for i in range(0,number_of_samples):
+
+        samples = []
+        for i in range(0,number_of_samples/100):
+            samples.extend(self.qmg.get_multiple_samples(100))
+            self.measurement_runtime = time.time()-start_time
+        samples.extend(self.qmg.get_multiple_samples(number_of_samples%100))
+
+        for i in range(0,len(samples)):
             self.measurement_runtime = time.time()-start_time
             val = samples[i]
             data['y'].append(float(val))
             data['x'].append(first_mass + i / samples_pr_unit)
-        #print time.time() - start
 
-        comment = 'Test scan - qgm422'
+        comment = 'Test scan - qgm420'
         id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
         for i in range(0, len(data['x'])):
+            self.measurement_runtime = time.time()-start_time
             query = 'insert into xy_values_' + self.chamber + ' set measurement = ' + str(id) + ', x = ' + str(data['x'][i]) + ', y = ' + str(data['y'][i])
             self.sqlqueue.put(query)
         
@@ -251,19 +256,17 @@ if __name__ == "__main__":
     sql_saver.daemon = True
     sql_saver.start()
 
-    qmg = qmg422.qmg_422()
+    qmg = qmg420.qmg_420()
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
-
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
+    qms.mass_scan(0,50)
 
-    qms.mass_scan(0,10)
-    """
     time.sleep(1)
-    
+    """
     channel_list = {}
     #channel_list[0] = {'comment':'DELETE','autorange':True}
     channel_list[0] = {'comment':'DELETE','autorange':False}
