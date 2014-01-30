@@ -216,29 +216,27 @@ class qmg_422():
 
 
     def mass_scan(self, first_mass, scan_width):
-        self.qmg.comm('CYM, 0') #0, single. 1, multi
-        self.qmg.comm('SMC, 0') #Channel 0
-        self.qmg.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
-        self.qmg.comm('MST ,2') #Steps
-        self.qmg.comm('MSD ,10') #Speed
-        self.qmg.comm('AMO, 2')  #Auto range electromter
-        self.qmg.comm('MFM, ' + str(first_mass)) #First mass
-        self.qmg.comm('MWI, ' + str(scan_width)) #Scan width
-        #print "Mass-scan:   " + self.comm('MMO, 5')  #Magic mass-scan
-        #print "Resolution:  " + self.comm('MRE ,20')   #Resolution
+        self.comm('CYM, 0') #0, single. 1, multi
+        self.comm('SMC, 0') #Channel 0
+        self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
+        self.comm('MST ,0') #Steps
+        self.comm('MSD ,10') #Speed
+        self.comm('AMO, 2')  #Auto range electromter
+        self.comm('MFM, ' + str(first_mass)) #First mass
+        self.comm('MWI, ' + str(scan_width)) #Scan width
 
         data = {}
         data['x'] = []
         data['y'] = []
 
-        self.qmg.comm('CRU ,2') #Start measurement
-        status = self.qmg.comm('MBH')
+        self.comm('CRU ,2') #Start measurement
+        status = self.comm('MBH')
         status = status.split(',')
         running = status[0]
         current_sample = 0
         while  int(running) == 0:
             #print "A"
-            status = self.qmg.comm('MBH',debug=False)
+            status = self.comm('MBH')
             #print "B"
             print "Status: " + status
             status = status.split(',')
@@ -246,7 +244,7 @@ class qmg_422():
             time.sleep(1)
         #print len(datay)
         print "---"
-        header = self.qmg.comm('MBH')
+        header = self.comm('MBH')
         print header
         header = header.split(',')
         print header[3]
@@ -258,11 +256,12 @@ class qmg_422():
         print "Number of samples: " + str(number_of_samples)
         print "Samples pr. unit: " + str(samples_pr_unit)
         for i in range(0,number_of_samples):
-            val = self.qmg.comm('MDB')
+            val = self.comm('MDB')
             data['y'].append(float(val))
             data['x'].append(first_mass + i / samples_pr_unit)
             output_string += val + '\n'
         print time.time() - start
+        return data
 
 
     def mass_time(self, ns):

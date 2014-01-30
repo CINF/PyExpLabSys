@@ -184,15 +184,14 @@ class qms():
             time.sleep(0.1)
             for channel in range(1, ns+1):
                 self.measurement_runtime = time.time()-start_time
-                #value = self.comm('MDB')
-                value = qmg.get_single_sample()
+                value = self.qmg.get_single_sample()
                 self.channel_list[channel]['value'] = value
                 sqltime = str((time.time() - start_time) * 1000)
                 if value == "":
                     break
                 else:
                     value = float(value)
-                    if qmg.type == '420':
+                    if self.qmg.type == '420':
                         value = value / 10**(ms_channel_list[channel]['amp_range']+5)
                     query  = 'insert into '
                     query += 'xy_values_' + self.chamber + ' '
@@ -207,7 +206,6 @@ class qms():
     def mass_scan(self, first_mass=0, scan_width=50):
 
         data = self.qmg.mass_scan(first_mass, scan_width)
-
         comment = 'Test scan - qgm422'
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
@@ -226,8 +224,9 @@ if __name__ == "__main__":
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
-    #qms.mass_scan()
-    
+    qms.mass_scan(0,50)
+
+    """
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
@@ -265,4 +264,4 @@ if __name__ == "__main__":
     print qms.mass_time(channel_list, timestamp)
     #qmg.scan_test()
     printer.stop()
-
+    """
