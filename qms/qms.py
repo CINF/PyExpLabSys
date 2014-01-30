@@ -227,18 +227,22 @@ class qms():
         number_of_samples = self.qmg.waiting_samples()
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
 
-        samples = []
-        self.current_action = 'Downloading samples from device'
-        for i in range(0,number_of_samples/100):
-            samples.extend(self.qmg.get_multiple_samples(100))
-            self.measurement_runtime = time.time()-start_time
-        samples.extend(self.qmg.get_multiple_samples(number_of_samples%100))
-
         query  = '' 
         query += 'insert into xy_values_' + self.chamber 
         query += ' set measurement = ' + str(id) + ', x = '
+        self.current_action = 'Downloading samples from device'
+        j = 0
+        for i in range(0,number_of_samples/100):
+            self.measurement_runtime = time.time()-start_time
+            samples = self.qmg.get_multiple_samples(100)
+            for i in range(0,len(samples)):
+                j += 1
+                new_query = query + str(first_mass + j / samples_pr_unit) + ', y = ' + str(samples[i])
+                self.sqlqueue.put(new_query)
+        samples = self.qmg.get_multiple_samples(number_of_samples%100)
         for i in range(0,len(samples)):
-            new_query = query + str(first_mass + i / samples_pr_unit) + ', y = ' + str(samples[i])
+            j += 1
+            new_query = query + str(first_mass + j / samples_pr_unit) + ', y = ' + str(samples[i])
             self.sqlqueue.put(new_query)
 
         self.current_action = 'Emptying Queue'
@@ -260,7 +264,7 @@ if __name__ == "__main__":
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
-    qms.mass_scan(0,10,comment = 'Test scan - qgm420')
+    qms.mass_scan(0,50,comment = 'Test scan - qgm420')
 
     time.sleep(1)
     """
