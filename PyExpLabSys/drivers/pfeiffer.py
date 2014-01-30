@@ -1,8 +1,8 @@
 """This module contains drivers for the following equipment from Pfeiffer
 Vacuum:
 
-* TPG 262 Dual Gauge. Dual-Channel Measurement and Control Unit for Compact
-    Gauges
+* TPG 262 and TPG 261 Dual Gauge. Dual-Channel Measurement and Control
+    Unit for Compact Gauges
 """
 
 import time
@@ -30,13 +30,12 @@ GAUGE_IDS = {
     'noid': 'no identifier'
 }
 PRESSURE_UNITS = {0: 'mbar/bar', 1: 'Torr', 2: 'Pascal'}
-BAUD = {0: 9600, 1: 19200, 2: 38400}
 
 
 class TPG26x(object):
     r"""Abstract class that implements the common driver for the TPG 261 and
     TPG 262 dual channel measurement and control unit. The driver implements
-    the follow 6 commands out the 39 in total:
+    the following 6 commands out the 39 in the specification:
 
     * PNR: Program number (firmware version)
     * PR[1,2]: Pressure measurement (measurement data) gauge [1, 2]
@@ -48,12 +47,12 @@ class TPG26x(object):
     This class also contains the following class variables, for the specific
     characters that are used in the communication:
 
-    :var ETX: End text (Ctrl-c), chr(3), \x15
-    :var CR: Carriage return, chr(13), \r
-    :var LF: Line feed, chr(10), \n
-    :var ENQ: Enquiry, chr(5), \x05
-    :var ACK: Acknowledge, chr(6), \x06
-    :var NAK: Negative acknowledge, chr(21), \x15
+    :var ETX: End text (Ctrl-c), chr(3), \\x15
+    :var CR: Carriage return, chr(13), \\r
+    :var LF: Line feed, chr(10), \\n
+    :var ENQ: Enquiry, chr(5), \\x05
+    :var ACK: Acknowledge, chr(6), \\x06
+    :var NAK: Negative acknowledge, chr(21), \\x15
     """
 
     ETX = chr(3)  # \x03
@@ -66,11 +65,12 @@ class TPG26x(object):
     def __init__(self, port='/dev/ttyUSB0', baudrate=9600):
         """Initialize internal variables and serial connection
 
-        :param port: The COM port to open. See the serial documentation for
-            possible value. The default value is '/dev/ttyUSB0'
-        :param baudrate: 9600, 19200, 38400 where 9600 is default
-        :return: the padded string
-        :rtype: str
+        :param port: The COM port to open. See the documentation for
+            `pyserial <http://pyserial.sourceforge.net/>`_ for an explanation
+            of the possible value. The default value is '/dev/ttyUSB0'.
+        :type port: str or int
+        :param baudrate: 9600, 19200, 38400 where 9600 is the default
+        :type baudrate: int
         """
         # The serial connection should be setup with the following parameters:
         # 1 start bit, 8 data bits, No parity bit, 1 stop bit, no hardware
@@ -83,6 +83,8 @@ class TPG26x(object):
 
         :param string: String to pad
         :type string: str
+        :returns: the padded string
+        :rtype: str
         """
         return string + self.CR + self.LF
 
@@ -105,7 +107,11 @@ class TPG26x(object):
             raise IOError(message)
 
     def _get_data(self):
-        """Get the data that is ready on the device"""
+        """Get the data that is ready on the device
+
+        :returns: the raw data
+        :rtype:str
+        """
         self.serial.write(self.ENQ)
         data = self.serial.readline()
         return data.rstrip(self.LF).rstrip(self.CR)
@@ -121,7 +127,11 @@ class TPG26x(object):
         return out
 
     def program_number(self):
-        """Return the firmware version"""
+        """Return the firmware version
+
+        :returns: the firmware version
+        :rtype: str
+        """
         self._send_command('PNR')
         return self._get_data()
 
@@ -129,6 +139,7 @@ class TPG26x(object):
         """Return the pressure measured by gauge X
 
         :param gauge: The gauge number, 1 or 2
+        :type gauge: int
         :raises ValueError: if gauge is not 1 or 2
         :return: (value, (status_code, status_message))
         :rtype: tuple
@@ -171,7 +182,7 @@ class TPG26x(object):
         return id1, GAUGE_IDS[id1], id2, GAUGE_IDS[id2]
 
     def pressure_unit(self):
-        """Return the pressure units
+        """Return the pressure unit
 
         :return: the pressure unit
         :rtype: str
@@ -203,11 +214,12 @@ class TPG262(TPG26x):
     def __init__(self, port='/dev/ttyUSB0', baudrate=9600):
         """Initialize internal variables and serial connection
 
-        :param port: The COM port to open. See the serial documentation for
-            possible value. The default value is '/dev/ttyUSB0'
-        :param baudrate: 9600, 19200, 38400 where 9600 is default
-        :return: the padded string
-        :rtype: str
+        :param port: The COM port to open. See the documentation for
+            `pyserial <http://pyserial.sourceforge.net/>`_ for an explanation
+            of the possible value. The default value is '/dev/ttyUSB0'.
+        :type port: str or int
+        :param baudrate: 9600, 19200, 38400 where 9600 is the default
+        :type baudrate: int        
         """
         super(TPG262, self).__init__(port=port, baudrate=baudrate)
 
@@ -218,10 +230,11 @@ class TPG261(TPG26x):
     def __init__(self, port='/dev/ttyUSB0', baudrate=9600):
         """Initialize internal variables and serial connection
 
-        :param port: The COM port to open. See the serial documentation for
-            possible value. The default value is '/dev/ttyUSB0'
-        :param baudrate: 9600, 19200, 38400 where 9600 is default
-        :return: the padded string
-        :rtype: str
+        :param port: The COM port to open. See the documentation for
+            `pyserial <http://pyserial.sourceforge.net/>`_ for an explanation
+            of the possible value. The default value is '/dev/ttyUSB0'.
+        :type port: str or int
+        :param baudrate: 9600, 19200, 38400 where 9600 is the default
+        :type baudrate: int
         """
         super(TPG261, self).__init__(port=port, baudrate=baudrate)
