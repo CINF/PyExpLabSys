@@ -37,6 +37,13 @@ class qms_status_output(threading.Thread):
                     ch = self.qmg.channel_list[i]
                     self.screen.addstr(7+i,1,ch['masslabel'] + ': ' + ch['value'] + '    ')
             
+            if self.qmg.operating_mode == 'Mass-scan':
+                timestamp = "Timestamp: " + self.qmg.current_timestamp
+                self.screen.addstr(3, 1, timestamp)
+                runtime = "Experiment runtime: {0:.1f}s".format(self.qmg.measurement_runtime)
+                self.screen.addstr(4, 1, runtime)
+
+
             if not self.sql == None:
                 commits = "SQL commits: {0:.0f}".format(self.sql.commits)
                 self.screen.addstr(3, 40, commits)

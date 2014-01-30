@@ -204,8 +204,13 @@ class qms():
         
 
     def mass_scan(self, first_mass=0, scan_width=50):
-
+        start_time = time.time()
+        self.operating_mode = 'Mass-scan'
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.current_timestamp = timestamp
         self.qmg.mass_scan(first_mass, scan_width)
+
+        self.measurement_runtime = time.time()-start_time
 
         data = {}
         data['x'] = []
@@ -213,27 +218,32 @@ class qms():
 
         self.qmg.start_measurement()
         while self.qmg.measurement_running():
+            self.measurement_runtime = time.time()-start_time
             time.sleep(1)
 
         start = time.time()
         number_of_samples = self.qmg.waiting_samples()
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
-        print "Number of samples: " + str(number_of_samples)
-        print "Samples pr. unit: " + str(samples_pr_unit)
+        #print "Number of samples: " + str(number_of_samples)
+        #print "Samples pr. unit: " + str(samples_pr_unit)
         samples = self.qmg.get_multiple_samples(number_of_samples)
         for i in range(0,number_of_samples):
+            self.measurement_runtime = time.time()-start_time
             val = samples[i]
             data['y'].append(float(val))
             data['x'].append(first_mass + i / samples_pr_unit)
-        print time.time() - start
+        #print time.time() - start
 
         comment = 'Test scan - qgm422'
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         id = self.create_mysql_measurement(0,timestamp,'Mass Scan',comment, type=4)
         for i in range(0, len(data['x'])):
             query = 'insert into xy_values_' + self.chamber + ' set measurement = ' + str(id) + ', x = ' + str(data['x'][i]) + ', y = ' + str(data['y'][i])
             self.sqlqueue.put(query)
-        time.sleep(10)
+        
+        while not self.sqlqueue.empty():
+            self.measurement_runtime = time.time()-start_time
+            time.sleep(0.1)
+        time.sleep(0.5)
         
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
@@ -245,13 +255,13 @@ if __name__ == "__main__":
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
-    qms.mass_scan(0,2)
 
-    """
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
- 
+
+    qms.mass_scan(0,10)
+    """
     time.sleep(1)
     
     channel_list = {}
@@ -283,6 +293,6 @@ if __name__ == "__main__":
     #meta_flow.start()
     
     print qms.mass_time(channel_list, timestamp)
-    #qmg.scan_test()
-    printer.stop()
+
     """
+    printer.stop()
