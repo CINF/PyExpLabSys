@@ -1,5 +1,5 @@
-"""This module contains various convinience functions for setting common things
-up
+"""This module contains a convenience function for easily setting up a
+logger with the :py:mod:`logging` module.
 """
 
 import logging
@@ -17,18 +17,19 @@ def get_logger(name, level='INFO', terminal_log=True, file_log=False,
                file_name=None, file_max_bytes=1048576, file_backup_count=3):
     """Set up the root logger and return a named logger with the same settings
 
-    :param name: The name of the logger. E.g: 'Fancy logger script'
+    :param name: The name of the logger, e.g: 'fancy_logger_script'
     :type name: str
     :param level: The level for the logger. Can be either 'DEBUG', 'INFO',
-        'WARNING', 'ERROR' or 'CRITICAL'
+        'WARNING', 'ERROR' or 'CRITICAL'. See :py:mod:`logging` for details.
     :type level: str
-    :param terminal_log: If True then there should be logged to the terminal
+    :param terminal_log: If ``True`` then logging to a terminal will be
+        activated
     :type terminal_log: bool
-    :param file_log: If True then logging to a file, with log rotation, will be
-        activated. If ``file_name`` is not given, then ``name``.log will be
-        used.
+    :param file_log: If ``True`` then logging to a file, with log rotation,
+        will be activated. If ``file_name`` is not given, then
+        ``name + '.log'`` will be used.
     :type file_log: bool
-    :param file_name: File name to log to
+    :param file_name: Optional file name to log to
     :type file_name: str
     :param file_max_size: The maximum size of the log file in bytes (default is
         1MB, which corresponds to roughly 10000 lines of log per file)
@@ -64,5 +65,5 @@ def get_logger(name, level='INFO', terminal_log=True, file_log=False,
         root_logger.addHandler(handler)
 
     # Create a named logger and return it
-    logger = logging.getLogger('thetaprobe_pressure_logger')
+    logger = logging.getLogger(name)
     return logger
