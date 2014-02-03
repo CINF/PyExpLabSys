@@ -1,9 +1,24 @@
+""" This module contains the driver code for the QMG422 control box
+for a pfeiffer mass-spectrometer. The code should in principle work
+for multiple type of electronics. It has so far been tested with a
+qme-125 box and a qme-??? box. The module is ment as a driver and
+has very little function in itself. The module is ment to be used
+as a sub-module for a large program providing the functionality to
+actually use the mass-spectrometer.
+
+Known bugs: Not all code has a proper distinction between the various
+electronics. The qme-125 has many limitations compared to the qme-???
+and these limitations are not always properly expressed in the code
+or the output of the module
+"""
+
 import serial
 import time
 import logging
 
 class qmg_422():
-
+    """ The actual driver class.
+    """ 
     def __init__(self):
         self.f = serial.Serial('/dev/ttyUSB0',19200)
         self.type = '422'
@@ -14,7 +29,11 @@ class qmg_422():
         Implements the low-level protocol for RS-232 communication with the
         instrument. High-level protocol can be implemented using this as a
         helper
-        
+
+        :param command: The command to send
+        :type command: str
+        :return: The reply associated with the last command
+        :rtype: str
         """
         t = time.time()
         logging.debug("Command in progress: " + command)
@@ -63,7 +82,13 @@ class qmg_422():
 
 
     def communication_mode(self, computer_control=False):
-        """ Returns and sets the communication mode """
+        """ Returns and sets the communication mode.
+        
+        :param computer_control: Activates ASCII communication with the device
+        :type computer_control: bool
+        :return: The current communication mode
+        :rtype: str
+        """
         if computer_control:
             ret_string = self.comm('CMO ,1')
         else:
@@ -84,7 +109,11 @@ class qmg_422():
 
 
     def simulation(self):
-        """ Chekcs wheter the instruments returns real or simulated data """
+        """ Chekcs wheter the instruments returns real or simulated data
+        
+        return: Message telling whether the device is in simulation mode
+        rtype: str
+        """
         ret_string = self.comm('TSI ,0')
         if int(ret_string) == 0:
             sim_state = "Simulation not running"
@@ -93,6 +122,10 @@ class qmg_422():
         return sim_state
 
     def set_channel(self, channel):
+        """ Set the current channel
+        :param channel: The channel number
+        :type channel: integer
+        """
         self.comm('SPC ,' + str(channel)) #Select the relevant channel       
 
     def read_sem_voltage(self):
