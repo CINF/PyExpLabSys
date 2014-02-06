@@ -1,10 +1,28 @@
+""" This module contains the driver code for the QMG422 control box
+for a pfeiffer mass-spectrometer. The code should in principle work
+for multiple type of electronics. It has so far been tested with a
+qme-125 box and a qme-??? box. The module is ment as a driver and
+has very little function in itself. The module is ment to be used
+as a sub-module for a large program providing the functionality to
+actually use the mass-spectrometer.
+
+Known bugs: Not all code has a proper distinction between the various
+electronics. The qme-125 has many limitations compared to the qme-???
+and these limitations are not always properly expressed in the code
+or the output of the module
+"""
+
 import serial
 import time
 import logging
 
 class qmg_422():
-
+    """ The actual driver class.
+    """ 
     def __init__(self):
+        """ Initialize the module
+        """
+        # TODO: Take communication parameters as argument
         self.f = serial.Serial('/dev/ttyUSB0',19200)
         self.type = '422'
 
@@ -14,7 +32,11 @@ class qmg_422():
         Implements the low-level protocol for RS-232 communication with the
         instrument. High-level protocol can be implemented using this as a
         helper
-        
+
+        :param command: The command to send
+        :type command: str
+        :return: The reply associated with the last command
+        :rtype: str
         """
         t = time.time()
         logging.debug("Command in progress: " + command)
@@ -63,7 +85,13 @@ class qmg_422():
 
 
     def communication_mode(self, computer_control=False):
-        """ Returns and sets the communication mode """
+        """ Returns and sets the communication mode.
+        
+        :param computer_control: Activates ASCII communication with the device
+        :type computer_control: bool
+        :return: The current communication mode
+        :rtype: str
+        """
         if computer_control:
             ret_string = self.comm('CMO ,1')
         else:
@@ -84,7 +112,11 @@ class qmg_422():
 
 
     def simulation(self):
-        """ Chekcs wheter the instruments returns real or simulated data """
+        """ Chekcs wheter the instruments returns real or simulated data
+        
+        :return: Message telling whether the device is in simulation mode
+        :rtype: str
+        """
         ret_string = self.comm('TSI ,0')
         if int(ret_string) == 0:
             sim_state = "Simulation not running"
@@ -93,13 +125,26 @@ class qmg_422():
         return sim_state
 
     def set_channel(self, channel):
+        """ Set the current channel
+        :param channel: The channel number
+        :type channel: integer
+        """
         self.comm('SPC ,' + str(channel)) #Select the relevant channel       
 
     def read_sem_voltage(self):
+        """ Read the SEM Voltage
+        :return: The SEM voltage
+        :rtype: str
+        """
         sem_voltage = self.comm('SHV')
         return sem_voltage
 
     def read_preamp_range(self):
+        """ Read the preamp range
+        This function is not fully implemented
+        :return: The preamp range
+        :rtype: str
+        """
         preamp_range = self.comm('AMO')
         if preamp_range == '2':
            preamp_range = '0' #Idicates auto-range in mysql-table
@@ -108,11 +153,25 @@ class qmg_422():
         return(preamp_range)
 
     def read_timestep(self):
+        """ Reads the integration period of a measurement
+        :return: The integration period in non-physical unit
+        :rtype: str
+        """
+        # TODO: Make a look-up table to make the number physical
         timestep = self.comm('MSD') 
         return timestep
 
     def sem_status(self, voltage=-1, turn_off=False, turn_on=False):
-        """ Get or set the SEM status """
+        """ Get or set the SEM status
+        :param voltage: The wanted SEM-voltage
+        :type voltage: integer
+        :param turn_off: If True the SEM will be turned on (unless turn_of is also True)
+        :type turn_off: boolean
+        :param turn_on: If True the SEM will be turned off (unless turn_on is also True)
+        :type turn_on: boolean        
+        :return: The SEM voltage, The SEM status, True means voltage on
+        :rtype: integer, boolan
+        """
         if voltage>-1:
             ret_string = self.comm('SHV ,' + str(voltage))
         else:
@@ -129,7 +188,16 @@ class qmg_422():
         return sem_voltage, sem_on
 
     def emission_status(self, current=-1, turn_off=False, turn_on=False):
-        """ Get or set the emission status. """
+        """ Get or set the emission status.
+        :param current: The wanted emission status. Only works for QME???
+        :type current: integer
+        :param turn_off: If True the emission will be turned on (unless turn_of is also True)
+        :type turn_off: boolean
+        :param turn_on: If True the emission will be turned off (unless turn_on is also True)
+        :type turn_on: boolean        
+        :return: The emission value (for QME???), The emission status, True means filament on
+        :rtype: integer, boolan
+        """
         if current>-1:
             ret_string = self.comm('EMI ,' + str(current))
         else:
