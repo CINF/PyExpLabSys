@@ -3,6 +3,8 @@ import time
 import curses
 import threading
 import logging
+import MySQLdb
+from datetime import datetime
 
 class CursesTui(threading.Thread):
     def __init__(self, turbo_instance):
@@ -55,8 +57,111 @@ class CursesTui(threading.Thread):
         curses.endwin()    
 
 
+class DataLogger(threading.Thread):
+    def __init__(self, turbo_instance):
+        #TODO: Add support for several pumps
+        threading.Thread.__init__(self)
+        self.mal = 20 #Moving average length
+        self.turbo = turbo_instance
+        self.log = {}
+        self.log['rotation_speed'] = {}
+        self.log['rotation_speed']['time'] = 600
+        self.log['rotation_speed']['change'] = 1.03
+        self.log['rotation_speed']['mean'] = [0] * self.mal
+        self.log['rotation_speed']['last_recorded_value'] = 0
+        self.log['rotation_speed']['last_recorded_time'] = 0
+
+        self.log['drive_current'] = {}
+        self.log['drive_current']['time'] = 600
+        self.log['drive_current']['change'] = 1.05
+        self.log['drive_current']['mean'] =  [0] * self.mal
+        self.log['drive_current']['last_recorded_value'] = 0
+        self.log['drive_current']['last_recorded_time'] = 0
+
+        self.log['drive_power'] = {}
+        self.log['drive_power']['time'] = 600
+        self.log['drive_power']['change'] = 1.05
+        self.log['drive_power']['mean'] =  [0] * self.mal
+        self.log['drive_power']['last_recorded_value'] = 0
+        self.log['drive_power']['last_recorded_time'] = 0
+
+        self.log['temp_motor'] = {}
+        self.log['temp_motor']['time'] = 600
+        self.log['temp_motor']['change'] = 1.05
+        self.log['temp_motor']['mean'] =  [0] * self.mal
+        self.log['temp_motor']['last_recorded_value'] = 0
+        self.log['temp_motor']['last_recorded_time'] = 0
+
+        self.log['temp_electronics'] = {}
+        self.log['temp_electronics']['time'] = 600
+        self.log['temp_electronics']['change'] = 1.05
+        self.log['temp_electronics']['mean'] =  [0] * self.mal
+        self.log['temp_electronics']['last_recorded_value'] = 0
+        self.log['temp_electronics']['last_recorded_time'] = 0
+
+        self.log['temp_bottom'] = {}
+        self.log['temp_bottom']['time'] = 600
+        self.log['temp_bottom']['change'] = 1.05
+        self.log['temp_bottom']['mean'] =  [0] * self.mal
+        self.log['temp_bottom']['last_recorded_value'] = 0
+        self.log['temp_bottom']['last_recorded_time'] = 0
+
+        self.log['temp_bearings'] = {}
+        self.log['temp_bearings']['time'] = 600
+        self.log['temp_bearings']['change'] = 1.05
+        self.log['temp_bearings']['mean'] =  [0] * self.mal
+        self.log['temp_bearings']['last_recorded_value'] = 0
+        self.log['temp_bearings']['last_recorded_time'] = 0
+
+    def sqlInsert(self, query):
+        try:
+            cnxn = MySQLdb.connect(host="servcinf",user="mgw",passwd="mgw",db="cinfdata")
+            cursor = cnxn.cursor()
+        except:
+            print "Unable to connect to database"
+            return()
+        try:
+            cursor.execute(query)
+            cnxn.commit()
+        except:
+            print "SQL-error, query written below:"
+            print query
+            cnxn.close()
+
+
+    def sqlTime(self):
+        sqltime = datetime.now().isoformat(' ')[0:19]
+        return(sqltime)
+
+    def run(self):
+        for i in range(0,self.mal):
+            time.sleep(0.5)
+            for param in self.log:
+                self.log[param]['mean'][i] = self.turbo.status[param]
+
+        #Mean values now populated with meaningfull data
+	while True:
+            for i in range(0,self.mal):
+                time.sleep(0.5)
+                for param in self.log:
+                    p = self.log[param]
+                    p['mean'][i] = self.turbo.status[param]
+                    mean = sum(p['mean']) / float(len(p['mean']))
+                    time_trigged = (time.time() - p['last_recorded_time']) > p['time']
+                    val_trigged = not (p['last_recorded_value'] * p['change'] < mean < p['last_recorded_value'] * p['change'])
+            
+                    if (time_trigged or val_trigged):
+                        p['last_recorded_value'] = mean
+                        p['last_recorded_time'] = time.time()
+                        meas_time = self.sqlTime()
+                        val = "%.5g" % mean
+                        sql = "insert into dateplots_mgw set type=\"" + param + "\", time=\"" +  meas_time + "\", value = " + str(mean)
+                        #print sql
+                        self.sqlInsert(sql)
+
+
 class TurboDriver(threading.Thread):
-    def __init__(self, adress=1, port='/dev/ttyUSB2'):
+    def __init__(self, adress=1, port='/dev/ttyUSB3'):
         threading.Thread.__init__(self)
 
         with open('turbo.txt', 'w'):
@@ -118,7 +223,7 @@ class TurboDriver(threading.Thread):
         command = '398'
         reply = self.comm(command, True)
         val = int(reply)/60.0
-        logging.warn(val)
+        #logging.warn(val)
         #command = '309'
         #reply = self.comm(command, True)
         #logging.warn(reply)       
@@ -195,7 +300,7 @@ class TurboDriver(threading.Thread):
 
     def run(self):
         while self.running:
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.status['pump_accelerating'] = self.is_pump_accelerating()
             self.status['rotation_speed'] = self.read_rotation_speed()
             self.status['gas_mode'] = self.read_gas_mode()
@@ -228,3 +333,6 @@ if __name__ == '__main__':
     tui.daemon = True
     tui.start()
 
+    logger = DataLogger(mainpump)
+    logger.daemon = True
+    logger.start()
