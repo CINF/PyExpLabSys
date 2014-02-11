@@ -13,6 +13,7 @@ import SQL_saver
 
 import qmg_status_output
 import qmg_meta_channels
+import read_ms_channel_list
 
 #import qmg420
 import  qmg422
@@ -266,21 +267,7 @@ if __name__ == "__main__":
     printer.start()
     #qms.mass_scan(0,50,comment = 'Test scan - qgm422')
 
-
-    channel_list = {}
-    channel_list[0] = {'comment':'leaktesting', 'autorange':True}
-    #channel_list[1] = {'mass':1.6,'speed':9, 'masslabel':'M2'}
-    channel_list[1] = {'mass':4,'speed':9, 'masslabel':'M4'}
-    channel_list[2] = {'mass':7,'speed':9, 'masslabel':'M7'}
-    #channel_list[4] = {'mass':11.4,'speed':9, 'masslabel':'M12'}
-    #channel_list[5] = {'mass':13.4,'speed':9, 'masslabel':'M14'}
-    #channel_list[6] = {'mass':17.4,'speed':9, 'masslabel':'M18'}
-    #channel_list[1] = {'mass':27,'speed':9, 'masslabel':'M27'}
-    #channel_list[8] = {'mass':31.4,'speed':9, 'masslabel':'M32'}
-    #channel_list[9] = {'mass':43.4,'speed':9, 'masslabel':'M44'}"""
-    #channel_list[2] = {'mass':28,'speed':9,'masslabel':'M28'}
-    #channel_list[3] = {'mass':29,'speed':9,'masslabel':'M29'}
-
+    channel_list = read_ms_channel_list.read_ms_channel_list()
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     #meta_udp = qmg_meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
@@ -292,9 +279,7 @@ if __name__ == "__main__":
     #meta_udp.daemon = True
     #meta_udp.start()
 
-
-
-    print qmg.mass_time(channel_list, timestamp)
+    print qms.mass_time(channel_list['ms'], timestamp)
 
     time.sleep(1)
     printer.stop()
