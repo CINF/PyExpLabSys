@@ -9,7 +9,7 @@ class udp_meta_channel(threading.Thread):
     Only a single update_interval can be used for all hosts in the channel list.
     """
 
-    def __init__(self, qmg, timestamp, comment, update_interval):
+    def __init__(self, qms, timestamp, comment, update_interval):
         """ Initalize the instance of the class
         
         Timestamps and comments are currently identical for all channels, since
@@ -20,7 +20,7 @@ class udp_meta_channel(threading.Thread):
         self.ui = update_interval
         self.time = timestamp
         self.comment = comment
-        self.qmg = qmg
+        self.qms = qms
         self.channel_list = []
 
     def create_channel(self, masslabel, host, port, udp_string):
@@ -30,7 +30,7 @@ class udp_meta_channel(threading.Thread):
         SQL-entry for the meta-channel.
         """
 
-        id = self.qmg.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
+        id = self.qms.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
         channel = {}
         channel['id']   = id
         channel['host'] = host
@@ -60,11 +60,11 @@ class udp_meta_channel(threading.Thread):
                     logging.warn('Type error from meta channel, most likely during shutdown')
 
                 if not value == None:
-                    query  = 'insert into xy_values_' + self.qmg.chamber + ' '
+                    query  = 'insert into xy_values_' + self.qms.chamber + ' '
                     query += 'set measurement="'
                     query += str(channel['id']) + '", x="' + sqltime
                     query += '", y="' + str(value) + '"'
-                    self.qmg.sqlqueue.put(query)
+                    self.qms.sqlqueue.put(query)
 
             time_spend = time.time() - t0
             if time_spend < self.ui:
@@ -78,7 +78,7 @@ class compound_udp_meta_channel(threading.Thread):
     the output and log into as many seperate channels as wanted.
     """
 
-    def __init__(self, qmg, timestamp, comment, update_interval,hostname, port, udp_string):
+    def __init__(self, qms, timestamp, comment, update_interval,hostname, port, udp_string):
         """ Initalize the instance of the class
         """
 
@@ -86,7 +86,7 @@ class compound_udp_meta_channel(threading.Thread):
         self.ui = update_interval
         self.time = timestamp
         self.comment = comment
-        self.qmg = qmg
+        self.qms = qms
         self.channel_list = []
         self.hostname = hostname
         self.udp_string = udp_string
@@ -99,7 +99,7 @@ class compound_udp_meta_channel(threading.Thread):
         SQL-entry for the meta-channel.
         """
 
-        id = self.qmg.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
+        id = self.qms.create_mysql_measurement(0, self.time, masslabel, self.comment, metachannel=True)
         channel = {}
         channel['id']   = id
         channel['position'] = position
@@ -140,11 +140,11 @@ class compound_udp_meta_channel(threading.Thread):
                     logging.warn('Not enough values in compound udp string')
  
                 if not value == None:
-                    query  = 'insert into xy_values_' + self.qmg.chamber + ' '
+                    query  = 'insert into xy_values_' + self.qms.chamber + ' '
                     query += 'set measurement="'
                     query += str(channel['id']) + '", x="' + sqltime
                     query += '", y="' + str(value) + '"'
-                    self.qmg.sqlqueue.put(query)
+                    self.qms.sqlqueue.put(query)
 
             time_spend = time.time() - t0
             if time_spend < self.ui:
