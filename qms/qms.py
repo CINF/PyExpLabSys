@@ -270,8 +270,8 @@ if __name__ == "__main__":
     channel_list = read_ms_channel_list.read_ms_channel_list()
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    #meta_udp = qmg_meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
-    #meta_udp.create_channel('Temperature', 'rasppi19', 9990, 'read_global_temp')
+    meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list['ms'][0]['comment'], 5)
+    meta_udp.create_channel('Temperature', 'rasppi19', 9990, 'read_global_temp')
     #meta_udp.create_channel('Chamber pressure', 'rasppi19', 9990, 'read_global_pressure')
     #meta_udp.create_channel('HPC, Temperature', 'rasppi19', 9990, 'read_hp_temp')
     #meta_udp.create_channel('HPC, Pirani', 'rasppi13', 9999, 'read_pirani')
