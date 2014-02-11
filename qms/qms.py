@@ -14,8 +14,8 @@ import SQL_saver
 import qmg_status_output
 import qmg_meta_channels
 
-import qmg420
-#import  qmg422
+#import qmg420
+import  qmg422
 
 class qms():
 
@@ -156,7 +156,7 @@ class qms():
                 autorange_complete = False
                 while not autorange_complete:
                     for i in range(1, ns+1):
-                        value = qmg.get_single_sample()
+                        value = self.qmg.get_single_sample()
                         #logging.info(value)
                         try:
                             value = float(value)
@@ -253,50 +253,53 @@ class qms():
         
 if __name__ == "__main__":
     sql_queue = Queue.Queue()
-    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactorNG')
+    sql_saver = SQL_saver.sql_saver(sql_queue,'dummy')
     sql_saver.daemon = True
     sql_saver.start()
 
-    qmg = qmg420.qmg_420()
+    qmg = qmg422.qmg_422()
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
-    qms.mass_scan(0,50,comment = 'Test scan - qgm420')
+    #qms.mass_scan(0,50,comment = 'Test scan - qgm422')
 
-    time.sleep(1)
-    """
+
     channel_list = {}
-    #channel_list[0] = {'comment':'DELETE','autorange':True}
-    channel_list[0] = {'comment':'DELETE','autorange':False}
-    channel_list[1] = {'mass':2,'speed':10, 'amp_range':6, 'masslabel':'M2'}
-    channel_list[2] = {'mass':4,'speed':10, 'amp_range':6, 'masslabel':'M4'}
-    channel_list[3] = {'mass':18,'speed':10, 'amp_range':5, 'masslabel':'M18'}
-    channel_list[4] = {'mass':28,'speed':10, 'amp_range':5, 'masslabel':'M28'}
-    channel_list[5] = {'mass':28,'speed':10, 'amp_range':6, 'masslabel':'M28L'}
-    channel_list[6] = {'mass':32,'speed':10, 'amp_range':6, 'masslabel':'M32'}
-    channel_list[7] = {'mass':44,'speed':10, 'amp_range':6, 'masslabel':'M44'}
+    channel_list[0] = {'comment':'leaktesting', 'autorange':True}
+    #channel_list[1] = {'mass':1.6,'speed':9, 'masslabel':'M2'}
+    channel_list[1] = {'mass':4,'speed':9, 'masslabel':'M4'}
+    channel_list[2] = {'mass':7,'speed':9, 'masslabel':'M7'}
+    #channel_list[4] = {'mass':11.4,'speed':9, 'masslabel':'M12'}
+    #channel_list[5] = {'mass':13.4,'speed':9, 'masslabel':'M14'}
+    #channel_list[6] = {'mass':17.4,'speed':9, 'masslabel':'M18'}
+    #channel_list[1] = {'mass':27,'speed':9, 'masslabel':'M27'}
+    #channel_list[8] = {'mass':31.4,'speed':9, 'masslabel':'M32'}
+    #channel_list[9] = {'mass':43.4,'speed':9, 'masslabel':'M44'}"""
+    #channel_list[2] = {'mass':28,'speed':9,'masslabel':'M28'}
+    #channel_list[3] = {'mass':29,'speed':9,'masslabel':'M29'}
+
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-
-    #meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list[0]['comment'], 5)
-    #meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
-    #meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
-    #meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
-    #meta_udp.create_channel('RTD Temperature', 'rasppi05', 9992, 'read_rtdval')
+    #meta_udp = qmg_meta_channels.udp_meta_channel(qmg, timestamp, channel_list[0]['comment'], 5)
+    #meta_udp.create_channel('Temperature', 'rasppi19', 9990, 'read_global_temp')
+    #meta_udp.create_channel('Chamber pressure', 'rasppi19', 9990, 'read_global_pressure')
+    #meta_udp.create_channel('HPC, Temperature', 'rasppi19', 9990, 'read_hp_temp')
+    #meta_udp.create_channel('HPC, Pirani', 'rasppi13', 9999, 'read_pirani')
+    #meta_udp.create_channel('HPC, Pressure Controller', 'rasppi13', 9999, 'read_pressure')
     #meta_udp.daemon = True
     #meta_udp.start()
 
-    #meta_flow = qmg_meta_channels.compound_udp_meta_channel(qms, timestamp, channel_list[0]['comment'],5,'rasppi16',9998, 'read_all')
-    #meta_flow.create_channel('Sample Pressure',0)
-    #meta_flow.create_channel('Flow, H2',4)
-    #meta_flow.create_channel('Flow, CO',6)
-    #meta_flow.daemon = True
-    #meta_flow.start()
-    
-    print qms.mass_time(channel_list, timestamp)
 
-    """
+
+    print qmg.mass_time(channel_list, timestamp)
+
+    time.sleep(1)
     printer.stop()
+
+    #print qmg.read_voltages()
+    #print qmg.sem_status(voltage=2200, turn_on=True)
+    #print qmg.emission_status(current=0.1,turn_on=True)
+    #print qmg.qms_status()

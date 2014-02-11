@@ -149,7 +149,7 @@ class qmg_422():
         if preamp_range == '2':
            preamp_range = '0' #Idicates auto-range in mysql-table
         else:
-           preamp_range = "" #TODO: Here we should read the actual range
+           preamp_range = "-1" #TODO: Here we should read the actual range
         return(preamp_range)
 
     def read_timestep(self):
