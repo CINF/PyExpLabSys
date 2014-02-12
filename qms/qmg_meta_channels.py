@@ -26,7 +26,7 @@ class udp_meta_channel(threading.Thread):
     def create_channel(self, masslabel, host, port, udp_string):
         """ Create a meta channel.
 
-        Uses the SQL-communication function of the qmg class to create a
+        Uses the SQL-communication function of the qms class to create a
         SQL-entry for the meta-channel.
         """
 
