@@ -316,28 +316,21 @@ if __name__ == "__main__":
     sql_saver.start()
 
     qmg = qmg422.qmg_422()
-    channel_list = qms.read_ms_channel_list('channel_list.txt')
-
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
+    channel_list = qms.read_ms_channel_list('channel_list.txt')
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
-    #qms.mass_scan(0,50,comment = 'Test scan - qgm422')
 
 
-    meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list['ms'][0]['comment'], 5)
-    for i in range(1,len(channel_list['meta'])+1):
-        label = channel_list['meta'][i]['label']
-        host = channel_list['meta'][i]['host']
-        port = channel_list['meta'][i]['port']
-        command = channel_list['meta'][i]['command']
-        meta_udp.create_channel(label, host, port, command)
+    meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
     meta_udp.daemon = True
     meta_udp.start()
 
-    print qms.mass_time(channel_list['ms'], timestamp)
+    #qms.mass_scan(0,50,comment = 'Test scan - qgm422')
+    qms.mass_time(channel_list['ms'], timestamp)
 
     time.sleep(1)
     printer.stop()
