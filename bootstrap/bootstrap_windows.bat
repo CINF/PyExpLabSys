@@ -3,6 +3,8 @@
 
 @ECHO OFF
 if [%1]==[] GOTO usage
+GOTO :check_Permissions
+:parse
 if "%1"=="part1" GOTO path
 if "%1"=="path" GOTO path
 if "%1"=="git" GOTO git
@@ -26,6 +28,22 @@ GOTO :eof
 @ECHO.
 @ECHO part1    Both 'path' and 'git'
 GOTO :eof
+
+:check_Permissions
+ECHO.
+ECHO Administrative permissions required. Detecting permissions...
+
+net session >nul 2>&1
+if %errorLevel% == 0 (
+    ECHO Success: Administrative permissions confirmed.
+    GOTO :parse
+) else (
+    ECHO Failure: Current permissions inadequate.
+    ECHO To open a command prompt as admin, search for cmd in Windows menu,
+    ECHO press ctrl-shift-enter and confirm
+    GOTO :eof
+)
+
 
 :path
 @ECHO.
