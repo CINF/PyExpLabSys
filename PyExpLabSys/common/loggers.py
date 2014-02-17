@@ -7,9 +7,18 @@ ensure against network or server problems.
 
 import Queue
 import threading
-import MySQLdb
 import time
 import logging
+try:
+    import MySQLdb
+    SQL = 'mysqldb'
+    ODBC_PROGRAMMING_ERROR = Exception
+except ImportError:
+    import pyodbc
+    SQL = 'pyodbc'
+    ODBC_PROGRAMMING_ERROR = pyodbc.ProgrammingError
+
+
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
@@ -37,7 +46,13 @@ class InterruptableThread(threading.Thread):
         """Start the thread"""
         LOGGER.debug('InterruptableThread.run start')
         self.cursor.execute(self.query)
-        self.result = self.cursor.fetchall()
+        if SQL == 'mysqldb':
+            self.result = self.cursor.fetchall()
+        else:
+            try:
+                self.result = self.cursor.fetchall()
+            except ODBC_PROGRAMMING_ERROR:
+                self.result = None
         LOGGER.debug('InterruptableThread.run end. Executed query: {}'
                      ''.format(self.query))
 
@@ -46,7 +61,7 @@ def timeout_query(cursor, query, timeout_duration=3):
     """Run a mysql query with a timeout
 
     :param cursor: The database cursor
-    :type cursor: MySQLdb cursor
+    :type cursor: MySQL cursor
     :param query: The query to execute
     :type qeury: str
     :param timeout_duration: The timeout duration
@@ -87,7 +102,7 @@ class ContinuousLogger(threading.Thread):
     database = 'cinfdata'
 
     def __init__(self, table, username, password, measurement_codenames,
-                 dequeue_timeout=1, reconnect_waittime=60):
+                 dequeue_timeout=1, reconnect_waittime=60, dsn=None):
         """Initialize the continous logger
 
         :param table: The table to log data to
@@ -110,6 +125,8 @@ class ContinuousLogger(threading.Thread):
         :type reconnect_waittime: float or int
         :raises StartupException: if it is not possible to start the database
             connection or translate the code names
+        :param dsn: DSN name of ODBC connection, used on Windows only
+        :type dsn: str
         """
         LOGGER.info('CL: __init__ called')
         # Initialize thread
@@ -118,8 +135,9 @@ class ContinuousLogger(threading.Thread):
         self._stop = False
         LOGGER.debug('CL: thread initialized')
         # Initialize local variables
-        self.mysql = \
-            {'table': table, 'username': username, 'password': password}
+        self.mysql = {'table': table, 'username': username,
+                      'password': password,
+                      'dsn': dsn}
         self._dequeue_timeout = dequeue_timeout
         self._reconnect_waittime = reconnect_waittime
         self._cursor = None
@@ -136,10 +154,14 @@ class ContinuousLogger(threading.Thread):
     def _init_connection(self):
         """Initialize the database connection."""
         try:
-            self._connection = MySQLdb.connect(host=self.host,
-                                               user=self.mysql['username'],
-                                               passwd=self.mysql['password'],
-                                               db=self.database)
+            if SQL == 'mysqldb':
+                self._connection = MySQLdb.connect(
+                    host=self.host, user=self.mysql['username'],
+                    passwd=self.mysql['password'], db=self.database
+                )
+            else:
+                connect_string = 'DSN={}'.format(self.mysql['dsn'])
+                self._connection = pyodbc.connect(connect_string)
             self._cursor = self._connection.cursor()
             LOGGER.info('CL: Database connection initialized')
         except MySQLdb.OperationalError:
