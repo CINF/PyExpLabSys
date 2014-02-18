@@ -6,7 +6,7 @@ it also log significant temperature points to the database.
 import time
 
 from PyExpLabSys.drivers.omega import CNi3244_C24
-from PyExpLabSys.common.sockets import DataSocket
+from PyExpLabSys.common.sockets import DateDataSocket
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.utilities import get_logger
 
@@ -18,10 +18,34 @@ SHORT_NAME = 'tts'
 NAME = 'tower_temperature_sample'
 
 
+def main_measure_loop(cni, socket, db_logger):
+    """The main measuring loop"""
+    last_temp = -100000
+    last_time = 0
+    while True:
+        # Current values
+        now = time.time()
+        current = cni.read_temperature()
+
+        # The read_tempearture returns None if no thermocouple is connected
+        if current is not None:
+            # Set point on socket
+            socket.set_point_now(SHORT_NAME, current)
+    
+            # Log if required
+            if now - last_time > TIMEOUT or\
+                    abs(current - last_temp) > TEMPERATURE_CHANGE_THRESHOLD:
+                db_logger.enqueue_point_now('tower_temperature_sample',
+                                            current)                
+                LOGGER.info('Value {} sent'.format(current))
+                last_time = now
+                last_temp = current
+
+
 def main():
     LOGGER.info('main started')
     cni = CNi3244_C24(0)
-    socket = DataSocket([SHORT_NAME])
+    socket = DateDataSocket([SHORT_NAME], timeouts=1.0)
     socket.start()
     db_logger = ContinuousLogger(
         table='dateplots_tower', username='N/A', password='N/A',
@@ -33,25 +57,7 @@ def main():
 
     # Main part
     try:
-        last_temp = -100000
-        last_time = 0
-        while True:
-            # Current values
-            now = time.time()
-            current = cni.read_temperature()
-
-            # Set point on socket
-            socket.set_point_now(SHORT_NAME, current)
-
-            # Log if required
-            if now - last_time > TIMEOUT or\
-                    abs(current - last_temp) > TEMPERATURE_CHANGE_THRESHOLD:
-                db_logger.enqueue_point_now('tower_temperature_sample',
-                                            current)                
-                LOGGER.info('Value {} sent'.format(current))
-                last_time = now
-                last_temp = current
-            
+        main_measure_loop(cni, socket, db_logger)
     except KeyboardInterrupt:
         LOGGER.info('Keyboard Interrupt. Shutting down!')
         db_logger.stop()
@@ -61,4 +67,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    raw_input()
+    raw_input("Press enter to exit")
