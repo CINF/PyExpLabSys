@@ -4,7 +4,6 @@
 import threading
 import SocketServer
 import time
-from datetime import datetime
 import json
 import logging
 
@@ -13,7 +12,8 @@ LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
 BAD_CHARS = ['#', ',', ';', ':', ' ']
-UNKNOWN_COMMAND = '"UNKNOWN_COMMMAND"'
+UNKNOWN_COMMAND = 'UNKNOWN_COMMMAND'
+OLD_DATA = 'OLD_DATA'
 DATA = {}
 
 
@@ -31,8 +31,6 @@ class DataUDPHandler(SocketServer.BaseRequestHandler):
             on the form: codenam1:x1,y1;codename2:x2,y2
         :param json_wn: (wn = with names) Return the data dict as a json string
         :param codename#raw: Return the value for 'codename' on the form x,y
-        :param codename#raw_ts: Return the value for 'codename' on the form
-            x,y and converting x from unix time to timestamp
         :param codename#json: Return the value for 'codename' as a json string
         :param codenames_raw: Return the codenames on the form 'name1,name2'
         :param codenames_json: Return the list of codenames as a json string
@@ -53,20 +51,21 @@ class DataUDPHandler(SocketServer.BaseRequestHandler):
         """Return a string for a single point"""
         name, command = command.split('#')
         if command == 'raw' and name in DATA[self.port]['data']:
-            return '{},{}'.format(*DATA[self.port]['data'][name])
-
-        elif command == 'raw_ts' and name in DATA[self.port]['data']:            
-            time_, value = DATA[self.port]['data'][name]
-            dtime = datetime.fromtimestamp(time_)
-            time_string = dtime.strftime('%Y %m %d %H %M %S %f')
-            return '{},{}'.format(time_string, value)
-
+            if self._old_data(name):
+                out = OLD_DATA
+            else:
+                out = '{},{}'.format(*DATA[self.port]['data'][name])
 
         elif command == 'json' and name in DATA[self.port]['data']:
-            return json.dumps(DATA[self.port]['data'][name])
+            if self._old_data(name):
+                out = json.dumps(OLD_DATA)
+            else:
+                out = json.dumps(DATA[self.port]['data'][name])
 
         else:
-            return UNKNOWN_COMMAND
+            out = UNKNOWN_COMMAND
+
+        return out
 
     def _all_values(self, command):
         """Return a string for all points or names"""
@@ -74,36 +73,69 @@ class DataUDPHandler(SocketServer.BaseRequestHandler):
         if command == 'raw':
             strings = []
             for codename in DATA[self.port]['codenames']:
-                strings.append('{},{}'.format(
-                    *DATA[self.port]['data'][codename])
-                )
-            return ';'.join(strings)
+                if self._old_data(codename):
+                    string = OLD_DATA
+                else:
+                    string = '{},{}'.format(*DATA[self.port]['data'][codename])
+                strings.append(string)
+            out = ';'.join(strings)
 
         elif command == 'json':
             points = []
-            for codename in DATA[self.port]['codenames']:
-                points.append(DATA[self.port]['data'][codename])
-            return json.dumps(points)
+            for codename in DATA[self.port]['codenames']:                
+                if self._old_data(codename):
+                    data = OLD_DATA
+                else:
+                    data = DATA[self.port]['data'][codename]
+                points.append(data)
+            out = json.dumps(points)
 
         elif command == 'raw_wn':
             strings = []
             for codename in DATA[self.port]['codenames']:
-                strings.append('{}:{},{}'.format(
-                    codename, *DATA[self.port]['data'][codename])
-                )
-            return ';'.join(strings)
+                if self._old_data(codename):
+                    string = '{}:{}'.format(codename, OLD_DATA)
+                else:
+                    string = '{}:{},{}'.format(
+                        codename, *DATA[self.port]['data'][codename]
+                        )
+                strings.append(string)
+            out = ';'.join(strings)
 
         elif command == 'json_wn':
-            return json.dumps(DATA[self.port]['data'])
+            datacopy = dict(DATA[self.port]['data'])
+            for codename in DATA[self.port]['codenames']:
+                if self._old_data(codename):
+                    datacopy[codename] = OLD_DATA
+            out = json.dumps(datacopy)
 
         elif command == 'codenames_raw':
-            return ','.join(DATA[self.port]['codenames'])
+            out = ','.join(DATA[self.port]['codenames'])
 
         elif command == 'codenames_json':
-            return json.dumps(DATA[self.port]['codenames'])
+            out = json.dumps(DATA[self.port]['codenames'])
 
         else:
-            return UNKNOWN_COMMAND
+            out = UNKNOWN_COMMAND
+
+        return out
+
+    def _old_data(self, code_name):
+        """Check if the data for code_name has timed out"""
+        now = time.time()
+        if DATA[self.port]['type'] == 'date':
+            timeout = DATA[self.port]['timeouts'].get(code_name)
+            if timeout is not None:
+                point_time = DATA[self.port]['data'][code_name][0]
+                out = now - point_time > timeout
+            else:
+                out = False
+        elif DATA[self.port]['type'] == 'data':
+            out = False
+        else:
+            raise NotImplementedError
+
+        return out
 
 
 class DataSocket(threading.Thread):
@@ -133,7 +165,8 @@ class DataSocket(threading.Thread):
             message = 'A UDP server already exists on port: {}'.format(port)
             raise ValueError(message)
         # Prepare DATA
-        DATA[port] = {'codenames': list(code_names), 'data': {}}
+        DATA[port] = {'type': 'data', 'codenames': list(code_names),
+                      'data': {}}
         for name in code_names:
             # Check for duplicates
             if code_names.count(name) > 1:
@@ -148,6 +181,98 @@ class DataSocket(threading.Thread):
                     raise ValueError(message)
             # Init the point
             DATA[port]['data'][name] = (default_x, default_y)
+        # Setup server
+        self.server = SocketServer.UDPServer(('', port), DataUDPHandler)
+        LOGGER.info('Initialized')
+
+    def run(self):
+        """Start the UPD socket server"""
+        LOGGER.info('Start')
+        self.server.serve_forever()
+        LOGGER.info('Run ended')
+
+    def stop(self):
+        """Stop the UDP server"""
+        LOGGER.debug('Stop requested')
+        self.server.shutdown()
+        # Wait 0.1 sec to prevent the interpreter to destroy the environment
+        # before we are done
+        time.sleep(0.1)
+        # Delete the data, to allow forming another socket on this port
+        del DATA[self.port]
+        LOGGER.info('Stopped')
+
+    def set_point(self, codename, point):
+        """Set the current point for codename
+        
+        :param codename: Codename for the measurement whose 
+        :type codename: str
+        :param value: Current point as a tuple of 2 floats: (x, y)
+        :type value: tuple
+        """
+        DATA[self.port]['data'][codename] = point
+        LOGGER.debug('Point {} for \'{}\' set'.format(str(point), codename))
+
+
+class DateDataSocket(threading.Thread):
+
+    def __init__(self, code_names, port=9000, default_x=0, default_y=47,
+                 timeouts=None):
+        """Init data and UPD server
+
+        :param code_names: List of codenames for the measurements. The names
+            must be unique and cannot contain the characters: #,;: and SPACE
+        :type code_names: list
+        :param port: Network port to use for the socket (deafult 9000)
+        :type port: int
+        :param default_x: The x value the measurements are initiated with
+        :type default_x: float
+        :param default_y: The y value the measurements are initiated with
+        :type default_y: float
+        :param timeouts: The timeouts (in seconds as floats) the determines
+            when the date data socket regards the data as being to old and
+            reports that
+        :type timeouts: Single float or list of floats, one for each codename
+        """
+        LOGGER.debug('Initialize')
+        # Init thread
+        super(DateDataSocket, self).__init__()
+        self.daemon = True
+        # Init local data
+        self.port = port
+        # Check for existing servers on this port
+        global DATA
+        if port in DATA:
+            message = 'A UDP server already exists on port: {}'.format(port)
+            raise ValueError(message)
+        # Check and possibly convert timeout
+        if hasattr(timeouts, '__len__'):
+            if len(timeouts) != len(code_names):
+                message = 'If a list of timeouts is supplied, it must have '\
+                    'as many items as there are in code_names'
+                raise ValueError(message)
+            timeouts = list(timeouts)
+        else:
+            # If only a single value is given turn it into a list
+            timeouts = [timeouts] * len(code_names)
+        # Prepare DATA
+        DATA[port] = {'type': 'date', 'codenames': list(code_names),
+                      'data': {}, 'timeouts': {}}
+        for name, timeout in zip(code_names, timeouts):
+            # Check for duplicates
+            if code_names.count(name) > 1:
+                message = 'Codenames must be unique; \'{}\' is present more '\
+                    'than once'.format(name)
+                raise ValueError(message)
+            # Check for bad characters in the name
+            for char in BAD_CHARS:
+                if char in name:
+                    message = 'The character \'{}\' is not allowed in the '\
+                        'codenames'.format(char)
+                    raise ValueError(message)
+            # Init the point
+            DATA[port]['data'][name] = (default_x, default_y)
+            DATA[port]['timeouts'][name] = timeout
         # Setup server
         self.server = SocketServer.UDPServer(('', port), DataUDPHandler)
         LOGGER.info('Initialized')
