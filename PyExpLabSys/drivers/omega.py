@@ -75,7 +75,10 @@ class ISeries(object):
         """Return the temperature"""
         LOGGER.debug('read_temperature called')
         command = 'X01'
-        response = float(self.command(command, response_length=5))
+        try:
+            response = float(self.command(command, response_length=5))
+        except ValueError:
+            response = None
         LOGGER.debug('read_temperature return {}'.format(response))
         return response
 
