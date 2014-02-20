@@ -10,8 +10,13 @@ import PyExpLabSys.common.sockets
 from PyExpLabSys.common.sockets import DataSocket, DateDataSocket
 
 
-def test_multiple_data_sockets(sockettype):
-    """Test interaction with multiple data sockets"""
+def multiple_data_sockets_test(sockettype):
+    """Test general functionaloty with multiple sockets
+
+    This function is not executed by pytest.
+
+    :param sockettype: The socket class under test
+    """
     data_socket0 = sockettype(['meas0'], 9000)
     data_socket1 = sockettype( ['meas1'], 9001)
     data_socket0.start()
@@ -112,8 +117,14 @@ def test_multiple_data_sockets(sockettype):
     print 'multiple sockets done'
 
 
-def test_multiple_variables(sockettype):
-    """Test interaction with a single data socket with multiple variables"""
+def multiple_variables_test(sockettype):
+    """Test the general functionality with multiple measurements on a single
+    socket
+
+    This function is not executed by pytest.
+
+    :param sockettype: The class under test
+    """
     data_socket = sockettype(['one', 'two'])  # Test default port 9000
     data_socket.start()
 
@@ -178,9 +189,22 @@ def test_multiple_variables(sockettype):
         time.sleep(0.1)
 
     data_socket.stop()
-    time.sleep(0)
+    time.sleep(0.1)
 
     print 'multiple variables done'
+
+
+def test_data_sockets():
+    """Test the data sockets"""
+    multiple_data_sockets_test(DataSocket)
+    multiple_variables_test(DataSocket)
+
+
+def test_date_sockets():
+    """Tes the date data sockets"""
+    multiple_data_sockets_test(DateDataSocket)
+    multiple_variables_test(DateDataSocket)
+
 
 def test_define_timeout():
     """Test the definition of the timeout"""
@@ -269,20 +293,6 @@ def test_date_timeout():
     assert(json.loads(data1) == expected1)
 
     data_socket.stop()
-    time.sleep(0)
+    time.sleep(0.1)
 
     print 'multiple variables done'
-
-
-if __name__ == '__main__':
-    #print '## data socket'
-    #test_multiple_data_sockets(DataSocket)
-    #test_multiple_variables(DataSocket)
-    #print '## date data socket'
-    #test_multiple_data_sockets(DateDataSocket)
-    #test_multiple_variables(DateDataSocket)
-    #print '## test define output'
-    #test_define_timeout()
-    print "## test date timeout"
-    test_date_timeout()
-    print '## Done'
