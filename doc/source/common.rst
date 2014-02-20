@@ -11,6 +11,7 @@ This section documents the common software components at CINF. These are general
     
     common_continuous_logger.rst
     common_plotters.rst
+    common_sockets.rst
     common_utilities.rst
 
     
