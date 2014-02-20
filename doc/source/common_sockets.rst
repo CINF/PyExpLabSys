@@ -5,12 +5,36 @@ The sockets module
 
 .. automodule:: PyExpLabSys.common.sockets
 
+Inheritance
+-----------
+
+The :class:`DateDataSocket` and :class:`DataSocket` classes inherit
+common functionality, such as;
+
+* Input checks
+* Initialization of DATA
+* Methods to start and stop the thread and reset DATA
+
+from the :class:`CommonDataSocket` class, as illustrated in the
+diagram below.
+
+.. inheritance-diagram:: PyExpLabSys.common.sockets.DataSocket PyExpLabSys.common.sockets.DateDataSocket
+
+The CommonDataSocket class
+==========================
+
+.. autoclass:: PyExpLabSys.common.sockets.CommonDataSocket
+    :members:
+    :special-members:
+    :show-inheritance:
+
 The DateDataSocket class
 ========================
 
 .. autoclass:: PyExpLabSys.common.sockets.DateDataSocket
     :members:
     :special-members:
+    :show-inheritance:
 
 Usage example
 -------------
@@ -71,12 +95,16 @@ A few things to note from the examples:
   the setup and the type so e.g. a *temperature* measurement on the
   *dummy* setup could be named *dum_t*.
 
+The DataSocket class
+====================
+
+.. autoclass:: PyExpLabSys.common.sockets.DataSocket
+    :members:
+    :special-members:
+    :show-inheritance:
 
 The data UDP handler
 ====================
-
-DataUDPHandler class
---------------------
 
 .. autoclass:: PyExpLabSys.common.sockets.DataUDPHandler
     :members:
