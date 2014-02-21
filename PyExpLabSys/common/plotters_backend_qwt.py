@@ -6,9 +6,13 @@ from random import choice
 import collections
 
 import numpy as np
-from PyQt4 import Qt, QtGui, QtCore
-import PyQt4.Qwt5 as Qwt
-
+try:
+    from PyQt4 import Qt, QtGui, QtCore
+    import PyQt4.Qwt5 as Qwt
+except ImportError:
+    print 'DANGER WILL ROBINSON!!!\nPython Qt and Python Qwt could not be '\
+        'imported. The only reason this does not raise an exception is because'\
+        ' it has been disabled for read the docs.'
 
 class Colors:
     """Class that gives plot colors"""

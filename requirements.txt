@@ -1,3 +1,2 @@
 mysql-python
 pyserial
-python-qt
