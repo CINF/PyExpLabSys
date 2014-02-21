@@ -13,6 +13,8 @@ except ImportError:
     print 'DANGER WILL ROBINSON!!!\nPython Qt and Python Qwt could not be '\
         'imported. The only reason this does not raise an exception is because'\
         ' it has been disabled for read the docs.'
+    class Qwt:
+        QwtPlot = list
 
 class Colors:
     """Class that gives plot colors"""
