@@ -9,7 +9,7 @@ class udp_meta_channel(threading.Thread):
     Only a single update_interval can be used for all hosts in the channel list.
     """
 
-    def __init__(self, qms, timestamp, comment, update_interval):
+    def __init__(self, qms, timestamp, channel_list, update_interval):
         """ Initalize the instance of the class
         
         Timestamps and comments are currently identical for all channels, since
@@ -19,14 +19,20 @@ class udp_meta_channel(threading.Thread):
         threading.Thread.__init__(self)
         self.ui = update_interval
         self.time = timestamp
-        self.comment = comment
+        self.comment = channel_list['ms'][0]['comment']
         self.qms = qms
         self.channel_list = []
+        for i in range(1,len(channel_list['meta'])+1):
+            label = channel_list['meta'][i]['label']
+            host = channel_list['meta'][i]['host']
+            port = channel_list['meta'][i]['port']
+            command = channel_list['meta'][i]['command']
+            self.create_channel(label, host, port, command)
 
     def create_channel(self, masslabel, host, port, udp_string):
         """ Create a meta channel.
 
-        Uses the SQL-communication function of the qmg class to create a
+        Uses the SQL-communication function of the qms class to create a
         SQL-entry for the meta-channel.
         """
 
