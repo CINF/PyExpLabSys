@@ -1,8 +1,67 @@
+# pylint: disable=C0103,R0904
+
+"""
+Self contained module to run a SPECS sputter gun including fall-back text gui
+"""
+
 import serial
 import time
+import threading
+import curses
 
 
-class Puiqe11:
+class CursesTui(threading.Thread):
+    """ Defines a fallback text-gui for the sputter gun. """
+    def __init__(self, sputtergun):
+        threading.Thread.__init__(self)
+        self.sg = sputtergun
+        self.screen = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        curses.curs_set(False)
+        self.screen.keypad(1)
+        self.screen.nodelay(1)
+        self.time = time.time()
+
+    def run(self):
+        while True:
+            self.screen.addstr(3, 2, 'Sputter Gun Control')
+
+            self.screen.addstr(10, 2, "Sputter Current: {0:.8f}mA          ".format(self.sg.status['sputter_current']))
+            self.screen.addstr(11, 2, "Filament bias {0:.5f}V          ".format(self.sg.status['filament_bias']))
+            self.screen.addstr(12, 2, "Filament Current: {0:.2f}A          ".format(self.sg.status['filament_current']))
+            self.screen.addstr(13, 2, "Emission current: {0:.5f}mA          ".format(self.sg.status['emission_current']))
+            self.screen.addstr(14, 2, "Acceleration Voltage: {0:.2f}V          ".format(self.sg.status['accel_voltage']))
+
+            if self.sg.status['degas']:
+                self.screen.addstr(4, 2, "Degassing")
+
+            if self.sg.status['remote']:
+                self.screen.addstr(5, 2, "Remote control")
+
+            if self.sg.status['standby']:
+                self.screen.addstr(6, 2, "Device status: Standby")
+
+            self.screen.addstr(8, 2, "Temperature, electronics: {0:.0f}C          ".format(self.sg.status['temperature']))
+
+            self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time()-self.time))
+            self.screen.addstr(18, 2, 'q: quit')
+
+            n = self.screen.getch()
+            if n == ord('q'):
+                self.sg.running = False
+            self.screen.refresh()
+            time.sleep(0.5)
+
+    def stop(self):
+        """ Cleanup the terminal """
+        curses.nocbreak()
+        self.screen.keypad(0)
+        curses.echo()
+        curses.endwin()
+
+
+class Puiqe11(threading.Thread):
     """ Driver for ion sputter guns from SPECS """
 
     def __init__(self):
@@ -11,9 +70,10 @@ class Puiqe11:
         Establish serial connection and create status variable to
         expose the status for the instrument for the various gui's
         """
+        threading.Thread.__init__(self)
 
-        self.f = serial.Serial(0, 1200, timeout=1)
-        self.f.write('e0' + '\r') #Echo off
+        self.f = serial.Serial('/dev/ttyS0', 1200, timeout=1)
+        self.f.write('e0' + '\r')  # Echo off
         time.sleep(1)
         ok = self.f.read(self.f.inWaiting())
         if ok.find('OK') > -1:
@@ -25,7 +85,14 @@ class Puiqe11:
         self.status['standby'] = False
         self.status['degas'] = False
         self.status['remote'] = False
-        self.update_status()
+        self.status['temperature'] = -1
+        self.status['sputter_current'] = -1
+        self.status['filament_bias'] = -1
+        self.status['filament_current'] = -1
+        self.status['emission_current'] = -1
+        self.status['accel_voltage'] = -1
+        self.running = True
+        #self.update_status()
 
     def comm(self, command):
         """ Communication with the instrument
@@ -45,9 +112,12 @@ class Puiqe11:
         else:
             self.f.read(n)
         self.f.write(command + '\r')
+        time.sleep(0.1)
         reply = self.f.readline()
         self.f.read(1)  # Empty buffer for extra newline
+        time.sleep(0.1)
         ok_reply = self.f.readline()  # Wait for OK
+
         cr_count = reply.count('\r')
         #Check that no old commands is still in buffer and that the reply
         #is actually intended for the requested parameter
@@ -150,6 +220,13 @@ class Puiqe11:
         :rtype: str
         """
 
+        self.status['temperature'] = self.read_temperature_energy_module()
+        self.status['filament_bias'] = self.read_filament_voltage()
+        self.status['sputter_current'] = self.read_sputter_current()
+        self.status['filament_current'] = self.read_filament_current()
+        self.status['emission_current'] = self.read_emission_current()
+        self.status['accel_voltage'] = self.read_acceleration_voltage()
+
         reply = self.comm('os').lower()
         hv = None
         if reply.find('ha') > -1:
@@ -176,11 +253,23 @@ class Puiqe11:
 
         return(reply)
 
+    def run(self):
+        while self.running:
+            time.sleep(0.5)
+            self.update_status()
+
+
 if __name__ == '__main__':
     sputter = Puiqe11()
+    sputter.start()
+
+    tui = CursesTui(sputter)
+    tui.daemon = True
+    tui.start()
     """
     print('Sputter current: ' + str(sputter.read_sputter_current()))
     print('Temperature: ' + str(sputter.read_temperature_energy_module()))
+    print('Sputter current: ' + str(sputter.read_sputter_current()))
     print('Temperature: ' + str(sputter.read_temperature_energy_module()))
     print('Filament voltage: ' + str(sputter.read_filament_voltage()))
     print('Filament current: ' + str(sputter.read_filament_current()))
@@ -190,4 +279,4 @@ if __name__ == '__main__':
     #print('Enable:')
     #print(sputter.remote_enable(local=False))
     #print('Status:')
-    print(sputter.status)
+    #print(sputter.status)
