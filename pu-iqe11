@@ -1,0 +1,132 @@
+import serial
+import time
+
+class puiqe11:
+	def __init__(self):
+		self.f = serial.Serial(0, 1200, timeout=1)
+		self.f.write('e0' + '\r') #Echo off
+		time.sleep(1)
+		ok = self.f.read(self.f.inWaiting())
+		if ok.find('OK') > -1:
+			pass
+		else:
+			print('ERROR!!!')
+		self.status = {} #Hold parameters to be accecible by gui
+		self.status['hv'] = False
+		self.status['standby'] = False
+		self.status['degas'] = False
+		self.status['remote'] = False
+		self.update_status()
+
+	def comm(self, command):
+		n = self.f.inWaiting()
+		if n>1:
+			print('Error')
+		else:
+			self.f.read(n)
+		self.f.write(command + '\r')
+		reply = self.f.readline()
+		self.f.read(1)# Empty buffer for extra newline
+		ok_reply = self.f.readline() #Wait for OK
+		cr_count = reply.count('\r')
+		#Check that no old commands is still in buffer and that the reply
+		#is actually intended for the requested parameter
+		if (cr_count == 1) and (reply[0:len(command)-1] == command.strip('?')) and (ok_reply.find('OK') > -1):
+			echo_length = len(command)
+			return_string = reply[echo_length:]
+		elif(command=='os'):
+			return_string=reply
+		else:
+			return_string = 'Communication error!'
+		return(return_string)
+
+	def read_sputter_current(self):
+		reply = self.comm('eni?')
+		value = float(reply)
+		return(value)
+
+	def read_filament_voltage(self):
+		reply = self.comm('fu?')
+		value = float(reply)/100.0
+		return(value)
+
+	def read_filament_current(self):
+		reply = self.comm('fi?')
+		value = float(reply)/10.0
+		return(value)
+
+	def read_emission_current(self):
+		reply = self.comm('ec?')
+		value = float(reply)
+		return(value)
+
+	def read_acceleration_voltage(self):
+		reply = self.comm('ec?')
+		value = float(reply)
+		return(value)
+
+	def read_temperature_energy_module(self):
+		reply = self.comm('ent?')
+		try:
+			value = float(reply)
+		except ValueError:
+			value = -1
+			print reply
+		return(value)
+
+	def standby(self):
+		reply = self.comm('sb')
+		return(reply)
+
+	def remote_enable(self, local=False):
+		if local:
+			reply = self.comm('lo')
+		else:
+			reply = self.comm('re')
+		return(reply)
+
+		
+	def update_status(self):
+		reply = self.comm('os').lower()
+		hv = None
+		if reply.find('ha') > -1:
+			hv = False
+		if reply.find('hv') > -1:
+			hv = True
+		assert(hv==True or hv==False)
+		self.status['hv'] = hv
+
+		if reply.find('re') > -1:
+			self.status['remote'] = True
+		else:
+			self.status['remote'] = False
+
+		if reply.find('sb') > -1:
+			self.status['standby'] = True
+		else:
+			self.status['standby'] = False
+			
+		if reply.find('dg') > -1:
+			self.status['degas'] = True
+		else:
+			self.status['degas'] = False	
+		
+		return(reply)
+		
+if __name__ == '__main__':
+	sputter = puiqe11()
+	"""
+	print('Sputter current: ' + str(sputter.read_sputter_current()))
+	print('Temperature: ' + str(sputter.read_temperature_energy_module()))
+	print('Temperature: ' + str(sputter.read_temperature_energy_module()))
+	print('Filament voltage: ' + str(sputter.read_filament_voltage()))
+	print('Filament current: ' + str(sputter.read_filament_current()))
+	print('Emission current: ' + str(sputter.read_emission_current()))
+	print('Acceleration voltage: ' + str(sputter.read_acceleration_voltage()))
+	"""
+	#print('Enable:')
+	#print(sputter.remote_enable(local=False))
+	#print('Status:')
+	print(sputter.status)
+	#print(sputter.read_status())
+	#print(sputter.read_status())
