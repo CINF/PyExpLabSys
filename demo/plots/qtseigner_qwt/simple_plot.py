@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'plot.ui'
+# Form implementation generated from reading ui file 'simple_plot.ui'
 #
-# Created: Wed Feb 26 08:10:08 2014
-#      by: PyQt4 UI code generator 4.10
+# Created: Wed Feb 26 10:55:04 2014
+#      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
 
