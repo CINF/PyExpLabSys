@@ -1,3 +1,10 @@
+# pylint: disable=C0103,R0904
+
+"""
+Self contained module to run a Pfeiffer turbo pump including fall-back
+text gui and data logging.
+"""
+
 import serial
 import time
 import curses
@@ -6,7 +13,10 @@ import logging
 import MySQLdb
 from datetime import datetime
 
+
 class CursesTui(threading.Thread):
+    """ Text gui for controlling the pump """
+
     def __init__(self, turbo_instance):
         #TODO: Add support for several pumps in one gui
         threading.Thread.__init__(self)
@@ -20,7 +30,7 @@ class CursesTui(threading.Thread):
 
     def run(self):
         while True:
-            self.screen.addstr(3, 2, 'Turbo controller running') 
+            self.screen.addstr(3, 2, 'Turbo controller running')
             #if self.turbo.status['pump_accelerating']:
             #    self.screen.addstr(3, 30, 'Pump accelerating')
             #    self.screen.clrtoeol()
@@ -51,17 +61,19 @@ class CursesTui(threading.Thread):
             time.sleep(0.2)
 
     def stop(self):
+        """ Cleanup terminal """
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
-        curses.endwin()    
+        curses.endwin()
 
 
 class DataLogger(threading.Thread):
+    """ Datalogging for turbo controller """
     def __init__(self, turbo_instance):
         #TODO: Add support for several pumps
         threading.Thread.__init__(self)
-        self.mal = 20 #Moving average length
+        self.mal = 20  # Moving average length
         self.turbo = turbo_instance
         self.log = {}
         self.log['rotation_speed'] = {}
@@ -74,48 +86,49 @@ class DataLogger(threading.Thread):
         self.log['drive_current'] = {}
         self.log['drive_current']['time'] = 600
         self.log['drive_current']['change'] = 1.05
-        self.log['drive_current']['mean'] =  [0] * self.mal
+        self.log['drive_current']['mean'] = [0] * self.mal
         self.log['drive_current']['last_recorded_value'] = 0
         self.log['drive_current']['last_recorded_time'] = 0
 
         self.log['drive_power'] = {}
         self.log['drive_power']['time'] = 600
         self.log['drive_power']['change'] = 1.05
-        self.log['drive_power']['mean'] =  [0] * self.mal
+        self.log['drive_power']['mean'] = [0] * self.mal
         self.log['drive_power']['last_recorded_value'] = 0
         self.log['drive_power']['last_recorded_time'] = 0
 
         self.log['temp_motor'] = {}
         self.log['temp_motor']['time'] = 600
         self.log['temp_motor']['change'] = 1.05
-        self.log['temp_motor']['mean'] =  [0] * self.mal
+        self.log['temp_motor']['mean'] = [0] * self.mal
         self.log['temp_motor']['last_recorded_value'] = 0
         self.log['temp_motor']['last_recorded_time'] = 0
 
         self.log['temp_electronics'] = {}
         self.log['temp_electronics']['time'] = 600
         self.log['temp_electronics']['change'] = 1.05
-        self.log['temp_electronics']['mean'] =  [0] * self.mal
+        self.log['temp_electronics']['mean'] = [0] * self.mal
         self.log['temp_electronics']['last_recorded_value'] = 0
         self.log['temp_electronics']['last_recorded_time'] = 0
 
         self.log['temp_bottom'] = {}
         self.log['temp_bottom']['time'] = 600
         self.log['temp_bottom']['change'] = 1.05
-        self.log['temp_bottom']['mean'] =  [0] * self.mal
+        self.log['temp_bottom']['mean'] = [0] * self.mal
         self.log['temp_bottom']['last_recorded_value'] = 0
         self.log['temp_bottom']['last_recorded_time'] = 0
 
         self.log['temp_bearings'] = {}
         self.log['temp_bearings']['time'] = 600
         self.log['temp_bearings']['change'] = 1.05
-        self.log['temp_bearings']['mean'] =  [0] * self.mal
+        self.log['temp_bearings']['mean'] = [0] * self.mal
         self.log['temp_bearings']['last_recorded_value'] = 0
         self.log['temp_bearings']['last_recorded_time'] = 0
 
     def sqlInsert(self, query):
+        """ Helper function to insert data into database """
         try:
-            cnxn = MySQLdb.connect(host="servcinf",user="mgw",passwd="mgw",db="cinfdata")
+            cnxn = MySQLdb.connect(host="servcinf", user="mgw", passwd="mgw", db="cinfdata")
             cursor = cnxn.cursor()
         except:
             print "Unable to connect to database"
@@ -134,14 +147,14 @@ class DataLogger(threading.Thread):
         return(sqltime)
 
     def run(self):
-        for i in range(0,self.mal):
+        for i in range(0, self.mal):
             time.sleep(0.5)
             for param in self.log:
                 self.log[param]['mean'][i] = self.turbo.status[param]
 
         #Mean values now populated with meaningfull data
-	while True:
-            for i in range(0,self.mal):
+        while True:
+            for i in range(0, self.mal):
                 time.sleep(0.5)
                 for param in self.log:
                     p = self.log[param]
@@ -149,18 +162,19 @@ class DataLogger(threading.Thread):
                     mean = sum(p['mean']) / float(len(p['mean']))
                     time_trigged = (time.time() - p['last_recorded_time']) > p['time']
                     val_trigged = not (p['last_recorded_value'] * p['change'] < mean < p['last_recorded_value'] * p['change'])
-            
+
                     if (time_trigged or val_trigged):
                         p['last_recorded_value'] = mean
                         p['last_recorded_time'] = time.time()
                         meas_time = self.sqlTime()
-                        val = "%.5g" % mean
                         sql = "insert into dateplots_mgw set type=\"" + param + "\", time=\"" +  meas_time + "\", value = " + str(mean)
                         #print sql
                         self.sqlInsert(sql)
 
 
 class TurboDriver(threading.Thread):
+    """ The actual driver that will communicate with the pump """
+
     def __init__(self, adress=1, port='/dev/ttyUSB3'):
         threading.Thread.__init__(self)
 
@@ -170,10 +184,10 @@ class TurboDriver(threading.Thread):
         logging.info('Program started.')
         logging.basicConfig(level=logging.INFO)
 
-        self.f = serial.Serial(port,9600)
+        self.f = serial.Serial(port, 9600)
         self.f.stopbits = 2
         self.adress = adress
-        self.status = {} #Hold parameters to be accessible by gui
+        self.status = {}  # Hold parameters to be accessible by gui
         self.status['rotation_speed'] = 0
         self.status['pump_accelerating'] = False
         self.status['gas_mode'] = ''
@@ -186,9 +200,18 @@ class TurboDriver(threading.Thread):
         self.status['spin_down'] = False
         self.status['spin_up'] = False
         self.running = True
-        
 
     def comm(self, command, read=True):
+        """ Implementaion of the communication protocol with the pump.
+        The function deals with common syntax need for all commands.
+
+        :param command: The command to send to the pump
+        :type command: str
+        :param read: If True, read only not action performed
+        :type read: Boolean
+        :return: The reply from the pump
+        :rtype: Str
+        """
         adress_string = str(self.adress).zfill(3)
 
         if read:
@@ -212,24 +235,40 @@ class TurboDriver(threading.Thread):
             return 'Error!'
 
     def crc_calc(self, command):
+        """ Helper function to calculate crc for commands
+        :param command: The command for which to calculate crc
+        :type command: str
+        :return: The crc value
+        :rtype: Str
+        """
         crc = 0
         for s in command:
-            crc +=  ord(s)
+            crc += ord(s)
         crc = crc % 256
         crc_string = str(crc).zfill(3)
         return crc_string
 
     def read_rotation_speed(self):
+        """ Read the rotational speed of the pump
+
+        :return: The rotaional speed in Hz
+        :rtype: Float
+        """
         command = '398'
         reply = self.comm(command, True)
         val = int(reply)/60.0
         #logging.warn(val)
         #command = '309'
         #reply = self.comm(command, True)
-        #logging.warn(reply)       
+        #logging.warn(reply)
         return(val)
 
     def read_gas_mode(self):
+        """ Read the gas mode
+        :return: The gas mode
+        :rtype: Str
+        """
+
         command = '027'
         reply = self.comm(command, True)
         mode = int(reply)
@@ -241,21 +280,38 @@ class TurboDriver(threading.Thread):
             return 'Helium'
 
     def is_pump_accelerating(self):
+        """ Read if pump is accelerating
+        :return: True if pump is accelerating, false if not
+        :rtype: Boolean
+        """
         command = '307'
         reply = self.comm(command, True)
         if int(reply) == 1:
-            return True
+            return(True)
         else:
-            return False
+            return(False)
 
     def turn_pump_on(self, off=False):
+        """ Spin the pump up or down
+        :param off: If True the pump will spin down
+        :type off: Boolean
+        :return: Always returns True
+        :rtype: Boolean
+        """
+
         if not off:
             command = '1001006111111'
         else:
             command = '1001006000000'
         self.comm(command, False)
+        return(True)
 
     def read_temperature(self):
+        """ Read the various measured temperatures of the pump
+        :return: Dictionary with temperatures
+        :rtype: Dict
+        """
+
         command = '326'
         reply = self.comm(command, True)
         elec = int(reply)
@@ -280,6 +336,11 @@ class TurboDriver(threading.Thread):
         return return_val
 
     def read_drive_power(self):
+        """ Read the current power consumption of the pump
+        :return: Dictionary containing voltage, current and power
+        :rtype: Dict
+        """
+
         command = '310'
         reply = self.comm(command, True)
         current = int(reply)/100.0
@@ -321,7 +382,6 @@ class TurboDriver(threading.Thread):
             if self.status['spin_down']:
                 self.turn_pump_on(off=True)
                 self.status['spin_down'] = False
-
 
 
 if __name__ == '__main__':
