@@ -1,9 +1,10 @@
-import sys
-import SocketServer
-#sys.path.append('../')
+""" Socket server for volvo handling temperature and pressure readout """
 
-#This specific raspberry pi handles temperature control
+import SocketServer
+
+
 class MyUDPHandler(SocketServer.BaseRequestHandler):
+    """ UDP Handler class for socket communication """
 
     def handle(self):
         global pressure
@@ -49,8 +50,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.87.191", 9999 #robertj
-
+    HOST, PORT = "130.225.87.86", 9999 #volvo
     pressure       = -1
     temperature    = -1
     sample_current = -1
