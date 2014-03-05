@@ -64,7 +64,7 @@ class CursesTui(threading.Thread):
 class Puiqe11(threading.Thread):
     """ Driver for ion sputter guns from SPECS """
 
-    def __init__(self):
+    def __init__(self, simulate=False):
         """ Initialize module
 
         Establish serial connection and create status variable to
@@ -72,14 +72,16 @@ class Puiqe11(threading.Thread):
         """
         threading.Thread.__init__(self)
 
-        self.f = serial.Serial('/dev/ttyS0', 1200, timeout=1)
+        self.simulate = simulate
+        self.f = serial.Serial('/dev/ttyS0', 1200, timeout=0.25)
         self.f.write('e0' + '\r')  # Echo off
         time.sleep(1)
         ok = self.f.read(self.f.inWaiting())
         if ok.find('OK') > -1:
             pass
         else:
-            print('ERROR!!!')
+            if self.simulate is not True:
+                print('ERROR!!!')
         self.status = {}  # Hold parameters to be accecible by gui
         self.status['hv'] = False
         self.status['standby'] = False
@@ -130,7 +132,10 @@ class Puiqe11(threading.Thread):
         elif(command == 'os'):
             return_string = reply
         else:
-            return_string = 'Communication error!'
+            if self.simulate is False:
+                return_string = 'Communication error!'
+            else:
+                return(1)
         return(return_string)
 
     def read_sputter_current(self):
@@ -228,7 +233,13 @@ class Puiqe11(threading.Thread):
         self.status['accel_voltage'] = self.read_acceleration_voltage()
 
         reply = self.comm('os').lower()
-        hv = None
+        if self.simulate is not True:
+            hv = None
+            self.status['remote'] = False
+            self.status['standby'] = False
+            self.status['degas'] = False
+        else:
+            hv = False
         if reply.find('ha') > -1:
             hv = False
         if reply.find('hv') > -1:
