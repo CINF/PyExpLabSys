@@ -12,7 +12,7 @@ from sputter_gui import Ui_Specs
 from PyExpLabSys.common.plotters import DataPlotter
 
 import sys
-sys.path.append('/home/cinf/PyExpLabSys/PyExpLabSys/drivers')
+sys.path.append('/home/robertj/Documents/PyExpLabSys/PyExpLabSys/drivers')
 
 import specs_iqe11
 
@@ -45,9 +45,9 @@ class SimplePlot(QWidget):
             legend='right', left_thickness=[2, 8], right_thickness=6,
             left_colors=['firebrick', 'darkolivegreen'],
             right_colors=['darksalmon'])
+        self.gui.horizontalLayout.removeWidget(self.gui.place_holder_qwt)
+        self.gui.place_holder_qwt.setParent(None)
         self.gui.horizontalLayout.addWidget(self.plotter.plot)
-        # Make the content scale with the Window
-        self.setLayout(self.gui.horizontalLayout)
 
         # Connect signals
         QtCore.QObject.connect(self.gui.start_button,
@@ -112,7 +112,7 @@ class SimplePlot(QWidget):
 
 def main():
     """Main method"""
-    sputtergun = specs_iqe11.Puiqe11()
+    sputtergun = specs_iqe11.Puiqe11(simulate=True)
     sputtergun.start()
 
     app = Qt.QApplication(sys.argv)
