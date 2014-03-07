@@ -53,7 +53,8 @@ bash        Edit PATH and PYTHONPATH in .bashrc to make PyExpLabSys scripts
 git         Add common git aliases
 install     Install commonly used packages e.g openssh-server
 pip         Install extra Python packages with pip
-pycheckers  Install Python code style checkers and hook them up to emacs
+pycheckers  Install Python code style checkers and hook them up to emacs and
+            geany (if geany is already installed)
 
 all         All of the above
 "
@@ -173,13 +174,22 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
 fi
 
 if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
-    echobold "===> SETTINGS UP CODE STYLE CHECKERS FOR EMACS"
+    echobold "===> SETTINGS UP CODE STYLE CHECKERS FOR EMACS AND GEANY"
     echoblue "---> Make ~/.emacs.d/lisp dir"
     mkdir -p ~/.emacs.d/lisp
     echoblue "---> Copy flymake-cursor.el to ~/.emacs.d/lisp dir"
     cp ~/PyExpLabSys/bootstrap/flymake-cursor.el ~/.emacs.d/lisp/
     echoblue "---> Copy .emacs to ~/.emacs.d/lisp dir"
     cp ~/PyExpLabSys/bootstrap/.emacs ~/
+    # Hook geany up with pychecker, but only if geany is already installed
+    if [ -d  ~/.config/geany/filedefs ]; then
+	echoblue "---> Copy geany filedefs (actions for files) to ~/.config/geany/filedefs"
+	cp ~/PyExpLabSys/bootstrap/filetypes.common ~/.config/geany/filedefs/
+	cp ~/PyExpLabSys/bootstrap/filetypes.python ~/.config/geany/filedefs/
+    else
+	echobad "pycheckers configuration for geany NOT installed. First install "
+	echobad "geany and then rerun pycheckers step"
+    fi
     echogood "+++++> DONE"
 fi
 
