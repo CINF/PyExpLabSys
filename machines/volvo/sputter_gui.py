@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'sputter_gui.ui'
 #
-# Created: Thu Mar  6 14:26:40 2014
+# Created: Fri Mar  7 11:27:06 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -67,6 +67,7 @@ class Ui_Specs(object):
         self.gridLayout_2.addWidget(self.degas, 1, 1, 1, 1)
         self.operate_button = QtGui.QPushButton(Specs)
         self.operate_button.setMaximumSize(QtCore.QSize(80, 16777215))
+        self.operate_button.setCheckable(True)
         self.operate_button.setObjectName(_fromUtf8("operate_button"))
         self.gridLayout_2.addWidget(self.operate_button, 1, 2, 1, 1)
         self.verticalLayout.addLayout(self.gridLayout_2)
@@ -91,17 +92,6 @@ class Ui_Specs(object):
         self.filament_current.setMaximumSize(QtCore.QSize(100, 30))
         self.filament_current.setObjectName(_fromUtf8("filament_current"))
         self.gridLayout.addWidget(self.filament_current, 3, 1, 1, 1)
-        self.sputter_current = QtGui.QSpinBox(Specs)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.sputter_current.sizePolicy().hasHeightForWidth())
-        self.sputter_current.setSizePolicy(sizePolicy)
-        self.sputter_current.setMinimum(-99999)
-        self.sputter_current.setMaximum(999999)
-        self.sputter_current.setProperty("value", 0)
-        self.sputter_current.setObjectName(_fromUtf8("sputter_current"))
-        self.gridLayout.addWidget(self.sputter_current, 2, 1, 1, 1)
         spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 7, 0, 1, 1)
         self.label_3 = QtGui.QLabel(Specs)
@@ -152,6 +142,11 @@ class Ui_Specs(object):
         self.emission_current.setMaximumSize(QtCore.QSize(100, 16777215))
         self.emission_current.setObjectName(_fromUtf8("emission_current"))
         self.gridLayout.addWidget(self.emission_current, 6, 1, 1, 1)
+        self.sputter_current = QtGui.QLineEdit(Specs)
+        self.sputter_current.setMinimumSize(QtCore.QSize(50, 0))
+        self.sputter_current.setMaximumSize(QtCore.QSize(100, 16777215))
+        self.sputter_current.setObjectName(_fromUtf8("sputter_current"))
+        self.gridLayout.addWidget(self.sputter_current, 2, 1, 1, 1)
         self.verticalLayout.addLayout(self.gridLayout)
         self.quit_button = QtGui.QPushButton(Specs)
         self.quit_button.setMaximumSize(QtCore.QSize(100, 16777215))

@@ -38,8 +38,8 @@ class SimplePlot(QWidget):
         self.plot_length = 200
 
         # Set up plot (using pretty much all the possible options)
-        self.plots_l = ['filament_current', 'sputter_current']
-        self.plots_r = ['temperature']
+        self.plots_l = ['filament_current', 'emission_current']
+        self.plots_r = ['sputter_current']
         self.plotter = DataPlotter(
             self.plots_l, right_plotlist=self.plots_r, parent=self,
             left_log=False, title='Ion Gun Data',
@@ -84,13 +84,12 @@ class SimplePlot(QWidget):
 
     def on_standby(self):
         """Standby button method"""
-        self.sputtergun.standby()
+        self.sputtergun.goto_standby = True
 
     def on_operate(self):
         """Standby button method"""
-        self.sputtergun.operate()
+        self.sputtergun.goto_operate = True
         print "!"
-
 
     def on_stop(self):
         """Stop button method"""
@@ -100,37 +99,49 @@ class SimplePlot(QWidget):
     def plot_iteration(self):
         """method that emulates a single data gathering and plot update"""
         elapsed = time.time() - self.start
-        self.gui.sputter_current.setProperty("value", self.sputtergun.status['sputter_current'])
-        self.gui.filament_bias.setProperty("text", str(self.sputtergun.status['filament_bias']))
-        self.gui.temp_energy_module.setProperty("text", str(self.sputtergun.status['temperature']))
-        self.gui.filament_current.setProperty("text", str(self.sputtergun.status['filament_current']))
-        self.gui.accel_voltage.setProperty("text", str(self.sputtergun.status['accel_voltage']))
-        self.gui.emission_current.setProperty("text", str(self.sputtergun.status['emission_current']))
+        #print str(elapsed) + ' current ' + str(self.sputtergun.status['sputter_current'])
+        #print str(elapsed) + ' bias ' + str(self.sputtergun.status['filament_bias'])
+        if self.sputtergun.status['sputter_current'] is not None:
+            self.gui.sputter_current.setProperty("text", str(self.sputtergun.status['sputter_current']) + 'mA')
+            self.gui.filament_bias.setProperty("text", str(self.sputtergun.status['filament_bias']) + 'V')
+            self.gui.temp_energy_module.setProperty("text", str(self.sputtergun.status['temperature']) + 'C')
+            self.gui.filament_current.setProperty("text", str(self.sputtergun.status['filament_current']) + 'mA')
+            self.gui.accel_voltage.setProperty("text", str(self.sputtergun.status['accel_voltage']) + 'V')
+            self.gui.emission_current.setProperty("text", str(self.sputtergun.status['emission_current']) + 'mA')
+        else:
+            self.gui.sputter_current.setProperty("value", '-')
+            self.gui.filament_bias.setProperty("text", '-')
+            self.gui.temp_energy_module.setProperty("text", '-')
+            self.gui.filament_current.setProperty("text", '-')
+            self.gui.accel_voltage.setProperty("text", '-')
+            self.gui.emission_current.setProperty("text", '-')
+        self.gui.operate_button.setProperty('checked', self.sputtergun.status['operate'])
+        print self.sputtergun.status['operate']
+        self.gui.standby_button.setProperty('checked', self.sputtergun.status['standby'])
 
         if elapsed <= self.plot_length:
-            self.plotter.add_point('sputter_current', (elapsed, self.sputtergun.status['sputter_current']))
-            print self.sputtergun.status['sputter_current']
-            value = (np.sin(elapsed) + 1.1) * self.scale
-            self.plotter.add_point('filament_current', (elapsed, self.sputtergun.status['filament_current']))
-            value = (np.cos(elapsed) + 1.1) * self.scale
-            self.plotter.add_point('temperature', (elapsed, self.sputtergun.status['temperature']))
+            try:
+                self.plotter.add_point('sputter_current', (elapsed, self.sputtergun.status['sputter_current']))
+                self.plotter.add_point('filament_current', (elapsed, self.sputtergun.status['filament_current']))
+                self.plotter.add_point('emission_current', (elapsed, self.sputtergun.status['emission_current']))
+            except TypeError:
+                pass
         else:
             self.active = False
 
         if self.active:
             # Under normal curcumstances we would not add a delay
-            QtCore.QTimer.singleShot(100, self.plot_iteration)
+            QtCore.QTimer.singleShot(500, self.plot_iteration)
 
 
 def main():
     """Main method"""
-    sputtergun = specs_iqe11.Puiqe11(simulate=True)
+    sputtergun = specs_iqe11.Puiqe11(simulate=False)
     sputtergun.start()
 
     app = Qt.QApplication(sys.argv)
     testapp = SimplePlot(sputtergun)
     testapp.show()
-    #sys.exit(app.exec_()) #Ask Kenneth about this construction
     app.exec_()
     sputtergun.running = False
 
