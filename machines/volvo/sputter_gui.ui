@@ -62,7 +62,7 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QPushButton" name="standby">
+          <widget class="QPushButton" name="standby_button">
            <property name="maximumSize">
             <size>
              <width>80</width>
@@ -104,7 +104,7 @@
           </widget>
          </item>
          <item row="1" column="2">
-          <widget class="QPushButton" name="pushButton_4">
+          <widget class="QPushButton" name="operate_button">
            <property name="maximumSize">
             <size>
              <width>80</width>
@@ -112,7 +112,7 @@
             </size>
            </property>
            <property name="text">
-            <string>PushButton</string>
+            <string>Operate!</string>
            </property>
           </widget>
          </item>
@@ -134,7 +134,7 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QLineEdit" name="temp_energy_modulelineEdit">
+          <widget class="QLineEdit" name="temp_energy_module">
            <property name="maximumSize">
             <size>
              <width>100</width>
@@ -144,7 +144,7 @@
           </widget>
          </item>
          <item row="3" column="1">
-          <widget class="QLineEdit" name="lineEdit_3">
+          <widget class="QLineEdit" name="filament_current">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -211,7 +211,7 @@
           </widget>
          </item>
          <item row="5" column="1">
-          <widget class="QLineEdit" name="lineEdit">
+          <widget class="QLineEdit" name="accel_voltage">
            <property name="maximumSize">
             <size>
              <width>100</width>
@@ -283,7 +283,7 @@
           </widget>
          </item>
          <item row="6" column="1">
-          <widget class="QLineEdit" name="lineEdit_2">
+          <widget class="QLineEdit" name="emission_current">
            <property name="maximumSize">
             <size>
              <width>100</width>
