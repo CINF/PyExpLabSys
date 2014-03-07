@@ -171,7 +171,7 @@ class Puiqe11(threading.Thread):
         :rtype: float
         """
         reply = self.comm('ec?')
-        value = float(reply)
+        value = float(reply)/1000
         return(value)
 
     def read_acceleration_voltage(self):
@@ -201,6 +201,15 @@ class Puiqe11(threading.Thread):
         :rtype: str
         """
         reply = self.comm('sb')
+        return(reply)
+
+    def operate(self):
+        """ Set the device in operation mode
+        TODO: This function should only be activated from standby!!!
+        :return: The direct reply from the device
+        :rtype: str
+        """
+        reply = self.comm('op')
         return(reply)
 
     def remote_enable(self, local=False):
@@ -240,7 +249,7 @@ class Puiqe11(threading.Thread):
             self.status['degas'] = False
         else:
             hv = False
-        if reply.find('ha') > -1:
+        if reply.find('he') > -1:
             hv = False
         if reply.find('hv') > -1:
             hv = True
