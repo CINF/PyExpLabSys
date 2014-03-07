@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0904
+# pylint: disable=C0301,R0904, C0103
 
 """
 Self contained module to run a SPECS sputter gun including fall-back text gui
@@ -27,12 +27,6 @@ class CursesTui(threading.Thread):
         while True:
             self.screen.addstr(3, 2, 'Sputter Gun Control')
 
-            self.screen.addstr(10, 2, "Sputter Current: {0:.8f}mA          ".format(self.sg.status['sputter_current']))
-            self.screen.addstr(11, 2, "Filament bias {0:.5f}V          ".format(self.sg.status['filament_bias']))
-            self.screen.addstr(12, 2, "Filament Current: {0:.2f}A          ".format(self.sg.status['filament_current']))
-            self.screen.addstr(13, 2, "Emission current: {0:.5f}mA          ".format(self.sg.status['emission_current']))
-            self.screen.addstr(14, 2, "Acceleration Voltage: {0:.2f}V          ".format(self.sg.status['accel_voltage']))
-
             if self.sg.status['degas']:
                 self.screen.addstr(4, 2, "Degassing")
 
@@ -40,18 +34,41 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(5, 2, "Remote control")
 
             if self.sg.status['standby']:
-                self.screen.addstr(6, 2, "Device status: Standby")
+                self.screen.addstr(6, 2, "Device status: Standby  ")
 
-            self.screen.addstr(8, 2, "Temperature, electronics: {0:.0f}C          ".format(self.sg.status['temperature']))
+            if self.sg.status['operate']:
+                self.screen.addstr(6, 2, "Device status: Operate! ")
 
-            self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time()-self.time))
-            self.screen.addstr(18, 2, 'q: quit')
+            try:
+                self.screen.addstr(9, 2, "Temperature, electronics: {0:.0f}C          ".format(self.sg.status['temperature']))
+                self.screen.addstr(10, 2, "Sputter Current: {0:.4f}mA          ".format(self.sg.status['sputter_current']))
+                self.screen.addstr(11, 2, "Filament bias: {0:.3f}V          ".format(self.sg.status['filament_bias']))
+                self.screen.addstr(12, 2, "Filament Current: {0:.2f}A          ".format(self.sg.status['filament_current']))
+                self.screen.addstr(13, 2, "Emission current: {0:.4f}mA          ".format(self.sg.status['emission_current']))
+                self.screen.addstr(14, 2, "Acceleration Voltage: {0:.2f}V          ".format(self.sg.status['accel_voltage']))
+            except ValueError:
+                self.screen.addstr(9, 2, "Temperature, electronics: -                   ")
+                self.screen.addstr(10, 2, "Sputter Current: -                           ")
+                self.screen.addstr(11, 2, "Filament bias: -                             ")
+                self.screen.addstr(12, 2, "Filament Current: -                          ")
+                self.screen.addstr(13, 2, "Emission current: -                          ")
+                self.screen.addstr(14, 2, "Acceleration Voltage: -                      ")
+
+            #self.screen.addstr(16, 2, "Latest error message: " + self.sg.status['error'])
+
+            self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
+            self.screen.addstr(18, 2, 'q: quit, s: standby, o: operate')
 
             n = self.screen.getch()
             if n == ord('q'):
                 self.sg.running = False
+            if n == ord('s'):
+                self.sg.goto_standby = True
+            if n == ord('o'):
+                self.sg.goto_operate = True
+
             self.screen.refresh()
-            time.sleep(0.5)
+            time.sleep(1)
 
     def stop(self):
         """ Cleanup the terminal """
@@ -83,17 +100,21 @@ class Puiqe11(threading.Thread):
             if self.simulate is not True:
                 print('ERROR!!!')
         self.status = {}  # Hold parameters to be accecible by gui
-        self.status['hv'] = False
-        self.status['standby'] = False
-        self.status['degas'] = False
-        self.status['remote'] = False
-        self.status['temperature'] = -1
-        self.status['sputter_current'] = -1
-        self.status['filament_bias'] = -1
-        self.status['filament_current'] = -1
-        self.status['emission_current'] = -1
-        self.status['accel_voltage'] = -1
+        self.status['hv'] = None
+        self.status['standby'] = None
+        self.status['operate'] = None
+        self.status['degas'] = None
+        self.status['remote'] = None
+        self.status['error'] = ''
+        self.status['temperature'] = None
+        self.status['sputter_current'] = None
+        self.status['filament_bias'] = None
+        self.status['filament_current'] = None
+        self.status['emission_current'] = None
+        self.status['accel_voltage'] = None
         self.running = True
+        self.goto_standby = False
+        self.goto_operate = False
         #self.update_status()
 
     def comm(self, command):
@@ -118,13 +139,14 @@ class Puiqe11(threading.Thread):
         reply = self.f.readline()
         self.f.read(1)  # Empty buffer for extra newline
         time.sleep(0.1)
+
         ok_reply = self.f.readline()  # Wait for OK
 
         cr_count = reply.count('\r')
         #Check that no old commands is still in buffer and that the reply
         #is actually intended for the requested parameter
         cr_check = cr_count == 1
-        command_check = reply[0:len(command)-1] == command.strip('?')
+        command_check = reply[0:len(command) - 1] == command.strip('?')
         ok_check = ok_reply.find('OK') > -1
         if cr_check and command_check and ok_check:
             echo_length = len(command)
@@ -144,7 +166,11 @@ class Puiqe11(threading.Thread):
         :rtype: float
         """
         reply = self.comm('eni?')
-        value = float(reply)/1000
+        try:
+            value = float(reply) / 1000
+        except ValueError:
+            self.status['error'] = reply
+            value = None
         return(value)
 
     def read_filament_voltage(self):
@@ -153,7 +179,11 @@ class Puiqe11(threading.Thread):
         :rtype: float
         """
         reply = self.comm('fu?')
-        value = float(reply)/100.0
+        try:
+            value = float(reply) / 100.0
+        except ValueError:
+            self.status['error'] = reply
+            value = None
         return(value)
 
     def read_filament_current(self):
@@ -162,7 +192,11 @@ class Puiqe11(threading.Thread):
         :rtype: float
         """
         reply = self.comm('fi?')
-        value = float(reply)/10.0
+        try:
+            value = float(reply) / 10.0
+        except ValueError:
+            self.status['error'] = reply
+            value = None
         return(value)
 
     def read_emission_current(self):
@@ -171,7 +205,11 @@ class Puiqe11(threading.Thread):
         :rtype: float
         """
         reply = self.comm('ec?')
-        value = float(reply)/1000
+        try:
+            value = float(reply) / 1000
+        except ValueError:
+            self.status['error'] = reply
+            value = None
         return(value)
 
     def read_acceleration_voltage(self):
@@ -180,7 +218,11 @@ class Puiqe11(threading.Thread):
         :rtype: float
         """
         reply = self.comm('ec?')
-        value = float(reply)
+        try:
+            value = float(reply)
+        except ValueError:
+            self.status['error'] = reply
+            value = None
         return(value)
 
     def read_temperature_energy_module(self):
@@ -190,7 +232,11 @@ class Puiqe11(threading.Thread):
         :rtype: float
         """
         reply = self.comm('ent?')
-        value = float(reply)
+        try:
+            value = float(reply)
+        except ValueError:
+            self.status['error'] = reply
+            value = None
         return(value)
 
     def standby(self):
@@ -244,14 +290,11 @@ class Puiqe11(threading.Thread):
         reply = self.comm('os').lower()
         if self.simulate is not True:
             hv = None
-            self.status['remote'] = False
-            self.status['standby'] = False
-            self.status['degas'] = False
         else:
             hv = False
         if reply.find('he') > -1:
             hv = False
-        if reply.find('hv') > -1:
+        if reply.find('ha') > -1:
             hv = True
         assert(hv is True or hv is False)
         self.status['hv'] = hv
@@ -266,6 +309,12 @@ class Puiqe11(threading.Thread):
         else:
             self.status['standby'] = False
 
+        if reply.find('op') > -1:
+            self.status['operate'] = True
+        else:
+            self.status['operate'] = False
+        #!TODO: Update status to also accept neither operate or standby
+
         if reply.find('dg') > -1:
             self.status['degas'] = True
         else:
@@ -277,7 +326,13 @@ class Puiqe11(threading.Thread):
         while self.running:
             time.sleep(0.5)
             self.update_status()
-
+            if self.goto_standby:
+                self.standby()
+                self.goto_operate = False
+                self.goto_standby = False
+            if self.goto_operate:
+                self.operate()
+                self.goto_operate = False
 
 if __name__ == '__main__':
     sputter = Puiqe11()
@@ -286,16 +341,16 @@ if __name__ == '__main__':
     tui = CursesTui(sputter)
     tui.daemon = True
     tui.start()
-    """
-    print('Sputter current: ' + str(sputter.read_sputter_current()))
-    print('Temperature: ' + str(sputter.read_temperature_energy_module()))
-    print('Sputter current: ' + str(sputter.read_sputter_current()))
-    print('Temperature: ' + str(sputter.read_temperature_energy_module()))
-    print('Filament voltage: ' + str(sputter.read_filament_voltage()))
-    print('Filament current: ' + str(sputter.read_filament_current()))
-    print('Emission current: ' + str(sputter.read_emission_current()))
-    print('Acceleration voltage: ' + str(sputter.read_acceleration_voltage()))
-    """
+
+    #print('Sputter current: ' + str(sputter.read_sputter_current()))
+    #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
+    #print('Sputter current: ' + str(sputter.read_sputter_current()))
+    #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
+    #print('Filament voltage: ' + str(sputter.read_filament_voltage()))
+    #print('Filament current: ' + str(sputter.read_filament_current()))
+    #print('Emission current: ' + str(sputter.read_emission_current()))
+    #print('Acceleration voltage: ' + str(sputter.read_acceleration_voltage()))
+    #sputter.update_status()
     #print('Enable:')
     #print(sputter.remote_enable(local=False))
     #print('Status:')
