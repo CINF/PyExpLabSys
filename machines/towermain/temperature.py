@@ -11,7 +11,7 @@ from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.utilities import get_logger
 
 
-LOGGER = get_logger('temperatue', level='DEBUG', file_log=True,
+LOGGER = get_logger('temperatue', level='INFO', file_log=True,
                     file_name='temperature_log')
 TEMPERATURE_CHANGE_THRESHOLD = 0.3
 TIMEOUT = 600
