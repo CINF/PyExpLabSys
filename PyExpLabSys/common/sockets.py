@@ -34,6 +34,9 @@ BAD_CHARS = ['#', ',', ';', ':']
 UNKNOWN_COMMAND = 'UNKNOWN_COMMMAND'
 #: The string used to indicate old or obsoleted data
 OLD_DATA = 'OLD_DATA'
+#: The string used to indicate that there is no now point to serve (only used
+#: for :py:class:`.LiveSocket`
+NO_NEW_DATA = 'NND'
 #:The variable used to contain all the data.
 #:
 #:The format of the DATA variable is the following. The DATA variable is a
@@ -206,6 +209,67 @@ class DataUDPHandler(SocketServer.BaseRequestHandler):
         return out
 
 
+class LiveUDPHandler(SocketServer.BaseRequestHandler):
+    """Request handler for the :class:`.DateDataSocket` and
+    :class:`.DateDataSocket` sockets
+    """
+
+    def handle(self):
+        """Return data corresponding to the request
+
+        All data is returned as json strings even though the command names does
+        not indicate it.
+
+        The handler understands the following commands:
+
+        :param data: Return all values as a list of points (which in themselves
+            are lists) e.g: ``[[x1, y1], [x2, y2]]``), contained in a
+            :py:mod:`json` string. The order of the points is the same order
+            the codenames was given to the :meth:`.LiveSocket.__init__` method
+            in and are return by the ``codenames`` command. If a point has
+            already been served, that point will be replaced with 
+        :param codenames: Return a list of the codenames contained in a
+            :py:mod:`json` string
+        :param sane_interval: Return the sane interval with which new data can
+            be expected to be available
+        """
+        command = self.request[0]
+        self.port = self.server.server_address[1]
+        socket = self.request[1]
+
+        if command == 'data':
+            points = []
+            for codename in DATA[self.port]['codenames']:
+                points.append(self._get_current_point(codename))
+            data = json.dumps(points)
+        elif command == 'codenames':
+            data = json.dumps(DATA[self.port]['codenames'])
+        elif command == 'sane_interval':
+            data = json.dumps(DATA[self.port]['sane_interval'])
+        else:
+            data = UNKNOWN_COMMAND
+
+        socket.sendto(data, self.client_address)
+
+    def _get_current_point(self, codename):
+        """Return current point or NO_NEW_DATA if the point has already been
+        served
+        
+        The basis of comparison for whether a point has already been served is
+        whether the time (x value) is less the 1E-8 away from the last point
+        sent
+        """
+        already_served = \
+            abs(DATA[self.port]['data'][codename][0] -
+                DATA[self.port]['last_served'][codename][0]) < 1E-8
+        if already_served:
+            out = NO_NEW_DATA
+        else:
+            out = DATA[self.port]['data'][codename]
+            DATA[self.port]['last_served'][codename] = list(out)
+        return out
+
+
 class CommonDataSocket(threading.Thread):
     """Abstract class that implements common data socket functionality.
     
@@ -216,9 +280,18 @@ class CommonDataSocket(threading.Thread):
     * Initilizing DATA with common attributes
     """
 
-    def __init__(self, codenames, port, default_x, default_y, timeouts):
-        """For parameter description see :meth:`.DataSocket.__init__` or
-        :meth:`.DateDataSocket.__init__`
+    def __init__(self, codenames, port, default_x, default_y, timeouts,
+                 init_timeouts=True, handler_class=DataUDPHandler):
+        """For parameter description of ``codenames``, ``port``, ``default_x``,
+        ``default_y`` and ``timeouts`` see :meth:`.DataSocket.__init__` or
+        :meth:`.DateDataSocket.__init__`.
+
+        :param init_timeouts: Whether timeouts should be instantiated in the
+            DATA
+        :type init_timeouts: bool
+        :param handler_class: The UDP handler to use in the server
+        :type DataUDPHandler: Sub-class of
+            :python:`SocketServer.BaseRequestHandler`
         """
         LOGGER.debug('CDS: Initialize')
         # Init thread
@@ -226,6 +299,7 @@ class CommonDataSocket(threading.Thread):
         self.daemon = True
         # Init local data
         self.port = port
+
         # Check for existing servers on this port
         global DATA
         if port in DATA:
@@ -241,8 +315,11 @@ class CommonDataSocket(threading.Thread):
         else:
             # If only a single value is given turn it into a list
             timeouts = [timeouts] * len(codenames)
+
         # Prepare DATA
-        DATA[port] = {'codenames': list(codenames), 'data': {}, 'timeouts': {}}
+        DATA[port] = {'codenames': list(codenames), 'data': {}}
+        if init_timeouts:
+            DATA[port]['timeouts'] = {}
         for name, timeout in zip(codenames, timeouts):
             # Check for duplicates
             if codenames.count(name) > 1:
@@ -257,9 +334,11 @@ class CommonDataSocket(threading.Thread):
                     raise ValueError(message)
             # Init the point
             DATA[port]['data'][name] = (default_x, default_y)
-            DATA[port]['timeouts'][name] = timeout
+            if init_timeouts:
+                DATA[port]['timeouts'][name] = timeout
+
         # Setup server
-        self.server = SocketServer.UDPServer(('', port), DataUDPHandler)
+        self.server = SocketServer.UDPServer(('', port), handler_class)
         LOGGER.info('CDS: Initialized')
 
     def run(self):
@@ -308,7 +387,7 @@ class DataSocket(CommonDataSocket):
         LOGGER.debug('DS: Initialize')
         # Run super init to initialize thread, check input and initialize data
         super(DataSocket, self).__init__(
-            codenames, port=port, default_x=default_x, default_y = default_y,
+            codenames, port=port, default_x=default_x, default_y=default_y,
             timeouts=timeouts
         )
         DATA[port]['type'] = 'data'
@@ -331,11 +410,11 @@ class DataSocket(CommonDataSocket):
             used to evaluate if the point is new enough if timeouts are set.
         :type timestamp: float
         """
-        DATA[self.port]['data'][codename] = list(point)
+        DATA[self.port]['data'][codename] = tuple(point)
         if timestamp is None:
             timestamp = time.time()
         DATA[self.port]['timestamps'][codename] = timestamp
-        LOGGER.debug('DS: Point {} for \'{}\' set'.format(list(point),
+        LOGGER.debug('DS: Point {} for \'{}\' set'.format(tuple(point),
                                                           codename))
 
 
@@ -393,7 +472,7 @@ class DateDataSocket(CommonDataSocket):
         :param value: y-value
         :type value: float
         """
-        self.set_point(codename, [time.time(), value])
+        self.set_point(codename, (time.time(), value))
         LOGGER.debug('Added time to value and called set_point')
 
     def set_point(self, codename, point):
@@ -405,5 +484,58 @@ class DateDataSocket(CommonDataSocket):
         :param point: Current point as a list (or tuple) of 2 floats: [x, y]
         :type point: list or tuple
         """
-        DATA[self.port]['data'][codename] = list(point)
-        LOGGER.debug('Point {} for \'{}\' set'.format(list(point), codename))
+        DATA[self.port]['data'][codename] = tuple(point)
+        LOGGER.debug('Point {} for \'{}\' set'.format(tuple(point), codename))
+
+
+class LiveSocket(CommonDataSocket):
+    """This class implements a Live Socket"""
+
+    def __init__(self, codenames, sane_interval, port=8000,
+                 default_x=0, default_y=47):
+
+        LOGGER.info('LS: Initilize')
+        super(LiveSocket, self).__init__(
+            codenames, port, default_x, default_y, None, init_timeouts=False,
+            handler_class=LiveUDPHandler
+        )
+        # Set the type and the the sane_interval
+        DATA[port]['type'] = 'live'
+        DATA[port]['sane_interval'] = sane_interval
+
+        # Initialize the last served data
+        DATA[port]['last_served'] = {}
+        for codename in codenames:
+            DATA[port]['last_served'][codename] = (default_x, default_y)
+        LOGGER.info('LS: Initilized')
+
+    def set_point_now(self, codename, value):
+        """Set the current y-value for codename using the current time as x
+        
+        :param codename: Name for the measurement whose current value should be
+            set
+        :type codename: str
+        :param value: y-value
+        :type value: float
+        """
+        self.set_point(codename, (time.time(), value))
+        LOGGER.debug('LS: Added time to value and called set_point')
+
+    def set_point(self, codename, point):
+        """Set the current point for codename
+        
+        :param codename: Name for the measurement whose current point should be
+            set
+        :type codename: str
+        :param point: Current point as a list (or tuple) of 2 floats: [x, y]
+        :type point: list or tuple
+        """
+        if not codename in DATA[self.port]['codenames']:
+            message = 'Codename \'{}\' not recognized. Use one of: {}'.format(
+                codename,
+                DATA[self.port]['codenames']
+            )
+            raise ValueError(message)
+        DATA[self.port]['data'][codename] = tuple(point)
+        LOGGER.debug('LS: Point {} for \'{}\' set'.format(tuple(point),
+                                                          codename))
