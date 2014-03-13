@@ -2,11 +2,12 @@
 # pylint: disable=C0301,R0904, C0103
 
 import threading
-import xgs600
 import time
+import logging
 
 from PyExpLabSys.common.loggers import ContinuousLogger
 #from PyExpLabSys.common.sockets import DateDataSocket
+import PyExpLabSys.drivers.xgs600 as xgs600
 
 
 class XGSClass(threading.Thread):
@@ -40,7 +41,10 @@ class XGSClass(threading.Thread):
                 self.last_recorded_time = time.time()
                 self.last_recorded_value = self.pressure
 
-db_logger = ContinuousLogger(table='dateplots_dummy', username='dummy', password='dummy', measurement_codenames=['dummy_sine_one'])
+#logging.basicConfig(filename="logger.txt", level=logging.INFO)
+#logging.basicConfig(level=logging.INFO)
+
+db_logger = ContinuousLogger(table='dateplots_volvo', username='volvo', password='volvo', measurement_codenames=['volvo_pressure'])
 db_logger.start()
 
 #socket = DateDataSocket(['s1m1', 's1m2'], timeouts=[1.0, 0.7])
@@ -52,5 +56,6 @@ pressure_measurement.start()
 # Initialize variable for the logging condition
 while True:
     if pressure_measurement.trigged:
-        db_logger.enqueue_point_now('dummy_sine_one', pressure_measurement.read_pressure())
+        print pressure_measurement.read_pressure()
+        db_logger.enqueue_point_now('volvo_pressure', pressure_measurement.read_pressure())
         pressure_measurement.trigged = False
