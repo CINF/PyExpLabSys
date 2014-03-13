@@ -1,3 +1,4 @@
+#! /usr/bin/python
 """QtDesigner test"""
 
 import sys
@@ -13,9 +14,6 @@ sys.path.append('/home/cinf/PyExpLabSys/PyExpLabSys/drivers')
 sys.path.append('/home/cinf/PyExpLabSys/')
 from sputter_gui import Ui_Specs
 from PyExpLabSys.common.plotters import DataPlotter
-
-
-
 
 import specs_iqe11
 
