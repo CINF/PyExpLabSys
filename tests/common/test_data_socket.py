@@ -5,11 +5,13 @@
 import time
 import socket
 import json
+# Extra modules
+import pytest
 # Own imports
 import PyExpLabSys.common.sockets
-from PyExpLabSys.common.sockets import DataSocket, DateDataSocket
+from PyExpLabSys.common.sockets import DataSocket, DateDataSocket, LiveSocket
 
-### Data socket tests
+### DataSocket tests
 def test_data_multiple_data_sockets():
     multiple_data_sockets(DataSocket)
 
@@ -25,7 +27,7 @@ def test_data_timeout():
 def test_data_timeout_with_timestamp():
     data_timeout(DataSocket, usetimestamp=True)
 
-### Date data socket tests
+### DateSataSocket tests
 def test_date_multiple_data_sockets():
     multiple_data_sockets(DateDataSocket)
 
@@ -38,8 +40,137 @@ def test_date_define_timeout():
 def test_date_data_timeout():
     data_timeout(DateDataSocket)
 
+### LiveSocket test
+def test_live_init():
+    codenames = ['name1', 'name2']
+    live_socket = LiveSocket(codenames, 1.0)
+    live_socket.start()
+
+    # Check that the port default is 8000
+    assert(live_socket.port == 8000)
+
+    data = PyExpLabSys.common.sockets.DATA
+    # Check that data and last served are initialized and not with the same
+    # objects
+    for codename in codenames:
+        assert(data[8000]['data'][codename] ==
+               data[8000]['last_served'][codename])
+        assert(not (data[8000]['data'][codename] is
+               data[8000]['last_served'][codename]))
+
+    # Check tha codenams and sane_interval is set correctly
+    assert(data[8000]['codenames'] == codenames)
+    assert(data[8000]['sane_interval'] - 1.0 < 1E-8)
+
+    live_socket.stop()
+    time.sleep(0.1)
+
+    print 'live init done'
 
 
+def test_live_multiple_variables():
+    codenames = ['name1', 'name2']
+    live_socket = LiveSocket(codenames, 1.0)
+    live_socket.start()
+
+    HOST = "127.0.0.1"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    port = 8000
+
+    # Test the 'codenames' command
+    command = 'codenames'
+    sock.sendto(command, (HOST, port))
+    data, _ = sock.recvfrom(1024)
+    expected = ['name1', 'name2']
+    assert(json.loads(data) == expected)
+
+    # Test the 'sane_interval' command
+    sock.sendto('sane_interval', (HOST, port))
+    data, _ = sock.recvfrom(1024)
+    assert(json.loads(data) - 1.0 < 1E-8)
+
+    for n in range(3):
+        now = time.time()
+        live_socket.set_point('name1', (now, n))
+        live_socket.set_point('name2', (now, n+1))
+
+        # Test the 'data' command
+        sock.sendto('data', (HOST, port))
+        data, _ = sock.recvfrom(1024)
+        expected = [[now, n], [now, n+1]]
+        assert(json.loads(data) == expected)
+
+        time.sleep(0.1)
+
+    live_socket.stop()
+    time.sleep(0.1)
+
+    print 'live multiple variables done'
+
+
+def test_live_already_served():
+    codenames = ['name1', 'name2']
+    live_socket = LiveSocket(codenames, 1.0)
+    live_socket.start()
+
+    HOST = "127.0.0.1"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    port = 8000
+
+    # Make both already served
+    sock.sendto('data', (HOST, port))
+    data, _ = sock.recvfrom(1024)
+
+    for n in range(3):
+        now = time.time()
+
+        live_socket.set_point('name1', (now, n))        
+        # Test no new data for 'name1'
+        sock.sendto('data', (HOST, port))
+        data, _ = sock.recvfrom(1024)
+        expected = [[now, n], 'NND']
+        assert(json.loads(data) == expected)
+        
+        # And test that it works after asking twice
+        sock.sendto('data', (HOST, port))
+        data, _ = sock.recvfrom(1024)
+        expected = ['NND', 'NND']
+        assert(json.loads(data) == expected)
+        
+        live_socket.set_point('name2', (now, n+1))
+        # Test no new data for 'name2'
+        sock.sendto('data', (HOST, port))
+        data, _ = sock.recvfrom(1024)
+        expected = ['NND', [now, n+1]]
+        assert(json.loads(data) == expected)
+
+        time.sleep(0.01)
+
+    live_socket.stop()
+    time.sleep(0.1)
+
+    print 'live test no now data done'  
+
+def test_live_wrong_codename():
+    codenames = ['name1', 'name2']
+    live_socket = LiveSocket(codenames, 1.0)
+    live_socket.start()
+
+    # Test that trying to set an unknown name raises an exception
+    with pytest.raises(ValueError):
+        live_socket.set_point('bad name', (1, 2))
+
+    live_socket.stop()
+    time.sleep(0.1)
+
+    print 'live wrong codename done'
+
+#test_live_init()
+#test_live_multiple_variables()
+#test_live_wrong_codename()
+#test_live_already_served()
+
+# Common tests
 def multiple_data_sockets(sockettype):
     """Test general functionality with multiple sockets
 

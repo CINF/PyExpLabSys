@@ -11,7 +11,8 @@ from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.utilities import get_logger
 
 
-LOGGER = get_logger('temperatue')
+LOGGER = get_logger('temperatue', level='INFO', file_log=True,
+                    file_name='temperature_log')
 TEMPERATURE_CHANGE_THRESHOLD = 0.3
 TIMEOUT = 600
 SHORT_NAME = 'tts'
@@ -66,5 +67,11 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    # This nasty little except on all exception makes sure that exception are
+    # logged
+    except Exception as e:
+        LOGGER.exception(e)
+        raise(e)
     raw_input("Press enter to exit")

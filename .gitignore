@@ -3,3 +3,4 @@
 \#*\#
 machines/rasppi25/credentials.py
 machines/rasppi25/thetaprobe_pressure_logger.log*
+machines/towermain/temperature_log*
