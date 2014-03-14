@@ -1,5 +1,5 @@
 import time
-from SCPI import SCPI
+from scpi import SCPI
 
 
 class InterfaceOutOfBoundsError(Exception):
