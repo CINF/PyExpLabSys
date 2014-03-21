@@ -62,7 +62,7 @@ class pirani_saver(threading.Thread):
     def run(self):
 	while not quit:
             value = pirani_reader.value
-            print "Pirani: " + str(value)
+            #print "Pirani: " + str(value)
             time.sleep(1)
 	    time_trigged = (time.time() - self.last_recorded_time) > 30
             val_trigged = (value>0) and (not (self.last_recorded_value * 0.9 < value < self.last_recorded_value * 1.1))
@@ -72,7 +72,7 @@ class pirani_saver(threading.Thread):
 		meas_time = sqlTime()
 		val = "%.5g" % value
 		gauge_sql = "insert into pressure_stm312hp_pirani set time=\"" +  meas_time + "\", pressure = " + val
-		print gauge_sql
+		#print gauge_sql
 		sqlInsert(gauge_sql)
 
 class pc_saver(threading.Thread):
@@ -84,7 +84,7 @@ class pc_saver(threading.Thread):
     def run(self):
 	while not quit:
             value = pc_reader.value
-            print "Pressure controller: " + str(value)
+            #print "Pressure controller: " + str(value)
             time.sleep(1)
 	    time_trigged = (time.time() - self.last_recorded_time) > 600
             val_trigged = not (self.last_recorded_value * 0.9 < value < self.last_recorded_value * 1.1)
@@ -94,7 +94,7 @@ class pc_saver(threading.Thread):
 		meas_time = sqlTime()
 		val = "%.5g" % value
 		gauge_sql = "insert into pressure_stm312hp_pressure_controller set time=\"" +  meas_time + "\", pressure = " + val
-		print gauge_sql
+		#print gauge_sql
 		sqlInsert(gauge_sql)
 		
 				

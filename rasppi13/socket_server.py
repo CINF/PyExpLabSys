@@ -12,12 +12,15 @@ serial_name = bronk.read_serial()
 serial_name = serial_name.strip()
 if serial_name != '':
     name[0] = serial_name
+    print serial_name
 
 bronk = bronkhorst.Bronkhorst('/dev/ttyUSB1')
 serial_name = bronk.read_serial()
 serial_name = serial_name.strip()
 if serial_name != '':
     name[1] = serial_name
+    print serial_name
+
 
 pirani = mks.mks_comm('/dev/ttyUSB0')
 serial_name = pirani.read_serial()
@@ -40,7 +43,7 @@ print name[1]
 #counter = 0
 for i in range(0,2):
 
-    if name[i] == 'M8203814C':
+    if name[i] == 'M11200362H':
         pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
         print("pressure: /dev/ttyUSB" + str(i) + ', serial:' + name[i])
         pressure.set_control_mode() #Change to accept setpoint from rs232 interface
@@ -58,21 +61,21 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket = self.request[1]
 
         if received_data == "read_pirani":
-            print "read_pirani"
+            #print "read_pirani"
             data = str(pirani.read_pressure())
 
         if received_data == "read_pressure":
-            print "read_pressure"
+            #print "read_pressure"
             data = str(pressure.read_measure()*1000)
 
         if received_data == "read_setpoint_pressure":
-            print "read_setpoint_pressure"
+            #print "read_setpoint_pressure"
             data = str(pressure.read_setpoint()*1000)
 
         if received_data[0:13] == "set_pressure:":
             val = float(received_data[13:].strip())
             pressure.set_setpoint(val / 1000.0)
-            print "set_pressure"
+            #print "set_pressure"
             data = "ok"
 
         socket.sendto(data, self.client_address)

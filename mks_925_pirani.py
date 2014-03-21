@@ -19,6 +19,7 @@ class mks_comm():
         command = 'PR1?'
 	signal = self.comm(command)
         signal = signal[7:-3]
+        #print signal
         try:
             signal = float(signal)
         except: 
@@ -44,6 +45,6 @@ class mks_comm():
 if __name__ == '__main__':
     mks = mks_comm('/dev/ttyUSB1')
     #print mks.set_comm_speed(9600)
-    #print mks.change_unit('MBAR')
+    print mks.change_unit('MBAR')
     print "Pressure: " + str(mks.read_pressure())
     print 'Serial: ' + str(mks.read_serial())
