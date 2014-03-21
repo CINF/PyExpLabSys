@@ -1,0 +1,8 @@
+#!/bin/sh
+ 
+#echo "======  pep8  ======"
+pep8 --ignore=E501 $1
+#echo "======  pyflakes  ======"
+pyflakes $1
+#echo "======  pylint  ======"
+pylint --disable=I0011 --reports=n --output-format=parseable $1
