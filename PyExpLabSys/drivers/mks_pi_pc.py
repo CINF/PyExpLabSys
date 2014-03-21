@@ -68,6 +68,21 @@ class Mks_Pi_Pc():
         macid = self.comm(3, 1, 1)
         return(ord(macid))
 
+    """
+    def query_full_range(self):
+        fullrange = self.comm(int('66',16), 0, int('a0',16))
+        #print ord(fullrange[0])
+        print ord(fullrange[2])
+        #print hex(ord(fullrange[0]))
+        #print hex(ord(fullrange[1]))
+
+        print self.convert_value_from_mks(fullrange[1] + fullrange[0])
+        #print mks.convert_value_from_mks(fullrange[0:2])
+        #for i in range(0, len(fullrange)):
+        #    print ord(fullrange[i])
+        return('')
+    """
+
     def read_setpoint(self):
         setpoint = self.comm(int('6a',16), 1, int('a6',16))
         return(self.convert_value_from_mks(setpoint))
@@ -85,3 +100,4 @@ if __name__ == '__main__':
     mks.set_setpoint(500)
     print "Setpoint: " + str(mks.read_setpoint())
 
+    print mks.query_full_range()
