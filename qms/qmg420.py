@@ -167,6 +167,27 @@ class qmg_420():
 
     def first_mass(self, mass):
         self.comm('FIR ' + str(mass))
+        
+    def get_multiple_samples(self, number):
+        values = [0] * number
+        for i in range(0, number):
+            val = self.comm(chr(5))
+            if not (val == ''):
+                values[i] = val
+        return values
+        
+        
+    def get_single_sample(self):
+        error = 0
+        while (self.waiting_samples() == 0) and (error < 40):
+            time.sleep(0.2)
+            error = error + 1
+        if error > 39:
+            logging.error('Sample did arrive on time')
+            value = ""
+        else:
+            value = self.comm(chr(5))
+        return value
 
     def config_channel(self, channel, mass=-1, speed=-1, amp_range=-1,enable=""):
         """ Config a MS channel for measurement """
@@ -203,49 +224,3 @@ class qmg_420():
         self.comm('CHA 0')
         self.comm('CHM 0') # Mass scan, to enable FIR filter, set value to 1
         self.comm('STA 1')
-
-        self.speed(8)
-
-        status = self.comm('RSC').split(',')
-        steps = status[7]
-        speed = status[5]
-        print status
-        print speed
-
-        if steps == '0':
-           measurements_pr_step = 64
-        if steps == '1':
-           measurements_pr_step = 32
-        if steps == '2':
-           measurements_pr_step = 16
-
-        if speed < 3:
-            measurements_pr_step = measurements_pr_step / 2    
-            
-        if speed < 1:
-            measurements_pr_step = measurements_pr_step / 2    
-
-        number_of_samples = measurements_pr_step * scan_width
-        samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
-        self.start_measurement()
-        time.sleep(0.5)
-        running = self.measurement_running()
-        while running:
-           running = self.measurement_running()
-           print running
-           time.sleep(1)
-
-        t = time.time()
-        header = self.comm('HEA').split(',')
-
-        data = {}
-        data['x'] = []
-        data['y'] = []
-        
-        for i in range(0,number_of_samples):
-           val = self.comm(chr(5))
-           print i
-           data['y'].append(float(val) + 1e-5)
-           data['x'].append(first_mass + i / samples_pr_unit)
-
-        return data

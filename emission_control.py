@@ -2,10 +2,20 @@ import time
 import threading
 import sys
 import curses
+import socket
 
 import agilent_34972A as multiplexer
 import CPX400DP as CPX
 import PID
+
+def network_comm(string):
+    host='130.225.87.210'
+    port = 9696
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(0.1)
+    sock.sendto(string + "\n", (host, port))
+    received = sock.recv(1024)
+    return received
 
 class CursesTui(threading.Thread):
     def __init__(self, emission_control_instance):
@@ -80,6 +90,7 @@ class EmissionControl(threading.Thread):
     def set_bias(self, bias):
         if bias > -1:
             self.bias.SetVoltage(bias)
+            network_comm('set_bias ' + str(bias))
         if bias < 5:
             pass #TODO: Implement check to make sure not to melt the filament
 
@@ -99,24 +110,32 @@ class EmissionControl(threading.Thread):
         return self.bias.ReadActualCurrent()
 
     def read_emission_current(self):
-        #self.mux.set_scan_list(['115'])
         value = self.mux.read_single_scan()[0]
         current = 1000.0 * value / 9.78 #Resistance measured by device itself
         return -1*current
 
     def run(self):
         i = 0
+        paused = True
         while self.running:
-            self.emission_current = self.read_emission_current()
-            voltage = self.pid.WantedPower(self.emission_current)
-            self.wanted_voltage = voltage
-            self.pid.UpdateSetpoint(self.setpoint)
-            self.set_filament_voltage(voltage)
-            self.filament_voltage = self.read_filament_voltage()
-            self.filament_current = self.read_filament_current()
-            self.grid_voltage = self.read_grid_voltage()
-            self.grid_current = self.read_grid_current()
-            #print 'Voltage: ' + str(voltage) + '   , emission current: ' +  str(self.emission_current)
+            still_paused = network_comm('aps'))
+            if paused and (not still_paused):
+                self.mux.set_scan_list(['115'])
+                time.sleep(0.2)
+
+            paused = still_paused
+            if paused:
+                time.sleep(0.25)
+            else:
+                self.emission_current = self.read_emission_current()
+                voltage = self.pid.WantedPower(self.emission_current)
+                self.wanted_voltage = voltage
+                self.pid.UpdateSetpoint(self.setpoint)
+                self.set_filament_voltage(voltage)
+                self.filament_voltage = self.read_filament_voltage()
+                self.filament_current = self.read_filament_current()
+                self.grid_voltage = self.read_grid_voltage()
+                self.grid_current = self.read_grid_current()
         self.setpoint = 0
         self.set_filament_voltage(0)
         self.set_bias(0)
@@ -125,11 +144,12 @@ class EmissionControl(threading.Thread):
 
 
 if __name__ == '__main__':
+
     ec = EmissionControl()
     ec.filament.SetCurrentLimit(5)
     #print ec.filament.ReadCurrentLimit()
     #print ec.bias.ReadCurrentLimit()
-    ec.set_bias(20)
+    ec.set_bias(60)
     ec.start()
 
     tui = CursesTui(ec)

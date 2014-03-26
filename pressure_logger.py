@@ -35,7 +35,7 @@ class XGSClass(threading.Thread):
         global flighttube_pressure
         while not quit:
             time.sleep(2.5)
-	    press = self.xgs.ReadAllPressures()
+	    press = self.xgs.read_all_pressures()
 	    try:
                 ion_gauge_pressure = press[1]
                 flighttube_pressure = press[0]
