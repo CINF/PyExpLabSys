@@ -63,7 +63,7 @@ class ChillerSaver(threading.Thread):
     def run(self):
         while not quit:
             time.sleep(1)
-            time_trigged = (time.time() - self.last_recorded_time) > 200
+            time_trigged = (time.time() - self.last_recorded_time) > 60
             if (time_trigged):
                 self.last_recorded_time = time.time()
                 meas_time = sqlTime()
