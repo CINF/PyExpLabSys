@@ -7,6 +7,7 @@ import logging
 
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataSocket
+from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.xgs600 as xgs600
 import PyExpLabSys.drivers.agilent_34972A as agilent_34972A
 
@@ -84,6 +85,9 @@ time.sleep(2.5)
 socket = DateDataSocket(['pressure', 'temperature'], timeouts=[1.0, 1.0])
 socket.start()
 
+livesocket = LiveSocket(['pressure', 'temperature'], 2)
+livesocket.start()
+
 db_logger = ContinuousLogger(table='dateplots_volvo', username='volvo', password='volvo', measurement_codenames=['volvo_pressure', 'volvo_temperature'])
 db_logger.start()
 
@@ -92,6 +96,9 @@ while True:
     t = analog_measurement.read_temperature()
     socket.set_point_now('pressure', p)
     socket.set_point_now('temperature', t)
+    livesocket.set_point_now('pressure', p)
+    livesocket.set_point_now('temperature', t)
+
     if pressure_measurement.trigged:
         print(p)
         db_logger.enqueue_point_now('volvo_pressure', p)
