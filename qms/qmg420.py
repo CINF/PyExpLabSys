@@ -31,11 +31,11 @@ class qmg_420():
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer
-        
+
         Implements the low-level protocol for RS-232 communication with the
         instrument. High-level protocol can be implemented using this as a
         helper
-        
+
         """
         t = time.time()
         logging.debug("Command in progress: " + command)
@@ -167,7 +167,7 @@ class qmg_420():
 
     def first_mass(self, mass):
         self.comm('FIR ' + str(mass))
-        
+
     def get_multiple_samples(self, number):
         values = [0] * number
         for i in range(0, number):
@@ -175,8 +175,7 @@ class qmg_420():
             if not (val == ''):
                 values[i] = val
         return values
-        
-        
+
     def get_single_sample(self):
         error = 0
         while (self.waiting_samples() == 0) and (error < 40):
@@ -193,21 +192,21 @@ class qmg_420():
         """ Config a MS channel for measurement """
         self.set_channel(channel)
         self.comm('OPM 1')
-        
+
         if mass>-1:
             self.first_mass(mass)
-            
+
         if speed>-1:
             self.speed(speed)
 
         if amp_range>-1:
             self.comm('RAN ' + str(amp_range))
-            
+
         if enable == "yes":
             self.comm('STA 1')
         if enable == "no":
             self.comm('STA 0')
- 
+
         #Default values, not currently choosable from function parameters
         #self.comm('DSE ,0')  #Use default SEM voltage
         #self.comm('DTY ,1')  #Use SEM for ion detection
@@ -222,5 +221,6 @@ class qmg_420():
         self.comm('WID ' + str(scan_width))
         self.comm('OPM 0')
         self.comm('CHA 0')
+        self.comm('RAN ' + str(2))
         self.comm('CHM 0') # Mass scan, to enable FIR filter, set value to 1
         self.comm('STA 1')

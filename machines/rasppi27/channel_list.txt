@@ -1,0 +1,20 @@
+comment: leaktesting
+autorange: yes
+
+ms_channel: mass, 2.08, speed, 10, masslabel, M2, amp_range, 7
+ms_channel: mass, 3, speed, 10, masslabel, M3, amp_range, 7
+ms_channel: mass, 4, speed, 10, masslabel, M4, amp_range, 7
+ms_channel: mass, 18, speed, 10, masslabel, M18, amp_range, 7
+ms_channel: mass, 28, speed, 10, masslabel, M28, amp_range, 7
+
+meta_channel: label, Chamber pressure, host, rasppi27, port, 9999, command, read_chamber_pressure
+meta_channel: label, Pirani pressure, host, rasppi27, port, 9999, command, read_buffer
+meta_channel: label, Temperature, host, rasppi27, port, 9999, command, read_temperature
+
+
+#channel_list[1] = {'mass':4,'speed':9, 'masslabel':'M4'}
+#channel_list[2] = {'mass':7,'speed':9, 'masslabel':'M7'}
+
+#meta_udp.create_channel('Chamber pressure', 'rasppi19', 9990, 'read_global_pressure')
+#meta_udp.create_channel('HPC, Temperature', 'rasppi19', 9990, 'read_hp_temp')
+#meta_udp.create_channel('HPC, Pirani', 'rasppi13', 9999, 'read_pirani')
