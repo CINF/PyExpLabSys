@@ -1,6 +1,7 @@
 import threading
 import time
 import socket
+import logging
 
 class udp_meta_channel(threading.Thread):
     """ A class to handle meta data for the QMS program.
@@ -11,7 +12,7 @@ class udp_meta_channel(threading.Thread):
 
     def __init__(self, qms, timestamp, channel_list, update_interval):
         """ Initalize the instance of the class
-        
+
         Timestamps and comments are currently identical for all channels, since
         this is anyway the typical way the channels are used.
         """
