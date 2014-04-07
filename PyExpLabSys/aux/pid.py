@@ -14,21 +14,15 @@ class PID():
     def UpdateSetpoint(self,setpoint):
         self.setpoint = setpoint
         return setpoint
-        
+
     def WantedPower(self,T):
-        
         error = self.setpoint - T
-        
         P = self.Kp * error
         P = P + self.Ki * self.IntErr
-        
         if (P<self.Pmax) and (P>0):
             self.IntErr += error
-
         if P>self.Pmax:
             P = self.Pmax
         if P<0:
-            P = 0
-            
-            
+            P = 0 
         return P
