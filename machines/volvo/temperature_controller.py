@@ -9,6 +9,8 @@ import curses
 import PyExpLabSys.drivers.cpx400dp as CPX
 import PyExpLabSys.aux.pid as PID
 
+from PyExpLabSys.common.sockets import DateDataSocket
+
 
 class CursesTui(threading.Thread):
     """ Text user interface for Volvo heating controll """
@@ -30,9 +32,11 @@ class CursesTui(threading.Thread):
             self.screen.addstr(5, 2, "Heating current: {0:.2f}A      ".format(self.hc.current))
             self.screen.addstr(6, 2, "Heating power: {0:.2f}W        ".format(self.hc.heatingpower()))
             self.screen.addstr(7, 2, "Filament resisance: {0:.2f}Ohm      ".format(self.hc.resistance()))
-
             self.screen.addstr(9, 40, "Setpoint: {0:.2f}C       ".format(self.hc.pc.setpoint))
             self.screen.addstr(9, 2, "Temeperature: {0:.3f}C       ".format(self.hc.pc.temperature))
+            self.screen.addstr(11, 2, "PID-setpint: {0:.3f}C       ".format(self.hc.pc.pid.setpoint))
+            self.screen.addstr(12, 2, "PID-error: {0:.3f}       ".format(self.hc.pc.pid.IntErr))
+            self.screen.addstr(13, 2, "Power: {0:.3f}       ".format(self.hc.pc.power))
 
             n = self.screen.getch()
             if n == ord('q'):
@@ -51,17 +55,20 @@ class CursesTui(threading.Thread):
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
-        curses.endwin()  
+        curses.endwin()
 
 
 class PowerCalculatorClass(threading.Thread):
     """ Calculate the wanted amount of power """
-    def __init__(self):
+    def __init__(self, datasocket):
         threading.Thread.__init__(self)
+        self.datasocket = datasocket
         self.power = 0
         self.setpoint = 40
         self.pid = PID.PID()
-        self.pid.UpdateSetpoint(self.setpoint)
+        self.pid.Kp = 0.15
+        self.pid.Ki = 0.002
+        self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
 
@@ -73,6 +80,7 @@ class PowerCalculatorClass(threading.Thread):
         """ Update the setpoint """
         self.setpoint = setpoint
         self.pid.UpdateSetpoint(setpoint)
+        self.datasocket.set_point_now('setpoint', setpoint)
         return(setpoint)
 
     def run(self):
@@ -85,15 +93,16 @@ class PowerCalculatorClass(threading.Thread):
             self.temperature = float(received[received.find(',') + 1:])
             self.power = self.pid.WantedPower(self.temperature)
             #self.pid.UpdateSetpoint(self.setpoint)
-            time.sleep(0.25)
+            time.sleep(1)
 
 
 class HeaterClass(threading.Thread):
     """ Do the actual heating """
-    def __init__(self, power_calculator):
+    def __init__(self, power_calculator, datasocket):
         threading.Thread.__init__(self)
         self.pc = power_calculator
-        self.heater = CPX.CPX400DPDriver(2,usbchannel=0)
+        self.datasocket = datasocket
+        self.heater = CPX.CPX400DPDriver(2, usbchannel=0)
         self.maxcurrent = 0.5
         self.quit = False
         self.heater.set_voltage(0.3)
@@ -108,6 +117,7 @@ class HeaterClass(threading.Thread):
     def heatingpower(self):
         """ Calculate the current heating power """
         power = self.current * self.voltage
+        self.datasocket.set_point_now('power', power)
         return(power)
 
     def resistance(self):
@@ -115,7 +125,8 @@ class HeaterClass(threading.Thread):
         if self.current > 0.02:
             resistance = self.voltage / self.current
         else:
-            resistance = -1
+            resistance = self.filament_resistance
+        self.datasocket.set_point_now('resistance', resistance)
         return(resistance)
 
     def run(self):
@@ -129,13 +140,19 @@ class HeaterClass(threading.Thread):
             time.sleep(1)
             self.current = self.heater.read_actual_current()
             self.voltage = self.heater.read_actual_voltage()
+            self.datasocket.set_point_now('current', self.current)
+            self.datasocket.set_point_now('voltage', self.voltage)
+        self.heater.set_voltage(0)
 
 
-P = PowerCalculatorClass()
+datasocket = DateDataSocket(['setpoint', 'power', 'voltage', 'current', 'resistance'], timeouts=[999999, 3.0, 3.0, 3.0, 3.0], port=9001)
+datasocket.start()
+
+P = PowerCalculatorClass(datasocket)
 P.daemon = True
 P.start()
 
-H = HeaterClass(P)
+H = HeaterClass(P, datasocket)
 #H.daemon = True
 H.start()
 

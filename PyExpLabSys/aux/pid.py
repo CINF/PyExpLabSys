@@ -11,7 +11,7 @@ class PID():
     def ResetIntError(self):
         self.IntErr = 0
 
-    def UpdateSetpoint(self,setpoint):
+    def UpdateSetpoint(self, setpoint):
         self.setpoint = setpoint
         return setpoint
 
