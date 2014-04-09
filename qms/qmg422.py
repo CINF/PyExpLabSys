@@ -200,6 +200,7 @@ class qmg_422():
         """
         if current>-1:
             ret_string = self.comm('EMI ,' + str(current))
+            emission_current = float(ret_string.strip())
         else:
             ret_string = self.comm('EMI')
             emission_current = float(ret_string.strip())
