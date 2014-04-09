@@ -1,4 +1,4 @@
-from SCPI import SCPI
+from scpi import SCPI
 import time
     
 class Agilent34972ADriver(SCPI):

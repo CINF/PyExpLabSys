@@ -1,5 +1,5 @@
 import time
-from SCPI import SCPI
+from scpi import SCPI
 
 
 class InterfaceOutOfBoundsError(Exception):
@@ -18,70 +18,73 @@ class CPX400DPDriver(SCPI):
             self.output = str(output)
         #print "SCPI Complete"
 
-    def SetVoltage(self, value):
+    def set_voltage(self, value):
         """Sets the voltage """
         function_string = 'V' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
-    def SetCurrentLimit(self, value):
+    def set_current_limit(self, value):
         """Sets the current limit"""
         function_string = 'I' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
-    def ReadSetVoltage(self):
-        """Reads the set voltage""" 
+    def read_set_voltage(self):
+        """Reads the set voltage"""
         function_string = 'V' + self.output + '?'
         return(self.scpi_comm(function_string))
 
-    def ReadCurrentLimit(self):
+    def read_current_limit(self):
         """Reads the current limit"""
         function_string = 'I' + self.output + '?'
         return(self.scpi_comm(function_string))
 
-    def ReadActualVoltage(self):
+    def read_actual_voltage(self):
         """Reads the actual output voltage"""
         function_string = 'V' + self.output + 'O?'
         value_string = self.scpi_comm(function_string)
         try:
-            value = float(value_string.replace('V',''))
-        except:
+            value = float(value_string.replace('V', ''))
+        except ValueError:
             value = -999999
         return(value)
 
-    def ReadActualCurrent(self):
+    def read_actual_current(self):
         """Reads the actual output current"""
         function_string = 'I' + self.output + 'O?'
         value_string = self.scpi_comm(function_string)
         try:
-            value = float(value_string.replace('A',''))
-        except:
-                value = -9998
+            value = float(value_string.replace('A', ''))
+        except ValueError:
+            value = -9998
         return(value)
-       
-    def SetVoltageStepSize(self, value):
+
+    def set_voltage_stepsize(self, value):
         """Sets the voltage step size"""
         function_string = 'DELTAV' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
-    def SetCurrentStepSize(self, value):
+    def set_current_stepsize(self, value):
         """Sets the current step size"""
         function_string = 'DELTAI' + self.output + ' ' + str(value)
         return(self.scpi_comm(function_string))
 
-    def ReadVoltageStepSize(self):
+    def read_voltage_stepsize(self):
         """Reads the voltage step size"""
         function_string = 'DELTAV' + self.output + '?'
         return(self.scpi_comm(function_string))
 
-    def ReadCurrentStepSize(self):
+    def read_current_stepsize(self):
+        """ Read the current stepszie """
         function_string = 'DELTAI' + self.output + '?'
         return(self.scpi_comm(function_string))
 
-    def IncreaseVoltage(self):
+    def increase_voltage(self):
+        """ Increase voltage one step """
         function_string = 'INCV' + self.output
         return(self.scpi_comm(function_string))
 
-    def OutputStatus(self, on=False):
+    def output_status(self, on=False):
+        """ Set the output status """
         if on:
             enabled = str(1)
         else:
@@ -89,11 +92,13 @@ class CPX400DPDriver(SCPI):
         function_string = 'OP' + self.output + ' ' + enabled
         return(self.scpi_comm(function_string))
 
-    def ReadOutputStatus(self):
+    def read_output_status(self):
+        """ Read the output status """
         function_string = 'OP' + self.output + '?'
         return(self.scpi_comm(function_string))
 
-    def GetLock(self):
+    def get_lock(self):
+        """ Lock the instrument for remote operation """
         function_string = 'IFLOCK'
         self.scpi_comm(function_string)
         function_string = 'IFLOCK?'
@@ -102,7 +107,7 @@ class CPX400DPDriver(SCPI):
         if status == 0:
             return_message = "Not successful"
         if status == -1:
-            return_message = "Device alreadt locked"
+            return_message = "Device already locked"
         if status == 1:
             return_message = "Lock acquired"
         return(return_message)

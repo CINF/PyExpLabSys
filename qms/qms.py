@@ -15,8 +15,8 @@ import qmg_status_output
 import qmg_meta_channels
 #import read_ms_channel_list
 
-#import qmg420
-import  qmg422
+import qmg420
+#import  qmg422
 
 class qms():
 
@@ -139,7 +139,7 @@ class qms():
                 for j in range(0,len(params)):
                     params[j] = params[j].strip()
                 label = params[params.index('masslabel')+1]
-                speed = params[params.index('speed')+1]
+                speed = int(params[params.index('speed')+1])
                 mass = params[params.index('mass')+1]
                 amp_range = params[params.index('amp_range')+1]
                 channel_list['ms'][ms] = {'masslabel':label, 'speed':speed,'mass':mass,'amp_range':amp_range}
@@ -259,7 +259,6 @@ class qms():
                 time.sleep(0.25)
             time.sleep(0.1)
         self.operating_mode = "Idling"
-        
 
     def mass_scan(self, first_mass=0, scan_width=50, comment='Mass-scan'):
         start_time = time.time()
@@ -306,16 +305,16 @@ class qms():
             self.measurement_runtime = time.time()-start_time
             time.sleep(0.1)
         time.sleep(0.5)
-        
+ 
 if __name__ == "__main__":
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 
     sql_queue = Queue.Queue()
-    sql_saver = SQL_saver.sql_saver(sql_queue,'dummy')
+    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
     sql_saver.daemon = True
     sql_saver.start()
 
-    qmg = qmg422.qmg_422()
+    qmg = qmg420.qmg_420()
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
@@ -329,7 +328,8 @@ if __name__ == "__main__":
     meta_udp.daemon = True
     meta_udp.start()
 
-    #qms.mass_scan(0,50,comment = 'Test scan - qgm422')
+    #print channel_list
+    #qms.mass_scan(0, 50, comment = 'Test scan - qgm422')
     qms.mass_time(channel_list['ms'], timestamp)
 
     time.sleep(1)

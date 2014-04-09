@@ -47,34 +47,46 @@ class Polyscience_4100():
         return value
 
     def read_temperature(self): 
-        status = self.comm('RW')
-        if status == '1':
-            value = self.comm('RT')
-        else:
+        try:
+            status = self.comm('RW')
+            if status == '1':
+                value = self.comm('RT')
+            else:
+                value = float('nan')
+        except:
             value = float('nan')
         return float(value)
 
     def read_pressure(self): 
-        status = self.comm('RW')
-        if status == '1':
-            value = self.comm('RK')
-        else:
+        try:
+            status = self.comm('RW')
+            if status == '1':
+                value = self.comm('RK')
+            else:
+                value = float('nan')
+        except:
             value = float('nan')
         return float(value)/100.0
 
     def read_flow_rate(self): 
-        status = self.comm('RW')
-        if status == '1':
-            value = self.comm('RL')
-        else:
-            value = float('nan')
+        try:
+            status = self.comm('RW')
+            if status == '1':
+                value = self.comm('RL')
+            else:
+                value = float('nan')
+        except:
+            va.ue = float('nan')
         return float(value)
 
     def read_ambient_temperature(self): 
-        status = self.comm('RW')
-        if status == '1':
-            value = self.comm('RA')
-        else:
+        try:
+            status = self.comm('RW')
+            if status == '1':
+                value = self.comm('RA')
+            else:
+                value = float('nan')
+        except:
             value = float('nan')
         return float(value)
 
