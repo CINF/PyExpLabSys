@@ -55,19 +55,19 @@ class SCPI:
 
         return return_string
     
-    def ReadSoftwareVersion(self, short=False):
+    def read_software_version(self, short=False):
         version_string = self.scpi_comm("*IDN?")
         return(version_string)    
     
-    def ResetDevice(self):
+    def reset_device(self):
         self.scpi_comm("*RST")
         return(True)
 
-    def DeviceClear(self):
+    def device_clear(self):
         self.scpi_comm("*abort")
         return(True)
 
-    def ClearErrorQueue(self):
+    def clear_error_queue(self):
         error = self.scpi_comm("*ESR?")
         self.scpi_comm("*cls")
         return(error)
