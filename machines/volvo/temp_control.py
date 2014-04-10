@@ -6,6 +6,8 @@ import time
 import random
 import threading
 import socket 
+import json
+import pickle
 import numpy as np
 from PyQt4 import Qt, QtCore
 from PyQt4.QtGui import QWidget
@@ -80,7 +82,11 @@ class SimplePlot(QWidget):
         self.scale = 1E-8
         self.active = False
         self.start = None
-
+        self.ramp_start = 0
+        self.ramp = {}
+        self.ramp['time'] = {}
+        self.ramp['temp'] = {}
+        self.ramp['step'] = {}
         # Set up plot (using pretty much all the possible options)
         self.plots_l = ['temperature', 'setpoint']
         self.plots_r = ['power']
@@ -89,7 +95,7 @@ class SimplePlot(QWidget):
             left_log=False, title='Temperature control',
             yaxis_left_label='Temperature', yaxis_right_label='Power',
             xaxis_label='Time since start [s]',
-            legend='right', left_thickness=[2, 8], right_thickness=6,
+            legend='right', left_thickness=[2, 3], right_thickness=2,
             left_colors=['firebrick', 'darkolivegreen'],
             right_colors=['darksalmon'])
         self.gui.horizontalLayout.removeWidget(self.gui.place_holder_qwt)
@@ -97,9 +103,9 @@ class SimplePlot(QWidget):
         self.gui.horizontalLayout.addWidget(self.plotter.plot)
 
         # Connect signals
-        QtCore.QObject.connect(self.gui.operate_button,
+        QtCore.QObject.connect(self.gui.start_ramp_button,
                                QtCore.SIGNAL('clicked()'),
-                               self.on_operate)        
+                               self.on_start_ramp)        
         QtCore.QObject.connect(self.gui.standby_button,
                                QtCore.SIGNAL('clicked()'),
                                self.on_standby)        
@@ -121,7 +127,6 @@ class SimplePlot(QWidget):
         if not self.active:
             self.start = time.time()
             self.active = True
-
             # Reset plot
             for key in self.plotter.data.keys():
                 self.plotter.data[key] = []
@@ -149,10 +154,21 @@ class SimplePlot(QWidget):
         received = sock.recv(1024)
 
 
-    def on_operate(self):
-        """Standby button method"""
-        self.sputtergun.goto_operate = True
-        print "!"
+    def on_start_ramp(self):
+        """Start temperature ramp"""
+        self.ramp_start = time.time()
+        for i in range(0,5):
+            self.ramp['time'][i] = int(self.gui.temperature_ramp.item(i,0).text())
+            self.ramp['temp'][i] = int(self.gui.temperature_ramp.item(i,1).text())
+            self.ramp['step'][i] = int(self.gui.temperature_ramp.item(i,2).checkState()) == 2
+        data = 'set_ramp' +  pickle.dumps(self.ramp)
+        host = '130.225.87.213'
+        port = 9999
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(0.2)
+        sock.sendto(data, (host, port))
+        received = sock.recv(1024)
+
 
     def on_stop(self):
         """Stop button method"""
