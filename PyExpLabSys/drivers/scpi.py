@@ -39,7 +39,7 @@ class SCPI:
                 self.f.close()
         if self.port == 'serial':
             self.f.write(command + '\n')
-            if command.endswith('?') or (expect_return is False):
+            if command.endswith('?') or (expect_return is True):
                 return_string = self.f.readline()
         if self.port == 'lan':
             self.f.write(command + '\n')
