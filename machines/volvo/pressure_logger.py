@@ -102,7 +102,7 @@ class ChamberSaver(threading.Thread):
                 meas_time = sqlTime()
                 val = "%.5g" % pressure
                 set_pressure(pressure)
-                gauge_sql = "insert into pressure_volvo set time=\"" + meas_time + "\", pressure = " + val
+                gauge_sql = "insert into dateplots_volvo set type=21, time=\"" + meas_time + "\", value = " + val
                 print gauge_sql
                 sqlInsert(gauge_sql)
 
@@ -125,7 +125,7 @@ class TemperatureSaver(threading.Thread):
                 meas_time = sqlTime()
                 val = "%.5g" % temperature
                 #set_temperature(temperature)
-                temp_sql = "insert into temperature_volvo set time=\"" + meas_time + "\", temperature = " + val
+                temp_sql = "insert into dateplots_volvo set type=20, time=\"" + meas_time + "\", value = " + val
                 print temp_sql
                 sqlInsert(temp_sql)
 
