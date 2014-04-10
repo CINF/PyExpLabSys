@@ -115,7 +115,7 @@ class CPX400DPDriver(SCPI):
 
 if __name__ == '__main__':
     cpx = CPX400DPDriver(1)
-    print cpx.ReadCurrentLimit()
+    print cpx.read_current_limit()
 
     cpx = CPX400DPDriver(2)
-    print cpx.ReadCurrentLimit()
+    print cpx.read_current_limit()

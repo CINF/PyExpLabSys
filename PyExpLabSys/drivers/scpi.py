@@ -22,7 +22,7 @@ class SCPI:
             self.debug = True
             #print "Debug mode: " + str(e)
 
-    def scpi_comm(self,command):
+    def scpi_comm(self, command, expect_return=False):
         #print self.f.xonxoff
         return_string = ""
         if self.debug:
@@ -37,22 +37,14 @@ class SCPI:
                 self.f = open(self.device, 'r')
                 return_string = self.f.readline()
                 self.f.close()
-                
         if self.port == 'serial':
             self.f.write(command + '\n')
-            time.sleep(0.05) 
-            if command.endswith('?'):
-                if self.f.inWaiting()==0:
-                    #print "wait!!!!!!!!!!!!!!!: " + command
-                    return_string = "-99999999"
-            while self.f.inWaiting()>0:
-                return_string += self.f.read(1)
-
+            if command.endswith('?') or (expect_return is False):
+                return_string = self.f.readline()
         if self.port == 'lan':
             self.f.write(command + '\n')
             if command.find('?') > -1:
                 return_string = self.f.read_until(chr(10),2)
-
         return return_string
     
     def ReadSoftwareVersion(self, short=False):
