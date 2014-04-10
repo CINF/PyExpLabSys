@@ -5,7 +5,7 @@ import time
 import threading
 import socket
 import curses
-
+import pickle
 import PyExpLabSys.drivers.cpx400dp as CPX
 import PyExpLabSys.aux.pid as PID
 
@@ -71,28 +71,88 @@ class PowerCalculatorClass(threading.Thread):
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
+        self.ramp = None
 
     def read_power(self):
         """ Return the calculated wanted power """
         return(self.power)
 
-    def update_setpoint(self, setpoint):
+    def update_setpoint(self, setpoint=None, ramp=0):
         """ Update the setpoint """
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(1)
+        if (setpoint is None) and (ramp == 0):
+            data = 'read_setpoint'
+            sock.sendto(data, ('130.225.87.213', 9999))
+            received = sock.recv(1024)
+            setpoint = float(received)
+        if ramp > 0:
+            setpoint = self.ramp_calculator(time.time()-ramp)
+        data = 'set_setpoint' + str(setpoint)
+        sock.sendto(data, ('130.225.87.213', 9999))
         self.setpoint = setpoint
         self.pid.UpdateSetpoint(setpoint)
         self.datasocket.set_point_now('setpoint', setpoint)
         return(setpoint)
 
+    def ramp_calculator(self, time):
+        if self.ramp is None:
+            self.ramp['temp'] = {}
+            self.ramp['time'] = {}
+            self.ramp['step'] = {}
+            self.ramp['time'][0] = 20.0
+            self.ramp['time'][1] = 35.0
+            self.ramp['time'][2] = 30.0
+            self.ramp['time'][3] = 25.0
+            self.ramp['time'][4] = 35.0
+            self.ramp['temp'][0] = 100.0
+            self.ramp['temp'][1] = 50.0
+            self.ramp['temp'][2] = 60.0
+            self.ramp['temp'][3] = 90.0
+            self.ramp['temp'][4] = 70.0
+            self.ramp['step'][0] = False
+            self.ramp['step'][1] = False
+            self.ramp['step'][2] = True
+            self.ramp['step'][3] = False
+            self.ramp['step'][4] = True
+        self.ramp['temp'][len(self.ramp['time'])] = 0
+        self.ramp['step'][len(self.ramp['time'])] = True
+        self.ramp['time'][len(self.ramp['time'])] = 999999999
+        self.ramp['time'][-1] = 0
+        self.ramp['temp'][-1] = 0
+        i = 0
+        while (time > 0) and (i < len(self.ramp['time'])):
+            time = time - self.ramp['time'][i]
+            i = i + 1
+        i = i - 1
+        time = time + self.ramp['time'][i]
+        if self.ramp['step'][i] is True:
+            return_value = self.ramp['temp'][i]
+        else:
+            time_frac = time / self.ramp['time'][i]
+            return_value = self.ramp['temp'][i-1] + time_frac * (self.ramp['temp'][i] - self.ramp['temp'][i-1])
+        return(return_value)
+
     def run(self):
-        data = 'temperature#raw'
+        data_temp = 'temperature#raw'
+        data_ramp = 'read_ramp'
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
+        t = 0
         while not self.quit:
-            sock.sendto(data, ('localhost', 9000))
+            sock.sendto(data_temp, ('localhost', 9000))
             received = sock.recv(1024)
             self.temperature = float(received[received.find(',') + 1:])
+            sock.sendto(data_ramp, ('130.225.87.213', 9999))
+            received = sock.recv(1024)
+            if not (received == ''):
+                self.ramp = pickle.loads(received)
+                t = time.time()
             self.power = self.pid.WantedPower(self.temperature)
-            #self.pid.UpdateSetpoint(self.setpoint)
+            if t > 0:
+                self.update_setpoint(ramp=t)
+            else:
+                self.update_setpoint()
             time.sleep(1)
 
 
@@ -149,6 +209,8 @@ datasocket = DateDataSocket(['setpoint', 'power', 'voltage', 'current', 'resista
 datasocket.start()
 
 P = PowerCalculatorClass(datasocket)
+#print P.ramp_calculator(2)
+#print P.ramp_calculator(2000)
 P.daemon = True
 P.start()
 
@@ -159,3 +221,4 @@ H.start()
 T = CursesTui(H)
 #T.daemon = True
 T.start()
+
