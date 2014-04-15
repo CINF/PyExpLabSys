@@ -17,7 +17,7 @@ LOG = get_logger('ws-server', level='info')
 
 DATA = {}
 TIME_REPORT_ALIVE = 60  # Seconds between the thread reporting in
-NUMBER_WEBSOCKETS = 0
+WEBSOCKET_IDS = set()
 
 
 class CinfWebSocketHandler(WebSocketServerProtocol):
@@ -25,10 +25,9 @@ class CinfWebSocketHandler(WebSocketServerProtocol):
 
     def onOpen(self):
         """Log when the connection is opened"""
-        global NUMBER_WEBSOCKETS
-        NUMBER_WEBSOCKETS += 1
-        LOG.info('wshandler: Connection opened, count: ' +
-                 str(NUMBER_WEBSOCKETS))
+        WEBSOCKET_IDS.add(id(self))
+        LOG.info('wshandler: Connection opened, count: {}'.
+                 format(len(WEBSOCKET_IDS)))
         self.registers = []
 
     def connectionLost(self, reason):
@@ -38,10 +37,13 @@ class CinfWebSocketHandler(WebSocketServerProtocol):
 
     def onClose(self, wasClean, code, reason):
         """Log when the connection is closed"""
-        global NUMBER_WEBSOCKETS
-        NUMBER_WEBSOCKETS -= 1
-        LOG.info('wshandler: Connection closed, count: ' +
-                 str(NUMBER_WEBSOCKETS))
+        try:
+            WEBSOCKET_IDS.remove(id(self))
+            LOG.info('wshandler: Connection closed, count: {}'.
+                     format(len(WEBSOCKET_IDS)))
+        except KeyError:
+            LOG.info('wshandler: Could not close connection, not open, '
+                     'count: {}'.format(len(WEBSOCKET_IDS)))
 
     def onMessage(self, msg, binary):
         """Parse the command and send response"""
@@ -65,9 +67,7 @@ class CinfWebSocketHandler(WebSocketServerProtocol):
 
     def get_data(self, msg):
         """Get data for a register number"""
-        LOG.info('wshandler: get_data called with: ' + msg)
-        print repr(msg)
-        int(msg)
+        LOG.debug('wshandler: get_data called with: ' + msg)
         try:
             number = int(msg)
         except TypeError:
@@ -179,7 +179,7 @@ class UDPConnectionSteward(threading.Thread):
         self.daemon = True
         # Seconds between updating the web socket definitions from the
         # web_sockets.xml file
-        self.update_interval = 10
+        self.update_interval = 300
         # Time interval between checking if it is time for an update
         self.main_interval = 1
         # The UDP definitions are a set of hostname:port strings
