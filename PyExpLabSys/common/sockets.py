@@ -34,9 +34,6 @@ BAD_CHARS = ['#', ',', ';', ':']
 UNKNOWN_COMMAND = 'UNKNOWN_COMMMAND'
 #: The string used to indicate old or obsoleted data
 OLD_DATA = 'OLD_DATA'
-#: The string used to indicate that there is no now point to serve (only used
-#: for :py:class:`.LiveSocket`
-NO_NEW_DATA = 'NND'
 #:The variable used to contain all the data.
 #:
 #:The format of the DATA variable is the following. The DATA variable is a
@@ -226,8 +223,7 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
             are lists) e.g: ``[[x1, y1], [x2, y2]]``), contained in a
             :py:mod:`json` string. The order of the points is the same order
             the codenames was given to the :meth:`.LiveSocket.__init__` method
-            in and are return by the ``codenames`` command. If a point has
-            already been served, that point will be replaced with 
+            in and is returned by the ``codenames`` command.
         :param codenames: Return a list of the codenames contained in a
             :py:mod:`json` string
         :param sane_interval: Return the sane interval with which new data can
@@ -240,7 +236,7 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
         if command == 'data':
             points = []
             for codename in DATA[self.port]['codenames']:
-                points.append(self._get_current_point(codename))
+                points.append(DATA[self.port]['data'][codename])
             data = json.dumps(points)
         elif command == 'codenames':
             data = json.dumps(DATA[self.port]['codenames'])
@@ -250,24 +246,6 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
             data = UNKNOWN_COMMAND
 
         socket.sendto(data, self.client_address)
-
-    def _get_current_point(self, codename):
-        """Return current point or NO_NEW_DATA if the point has already been
-        served
-        
-        The basis of comparison for whether a point has already been served is
-        whether the time (x value) is less the 1E-8 away from the last point
-        sent
-        """
-        already_served = \
-            abs(DATA[self.port]['data'][codename][0] -
-                DATA[self.port]['last_served'][codename][0]) < 1E-8
-        if already_served:
-            out = NO_NEW_DATA
-        else:
-            out = DATA[self.port]['data'][codename]
-            DATA[self.port]['last_served'][codename] = list(out)
-        return out
 
 
 class CommonDataSocket(threading.Thread):
