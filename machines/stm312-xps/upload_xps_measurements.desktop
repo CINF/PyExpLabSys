@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Upload XPS measurements to servcinf
+Exec=python /home/stm312-xps/PyExpLabSys/machines/stm312-xps/xps_parse_new.py
+Terminal=true
+Type=Application
