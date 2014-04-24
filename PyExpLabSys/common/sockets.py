@@ -517,3 +517,58 @@ class LiveSocket(CommonDataSocket):
         DATA[self.port]['data'][codename] = tuple(point)
         LOGGER.debug('LS: Point {} for \'{}\' set'.format(tuple(point),
                                                           codename))
+
+
+class RecieveUDPHandler(SocketServer.BaseRequestHandler):
+    """This class handles the UDP requests for the :class:`.DataRecieveSocket`
+    """
+
+    def handle(self):
+        """Set data corresponding to the request
+        
+        The handler understands the following commands:
+        """
+        request = self.request[0]
+        self.port = self.server.server_address[1]
+        socket = self.request[1]
+
+        if request.count('#') != 1:
+            return_value = UNKNOWN_COMMAND
+        else:
+            command, data = request.split('#')
+            if command == 'raw_wn':
+                return_value = self._raw_with_names(data)
+            elif command == 'json_wn':
+                return_value = self._json_with_names(data)
+            else:
+                return_value = UNKNOWN_COMMAND
+
+        socket.sendto(return_value, self.client_address)
+
+    def _raw_with_names(self, data):
+        pass
+
+    def _json_with_names(self, data):
+        pass
+
+
+class DataReceiveSocket(threading.Thread):
+    """This class implements a data recieve socket and provides options for
+    enqueuing, calling back or doing nothing on reciept of data
+    """
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
