@@ -1,4 +1,5 @@
-""" This file implements the central websockets server for servcinf """
+# pylint: disable=C0103,R0904
+"""This file implements the central websockets server for servcinf"""
 
 import time
 import threading
@@ -6,21 +7,22 @@ import socket
 import json
 import xml.etree.ElementTree as XML
 
+# Used for logging output from twisted, see commented out lines below
 #from twisted.python import log
 from twisted.internet import reactor, ssl
-from autobahn.websocket import WebSocketServerFactory,\
+from autobahn.websocket import WebSocketServerFactory, \
     WebSocketServerProtocol, listenWS
 
-# TODO fix documentation where it says utillities
 from PyExpLabSys.common.utilities import get_logger
 LOG = get_logger('ws-server', level='info')
 
+MALFORMED_SUBSCRIPTION = 'Error: Malformed subscription line: {}'
 DATA = {}
 TIME_REPORT_ALIVE = 60  # Seconds between the thread reporting in
-WEBSOCKET_IDS = set()
+WEBSOCKET_IDS = set()  # Used only to count open connections
 
 
-class CinfWebSocketHandler(WebSocketServerProtocol):
+class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
     """Class that handles a websocket connection"""
 
     def onOpen(self):
@@ -28,7 +30,7 @@ class CinfWebSocketHandler(WebSocketServerProtocol):
         WEBSOCKET_IDS.add(id(self))
         LOG.info('wshandler: Connection opened, count: {}'.
                  format(len(WEBSOCKET_IDS)))
-        self.registers = []
+        self.subscriptions = []  # pylint: disable=W0201
 
     def connectionLost(self, reason):
         """Log when the connection is lost"""
@@ -48,54 +50,50 @@ class CinfWebSocketHandler(WebSocketServerProtocol):
     def onMessage(self, msg, binary):
         """Parse the command and send response"""
         if not binary:
-            if msg.startswith('register'):
-                self.register(msg)
+            if msg.startswith('subscribe'):
+                self.subscribe(msg)
             else:
                 self.get_data(msg)
 
-    def register(self, msg):
-        """Register for a set of codenames for a specific ip_port"""
-        # msg is on the form: register#port:ip;codename1,codename2...
-        LOG.info('wshandler: register called')
+    def subscribe(self, msg):
+        """Subscribe for a set of codenames for a specific ip_port"""
+        # msg is on the form: subscribe#port:ip;codename1,codename2...
+        LOG.info('wshandler: subscribe called with: ' + msg)
         _, args = msg.split('#')
         port_ip, codenames_string = args.split(';')
         codenames = codenames_string.split(',')
-        number = len(self.registers)
-        self.registers.append((port_ip, codenames))
-        msg += '#{}#{}'.format(number, DATA[port_ip]['sane_interval'])
+        if port_ip == '' or '' in codenames:
+            msg = MALFORMED_SUBSCRIPTION.format(msg)
+            LOG.warning('wshandler: ' + msg)
+        else:
+            number = len(self.subscriptions)
+            self.subscriptions.append((port_ip, codenames))
+            msg += '#{}#{}'.format(number, DATA[port_ip]['sane_interval'])
         self.json_send_message(msg)
 
     def get_data(self, msg):
-        """Get data for a register number"""
+        """Get data for a subscription number"""
         LOG.debug('wshandler: get_data called with: ' + msg)
         try:
             number = int(msg)
         except TypeError:
-            out = 'Invalid register: ' + msg
+            out = 'Invalid subscription: ' + msg
         else:
-            if number in range(len(self.registers)):
-                port_ip, codenames = self.registers[number]
+            if number in range(len(self.subscriptions)):
+                port_ip, codenames = self.subscriptions[number]
                 out = [number, []]
                 for codename in codenames:
-                    index_in_global =\
+                    index_in_global = \
                         DATA[port_ip]['codenames'].index(codename)
                     out[1].append(DATA[port_ip]['data'][index_in_global])
             else:
-                out = 'Invalid register number: ' + msg
+                out = 'Invalid subscription number: ' + msg
 
         self.json_send_message(out)
 
     def json_send_message(self, data):
         """json encode the message before sending it"""
         self.sendMessage(json.dumps(data))
-
-    def sendHello(self):
-        if self.send_hello:
-            self.count += 1
-            self.sendMessage("Hello from server (%d)" % self.count)
-            reactor.callLater(2, self.sendHello)
-
-
 
 
 class UDPConnection(threading.Thread):
@@ -120,7 +118,7 @@ class UDPConnection(threading.Thread):
             LOG.error('{}: Could not retrieve sane interval or codenames. '
                       'Make thread stop without performing any action'
                       .format(ip_port)
-            )
+                      )
             self._stop = True
         else:
             DATA[ip_port]['sane_interval'] = sane_interval
@@ -152,9 +150,9 @@ class UDPConnection(threading.Thread):
         LOG.info('{}: run ended'.format(self.ip_port))
 
     def stop(self):
+        """Stops the UPD connection"""
         LOG.info('{}: stop'.format(self.ip_port))
         self._stop = True
-
 
     def _send_and_get(self, command):
         """ Send command and get response """
@@ -166,7 +164,6 @@ class UDPConnection(threading.Thread):
             self.stop()
             data = None
         return data
-            
 
 
 class UDPConnectionSteward(threading.Thread):
@@ -246,8 +243,8 @@ class UDPConnectionSteward(threading.Thread):
             for connection in self.udp_connections.values():
                 still_running = still_running or connection.is_alive()
             LOG.debug('steward: Connections still running: ' +
-                str(still_running))
-            
+                      str(still_running))
+
         LOG.info('steward: stop ended')
         # Prevent python from tearing down the environment before all threads
         # have shut down nicely
@@ -256,7 +253,7 @@ class UDPConnectionSteward(threading.Thread):
     def _update_udp_definitions(self):
         """Scan the web_sockets.xml file for udp connection definitions and
         update the UDP definitions set in self.udp_definitions.
-        
+
         The UDP definitions consist simply of hostname:port strings e.g:
         'rasppi04:8000'. If parsing the web_sockets.xml file produces an error
         (i.e. contains invalid xml) the UPD definitions will remain un-changed.
@@ -266,10 +263,10 @@ class UDPConnectionSteward(threading.Thread):
         # while the program is running
         try:
             tree = XML.parse('web_sockets.xml')
-            self.udp_definitions.clear()            
-            for socket in tree.getroot():
-                self.udp_definitions.add(socket.text)
-                LOG.debug('steward: Found UPD def: {}'.format(socket.text))
+            self.udp_definitions.clear()
+            for socket_ in tree.getroot():
+                self.udp_definitions.add(socket_.text)
+                LOG.debug('steward: Found UPD def: {}'.format(socket_.text))
         except XML.ParseError:
             LOG.error('setward: Unable to parse web_sockets.xml')
         LOG.debug('steward: Scan web_sockets.xml done')
@@ -295,8 +292,8 @@ class UDPConnectionSteward(threading.Thread):
             time.sleep(2 * sane)
             if self.udp_connections[ip_port].is_alive():
                 LOG.error('steward: Connection {} will not shut down'
-                    .format(ip_port)
-                )
+                          .format(ip_port)
+                          )
 
             del self.udp_connections[ip_port]
             del DATA[ip_port]
@@ -326,14 +323,14 @@ def main():
         '/home/kenni/Dokumenter/websockets/autobahn/keys/server.crt'
     )
     # Form the webserver factory
-    factory = WebSocketServerFactory("wss://localhost:9001", debug = True)
+    factory = WebSocketServerFactory("wss://localhost:9001", debug=True)
     # Set the handler
     factory.protocol = CinfWebSocketHandler
     # Listen for incoming WebSocket connections: wss://localhost:9001
     listenWS(factory, context_factory)
 
     try:
-        reactor.run()
+        reactor.run()  # pylint: disable=E1101
         time.sleep(1)
         LOG.info('main: Keyboard interrupt, websocket reactor stopped')
         udp_steward.stop()
@@ -341,7 +338,8 @@ def main():
         LOG.info('main: UPD Steward stopped')
     except Exception as exception_:
         LOG.exception(exception_)
-        
+        raise exception_
+
     LOG.info('main: Ended')
     raw_input('All stopped. Press enter to exit')
 

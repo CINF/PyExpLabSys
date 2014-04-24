@@ -24,7 +24,7 @@ terminal do:
 
 .. code-block:: python
 
-    from PyExpLabSys.common.utillities import get_logger
+    from PyExpLabSys.common.utilities import get_logger
     LOGGER = get_logger('name_of_my_logger')
 
 where the ``name_of_my_logger`` should be some descriptive name for
@@ -36,7 +36,7 @@ To get a named logger that also logs to a file do:
 
 .. code-block:: python
 
-    from PyExpLabSys.common.utillities import get_logger
+    from PyExpLabSys.common.utilities import get_logger
     LOGGER = get_logger('name_of_my_logger', file_log=True)
 
 The log will be written to the file ``name_of_my_logger.log``. The
@@ -48,7 +48,7 @@ To get a logger that logs only to a file and not to the terminal do:
 
 .. code-block:: python
 
-    from PyExpLabSys.common.utillities import get_logger
+    from PyExpLabSys.common.utilities import get_logger
     LOGGER = get_logger('name_of_my_logger', file_log=True, terminal_log=False)
 
 utilities module
