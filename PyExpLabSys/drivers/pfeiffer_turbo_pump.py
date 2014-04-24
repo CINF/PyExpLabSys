@@ -13,6 +13,9 @@ import logging
 import MySQLdb
 from datetime import datetime
 
+import sys
+sys.path.append('/home/pi/PyExpLabSys/')
+import FindSerialPorts
 
 class CursesTui(threading.Thread):
     """ Text gui for controlling the pump """
@@ -186,6 +189,7 @@ class TurboDriver(threading.Thread):
 
         self.f = serial.Serial(port, 9600)
         self.f.stopbits = 2
+        self.f.timeout = 0.1
         self.adress = adress
         self.status = {}  # Hold parameters to be accessible by gui
         self.status['rotation_speed'] = 0
@@ -225,6 +229,8 @@ class TurboDriver(threading.Thread):
         response = ''
         while not (a == '\r'):
             a = self.f.read()
+            if len(a)==0:
+                raise(IOError('Communication Error'))
             response += a
         length = int(response[8:10])
         reply = response[10:10+length]
@@ -385,14 +391,21 @@ class TurboDriver(threading.Thread):
 
 
 if __name__ == '__main__':
-
-    mainpump = TurboDriver(adress=2)
+    ports = FindSerialPorts.find_ports()
+    for port in ports:
+        mainpump = TurboDriver(adress=2,port='/dev/' + port)
+        try:
+            mainpump.read_rotation_speed()
+            break
+        except IOError:
+            pass
+    print 'Serial port: ' + port
     mainpump.start()
 
     tui = CursesTui(mainpump)
     tui.daemon = True
     tui.start()
 
-    logger = DataLogger(mainpump)
-    logger.daemon = True
-    logger.start()
+    #logger = DataLogger(mainpump)
+    #logger.daemon = True
+    #logger.start()
