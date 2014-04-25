@@ -525,8 +525,11 @@ class RecieveUDPHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         """Set data corresponding to the request
-        
+
         The handler understands the following commands:
+        :param json_wn: Json with names
+        :param raw_wn_float: Raw with names float
+        :param raw_wn_str: Raw with names string
         """
         request = self.request[0]
         self.port = self.server.server_address[1]
@@ -536,37 +539,40 @@ class RecieveUDPHandler(SocketServer.BaseRequestHandler):
             return_value = UNKNOWN_COMMAND
         else:
             command, data = request.split('#')
-            if command == 'raw_wn':
-                return_value = self._raw_with_names(data)
-            elif command == 'json_wn':
+            if command == 'json_wn':
                 return_value = self._json_with_names(data)
+            elif command == 'raw_wn_float':
+                return_value = self._raw_with_names(float, data)
+            elif command == 'raw_wn_str':
+                return_value = self._raw_with_names(str, data)
             else:
                 return_value = UNKNOWN_COMMAND
 
         socket.sendto(return_value, self.client_address)
 
-    def _raw_with_names(self, data):
+    def _raw_with_names(self, data_type, data):
+        """Add raw data to the queue, cast type according to data_type"""
+        # parse name, value pairs, cast and add
         pass
 
     def _json_with_names(self, data):
-        pass
+        """Add json encoded data to the data queue"""
+        DATA[self.port]['queue'].put(json.loads(data))
 
 
 class DataReceiveSocket(threading.Thread):
     """This class implements a data recieve socket and provides options for
     enqueuing, calling back or doing nothing on reciept of data
     """
-    pass
 
+    def __init__(self, codenames, port=8500):
+        # Init thread
+        super(DataReceiveSocket, self).__init__()
+        self.daemon = True
+        # Init local data
+        self.port = port
 
-
-
-
-
-
-
-
-
+        
 
 
 
