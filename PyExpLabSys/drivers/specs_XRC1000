@@ -11,10 +11,10 @@ import curses
 
 
 class CursesTui(threading.Thread):
-    """ Defines a fallback text-gui for the sputter gun. """
+    """ Defines a fallback text-gui for the source control. """
     def __init__(self, sputtergun):
         threading.Thread.__init__(self)
-        self.sg = sputtergun
+        self.sc = sourcecontrol
         self.screen = curses.initscr()
         curses.noecho()
         curses.cbreak()
@@ -25,47 +25,47 @@ class CursesTui(threading.Thread):
 
     def run(self):
         while True:
-            self.screen.addstr(3, 2, 'Sputter Gun Control')
+            self.screen.addstr(3, 2, 'X-ray Source Control')
 
-            if self.sg.status['degas']:
+            if self.sc.status['degas']:
                 self.screen.addstr(4, 2, "Degassing")
 
-            if self.sg.status['remote']:
+            if self.sc.status['remote']:
                 self.screen.addstr(5, 2, "Remote control")
 
-            if self.sg.status['standby']:
+            if self.sc.status['standby']:
                 self.screen.addstr(6, 2, "Device status: Standby  ")
 
-            if self.sg.status['operate']:
+            if self.sc.status['operate']:
                 self.screen.addstr(6, 2, "Device status: Operate! ")
 
             try:
-                #self.screen.addstr(9, 2, "Temperature, electronics: {0:.0f}C          ".format(self.sg.status['temperature']))
-                self.screen.addstr(10, 2, "Sputter Current: {0:.4f}mA          ".format(self.sg.status['sputter_current']))
-                self.screen.addstr(11, 2, "Filament bias: {0:.3f}V          ".format(self.sg.status['filament_bias']))
-                self.screen.addstr(12, 2, "Filament Current: {0:.2f}A          ".format(self.sg.status['filament_current']))
-                self.screen.addstr(13, 2, "Emission current: {0:.4f}mA          ".format(self.sg.status['emission_current']))
-                self.screen.addstr(14, 2, "Acceleration Voltage: {0:.2f}V          ".format(self.sg.status['accel_voltage']))
+                self.screen.addstr(9, 2, "Filament bias: {0:.3f}V          ".format(self.sc.status['filament_bias']))
+                self.screen.addstr(10, 2, "Filament Current: {0:.2f}A          ".format(self.sc.status['filament_current']))
+                self.screen.addstr(11, 2, "Emission Current: {0:.4f}mA          ".format(self.sc.status['emission_current']))
+                self.screen.addstr(12, 2, "anode Voltage: {0:.2f}V          ".format(self.sc.status['anode_voltage']))
+                self.screen.addstr(13, 2, "anode Power: {0:.2f}W          ".format(self.sc.status['anode_power']))
             except ValueError:
-                self.screen.addstr(9, 2, "Temperature, electronics: -                   ")
-                self.screen.addstr(10, 2, "Sputter Current: -                           ")
+                #self.screen.addstr(9, 2, "Temperature, electronics: -                   ")
+                self.screen.addstr(10, 2, "emission Current: -                           ")
                 self.screen.addstr(11, 2, "Filament bias: -                             ")
                 self.screen.addstr(12, 2, "Filament Current: -                          ")
                 self.screen.addstr(13, 2, "Emission current: -                          ")
                 self.screen.addstr(14, 2, "Acceleration Voltage: -                      ")
 
-            #self.screen.addstr(16, 2, "Latest error message: " + self.sg.status['error'])
+            #self.screen.addstr(16, 2, "Latest error message: " + self.sc.status['error'])
 
             self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
             self.screen.addstr(18, 2, 'q: quit, s: standby, o: operate')
 
             n = self.screen.getch()
             if n == ord('q'):
-                self.sg.running = False
-            if n == ord('s'):
-                self.sg.goto_standby = True
-            if n == ord('o'):
-                self.sg.goto_operate = True
+                self.sc.running = False
+            # disable s o key
+            #if n == ord('s'):
+            #    self.sc.goto_standby = True
+            #if n == ord('o'):
+            #    self.sc.goto_operate = True
 
             self.screen.refresh()
             time.sleep(1)
@@ -90,7 +90,7 @@ class XRC1000(threading.Thread):
         threading.Thread.__init__(self)
 
         #self.simulate = simulate
-        self.f = serial.Serial('/dev/ttyS0', 9600, timeout=0.25)
+        self.f = serial.Serial('/dev/ttyS0', 9600, timeout=0.25) # baud: 9600, bits: 8, parity: None
         self.f.write('SERNO?' + '\r')  # Echo off
         time.sleep(1)
         # ID test
