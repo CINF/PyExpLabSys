@@ -3,23 +3,25 @@ sys.path.append('../')
 import agilent_34972A as multiplexer
 
 def read_voltages():
+
     mux = multiplexer.Agilent34972ADriver(name='tof-agilent-34972a')
-    mux.set_scan_list(['101,102,103,104,105,106,107,108,109,110,111,112,113,114,115'])
+    mux.set_scan_list(['101,102,103,104,105,106,107,108,109,110,111,112'])
 
     values = mux.read_single_scan()
 
-    A2    = values[11] * 10
-    Def   = values[8]  * 1000
-    Focus = values[7]  * 1000
-    Liner = values[6]  * 1000
-    MCP   = values[5]  * 1000
-    R1    = values[9]  * 1000
-    R2    = values[10] * 1000
+    A2    = values[11] * 10 / 0.9911
+    Def   = values[8]  * 1000 / 0.9936
+    Focus = values[7]  * 1000 / 0.9925
+    Liner = values[6]  * 1000 / 0.9938
+    MCP   = values[5]  * 1000 / 0.9943
+    R1    = values[9]  * 1000 / 0.9931
+    R2    = values[10] * 1000 / 0.9875
     Lens_A = values[0] * 100
     Lens_B = values[1] * 100
     Lens_C = values[2] * 100
     Lens_D = values[3] * 100
     Lens_E = values[4] * 100
+
 
     voltages  = ''
     voltages += 'A2:' + str(A2) + ' '
