@@ -118,7 +118,8 @@ class EmissionControl(threading.Thread):
         i = 0
         paused = True
         while self.running:
-            still_paused = network_comm('aps'))
+            time.sleep(0.1)
+            still_paused = network_comm('aps') == 'True'
             if paused and (not still_paused):
                 self.mux.set_scan_list(['115'])
                 time.sleep(0.2)
@@ -149,7 +150,7 @@ if __name__ == '__main__':
     ec.filament.SetCurrentLimit(5)
     #print ec.filament.ReadCurrentLimit()
     #print ec.bias.ReadCurrentLimit()
-    ec.set_bias(60)
+    ec.set_bias(40)
     ec.start()
 
     tui = CursesTui(ec)
