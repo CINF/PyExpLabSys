@@ -1,27 +1,26 @@
 import serial
 import time
 
+
 class XGS600Driver():
+    def __init__(self, port='/dev/ttyUSB0'):
+        self.f = serial.Serial(port)
 
-    def __init__(self):
-        self.f = serial.Serial('/dev/ttyUSB0')
-
-    def xgs_comm(self,command):
+    def xgs_comm(self, command):
         comm = "#00" + command + "\r"
 
         self.f.write(comm)
         time.sleep(0.25)
-        bytes = self.f.inWaiting()
-        complete_string = self.f.read(bytes)
-        complete_string = complete_string.replace('>','').replace('\r','')
+        number_of_bytes = self.f.inWaiting()
+        complete_string = self.f.read(number_of_bytes)
+        complete_string = complete_string.replace('>', '').replace('\r', '')
         return(complete_string)
-
 
     def read_all_pressures(self):
         pressure_string = self.xgs_comm("0F")
         #print pressure_string
-        if len(pressure_string)>0:
-            temp_pressure = pressure_string.replace(' ','').split(',')
+        if len(pressure_string) > 0:
+            temp_pressure = pressure_string.replace(' ', '').split(',')
             pressures = []
             for press in temp_pressure:
                 if press == 'OPEN':

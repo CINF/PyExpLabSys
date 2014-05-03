@@ -50,6 +50,8 @@ class CursesTui(threading.Thread):
             self.screen.addstr(12, 2, "Temperature, Bearings: {0:.0f}C         ".format(self.turbo.status['temp_bearings']))
             self.screen.addstr(13, 2, "Temperature, Motor: {0:.0f}C            ".format(self.turbo.status['temp_motor']))
 
+
+            self.screen.addstr(16,2, 'Port: ' + self.turbo.f.port)
             self.screen.addstr(15,2, 'q: quit, u: spin up, d: spin down')
 
             n = self.screen.getch()
@@ -406,6 +408,6 @@ if __name__ == '__main__':
     tui.daemon = True
     tui.start()
 
-    #logger = DataLogger(mainpump)
-    #logger.daemon = True
-    #logger.start()
+    logger = DataLogger(mainpump)
+    logger.daemon = True
+    logger.start()
