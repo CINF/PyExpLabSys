@@ -1,11 +1,11 @@
 import minimalmodbus
 import time
+import logging
 
 class OmegaD6400():
-    def __init__(self, address=1):
-        self.instrument = minimalmodbus.Instrument('/dev/ttyUSB2', address) 
+    def __init__(self, address=1, port='/dev/ttyUSB1'):
+        self.instrument = minimalmodbus.Instrument(port, address) 
         self.instrument.serial.baudrate = 9600
-
         self.ranges = [0] * 7
         for i in range(0,7):
             self.ranges[i] = {}
@@ -13,6 +13,7 @@ class OmegaD6400():
             self.ranges[i]['fullrange'] = '0'
         self.ranges[0]['action'] = 'voltage'
         self.ranges[0]['fullrange'] = '10'
+
         for i in range(0,7):
             print i
             self.ranges[i]['fullrange']
@@ -21,17 +22,23 @@ class OmegaD6400():
 
     def comm(self, command, value=None):
         reply = None
-        error = 0
-        while error > -1:
+        error = True
+
+        while error is True:
             try:
                 if value == None:
                     reply = self.instrument.read_register(command)
-                    error = -1
                 else:
                     self.instrument.write_register(command, value)
-                    error = -1
-            except:
-                error = error + 1
+                error = False
+            except ValueError:
+                logging.warn('D6400 driver: Value Error')
+                self.instrument.serial.read(self.instrument.serial.inWaiting())
+                time.sleep(0.5)
+            except IOError:
+                logging.warn('D6400 driver: IOError')
+                error = True
+                time.sleep(0.1)
         return reply
 
     #To be deleted
