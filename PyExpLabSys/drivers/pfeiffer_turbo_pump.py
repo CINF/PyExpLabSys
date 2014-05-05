@@ -73,8 +73,8 @@ class CursesTui(threading.Thread):
         curses.endwin()
 
 
-class DataLogger(threading.Thread):
-    """ Datalogging for turbo controller """
+class TurboReader(threading.Thread):
+    """ Keeps track of all data from a turbo pump with the intend of logging them """
     def __init__(self, turbo_instance):
         #TODO: Add support for several pumps
         threading.Thread.__init__(self)
@@ -130,27 +130,6 @@ class DataLogger(threading.Thread):
         self.log['temp_bearings']['last_recorded_value'] = 0
         self.log['temp_bearings']['last_recorded_time'] = 0
 
-    def sqlInsert(self, query):
-        """ Helper function to insert data into database """
-        try:
-            cnxn = MySQLdb.connect(host="servcinf", user="mgw", passwd="mgw", db="cinfdata")
-            cursor = cnxn.cursor()
-        except:
-            print "Unable to connect to database"
-            return()
-        try:
-            cursor.execute(query)
-            cnxn.commit()
-        except:
-            print "SQL-error, query written below:"
-            print query
-            cnxn.close()
-
-
-    def sqlTime(self):
-        sqltime = datetime.now().isoformat(' ')[0:19]
-        return(sqltime)
-
     def run(self):
         for i in range(0, self.mal):
             time.sleep(0.5)
@@ -165,16 +144,37 @@ class DataLogger(threading.Thread):
                     p = self.log[param]
                     p['mean'][i] = self.turbo.status[param]
                     mean = sum(p['mean']) / float(len(p['mean']))
-                    time_trigged = (time.time() - p['last_recorded_time']) > p['time']
-                    val_trigged = not (p['last_recorded_value'] * p['change'] < mean < p['last_recorded_value'] * p['change'])
 
-                    if (time_trigged or val_trigged):
-                        p['last_recorded_value'] = mean
-                        p['last_recorded_time'] = time.time()
-                        meas_time = self.sqlTime()
-                        sql = "insert into dateplots_mgw set type=\"" + param + "\", time=\"" +  meas_time + "\", value = " + str(mean)
-                        #print sql
-                        self.sqlInsert(sql)
+
+class TurboLogger(threading.Thread):
+    """ Read a specific value and determine whether it should be logged """
+    def __init__(self, turboreader, parameter, maximumtime=600):
+        threading.Thread.__init__(self)
+        self.turboreader = turboreader
+        self.parameter = parameter
+        self.value = None
+        self.maximumtime = maximumtime
+        self.quit = False
+        self.last_recorded_time = 0
+        self.last_recorded_value = 0
+        self.trigged = False
+
+    def read_value(self):
+        """ Read the value of the logger """
+        return(self.value)
+
+    def run(self):
+        while not self.quit:
+            time.sleep(2.5)
+            p = self.turboreader.log[self.parameter]
+            mean = sum(p['mean']) / float(len(p['mean']))
+            self.value = mean
+            time_trigged = (time.time() - self.last_recorded_time) > self.maximumtime
+            val_trigged = not (self.last_recorded_value * 0.9 < self.value < self.last_recorded_value * 1.1)
+            if (time_trigged or val_trigged):
+                self.trigged = True
+                self.last_recorded_time = time.time()
+                self.last_recorded_value = self.value
 
 
 class TurboDriver(threading.Thread):
@@ -235,8 +235,8 @@ class TurboDriver(threading.Thread):
                 raise(IOError('Communication Error'))
             response += a
         length = int(response[8:10])
-        reply = response[10:10+length]
-        crc = response[10+length:10+length+3]
+        reply = response[10:10 + length]
+        crc = response[10 + length:10 + length + 3]
         if crc:
             return reply
         else:
@@ -264,7 +264,7 @@ class TurboDriver(threading.Thread):
         """
         command = '398'
         reply = self.comm(command, True)
-        val = int(reply)/60.0
+        val = int(reply) / 60.0
         #logging.warn(val)
         #command = '309'
         #reply = self.comm(command, True)
