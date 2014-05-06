@@ -145,27 +145,31 @@ class XRC1000(threading.Thread):
         self.f.write(command + '\r')
         time.sleep(0.1)
         reply = self.f.readline()
+        #print(reply)
         self.f.read(1)  # Empty buffer for extra newline
         time.sleep(0.1)
 
-        ok_reply = self.f.readline()  # Wait for OK
+        #ok_reply = self.f.readline()  # Wait for OK
 
-        cr_count = reply.count('\r')
+        #cr_count = reply.count('\r')
         #Check that no old commands is still in buffer and that the reply
         #is actually intended for the requested parameter
-        cr_check = cr_count == 1
+        #cr_check = cr_count == 1
         command_check = reply[0:len(command) - 1] == command.strip('?')
-        ok_check = ok_reply.find('OK') > -1
-        if cr_check and command_check and ok_check:
+        #ok_check = ok_reply.find('OK') > -1
+        #print(cr_check)
+        #print(command_check)
+        #print(ok_check)
+        if command_check:# and ok_check:
             echo_length = len(command)
             return_string = reply[echo_length:]
         elif(command == 'os'):
             return_string = reply
-        else:
-            if self.simulate is False:
-                return_string = 'Communication error!'
-            else:
-                return(1)
+        #else:
+        #    if self.simulate is False:
+        #        return_string = 'Communication error!'
+        #    else:
+        #        return(1)
         return(return_string)
 
     def read_emission_current(self): #need testing
@@ -174,8 +178,9 @@ class XRC1000(threading.Thread):
         :rtype: float
         """
         reply = self.comm('IEM?') # 'IEM 20e-3\r'
+        #print(reply)
         try:
-            value = float(reply[3:-1]) / 1000.0
+            value = float(reply)
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -188,7 +193,7 @@ class XRC1000(threading.Thread):
         """
         reply = self.comm('UFI?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -201,7 +206,7 @@ class XRC1000(threading.Thread):
         """
         reply = self.comm('IFI?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -227,7 +232,7 @@ class XRC1000(threading.Thread):
         """
         reply = self.comm('UAN?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -238,9 +243,9 @@ class XRC1000(threading.Thread):
         :return: The anode voltage
         :rtype: float
         """
-        reply = self.comm('UAN?')
+        reply = self.comm('PAN?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -342,22 +347,34 @@ class XRC1000(threading.Thread):
                 self.goto_operate = False
 
 if __name__ == '__main__':
-    sourcecontrol = XRC1000()
-    print sourcecontrol.read_emission_current()
+    sc = XRC1000()
+    #print sc.read_emission_current()
+    #print sc.read_filament_voltage()
+    #print sc.read_filament_current()
+    #print sc.read_anode_voltage()
+    #print sc.read_anode_power()
+
+    print sc.comm('REM?')
+    print sc.comm('SERNO?')
+    print sc.comm('IHV?')
+    print sc.comm('OPE?')
+    print sc.comm('ANO?')
+    print sc.comm('STAT?')
     #sourcecontrol.start()
 
     #tui = CursesTui(sputter)
     #tui.daemon = True
     #tui.start()
 
-    #print('Sputter current: ' + str(sputter.read_sputter_current()))
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
     #print('Sputter current: ' + str(sputter.read_sputter_current()))
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
-    #print('Filament voltage: ' + str(sputter.read_filament_voltage()))
-    #print('Filament current: ' + str(sputter.read_filament_current()))
-    #print('Emission current: ' + str(sputter.read_emission_current()))
-    #print('Acceleration voltage: ' + str(sputter.read_acceleration_voltage()))
+    print('Filament voltage: ' + str(sc.read_filament_voltage()))
+    print('Filament current: ' + str(sc.read_filament_current()))
+    print('Emission current: ' + str(sc.read_emission_current()) + 'A')
+    print('Anode voltage: ' + str(sc.read_anode_voltage()))
+    print('Anode power: ' + str(sc.read_anode_power()) + 'W')
+
     #sputter.update_status()
     #print('Enable:')
     #print(sputter.remote_enable(local=False))
