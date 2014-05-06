@@ -135,7 +135,9 @@ class XRC1000(threading.Thread):
         :return: The reply to the command striped for protocol technicalities
         :rtype: str
         
-        posible comands,REM, LOC, REM?, IEM 20e-3, IEM?, UAN 10e3, UAN?, IHV?, IFI?, UFI?, PAN?. SERNO?, OFF, COOL, STAN, UAON, OPE, OPE?, ANO 1, ANO 2, ANO?, STAT?,
+        posible comands:
+        REM?, IEM?, UAN?, IHV?, IFI?, UFI?, PAN?, SERNO?, ANO?, STAT?, OPE?
+        REM, LOC, IEM 20e-3, UAN 10e3, OFF, COOL, STAN, UAON, OPE, ANO 1, ANO 2
         """
         n = self.f.inWaiting()
         if n > 1:
@@ -170,6 +172,13 @@ class XRC1000(threading.Thread):
         #        return_string = 'Communication error!'
         #    else:
         #        return(1)
+        return(return_string)
+        
+    def direct_comm(self, command):
+        self.f.write(command + '\r')
+        time.sleep(0.1)
+        reply = self.f.readline()
+        return_string = reply
         return(return_string)
 
     def read_emission_current(self): #need testing
@@ -353,13 +362,10 @@ if __name__ == '__main__':
     #print sc.read_filament_current()
     #print sc.read_anode_voltage()
     #print sc.read_anode_power()
+    command_list=['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
+    for command in command_list:
+        print(str(command) + ' : ' + str(sc.direct_comm(command)))
 
-    print sc.comm('REM?')
-    print sc.comm('SERNO?')
-    print sc.comm('IHV?')
-    print sc.comm('OPE?')
-    print sc.comm('ANO?')
-    print sc.comm('STAT?')
     #sourcecontrol.start()
 
     #tui = CursesTui(sputter)
