@@ -122,6 +122,16 @@ class XRC1000(threading.Thread):
         self.goto_operate = False
         self.simulate = False
         #self.update_status()
+        self.list_of_errors = []
+        self.list_of_errors += ['>E251: Remote Locked !\n']
+        self.list_of_errors += ['>E250: Not in Remote !\n']
+        self.list_of_errors += ['>E251: Misplaced Query !\n']
+        self.list_of_errors += ['>E251: Argument missing !\n']
+        self.list_of_errors += ['>E251: Value to big or to low !\n']
+        self.list_of_errors += ['>E251: Parameter unknown !\n']
+        self.list_of_errors += ['>E251: Command not found !\n']
+        self.list_of_errors += ['>E251: Unexpected Error code !\n']
+        self.get_commands = ['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
 
     def comm(self, command):
         """ Communication with the instrument
@@ -145,11 +155,29 @@ class XRC1000(threading.Thread):
         else:
             self.f.read(n)
         self.f.write(command + '\r')
-        time.sleep(0.1)
+        time.sleep(0.2)
         reply = self.f.readline()
+        if reply[0] == '>': # sanity character
+            #print 'Valid command'
+            pass
+        else:
+            print 'None valid command/reply'
+            print reply
+        if command in self.get_commands:
+            echo, value = reply.split(':')
+            return_string = value.strip() 
+            # get value from space to -2
+            # posible answer to 'UAN?' true echo
+            # '>UAN: 12.00e3\n'
+            # posible answer to 'OPE?' non true echo
+            # '>OPERATE: 4.000\n'
+            #return_string = reply
+        else:
+            return_string = True
+
         #print(reply)
-        self.f.read(1)  # Empty buffer for extra newline
-        time.sleep(0.1)
+        #self.f.read(1)  # Empty buffer for extra newline
+        #time.sleep(0.1)
 
         #ok_reply = self.f.readline()  # Wait for OK
 
@@ -157,16 +185,16 @@ class XRC1000(threading.Thread):
         #Check that no old commands is still in buffer and that the reply
         #is actually intended for the requested parameter
         #cr_check = cr_count == 1
-        command_check = reply[0:len(command) - 1] == command.strip('?')
+        #command_check = reply[0:len(command) - 1] == command.strip('?')
         #ok_check = ok_reply.find('OK') > -1
         #print(cr_check)
         #print(command_check)
         #print(ok_check)
-        if command_check:# and ok_check:
-            echo_length = len(command)
-            return_string = reply[echo_length:]
-        elif(command == 'os'):
-            return_string = reply
+        #if command_check:# and ok_check:
+        #    echo_length = len(command)
+        #    return_string = reply[echo_length:]
+        #elif(command == 'os'):
+        #    return_string = reply
         #else:
         #    if self.simulate is False:
         #        return_string = 'Communication error!'
@@ -176,7 +204,7 @@ class XRC1000(threading.Thread):
         
     def direct_comm(self, command):
         self.f.write(command + '\r')
-        time.sleep(0.1)
+        time.sleep(0.2)
         reply = self.f.readline()
         return_string = reply
         return(return_string)
@@ -291,6 +319,26 @@ class XRC1000(threading.Thread):
         else:
             reply = self.comm('REM')
         return(reply)
+    
+    def automated_operate():
+        self.direct_comm('STAN')
+        self.direct_comm('ANO 2')
+        self.direct_comm('UAON')
+        self.direct_comm('OPE')
+        self.direct_comm('UAN 12e3') # 12kV
+        wait = True
+        while wait:
+            if self.direct_comm('UAN?') == '>UAN: 12.00e3\n':
+                wait = False
+            else:
+                time.sleep(5)
+        self.direct_comm('IEM 20e-3') # 20mA
+        wait = True
+        while wait:
+            if self.direct_comm('IEM?') == '>IEM: 20.06e-3\n':
+                wait = False
+            else:
+                time.sleep(5)
 
     def update_status(self): # not done
         """ Update the status of the instrument
