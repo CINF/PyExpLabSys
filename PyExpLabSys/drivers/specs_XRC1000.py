@@ -157,7 +157,7 @@ class XRC1000(threading.Thread):
         self.f.write(command + '\r')
         time.sleep(0.2)
         reply = self.f.readline()
-        if reply[0] == '>': # sanity character
+        if '>' in reply[0]: # sanity character
             #print 'Valid command'
             pass
         else:
