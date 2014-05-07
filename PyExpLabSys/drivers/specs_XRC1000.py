@@ -90,15 +90,20 @@ class XRC1000(threading.Thread):
         threading.Thread.__init__(self)
 
         #self.simulate = simulate
-        self.f = serial.Serial('/dev/ttyS0', 9600, timeout=0.25) # baud: 9600, bits: 8, parity: None
+        self.f = serial.Serial('/dev/ttyUSB0', 9600, timeout=0.25)
+        #baud: 9600, bits: 8, parity: None
         self.f.write('SERNO?' + '\r')  # Echo off
         time.sleep(1)
         # ID test
         return_string = self.f.read(self.f.inWaiting())
-        if return_string == 'SERNO 0000003BDD1B28\n\r':
+        if return_string == 'SERNO:000003AADEBD28'+chr(10)+chr(62):
             pass
         else:
             print('Error SERIAL Number: ' + return_string)
+            print(len(return_string))
+            print(len('SERNO:000003AADEBD28\n>'))
+            for el in return_string:
+                print(ord(el))
         self.status = {}  # Hold parameters to be accecible by gui
         self.status['hv'] = None
         self.status['standby'] = None
@@ -115,7 +120,18 @@ class XRC1000(threading.Thread):
         self.running = True
         self.goto_standby = False
         self.goto_operate = False
+        self.simulate = False
         #self.update_status()
+        self.list_of_errors = []
+        self.list_of_errors += ['>E251: Remote Locked !\n']
+        self.list_of_errors += ['>E250: Not in Remote !\n']
+        self.list_of_errors += ['>E251: Misplaced Query !\n']
+        self.list_of_errors += ['>E251: Argument missing !\n']
+        self.list_of_errors += ['>E251: Value to big or to low !\n']
+        self.list_of_errors += ['>E251: Parameter unknown !\n']
+        self.list_of_errors += ['>E251: Command not found !\n']
+        self.list_of_errors += ['>E251: Unexpected Error code !\n']
+        self.get_commands = ['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
 
     def comm(self, command):
         """ Communication with the instrument
@@ -129,7 +145,9 @@ class XRC1000(threading.Thread):
         :return: The reply to the command striped for protocol technicalities
         :rtype: str
         
-        posible comands,REM, LOC, REM?, IEM 20e-3, IEM?, UAN 10e3, UAN?, IHV?, IFI?, UFI?, PAN?. SERNO?, OFF, COOL, STAN, UAON, OPE, OPE?, ANO 1, ANO 2, ANO?, STAT?,
+        posible comands:
+        REM?, IEM?, UAN?, IHV?, IFI?, UFI?, PAN?, SERNO?, ANO?, STAT?, OPE?
+        REM, LOC, IEM 20e-3, UAN 10e3, OFF, COOL, STAN, UAON, OPE, ANO 1, ANO 2
         """
         n = self.f.inWaiting()
         if n > 1:
@@ -137,29 +155,58 @@ class XRC1000(threading.Thread):
         else:
             self.f.read(n)
         self.f.write(command + '\r')
-        time.sleep(0.1)
+        time.sleep(0.2)
         reply = self.f.readline()
-        self.f.read(1)  # Empty buffer for extra newline
-        time.sleep(0.1)
+        if reply[0] == '>': # sanity character
+            #print 'Valid command'
+            pass
+        else:
+            print 'None valid command/reply'
+            print reply
+        if command in self.get_commands:
+            echo, value = reply.split(':')
+            return_string = value.strip() 
+            # get value from space to -2
+            # posible answer to 'UAN?' true echo
+            # '>UAN: 12.00e3\n'
+            # posible answer to 'OPE?' non true echo
+            # '>OPERATE: 4.000\n'
+            #return_string = reply
+        else:
+            return_string = True
 
-        ok_reply = self.f.readline()  # Wait for OK
+        #print(reply)
+        #self.f.read(1)  # Empty buffer for extra newline
+        #time.sleep(0.1)
 
-        cr_count = reply.count('\r')
+        #ok_reply = self.f.readline()  # Wait for OK
+
+        #cr_count = reply.count('\r')
         #Check that no old commands is still in buffer and that the reply
         #is actually intended for the requested parameter
-        cr_check = cr_count == 1
-        command_check = reply[0:len(command) - 1] == command.strip('?')
-        ok_check = ok_reply.find('OK') > -1
-        if cr_check and command_check and ok_check:
-            echo_length = len(command)
-            return_string = reply[echo_length:]
-        elif(command == 'os'):
-            return_string = reply
-        else:
-            if self.simulate is False:
-                return_string = 'Communication error!'
-            else:
-                return(1)
+        #cr_check = cr_count == 1
+        #command_check = reply[0:len(command) - 1] == command.strip('?')
+        #ok_check = ok_reply.find('OK') > -1
+        #print(cr_check)
+        #print(command_check)
+        #print(ok_check)
+        #if command_check:# and ok_check:
+        #    echo_length = len(command)
+        #    return_string = reply[echo_length:]
+        #elif(command == 'os'):
+        #    return_string = reply
+        #else:
+        #    if self.simulate is False:
+        #        return_string = 'Communication error!'
+        #    else:
+        #        return(1)
+        return(return_string)
+        
+    def direct_comm(self, command):
+        self.f.write(command + '\r')
+        time.sleep(0.2)
+        reply = self.f.readline()
+        return_string = reply
         return(return_string)
 
     def read_emission_current(self): #need testing
@@ -168,8 +215,9 @@ class XRC1000(threading.Thread):
         :rtype: float
         """
         reply = self.comm('IEM?') # 'IEM 20e-3\r'
+        #print(reply)
         try:
-            value = float(reply[3:-1]) / 1000.0
+            value = float(reply)
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -182,7 +230,7 @@ class XRC1000(threading.Thread):
         """
         reply = self.comm('UFI?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -195,7 +243,7 @@ class XRC1000(threading.Thread):
         """
         reply = self.comm('IFI?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -221,7 +269,7 @@ class XRC1000(threading.Thread):
         """
         reply = self.comm('UAN?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -232,9 +280,9 @@ class XRC1000(threading.Thread):
         :return: The anode voltage
         :rtype: float
         """
-        reply = self.comm('UAN?')
+        reply = self.comm('PAN?')
         try:
-            value = float(reply[3:-1]) / 1.0
+            value = float(reply) / 1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -271,6 +319,26 @@ class XRC1000(threading.Thread):
         else:
             reply = self.comm('REM')
         return(reply)
+    
+    def automated_operate():
+        self.direct_comm('STAN')
+        self.direct_comm('ANO 2')
+        self.direct_comm('UAON')
+        self.direct_comm('OPE')
+        self.direct_comm('UAN 12e3') # 12kV
+        wait = True
+        while wait:
+            if self.direct_comm('UAN?') == '>UAN: 12.00e3\n':
+                wait = False
+            else:
+                time.sleep(5)
+        self.direct_comm('IEM 20e-3') # 20mA
+        wait = True
+        while wait:
+            if self.direct_comm('IEM?') == '>IEM: 20.06e-3\n':
+                wait = False
+            else:
+                time.sleep(5)
 
     def update_status(self): # not done
         """ Update the status of the instrument
@@ -336,21 +404,31 @@ class XRC1000(threading.Thread):
                 self.goto_operate = False
 
 if __name__ == '__main__':
-    sourcecontrol = XRC1000()
-    sourcecontrol.start()
+    sc = XRC1000()
+    #print sc.read_emission_current()
+    #print sc.read_filament_voltage()
+    #print sc.read_filament_current()
+    #print sc.read_anode_voltage()
+    #print sc.read_anode_power()
+    command_list=['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
+    for command in command_list:
+        print(str(command) + ' : ' + str(sc.direct_comm(command)))
 
-    tui = CursesTui(sputter)
-    tui.daemon = True
-    tui.start()
+    #sourcecontrol.start()
 
-    #print('Sputter current: ' + str(sputter.read_sputter_current()))
+    #tui = CursesTui(sputter)
+    #tui.daemon = True
+    #tui.start()
+
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
     #print('Sputter current: ' + str(sputter.read_sputter_current()))
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
-    #print('Filament voltage: ' + str(sputter.read_filament_voltage()))
-    #print('Filament current: ' + str(sputter.read_filament_current()))
-    #print('Emission current: ' + str(sputter.read_emission_current()))
-    #print('Acceleration voltage: ' + str(sputter.read_acceleration_voltage()))
+    print('Filament voltage: ' + str(sc.read_filament_voltage()))
+    print('Filament current: ' + str(sc.read_filament_current()))
+    print('Emission current: ' + str(sc.read_emission_current()) + 'A')
+    print('Anode voltage: ' + str(sc.read_anode_voltage()))
+    print('Anode power: ' + str(sc.read_anode_power()) + 'W')
+
     #sputter.update_status()
     #print('Enable:')
     #print(sputter.remote_enable(local=False))

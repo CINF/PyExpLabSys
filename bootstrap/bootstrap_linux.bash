@@ -197,8 +197,8 @@ fi
 if [ $reset_bash == "YES" ];then
     echo
     echobold "##> NOTE! ~/PyExpLabSys/bin has been added to PATH, which means"
-    echobold "##> that the user specific rgit and kgit commands (for Robert"
-    echobold "##> and Kenneth) can be used."
+    echobold "##> that the user specific rgit, kgit and agit commands (for "
+    echobold "##> Robert, Kenneth and Anders) can be used."
     echobold "##>"
     echobold "##> NOTE! Your bash environment has been modified."
     echobold "##> Run: \"source ~/.bashrc\" to make the changes take effect."
