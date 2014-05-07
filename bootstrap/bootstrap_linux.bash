@@ -146,11 +146,11 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     sudo apt-get dist-upgrade
     echoblue "---> Installing packages"
     echoblue "----> Install: $apt1"
-    sudo apt-get install $apt1
+    sudo apt-get -y install $apt1
     echoblue "----> Install: $apt2"
-    sudo apt-get install $apt2
+    sudo apt-get -y install $apt2
     echoblue "----> Install: $apt3"
-    sudo apt-get install $apt3
+    sudo apt-get -y install $apt3
     echoblue "---> Remove un-needed packages, if any"
     sudo apt-get autoremove
     echoblue "---> Clear apt cache"
