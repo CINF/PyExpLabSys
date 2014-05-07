@@ -320,24 +320,32 @@ class XRC1000(threading.Thread):
             reply = self.comm('REM')
         return(reply)
     
-    def automated_operate():
+    def automated_operate(self):
         self.direct_comm('STAN')
         self.direct_comm('ANO 2')
         self.direct_comm('UAON')
-        self.direct_comm('OPE')
         self.direct_comm('UAN 12e3') # 12kV
+        self.direct_comm('OPE')
         wait = True
+        n = 0
         while wait:
             if self.direct_comm('UAN?') == '>UAN: 12.00e3\n':
                 wait = False
+            elif n > 5:
+                wait = False
             else:
+                n+=1
                 time.sleep(5)
         self.direct_comm('IEM 20e-3') # 20mA
         wait = True
+        n = 0
         while wait:
             if self.direct_comm('IEM?') == '>IEM: 20.06e-3\n':
                 wait = False
+            elif n > 5:
+                wait = False
             else:
+                n+=1
                 time.sleep(5)
 
     def update_status(self): # not done
