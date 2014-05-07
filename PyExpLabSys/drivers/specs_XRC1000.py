@@ -165,7 +165,7 @@ class XRC1000(threading.Thread):
             print reply
         if command in self.get_commands:
             echo, value = reply.split(':')
-            return_string = value.strip() 
+            return_string = float(value.strip())
             # get value from space to -2
             # posible answer to 'UAN?' true echo
             # '>UAN: 12.00e3\n'
