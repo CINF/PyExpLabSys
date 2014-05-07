@@ -321,8 +321,8 @@ class XRC1000(threading.Thread):
         return(reply)
     
     def automated_operate(self):
-        self.direct_comm('STAN')
         self.direct_comm('ANO 2')
+        self.direct_comm('STAN')
         self.direct_comm('UAON')
         self.direct_comm('UAN 12e3') # 12kV
         self.direct_comm('OPE')
