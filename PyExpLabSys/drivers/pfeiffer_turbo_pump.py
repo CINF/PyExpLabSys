@@ -227,17 +227,11 @@ class TurboDriver(threading.Thread):
             command = action + command + length + datatype
         crc = self.crc_calc(adress_string + command)
         self.f.write(adress_string + command + crc + '\r')
-        a = ''
-        response = ''
-        while not (a == '\r'):
-            a = self.f.read()
-            if len(a)==0:
-                raise(IOError('Communication Error'))
-            response += a
+        response = self.f.readline()
         length = int(response[8:10])
         reply = response[10:10 + length]
         crc = response[10 + length:10 + length + 3]
-        if crc:
+        if crc: # TODO: This is always true! Implement real crc check
             return reply
         else:
             return 'Error!'
