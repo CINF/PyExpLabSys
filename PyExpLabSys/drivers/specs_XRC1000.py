@@ -92,11 +92,8 @@ class XRC1000(threading.Thread):
         #self.simulate = simulate
         self.f = serial.Serial('/dev/ttyUSB0', 9600, timeout=0.25)
         #baud: 9600, bits: 8, parity: None
-        self.f.write('SERNO?' + '\r')  # Echo off
-        time.sleep(1)
-        # ID test
-        return_string = self.f.read(self.f.inWaiting())
-        if return_string == 'SERNO:000003AADEBD28'+chr(10)+chr(62):
+        return_string = self.comm('SERNO?')
+        if return_string == '000003AADEBD28':
             pass
         else:
             print('Error SERIAL Number: ' + return_string)
@@ -110,13 +107,14 @@ class XRC1000(threading.Thread):
         self.status['operate'] = None
         self.status['degas'] = None
         self.status['remote'] = None
-        self.status['error'] = ''
-        #self.status['temperature'] = None
+        self.status['error'] = None
         self.status['sputter_current'] = None
         self.status['filament_bias'] = None
         self.status['filament_current'] = None
+        self.status['filament_power'] = None
         self.status['emission_current'] = None
         self.status['anode_voltage'] = None
+        self.status['anode_power'] = None
         self.running = True
         self.goto_standby = False
         self.goto_operate = False
@@ -157,15 +155,15 @@ class XRC1000(threading.Thread):
         self.f.write(command + '\r')
         time.sleep(0.2)
         reply = self.f.readline()
-        if '>' in reply[0]: # sanity character
-            #print 'Valid command'
-            pass
-        else:
-            print 'None valid command/reply'
-            print reply
+        #if '>' in reply[0]: # sanity character
+        #    #print 'Valid command'
+        #    pass
+        #else:
+        #    print 'None valid command/reply'
+        #    print reply
         if command in self.get_commands:
             echo, value = reply.split(':')
-            return_string = float(value.strip())
+            return_string = value.strip()
             # get value from space to -2
             # posible answer to 'UAN?' true echo
             # '>UAN: 12.00e3\n'
@@ -174,32 +172,6 @@ class XRC1000(threading.Thread):
             #return_string = reply
         else:
             return_string = True
-
-        #print(reply)
-        #self.f.read(1)  # Empty buffer for extra newline
-        #time.sleep(0.1)
-
-        #ok_reply = self.f.readline()  # Wait for OK
-
-        #cr_count = reply.count('\r')
-        #Check that no old commands is still in buffer and that the reply
-        #is actually intended for the requested parameter
-        #cr_check = cr_count == 1
-        #command_check = reply[0:len(command) - 1] == command.strip('?')
-        #ok_check = ok_reply.find('OK') > -1
-        #print(cr_check)
-        #print(command_check)
-        #print(ok_check)
-        #if command_check:# and ok_check:
-        #    echo_length = len(command)
-        #    return_string = reply[echo_length:]
-        #elif(command == 'os'):
-        #    return_string = reply
-        #else:
-        #    if self.simulate is False:
-        #        return_string = 'Communication error!'
-        #    else:
-        #        return(1)
         return(return_string)
         
     def direct_comm(self, command):
@@ -210,14 +182,14 @@ class XRC1000(threading.Thread):
         return(return_string)
 
     def read_emission_current(self): #need testing
-        """ Read the emission current. Unit mA
+        """ Read the emission current. Unit A
         :return: The emission current
         :rtype: float
         """
         reply = self.comm('IEM?') # 'IEM 20e-3\r'
         #print(reply)
         try:
-            value = float(reply)
+            value = float(reply)/1.0
         except ValueError:
             self.status['error'] = reply
             value = None
@@ -263,7 +235,7 @@ class XRC1000(threading.Thread):
     #    return(value)
 
     def read_anode_voltage(self): #need testing
-        """ Read the anode voltage. Unit kV
+        """ Read the anode voltage. Unit V
         :return: The anode voltage
         :rtype: float
         """
@@ -276,7 +248,7 @@ class XRC1000(threading.Thread):
         return(value)
         
     def read_anode_power(self): #need testing
-        """ Read the anode voltage. Unit kV
+        """ Read the anode voltage. Unit W
         :return: The anode voltage
         :rtype: float
         """
@@ -296,6 +268,7 @@ class XRC1000(threading.Thread):
         :rtype: str
         """
         reply = self.comm('STAN')
+        # Update key parameters
         return(reply)
 
     def operate(self):#need testing
@@ -305,6 +278,7 @@ class XRC1000(threading.Thread):
         :rtype: str
         """
         reply = self.comm('OPE')
+        # Update key parameters
         return(reply)
 
     def remote_enable(self, local=False):#need testing
@@ -318,6 +292,7 @@ class XRC1000(threading.Thread):
             reply = self.comm('LOC')
         else:
             reply = self.comm('REM')
+        # Update key parameters
         return(reply)
     
     def automated_operate(self):
@@ -360,6 +335,7 @@ class XRC1000(threading.Thread):
         #self.status['temperature'] = self.read_temperature_energy_module()
         self.status['filament_bias'] = self.read_filament_voltage()
         self.status['filament_current'] = self.read_filament_current()
+        self.status['filament_power'] = self.status['filament_bias'] * self.status['filament_current']
         self.status['emission_current'] = self.read_emission_current()
         self.status['anode_voltage'] = self.read_anode_voltage()
         self.status['anode_power'] = self.read_anode_power()
