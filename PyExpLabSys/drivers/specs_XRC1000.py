@@ -42,7 +42,7 @@ class CursesTui(threading.Thread):
             try:
                 self.screen.addstr(9, 2, "Filament bias: {0:.3f}V          ".format(self.sc.status['filament_bias']))
                 self.screen.addstr(10, 2, "Filament Current: {0:.2f}A          ".format(self.sc.status['filament_current']))
-                self.screen.addstr(11, 2, "Emission Current: {0:.4f}mA          ".format(self.sc.status['emission_current']))
+                self.screen.addstr(11, 2, "Emission Current: {0:.4f}A          ".format(self.sc.status['emission_current']))
                 self.screen.addstr(12, 2, "anode Voltage: {0:.2f}V          ".format(self.sc.status['anode_voltage']))
                 self.screen.addstr(13, 2, "anode Power: {0:.2f}W          ".format(self.sc.status['anode_power']))
             except ValueError:
@@ -61,6 +61,15 @@ class CursesTui(threading.Thread):
             n = self.screen.getch()
             if n == ord('q'):
                 self.sc.running = False
+            elif n == ord('s'):
+                self.sc.goto_standby = True
+            elif n == ord('o'):
+                self.sc.goto_operate = True
+            elif n == ord('c'):
+                self.sc.cooling = True
+            elif n == ord('3'):
+                self.sc.countdown = True
+                self.sc.countdown_end_time = time.time() + 3*3600 # second
             # disable s o key
             #if n == ord('s'):
             #    self.sc.goto_standby = True
@@ -322,6 +331,10 @@ class XRC1000(threading.Thread):
             else:
                 n+=1
                 time.sleep(5)
+    def turn_off():
+        self.comm('OFF')
+        # Update key parameters
+        return True
 
     def update_status(self): # not done
         """ Update the status of the instrument
@@ -386,6 +399,14 @@ class XRC1000(threading.Thread):
             if self.goto_operate:
                 self.operate()
                 self.goto_operate = False
+            if self.goto_off:
+                self.turn_off()
+                self.goto_off = False
+            if self.countdown:
+                if time.time() > self.countdown_end_time:
+                    self.countdown = False
+                    self.goto_off = True
+
 
 if __name__ == '__main__':
     sc = XRC1000()
