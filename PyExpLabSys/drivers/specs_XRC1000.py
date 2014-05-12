@@ -98,18 +98,7 @@ class XRC1000(threading.Thread):
         """
         threading.Thread.__init__(self)
 
-        #self.simulate = simulate
-        self.f = serial.Serial('/dev/ttyUSB0', 9600, timeout=0.25)
-        #baud: 9600, bits: 8, parity: None
-        return_string = self.comm('SERNO?')
-        if return_string == '000003AADEBD28':
-            pass
-        else:
-            print('Error SERIAL Number: ' + return_string)
-            print(len(return_string))
-            print(len('SERNO:000003AADEBD28\n>'))
-            for el in return_string:
-                print(ord(el))
+        
         self.status = {}  # Hold parameters to be accecible by gui
         self.status['hv'] = None
         self.status['standby'] = None
@@ -139,6 +128,18 @@ class XRC1000(threading.Thread):
         self.list_of_errors += ['>E251: Command not found !\n']
         self.list_of_errors += ['>E251: Unexpected Error code !\n']
         self.get_commands = ['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
+        #self.simulate = simulate
+        self.f = serial.Serial('/dev/ttyUSB0', 9600, timeout=0.25)
+        #baud: 9600, bits: 8, parity: None
+        return_string = self.comm('SERNO?')
+        if return_string == '000003AADEBD28':
+            pass
+        else:
+            print('Error SERIAL Number: ' + return_string)
+            print(len(return_string))
+            print(len('SERNO:000003AADEBD28\n>'))
+            for el in return_string:
+                print(ord(el))
 
     def comm(self, command):
         """ Communication with the instrument
