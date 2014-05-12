@@ -176,7 +176,8 @@ class XRC1000(threading.Thread):
         n = self.f.inWaiting()
         if n > 1:
             print('Error')
-            self.status['error']='n = '+str(n)
+            reply = self.f.read(n)
+            self.status['error']='n = '+str(n) + ' ' + str(reply)
         else:
             self.f.read(n)
         self.f.write(command + '\r')
