@@ -22,6 +22,7 @@ class CursesTui(threading.Thread):
         self.screen.keypad(1)
         self.screen.nodelay(1)
         self.time = time.time()
+        self.countdown = False
 
     def run(self):
         while True:
@@ -69,8 +70,13 @@ class CursesTui(threading.Thread):
             elif n == ord('c'):
                 self.sc.cooling = True
             elif n == ord('3'):
-                self.sc.countdown = True
-                self.sc.countdown_end_time = time.time() + 3*3600 # second
+                self.countdown = True
+                self.countdown_end_time = time.time() + 3*3600 # second
+            
+            if self.countdown:
+                if time.time() > self.countdown_end_time:
+                    self.sc.goto_standby = True
+                    self.countdown = False
             # disable s o key
             #if n == ord('s'):
             #    self.sc.goto_standby = True
