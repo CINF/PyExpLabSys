@@ -75,7 +75,7 @@ class CursesTui(threading.Thread):
             
             if self.countdown:
                 if time.time() > self.countdown_end_time:
-                    self.sc.goto_standby = True
+                    self.sc.goto_off = True
                     self.countdown = False
             # disable s o key
             #if n == ord('s'):
@@ -113,6 +113,8 @@ class XRC1000(threading.Thread):
         self.status['degas'] = None
         self.status['remote'] = None
         self.status['error'] = None
+        self.status['cooling'] = None
+        self.status['off'] = None
         self.status['sputter_current'] = None
         self.status['filament_bias'] = None
         self.status['filament_current'] = None
@@ -312,6 +314,32 @@ class XRC1000(threading.Thread):
             reply = self.comm('REM')
         # Update key parameters
         return(reply)
+        
+    def get_status(self):
+        reply = self.comm('STAT?')
+        if reply[0:1] == '00':
+            self.status['remote'] = False
+        if reply[0:1] == '02':
+            self.status['remote'] = True
+            
+        if reply[2:3] == '00':
+            self.status['off'] = True
+        if reply[2:3] == '01':
+            self.status['cooling'] = True
+        if reply[2:3] == '02':
+            self.status['standby'] = True
+        if reply[2:3] == '03':
+            self.status['hv'] = True
+        if reply[2:3] == '04':
+            self.status['operate'] = True
+        
+        if reply[4:5] == '00':
+            self.status['error'] = False
+        else:
+            self.status['error'] = reply[4:5]
+            #error_bin = bin(int(reply[4:5]))
+            #if error_bin[0:1] == ''
+            
     
     def automated_operate(self):
         self.direct_comm('ANO 2')
@@ -361,39 +389,7 @@ class XRC1000(threading.Thread):
         self.status['emission_current'] = self.read_emission_current()
         self.status['anode_voltage'] = self.read_anode_voltage()
         self.status['anode_power'] = self.read_anode_power()
-
-        """reply = self.comm('os').lower()
-        if self.simulate is not True:
-            hv = None
-        else:
-            hv = False
-        if reply.find('he') > -1:
-            hv = False
-        if reply.find('ha') > -1:
-            hv = True
-        assert(hv is True or hv is False)
-        self.status['hv'] = hv
-
-        if reply.find('re') > -1:
-            self.status['remote'] = True
-        else:
-            self.status['remote'] = False
-
-        if reply.find('sb') > -1:
-            self.status['standby'] = True
-        else:
-            self.status['standby'] = False
-
-        if reply.find('op') > -1:
-            self.status['operate'] = True
-        else:
-            self.status['operate'] = False
-        #!TODO: Update status to also accept neither operate or standby
-
-        if reply.find('dg') > -1:
-            self.status['degas'] = True
-        else:
-            self.status['degas'] = False"""
+        self.get_status()
 
         return(True)
 
