@@ -296,7 +296,8 @@ class XRC1000(threading.Thread):
         :rtype: str
         """
         reply = self.comm('STAN')
-        # Update key parameters
+        time.sleep(1)
+        self.update_status()
         return(reply)
 
     def operate(self):#need testing
@@ -306,7 +307,8 @@ class XRC1000(threading.Thread):
         :rtype: str
         """
         reply = self.comm('OPE')
-        # Update key parameters
+        time.sleep(1)
+        self.update_status()
         return(reply)
 
     def remote_enable(self, local=False):#need testing
@@ -320,7 +322,8 @@ class XRC1000(threading.Thread):
             reply = self.comm('LOC')
         else:
             reply = self.comm('REM')
-        # Update key parameters
+        time.sleep(1)
+        self.update_status()
         return(reply)
         
     def get_status(self):
@@ -376,6 +379,7 @@ class XRC1000(threading.Thread):
             else:
                 n+=1
                 time.sleep(5)
+        return True
     def turn_off():
         self.update_status()
         if self.status['operate']:
