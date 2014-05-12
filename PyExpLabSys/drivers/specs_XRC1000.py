@@ -69,6 +69,8 @@ class CursesTui(threading.Thread):
                 self.sc.goto_operate = True
             elif n == ord('c'):
                 self.sc.cooling = True
+            elif n == ord('x'):
+                self.sc.goto_off = True
             elif n == ord('3'):
                 self.countdown = True
                 self.countdown_end_time = time.time() + 3*3600 # second
