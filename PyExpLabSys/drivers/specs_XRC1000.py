@@ -58,7 +58,8 @@ class CursesTui(threading.Thread):
             #self.screen.addstr(16, 2, "Latest error message: " + self.sc.status['error'])
 
             self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
-            self.screen.addstr(18, 2, 'q: quit, s: standby, o: operate')
+            self.screen.addstr(18, 2, "Time until shutdown: {0:.0f}s       ".format(self.countdown_end_time -time.time()))
+            self.screen.addstr(19, 2, 'q: quit, s: standby, o: operate, c: cooling, x: shutdown, 3: shutdown in 3 hours)
 
             n = self.screen.getch()
             if n == ord('q'):
