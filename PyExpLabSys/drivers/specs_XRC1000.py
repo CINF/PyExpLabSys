@@ -404,10 +404,7 @@ class XRC1000(threading.Thread):
             if self.goto_off:
                 self.turn_off()
                 self.goto_off = False
-            if self.countdown:
-                if time.time() > self.countdown_end_time:
-                    self.countdown = False
-                    self.goto_off = True
+
 
 
 if __name__ == '__main__':
