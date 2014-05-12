@@ -387,7 +387,7 @@ class XRC1000(threading.Thread):
         else:
             self.status['degas'] = False"""
 
-        return(reply)
+        return(True)
 
     def run(self):
         while self.running:
