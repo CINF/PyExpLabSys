@@ -39,6 +39,9 @@ class CursesTui(threading.Thread):
 
             if self.sc.status['operate']:
                 self.screen.addstr(6, 2, "Device status: Operate! ")
+            
+            if self.sc.status['error'] != None:
+                self.screen.addstr(6, 2, "Error: " + str(self.sc.status['error']))
 
             try:
                 self.screen.addstr(9, 2, "Filament bias: {0:.3f}V          ".format(self.sc.status['filament_bias']))
@@ -173,6 +176,7 @@ class XRC1000(threading.Thread):
         n = self.f.inWaiting()
         if n > 1:
             print('Error')
+            self.status['error']='n = '+str(n)
         else:
             self.f.read(n)
         self.f.write(command + '\r')
