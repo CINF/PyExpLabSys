@@ -415,15 +415,15 @@ if __name__ == '__main__':
     #print sc.read_filament_current()
     #print sc.read_anode_voltage()
     #print sc.read_anode_power()
-    command_list=['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
-    for command in command_list:
-        print(str(command) + ' : ' + str(sc.direct_comm(command)))
+    #command_list=['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
+    #for command in command_list:
+    #    print(str(command) + ' : ' + str(sc.direct_comm(command)))
 
-    #sourcecontrol.start()
+    sc.start()
 
-    #tui = CursesTui(sputter)
-    #tui.daemon = True
-    #tui.start()
+    tui = CursesTui(sc)
+    tui.daemon = True
+    tui.start()
 
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
     #print('Sputter current: ' + str(sputter.read_sputter_current()))
