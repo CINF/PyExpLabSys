@@ -116,6 +116,7 @@ class XRC1000(threading.Thread):
         self.running = True
         self.goto_standby = False
         self.goto_operate = False
+        self.goto_off = False
         self.simulate = False
         #self.update_status()
         self.list_of_errors = []
