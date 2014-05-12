@@ -377,7 +377,18 @@ class XRC1000(threading.Thread):
                 n+=1
                 time.sleep(5)
     def turn_off():
-        self.comm('OFF')
+        self.update_status()
+        if self.status['operate']:
+            self.comm('UAON')
+            time.sleep(2)
+            self.update_status()
+        if :
+            self.comm('STAN')
+            time.sleep(2)
+            self.update_status()
+        if self.status['STAN']:
+            self.comm('OFF')
+            self.update_status()
         # Update key parameters
         return True
 
