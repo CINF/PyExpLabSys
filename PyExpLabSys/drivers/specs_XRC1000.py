@@ -189,7 +189,7 @@ class XRC1000(threading.Thread):
         #else:
         #    print 'None valid command/reply'
         #    print reply
-        if command in self.get_commands:
+        if command in self.get_commands and ':' in reply:
             echo, value = reply.split(':')
             return_string = value.strip()
             # get value from space to -2
