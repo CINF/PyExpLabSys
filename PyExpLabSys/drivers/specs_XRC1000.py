@@ -429,11 +429,11 @@ if __name__ == '__main__':
     #for command in command_list:
     #    print(str(command) + ' : ' + str(sc.direct_comm(command)))
 
-    sc.start()
+    #sc.start()
 
-    tui = CursesTui(sc)
-    tui.daemon = True
-    tui.start()
+    #tui = CursesTui(sc)
+    #tui.daemon = True
+    #tui.start()
 
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
     #print('Sputter current: ' + str(sputter.read_sputter_current()))
