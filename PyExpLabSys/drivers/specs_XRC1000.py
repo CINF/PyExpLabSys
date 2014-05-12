@@ -12,7 +12,7 @@ import curses
 
 class CursesTui(threading.Thread):
     """ Defines a fallback text-gui for the source control. """
-    def __init__(self, sputtergun):
+    def __init__(self, sourcecontrol):
         threading.Thread.__init__(self)
         self.sc = sourcecontrol
         self.screen = curses.initscr()
