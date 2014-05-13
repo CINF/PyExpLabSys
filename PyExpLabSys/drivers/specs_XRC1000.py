@@ -81,7 +81,7 @@ class CursesTui(threading.Thread):
                     self.countdown = False
             
             self.screen.addstr(20, 2, 'q: quit program, s: standby, o: operate, c: cooling, x: shutdown gun')
-            self.screen.addstr(21, 2, ' 3: shutdown in 10min')
+            self.screen.addstr(21, 2, ' 3: shutdown in 3h')
             
             self.screen.addstr(23, 2, ' Latest key: ' + str(self.last_key))
 
