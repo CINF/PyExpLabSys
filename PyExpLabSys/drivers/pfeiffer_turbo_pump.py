@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0904
+# pylint: disable=C0103,R0904,C0301
 
 """
 Self contained module to run a Pfeiffer turbo pump including fall-back
@@ -10,8 +10,6 @@ import time
 import curses
 import threading
 import logging
-import MySQLdb
-from datetime import datetime
 
 import sys
 sys.path.append('/home/pi/PyExpLabSys/')
@@ -40,19 +38,23 @@ class CursesTui(threading.Thread):
             #else:
             #    self.screen.addstr(3, 30, 'Pump at constant speed')
             self.screen.addstr(4, 2, 'Gas mode: ' + self.turbo.status['gas_mode'] + '      ')
+            self.screen.addstr(5, 2, 'Vent mode: ' + self.turbo.status['vent_mode'] + '      ')
+            self.screen.addstr(6, 2, 'Sealing gas: ' + self.turbo.status['sealing_gas'] + '      ')
 
-            self.screen.addstr(6, 2, "Rotation speed: {0:.2f}Hz      ".format(self.turbo.status['rotation_speed']))
-            self.screen.addstr(7, 2, "Drive current: {0:.2f}A        ".format(self.turbo.status['drive_current']))
-            self.screen.addstr(8, 2, "Drive power: {0:.0f}W          ".format(self.turbo.status['drive_power']))
+            self.screen.addstr(8, 2, "Rotation speed: {0:.2f}Hz      ".format(self.turbo.status['rotation_speed']))
+            self.screen.addstr(8, 28, "Setpoint speed: {0:.2f}Hz      ".format(self.turbo.status['set_rotation_speed']))
+            self.screen.addstr(9, 2, "Drive current: {0:.2f}A        ".format(self.turbo.status['drive_current']))
+            self.screen.addstr(10, 2, "Drive power: {0:.0f}W          ".format(self.turbo.status['drive_power']))
 
-            self.screen.addstr(10, 2, "Temperature, Electronics: {0:.0f}C      ".format(self.turbo.status['temp_electronics']))
-            self.screen.addstr(11, 2, "Temperature, Bottom: {0:.0f}C           ".format(self.turbo.status['temp_bottom']))
-            self.screen.addstr(12, 2, "Temperature, Bearings: {0:.0f}C         ".format(self.turbo.status['temp_bearings']))
-            self.screen.addstr(13, 2, "Temperature, Motor: {0:.0f}C            ".format(self.turbo.status['temp_motor']))
+            self.screen.addstr(12, 2, "Temperature, Electronics: {0:.0f}C      ".format(self.turbo.status['temp_electronics']))
+            self.screen.addstr(13, 2, "Temperature, Bottom: {0:.0f}C           ".format(self.turbo.status['temp_bottom']))
+            self.screen.addstr(14, 2, "Temperature, Bearings: {0:.0f}C         ".format(self.turbo.status['temp_bearings']))
+            self.screen.addstr(15, 2, "Temperature, Motor: {0:.0f}C            ".format(self.turbo.status['temp_motor']))
 
-
-            self.screen.addstr(16,2, 'Port: ' + self.turbo.f.port)
-            self.screen.addstr(15,2, 'q: quit, u: spin up, d: spin down')
+            self.screen.addstr(18, 2, "Operating hours: {0:.0f} ({1:.1f}days)    ".format(self.turbo.status['operating_hours'], self.turbo.status['operating_hours'] / 24.0))
+            self.screen.addstr(19, 2, "Driver runtime: {0:.1f}s    ".format(self.turbo.status['runtime']))
+            self.screen.addstr(20, 2, 'Port: ' + self.turbo.f.port)
+            self.screen.addstr(21, 2, 'q: quit, u: spin up, d: spin down')
 
             n = self.screen.getch()
             if n == ord('q'):
@@ -194,9 +196,15 @@ class TurboDriver(threading.Thread):
         self.f.timeout = 0.1
         self.adress = adress
         self.status = {}  # Hold parameters to be accessible by gui
+        self.status['starttime'] = time.time()
+        self.status['runtime'] = 0
         self.status['rotation_speed'] = 0
+        self.status['set_rotation_speed'] = 0
+        self.status['operating_hours'] = 0
         self.status['pump_accelerating'] = False
         self.status['gas_mode'] = ''
+        self.status['vent_mode'] = ''
+        self.status['sealing_gas'] = ''
         self.status['drive_current'] = 0
         self.status['drive_power'] = 0
         self.status['temp_electronics'] = 0
@@ -265,6 +273,28 @@ class TurboDriver(threading.Thread):
         #logging.warn(reply)
         return(val)
 
+    def read_set_rotation_speed(self):
+        """ Read the intended rotational speed of the pump
+
+        :return: The intended rotaional speed in Hz
+        :rtype: Int
+        """
+        command = '308'
+        reply = self.comm(command, True)
+        val = int(reply)
+        return(val)
+
+    def read_operating_hours(self):
+        """ Read the number of operating hours
+
+        :return: Number of operating hours
+        :rtype: Int
+        """
+        command = '311'
+        reply = self.comm(command, True)
+        val = int(reply)
+        return(val)
+
     def read_gas_mode(self):
         """ Read the gas mode
         :return: The gas mode
@@ -280,6 +310,34 @@ class TurboDriver(threading.Thread):
             return 'Light gasses'
         if mode == 2:
             return 'Helium'
+
+    def read_vent_mode(self):
+        """ Read the venting mode
+        :return: The venting mode
+        :rtype: Str
+        """
+        command = '030'
+        reply = self.comm(command, True)
+        mode = int(reply)
+        if mode == 0:
+            return 'Delayed Venting'
+        if mode == 1:
+            return 'No Venting'
+        if mode == 2:
+            return 'Direct Venting'
+
+    def read_sealing_gas(self):
+        """ Read whether sealing gas is applied
+        :return: The sealing gas mode
+        :rtype: Str
+        """
+        command = '050'
+        reply = self.comm(command, True)
+        mode = int(reply)
+        if mode == 0:
+            return 'No sealing gas'
+        if mode == 1:
+            return 'Sealing gas on'
 
     def is_pump_accelerating(self):
         """ Read if pump is accelerating
@@ -362,21 +420,31 @@ class TurboDriver(threading.Thread):
         return return_val
 
     def run(self):
+        round_robin_counter = 0
         while self.running:
-            time.sleep(0.1)
-            self.status['pump_accelerating'] = self.is_pump_accelerating()
+            #time.sleep(0.1)
+            self.status['runtime'] = time.time() - self.status['starttime']
             self.status['rotation_speed'] = self.read_rotation_speed()
-            self.status['gas_mode'] = self.read_gas_mode()
 
             power = self.read_drive_power()
             self.status['drive_current'] = power['current']
             self.status['drive_power'] = power['power']
 
-            temp = self.read_temperature()
-            self.status['temp_electronics'] = temp['elec']
-            self.status['temp_bottom'] = temp['bottom']
-            self.status['temp_bearings'] = temp['bearings']
-            self.status['temp_motor'] = temp['motor']
+            if round_robin_counter == 0:
+                temp = self.read_temperature()
+                self.status['temp_electronics'] = temp['elec']
+                self.status['temp_bottom'] = temp['bottom']
+                self.status['temp_bearings'] = temp['bearings']
+                self.status['temp_motor'] = temp['motor']
+            if round_robin_counter == 1:
+                self.status['pump_accelerating'] = self.is_pump_accelerating()
+                self.status['set_rotation_speed'] = self.read_set_rotation_speed()
+                self.status['gas_mode'] = self.read_gas_mode()
+                self.status['vent_mode'] = self.read_vent_mode()
+                self.status['sealing_gas'] = self.read_sealing_gas()
+                self.status['operating_hours'] = self.read_operating_hours()
+            round_robin_counter += 1
+            round_robin_counter = round_robin_counter % 2
 
             if self.status['spin_up']:
                 self.turn_pump_on()
@@ -389,11 +457,12 @@ class TurboDriver(threading.Thread):
 if __name__ == '__main__':
     ports = FindSerialPorts.find_ports()
     for port in ports:
+        print port
         mainpump = TurboDriver(adress=2,port='/dev/' + port)
         try:
             mainpump.read_rotation_speed()
             break
-        except IOError:
+        except:
             pass
     print 'Serial port: ' + port
     mainpump.start()
@@ -402,6 +471,6 @@ if __name__ == '__main__':
     tui.daemon = True
     tui.start()
 
-    logger = DataLogger(mainpump)
-    logger.daemon = True
-    logger.start()
+    #logger = DataLogger(mainpump)
+    #logger.daemon = True
+    #logger.start()
