@@ -36,27 +36,30 @@ class CursesTui(threading.Thread):
 
             if self.sc.status['standby']:
                 self.screen.addstr(6, 2, "Device status: Standby  ")
+                
+            if self.sc.status['hv']:
+                self.screen.addstr(7, 2, "Device status: HV on  ")
 
             if self.sc.status['operate']:
-                self.screen.addstr(6, 2, "Device status: Operate! ")
+                self.screen.addstr(8, 2, "Device status: Operate! ")
             
             if self.sc.status['error'] != None:
-                self.screen.addstr(6, 2, "Error: " + str(self.sc.status['error']))
+                self.screen.addstr(9, 2, "Error: " + str(self.sc.status['error']))
 
             try:
-                self.screen.addstr(9, 2, "Filament bias: {0:.3f}V          ".format(self.sc.status['filament_bias']))
-                self.screen.addstr(10, 2, "Filament Current: {0:.2f}A          ".format(self.sc.status['filament_current']))
-                self.screen.addstr(11, 2, "Filament Power: {0:.2f}A          ".format(self.sc.status['filament_power']))
-                self.screen.addstr(12, 2, "Emission Current: {0:.4f}A          ".format(self.sc.status['emission_current']))
-                self.screen.addstr(13, 2, "Anode Voltage: {0:.2f}V          ".format(self.sc.status['anode_voltage']))
-                self.screen.addstr(14, 2, "Anode Power: {0:.2f}W          ".format(self.sc.status['anode_power']))
+                self.screen.addstr(10, 2, "Filament bias: {0:.3f}V          ".format(self.sc.status['filament_bias']))
+                self.screen.addstr(11, 2, "Filament Current: {0:.2f}A          ".format(self.sc.status['filament_current']))
+                self.screen.addstr(12, 2, "Filament Power: {0:.2f}A          ".format(self.sc.status['filament_power']))
+                self.screen.addstr(13, 2, "Emission Current: {0:.4f}A          ".format(self.sc.status['emission_current']))
+                self.screen.addstr(14, 2, "Anode Voltage: {0:.2f}V          ".format(self.sc.status['anode_voltage']))
+                self.screen.addstr(15, 2, "Anode Power: {0:.2f}W          ".format(self.sc.status['anode_power']))
             except ValueError:
-                self.screen.addstr(9, 2, "Filament bias: -                   ")
-                self.screen.addstr(10, 2, "Filament Current: -                           ")
-                self.screen.addstr(11, 2, "Filament Power: -                           ")
-                self.screen.addstr(12, 2, "Emission Current: -                             ")
-                self.screen.addstr(13, 2, "Anode Voltage: -                          ")
-                self.screen.addstr(14, 2, "Anode Power: -                      ")
+                self.screen.addstr(10, 2, "Filament bias: -                   ")
+                self.screen.addstr(11, 2, "Filament Current: -                           ")
+                self.screen.addstr(12, 2, "Filament Power: -                           ")
+                self.screen.addstr(13, 2, "Emission Current: -                             ")
+                self.screen.addstr(14, 2, "Anode Voltage: -                          ")
+                self.screen.addstr(15, 2, "Anode Power: -                      ")
 
             #self.screen.addstr(16, 2, "Latest error message: " + self.sc.status['error'])
 
