@@ -33,16 +33,24 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(4, 2, "Degassing")
 
             if self.sc.status['remote']:
-                self.screen.addstr(5, 2, "Remote control")
+                self.screen.addstr(5, 2, "Control mode: Remote")
+            else:
+                self.screen.addstr(5, 2, "Control mode: Local")
 
             if self.sc.status['standby']:
-                self.screen.addstr(6, 2, "Device status: Standby  ")
+                self.screen.addstr(6, 2, "Device status, Standby: ON  ")
+            else:
+                self.screen.addstr(6, 2, "Device status, Standby: OFF  ")
                 
             if self.sc.status['hv']:
-                self.screen.addstr(7, 2, "Device status: HV on  ")
+                self.screen.addstr(7, 2, "Device status: HV ON  ")
+            else:
+                self.screen.addstr(7, 2, "Device status: HV OFF  ")
 
             if self.sc.status['operate']:
-                self.screen.addstr(8, 2, "Device status: Operate! ")
+                self.screen.addstr(8, 2, "Device status: Operate ON ")
+            else:
+                self.screen.addstr(8, 2, "Device status, Operate: OFF ")
             
             #if self.sc.status['error'] != None:
             #    self.screen.addstr(9, 2, "Error: " + str(self.sc.status['error']))
