@@ -383,7 +383,7 @@ class XRC1000(threading.Thread):
                 n+=1
                 time.sleep(5)
         return True
-    def turn_off():
+    def turn_off(self):
         self.update_status()
         if self.status['operate']:
             self.comm('UAON')
