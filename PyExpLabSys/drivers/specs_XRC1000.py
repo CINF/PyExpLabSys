@@ -43,13 +43,13 @@ class CursesTui(threading.Thread):
             if self.sc.status['operate']:
                 self.screen.addstr(8, 2, "Device status: Operate! ")
             
-            if self.sc.status['error'] != None:
-                self.screen.addstr(9, 2, "Error: " + str(self.sc.status['error']))
+            #if self.sc.status['error'] != None:
+            #    self.screen.addstr(9, 2, "Error: " + str(self.sc.status['error']))
 
             try:
                 self.screen.addstr(10, 2, "Filament bias: {0:.3f}V          ".format(self.sc.status['filament_bias']))
                 self.screen.addstr(11, 2, "Filament Current: {0:.2f}A          ".format(self.sc.status['filament_current']))
-                self.screen.addstr(12, 2, "Filament Power: {0:.2f}A          ".format(self.sc.status['filament_power']))
+                self.screen.addstr(12, 2, "Filament Power: {0:.2f}W          ".format(self.sc.status['filament_power']))
                 self.screen.addstr(13, 2, "Emission Current: {0:.4f}A          ".format(self.sc.status['emission_current']))
                 self.screen.addstr(14, 2, "Anode Voltage: {0:.2f}V          ".format(self.sc.status['anode_voltage']))
                 self.screen.addstr(15, 2, "Anode Power: {0:.2f}W          ".format(self.sc.status['anode_power']))
@@ -60,11 +60,12 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(13, 2, "Emission Current: -                             ")
                 self.screen.addstr(14, 2, "Anode Voltage: -                          ")
                 self.screen.addstr(15, 2, "Anode Power: -                      ")
-
-            #self.screen.addstr(16, 2, "Latest error message: " + self.sc.status['error'])
+            if self.sc.status['error'] != None:
+                self.screen.addstr(16, 2, "Latest error message: " + self.sc.status['error'])
 
             self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
-            self.screen.addstr(19, 2, 'q: quit, s: standby, o: operate, c: cooling, x: shutdown, 3: shutdown in 3 hours')
+            self.screen.addstr(19, 2, 'q: quit, s: standby, o: operate, c: cooling, x: shutdown')
+            self.screen.addstr(20, 2, '3: shutdown in 10min')
 
             n = self.screen.getch()
             if n == ord('q'):
@@ -79,7 +80,7 @@ class CursesTui(threading.Thread):
                 self.sc.goto_off = True
             elif n == ord('3'):
                 self.countdown = True
-                self.countdown_end_time = time.time() + 3*3600 # second
+                self.countdown_end_time = time.time() + 10*60 # second
             
             if self.countdown:
                 self.screen.addstr(18, 2, "Time until shutdown: {0:.0f}s       ".format(self.countdown_end_time -time.time()))
