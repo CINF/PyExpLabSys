@@ -64,23 +64,30 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(16, 2, "Latest error message: " + str(self.sc.status['error']))
 
             self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
-            self.screen.addstr(19, 2, 'q: quit, s: standby, o: operate, c: cooling, x: shutdown')
-            self.screen.addstr(20, 2, '3: shutdown in 10min')
+            self.screen.addstr(19, 2, 'q: quit program, s: standby, o: operate, c: cooling, x: shutdown gun')
+            self.screen.addstr(20, 2, ' 3: shutdown in 10min')
+            self.screen.addstr(22, 2, ' Latest key: ' + str(nn))
 
             n = self.screen.getch()
             if n == ord('q'):
                 self.sc.running = False
+                nn = n
             elif n == ord('s'):
                 self.sc.goto_standby = True
+                nn = n
             elif n == ord('o'):
                 self.sc.goto_operate = True
+                nn = n
             elif n == ord('c'):
                 self.sc.cooling = True
+                nn = n
             elif n == ord('x'):
                 self.sc.goto_off = True
+                nn = n
             elif n == ord('3'):
                 self.countdown = True
                 self.countdown_end_time = time.time() + 10*60 # second
+                nn = n
             
             if self.countdown:
                 self.screen.addstr(18, 2, "Time until shutdown: {0:.0f}s       ".format(self.countdown_end_time -time.time()))
@@ -339,13 +346,33 @@ class XRC1000(threading.Thread):
             
         if reply[2:4] == '00':
             self.status['off'] = True
+            self.status['cooling'] = False
+            self.status['standby'] = False
+            self.status['hv'] = False
+            self.status['operate'] = False
         if reply[2:4] == '01':
+            self.status['off'] = False
             self.status['cooling'] = True
+            self.status['standby'] = False
+            self.status['hv'] = False
+            self.status['operate'] = False
         if reply[2:4] == '02':
+            self.status['off'] = False
+            self.status['cooling'] = False
             self.status['standby'] = True
+            self.status['hv'] = False
+            self.status['operate'] = False
         if reply[2:4] == '03':
+            self.status['off'] = False
+            self.status['cooling'] = False
+            self.status['standby'] = False
             self.status['hv'] = True
+            self.status['operate'] = False
         if reply[2:4] == '04':
+            self.status['off'] = False
+            self.status['cooling'] = False
+            self.status['standby'] = False
+            self.status['hv'] = False
             self.status['operate'] = True
         
         if reply[4:6] == '00':
@@ -354,6 +381,9 @@ class XRC1000(threading.Thread):
             self.status['error'] = reply[4:5]
             #error_bin = bin(int(reply[4:5]))
             #if error_bin[0:1] == ''
+    def interlocks(self):
+        self.status['interlocks'] = {'Failure':True,'HVLock':True,'Vacuum':True,'Water':True,'ERR_ILIM':True,'ERR_TOUT':True}
+        
             
     
     def automated_operate(self):
