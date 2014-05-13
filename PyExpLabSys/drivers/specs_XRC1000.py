@@ -104,7 +104,7 @@ class CursesTui(threading.Thread):
                 self.last_key = n
             elif n == ord('3'):
                 self.countdown = True
-                self.countdown_end_time = time.time() + 3*3600 # second
+                self.countdown_end_time = float(time.time() + 3*3600.0) # second
                 self.last_key = n
             
             # disable s o key
