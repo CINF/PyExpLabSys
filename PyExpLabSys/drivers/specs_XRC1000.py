@@ -24,9 +24,10 @@ class CursesTui(threading.Thread):
         self.time = time.time()
         self.countdown = False
         self.last_key = None
+        self.running = True
 
     def run(self):
-        while True:
+        while self.running:
             self.screen.addstr(3, 2, 'X-ray Source Control, ID:  ' + str(self.sc.status['ID']))
 
             if self.sc.status['degas']:
@@ -80,6 +81,7 @@ class CursesTui(threading.Thread):
             n = self.screen.getch()
             if n == ord('q'):
                 self.sc.running = False
+                self.running = False
                 self.last_key = n
             elif n == ord('s'):
                 self.sc.goto_standby = True
@@ -111,6 +113,8 @@ class CursesTui(threading.Thread):
 
             self.screen.refresh()
             time.sleep(1)
+        time.sleep(5)
+        self.stop()
 
     def stop(self):
         """ Cleanup the terminal """
