@@ -447,20 +447,20 @@ if __name__ == '__main__':
     #for command in command_list:
     #    print(str(command) + ' : ' + str(sc.direct_comm(command)))
 
-    #sc.start()
+    sc.start()
 
-    #tui = CursesTui(sc)
-    #tui.daemon = True
-    #tui.start()
+    tui = CursesTui(sc)
+    tui.daemon = True
+    tui.start()
 
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
     #print('Sputter current: ' + str(sputter.read_sputter_current()))
     #print('Temperature: ' + str(sputter.read_temperature_energy_module()))
-    print('Filament voltage: ' + str(sc.read_filament_voltage()))
-    print('Filament current: ' + str(sc.read_filament_current()))
-    print('Emission current: ' + str(sc.read_emission_current()) + 'A')
-    print('Anode voltage: ' + str(sc.read_anode_voltage()))
-    print('Anode power: ' + str(sc.read_anode_power()) + 'W')
+    #print('Filament voltage: ' + str(sc.read_filament_voltage()))
+    #print('Filament current: ' + str(sc.read_filament_current()))
+    #print('Emission current: ' + str(sc.read_emission_current()) + 'A')
+    #print('Anode voltage: ' + str(sc.read_anode_voltage()))
+    #print('Anode power: ' + str(sc.read_anode_power()) + 'W')
 
     #sputter.update_status()
     #print('Enable:')
