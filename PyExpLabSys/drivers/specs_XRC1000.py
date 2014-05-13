@@ -97,7 +97,7 @@ class CursesTui(threading.Thread):
                 self.last_key = n
             elif n == ord('3'):
                 self.countdown = True
-                self.countdown_end_time = time.time() + 10*60 # second
+                self.countdown_end_time = time.time() + 3*3600 # second
                 self.last_key = n
             
             if self.countdown:
