@@ -27,7 +27,7 @@ class CursesTui(threading.Thread):
 
     def run(self):
         while True:
-            self.screen.addstr(3, 2, 'X-ray Source Control')
+            self.screen.addstr(3, 2, 'X-ray Source Control, ID:  ' + str(self.sc.status['ID']))
 
             if self.sc.status['degas']:
                 self.screen.addstr(4, 2, "Degassing")
@@ -140,6 +140,7 @@ class XRC1000(threading.Thread):
         self.status['emission_current'] = None
         self.status['anode_voltage'] = None
         self.status['anode_power'] = None
+        self.status['ID'] = None
         self.running = True
         self.goto_standby = False
         self.goto_operate = False
@@ -160,7 +161,8 @@ class XRC1000(threading.Thread):
         self.f = serial.Serial('/dev/ttyUSB0', 9600, timeout=0.25)
         #baud: 9600, bits: 8, parity: None
         return_string = self.comm('SERNO?')
-        if return_string == '000003AADEBD28':
+        self.status['ID'] = return_string
+        if self.status['ID'] == '000003AADEBD28':
             pass
         else:
             print('Error SERIAL Number: ' + return_string)
