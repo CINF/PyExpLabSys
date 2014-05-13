@@ -312,6 +312,7 @@ class XRC1000(threading.Thread):
         :return: The direct reply from the device
         :rtype: str
         """
+        self.direct_comm('ANO 2')
         reply = self.comm('STAN')
         time.sleep(1)
         self.update_status()
@@ -323,6 +324,7 @@ class XRC1000(threading.Thread):
         :return: The direct reply from the device
         :rtype: str
         """
+        self.direct_comm('ANO 2')
         reply = self.comm('OPE')
         time.sleep(1)
         self.update_status()
