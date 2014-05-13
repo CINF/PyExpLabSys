@@ -393,7 +393,7 @@ class XRC1000(threading.Thread):
             self.comm('STAN')
             time.sleep(2)
             self.update_status()
-        if self.status['STAN']:
+        if self.status['standby']:
             self.comm('OFF')
             self.update_status()
         # Update key parameters
