@@ -332,23 +332,23 @@ class XRC1000(threading.Thread):
         
     def get_status(self):
         reply = self.comm('STAT?')
-        if reply[0:1] == '00':
+        if reply[0:2] == '00':
             self.status['remote'] = False
-        if reply[0:1] == '02':
+        if reply[0:2] == '02':
             self.status['remote'] = True
             
-        if reply[2:3] == '00':
+        if reply[2:4] == '00':
             self.status['off'] = True
-        if reply[2:3] == '01':
+        if reply[2:4] == '01':
             self.status['cooling'] = True
-        if reply[2:3] == '02':
+        if reply[2:4] == '02':
             self.status['standby'] = True
-        if reply[2:3] == '03':
+        if reply[2:4] == '03':
             self.status['hv'] = True
-        if reply[2:3] == '04':
+        if reply[2:4] == '04':
             self.status['operate'] = True
         
-        if reply[4:5] == '00':
+        if reply[4:6] == '00':
             self.status['error'] = False
         else:
             self.status['error'] = reply[4:5]
