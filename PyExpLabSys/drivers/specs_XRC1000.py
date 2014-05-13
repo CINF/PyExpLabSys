@@ -23,6 +23,7 @@ class CursesTui(threading.Thread):
         self.screen.nodelay(1)
         self.time = time.time()
         self.countdown = False
+        nn = None
 
     def run(self):
         while True:
