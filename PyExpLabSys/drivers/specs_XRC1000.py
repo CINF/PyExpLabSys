@@ -389,7 +389,7 @@ class XRC1000(threading.Thread):
             self.comm('UAON')
             time.sleep(2)
             self.update_status()
-        if :
+        if self.status['hv']:
             self.comm('STAN')
             time.sleep(2)
             self.update_status()
