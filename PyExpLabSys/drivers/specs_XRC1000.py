@@ -89,23 +89,23 @@ class CursesTui(threading.Thread):
             if n == ord('q'):
                 self.sc.running = False
                 self.running = False
-                self.last_key = n
+                self.last_key = chr(n)
             elif n == ord('s'):
                 self.sc.goto_standby = True
-                self.last_key = n
+                self.last_key = chr(n)
             elif n == ord('o'):
                 self.sc.goto_operate = True
-                self.last_key = n
+                self.last_key = chr(n)
             elif n == ord('c'):
                 self.sc.cooling = True
-                self.last_key = n
+                self.last_key = chr(n)
             elif n == ord('x'):
                 self.sc.goto_off = True
-                self.last_key = n
+                self.last_key = chr(n)
             elif n == ord('3'):
                 self.countdown = True
                 self.countdown_end_time = float(time.time() + 3*3600.0) # second
-                self.last_key = n
+                self.last_key = chr(n)
             
             # disable s o key
             #if n == ord('s'):
