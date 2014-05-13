@@ -168,6 +168,11 @@ class XRC1000(threading.Thread):
             print(len('SERNO:000003AADEBD28\n>'))
             for el in return_string:
                 print(ord(el))
+        self.get_status()
+        if self.status['remote'] == False:
+            self.remote_enable()
+        self.get_status()
+            
 
     def comm(self, command):
         """ Communication with the instrument
