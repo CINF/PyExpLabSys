@@ -97,7 +97,7 @@ class CursesTui(threading.Thread):
                 self.sc.goto_operate = True
                 self.last_key = chr(n)
             elif n == ord('c'):
-                self.sc.cooling = True
+                self.sc.goto_cooling = True
                 self.last_key = chr(n)
             elif n == ord('x'):
                 self.sc.goto_off = True
@@ -365,6 +365,16 @@ class XRC1000(threading.Thread):
         self.update_status()
         return(reply)
         
+    def cooling(self):
+        """ Enable or disable water cooling
+        :type local: Boolean
+        :return: The direct reply from the device
+        :rtype: str
+        """
+        reply = self.comm('COOL')
+        self.update_status()
+        return(reply)
+        
     def get_status(self):
         reply = self.comm('STAT?')
         if reply[0:2] == '00':
@@ -492,6 +502,10 @@ class XRC1000(threading.Thread):
             if self.goto_off:
                 self.turn_off()
                 self.goto_off = False
+            if self.goto_cooling:
+                self.cooling()
+                self.goto_cooling = False
+                
 
 
 
