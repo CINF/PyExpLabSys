@@ -102,6 +102,9 @@ class CursesTui(threading.Thread):
             elif n == ord('x'):
                 self.sc.goto_off = True
                 self.last_key = chr(n)
+            elif n == ord('r'):
+                self.sc.goto_remote = True
+                self.last_key = chr(n)
             elif n == ord('3'):
                 self.countdown = True
                 self.countdown_end_time = float(time.time() + 3*3600.0) # second
@@ -160,6 +163,7 @@ class XRC1000(threading.Thread):
         self.goto_operate = False
         self.goto_off = False
         self.goto_cooling = False
+        self.goto_remote = False
         self.simulate = False
         #self.update_status()
         self.list_of_errors = []
@@ -506,6 +510,9 @@ class XRC1000(threading.Thread):
             if self.goto_cooling:
                 self.cooling()
                 self.goto_cooling = False
+            if self.goto_remote:
+                self.remote_enable()
+                self.goto_remote = False
                 
 
 
