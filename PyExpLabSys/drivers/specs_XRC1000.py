@@ -81,7 +81,7 @@ class CursesTui(threading.Thread):
                     self.countdown = False
             
             self.screen.addstr(20, 2, 'q: quit program, s: standby, o: operate, c: cooling, x: shutdown gun')
-            self.screen.addstr(21, 2, ' 3: shutdown in 3h')
+            self.screen.addstr(21, 2, ' 3: shutdown in 3h, r: change to remote')
             
             self.screen.addstr(23, 2, ' Latest key: ' + str(self.last_key))
 
@@ -369,6 +369,20 @@ class XRC1000(threading.Thread):
         time.sleep(1)
         self.update_status()
         return(reply)
+    def change_control(self):#need testing
+        """ Enable or disable remote mode
+        :param local: If True the device is set to local, otherwise to remote
+        :type local: Boolean
+        :return: The direct reply from the device
+        :rtype: str
+        """
+        if self.status['remote']:
+            reply = self.comm('LOC')
+        else:
+            reply = self.comm('REM')
+        time.sleep(1)
+        self.update_status()
+        return(reply)
         
     def cooling(self):
         """ Enable or disable water cooling
@@ -511,7 +525,7 @@ class XRC1000(threading.Thread):
                 self.cooling()
                 self.goto_cooling = False
             if self.goto_remote:
-                self.remote_enable()
+                self.remote_enable(local=self.status['remote'])
                 self.goto_remote = False
                 
 
