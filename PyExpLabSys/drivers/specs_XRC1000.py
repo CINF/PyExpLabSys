@@ -24,9 +24,10 @@ class CursesTui(threading.Thread):
         self.time = time.time()
         self.countdown = False
         self.last_key = None
+        self.running = True
 
     def run(self):
-        while True:
+        while self.running:
             self.screen.addstr(3, 2, 'X-ray Source Control, ID:  ' + str(self.sc.status['ID']))
 
             if self.sc.status['degas']:
@@ -73,36 +74,39 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(16, 2, "Latest error message: " + str(self.sc.status['error']))
 
             self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
-            self.screen.addstr(19, 2, 'q: quit program, s: standby, o: operate, c: cooling, x: shutdown gun')
-            self.screen.addstr(20, 2, ' 3: shutdown in 10min')
-            self.screen.addstr(22, 2, ' Latest key: ' + str(self.last_key))
-
-            n = self.screen.getch()
-            if n == ord('q'):
-                self.sc.running = False
-                self.last_key = n
-            elif n == ord('s'):
-                self.sc.goto_standby = True
-                self.last_key = n
-            elif n == ord('o'):
-                self.sc.goto_operate = True
-                self.last_key = n
-            elif n == ord('c'):
-                self.sc.cooling = True
-                self.last_key = n
-            elif n == ord('x'):
-                self.sc.goto_off = True
-                self.last_key = n
-            elif n == ord('3'):
-                self.countdown = True
-                self.countdown_end_time = time.time() + 10*60 # second
-                self.last_key = n
-            
             if self.countdown:
                 self.screen.addstr(18, 2, "Time until shutdown: {0:.0f}s       ".format(self.countdown_end_time -time.time()))
                 if time.time() > self.countdown_end_time:
                     self.sc.goto_off = True
                     self.countdown = False
+            
+            self.screen.addstr(20, 2, 'q: quit program, s: standby, o: operate, c: cooling, x: shutdown gun')
+            self.screen.addstr(21, 2, ' 3: shutdown in 3h')
+            
+            self.screen.addstr(23, 2, ' Latest key: ' + str(self.last_key))
+
+            n = self.screen.getch()
+            if n == ord('q'):
+                self.sc.running = False
+                self.running = False
+                self.last_key = chr(n)
+            elif n == ord('s'):
+                self.sc.goto_standby = True
+                self.last_key = chr(n)
+            elif n == ord('o'):
+                self.sc.goto_operate = True
+                self.last_key = chr(n)
+            elif n == ord('c'):
+                self.sc.cooling = True
+                self.last_key = chr(n)
+            elif n == ord('x'):
+                self.sc.goto_off = True
+                self.last_key = chr(n)
+            elif n == ord('3'):
+                self.countdown = True
+                self.countdown_end_time = float(time.time() + 3*3600.0) # second
+                self.last_key = chr(n)
+            
             # disable s o key
             #if n == ord('s'):
             #    self.sc.goto_standby = True
@@ -111,6 +115,8 @@ class CursesTui(threading.Thread):
 
             self.screen.refresh()
             time.sleep(1)
+        time.sleep(5)
+        self.stop()
 
     def stop(self):
         """ Cleanup the terminal """
