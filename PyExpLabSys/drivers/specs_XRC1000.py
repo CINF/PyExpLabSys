@@ -406,7 +406,7 @@ class XRC1000(threading.Thread):
         if reply[4:6] == '00':
             self.status['error'] = False
         else:
-            self.status['error'] = reply[4:5]
+            self.status['error'] = reply[4:6]
             #error_bin = bin(int(reply[4:5]))
             #if error_bin[0:1] == ''
     def interlocks(self):
