@@ -71,7 +71,7 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(14, 2, "Anode Voltage: -                          ")
                 self.screen.addstr(15, 2, "Anode Power: -                      ")
             if self.sc.status['error'] != None:
-                self.screen.addstr(16, 2, "Latest error message: " + str(self.sc.status['error']))
+                self.screen.addstr(16, 2, "Latest error message: " + str(self.sc.status['error'] + ' at time: ' + str(self.sc.status['error time'])))
 
             self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
             if self.countdown:
@@ -140,7 +140,6 @@ class XRC1000(threading.Thread):
         """
         threading.Thread.__init__(self)
 
-        
         self.status = {}  # Hold parameters to be accecible by gui
         self.status['hv'] = None
         self.status['standby'] = None
@@ -148,6 +147,8 @@ class XRC1000(threading.Thread):
         self.status['degas'] = None
         self.status['remote'] = None
         self.status['error'] = None
+        self.status['error time'] = None
+        self.status['start time'] = time.time()
         self.status['cooling'] = None
         self.status['off'] = None
         self.status['sputter_current'] = None
@@ -435,6 +436,8 @@ class XRC1000(threading.Thread):
         if reply[4:6] == '00':
             self.status['error'] = False
         else:
+            if self.status['error'] == False:
+                self.status['error time'] = time.time() - self.status['start time']
             self.status['error'] = reply[4:6]
             #error_bin = bin(int(reply[4:5]))
             #if error_bin[0:1] == ''
