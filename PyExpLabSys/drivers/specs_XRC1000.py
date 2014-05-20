@@ -71,7 +71,7 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(14, 2, "Anode Voltage: -                          ")
                 self.screen.addstr(15, 2, "Anode Power: -                      ")
             if self.sc.status['error'] != None:
-                self.screen.addstr(16, 2, "Latest error message: " + str(self.sc.status['error'] + ' at time: ' + str(self.sc.status['error time'])))
+                self.screen.addstr(16, 2, "Latest error message: " + str(self.sc.status['error']) + " at time: " + str(self.sc.status['error time']))
 
             self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
             if self.countdown:
