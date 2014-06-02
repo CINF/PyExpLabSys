@@ -23,7 +23,7 @@ class qmg_422():
         """ Initialize the module
         """
         # TODO: Take communication parameters as argument
-        self.f = serial.Serial('/dev/ttyUSB0',19200)
+        self.f = serial.Serial('/dev/ttyUSB0', 19200, timeout=1.0)
         self.type = '422'
 
     def comm(self, command):
@@ -38,49 +38,62 @@ class qmg_422():
         :return: The reply associated with the last command
         :rtype: str
         """
-        t = time.time()
-        logging.debug("Command in progress: " + command)
+        done = False
+        iterations = 0
+        while not done:
+            iterations += 1
+            t = time.time()
+            logging.debug("Command in progress: " + command)
 
-        n = self.f.inWaiting()
-
-        if n>0: #Skip characters that are currently waiting in line
-            debug_info = self.f.read(n)
-            logging.debug("Elements not read: " + str(n) + ": Contains: " + debug_info)
-            
-        ret = " "
-
-        error_counter = 0
-        while not ret[0] == chr(6):
-            error_counter += 1
-            self.f.write(command + '\r')
-            ret = self.f.readline()
-            logging.debug("Debug: Error counter: " + str(error_counter))
-            logging.debug("Debug! In waiting: " + str(n))
-
-            if error_counter == 3:
-                logging.warning("Communication error: " + str(error_counter))
-            if error_counter == 10:
-                logging.error("Communication error: " + str(error_counter))
-            if error_counter > 50:
-                logging.error("Communication error! Quit program!")
-                quit()
-                
-        #We are now quite sure the instrument is ready to give back data        
-        self.f.write(chr(5))
-        ret = self.f.readline()
-
-        logging.debug("Number in waiting after enq: " + str(n))
-        logging.debug("Return value after enq:" + ret)
-        logging.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
-        
-        if (ret[-1] == chr(10)) or (ret[-1] == chr(13)):
-           ret_string = ret.strip()
-        else:
-            logging.info("Wrong line termination")
-            self.f.write(chr(5))
-            time.sleep(0.05)
             n = self.f.inWaiting()
-            ret = self.f.read(n)
+
+            if n>0: #Skip characters that are currently waiting in line
+                debug_info = self.f.read(n)
+                logging.debug("Elements not read: " + str(n) + ": Contains: " + debug_info)
+            
+            ret = " "
+
+            error_counter = 0
+            while not ret[0] == chr(6):
+                error_counter += 1
+                self.f.write(command + '\r')
+                ret = self.f.readline()
+                logging.debug("Debug: Error counter: " + str(error_counter))
+                logging.debug("Debug! In waiting: " + str(n))
+
+                if error_counter == 3:
+                    logging.warning("Communication error: " + str(error_counter))
+                if error_counter == 10:
+                    logging.error("Communication error: " + str(error_counter))
+                if error_counter > 50:
+                    logging.error("Communication error! Quit program!")
+                    quit()
+
+            #We are now quite sure the instrument is ready to give back data        
+            self.f.write(chr(5))
+            ret = self.f.readline()
+
+            logging.debug("Number in waiting after enq: " + str(n))
+            logging.debug("Return value after enq:" + ret)
+            logging.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
+            if (iterations > 1) and (iterations < 1000):
+                logging.info(iterations)
+            if (ret[-1] == chr(10)) or (ret[-1] == chr(13)):
+                ret_string = ret.strip()
+                done = True
+            else:
+                logging.basicConfig(filename="qms_debug.txt", level=logging.DEBUG,format='%(asctime)s %(message)s')
+                logging.info("Wrong line termination")
+                logging.info("Ascii value of last char in ret: " + str(ord(ret[-1])))
+                logging.info('Value of string: ' + ret)
+                time.sleep(0.5)
+                self.f.write(chr(5))
+                ret = self.f.readline()
+                ret_string = ret.strip()
+                logging.info("Ascii value of last char in ret: " + str(ord(ret[-1])))
+                logging.info('Value of string: ' + ret)
+                logging.info('Returning: ' + ret_string)
+                done = True
         return ret_string
 
 
@@ -249,15 +262,22 @@ class qmg_422():
 
     def get_single_sample(self):
         samples = 0
+        n = 0
         while samples == 0:
             status = self.comm('MBH')
+            logging.info(status)
             status = status.split(',')
             try:
                 samples = int(status[3])
             except:
                 logging.warn('Could not read status, continuing measurement')
-            time.sleep(0.05)
-        value = self.comm('MDB')
+            #time.sleep(0.05)
+            time.sleep(0.2) # CHANGE BACK!!!!!!!!!
+        try:
+            value = self.comm('MDB')
+        except:
+            logging.error('Error in MDB command')
+            value = -1
         return value
 
     def get_multiple_samples(self, number):
@@ -305,8 +325,8 @@ class qmg_422():
         self.comm('CYM, 0') #0, single. 1, multi
         self.comm('SMC, 0') #Channel 0
         self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST ,0') #Steps
-        self.comm('MSD ,10') #Speed
+        self.comm('MST ,2') #Steps
+        self.comm('MSD ,12') #Speed
         self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
