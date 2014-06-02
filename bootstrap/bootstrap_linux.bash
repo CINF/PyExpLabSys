@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 # NOTE pip is placed here, because right now it pulls in python2.6, which
 # I prefer is complete before installing python packages
-apt1="openssh-server emacs python-pip graphviz"
+apt1="openssh-server emacs python-pip graphviz screen"
 
 # apt install packages line 2, python extensions
 apt2="python-mysqldb python-serial"
@@ -53,7 +53,8 @@ bash        Edit PATH and PYTHONPATH in .bashrc to make PyExpLabSys scripts
 git         Add common git aliases
 install     Install commonly used packages e.g openssh-server
 pip         Install extra Python packages with pip
-pycheckers  Install Python code style checkers and hook them up to emacs
+pycheckers  Install Python code style checkers and hook them up to emacs and
+            geany (if geany is already installed)
 
 all         All of the above
 "
@@ -145,11 +146,11 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     sudo apt-get dist-upgrade
     echoblue "---> Installing packages"
     echoblue "----> Install: $apt1"
-    sudo apt-get install $apt1
+    sudo apt-get -y install $apt1
     echoblue "----> Install: $apt2"
-    sudo apt-get install $apt2
+    sudo apt-get -y install $apt2
     echoblue "----> Install: $apt3"
-    sudo apt-get install $apt3
+    sudo apt-get -y install $apt3
     echoblue "---> Remove un-needed packages, if any"
     sudo apt-get autoremove
     echoblue "---> Clear apt cache"
@@ -173,13 +174,22 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
 fi
 
 if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
-    echobold "===> SETTINGS UP CODE STYLE CHECKERS FOR EMACS"
+    echobold "===> SETTINGS UP CODE STYLE CHECKERS FOR EMACS AND GEANY"
     echoblue "---> Make ~/.emacs.d/lisp dir"
     mkdir -p ~/.emacs.d/lisp
     echoblue "---> Copy flymake-cursor.el to ~/.emacs.d/lisp dir"
     cp ~/PyExpLabSys/bootstrap/flymake-cursor.el ~/.emacs.d/lisp/
     echoblue "---> Copy .emacs to ~/.emacs.d/lisp dir"
     cp ~/PyExpLabSys/bootstrap/.emacs ~/
+    # Hook geany up with pychecker, but only if geany is already installed
+    if [ -d  ~/.config/geany/filedefs ]; then
+	echoblue "---> Copy geany filedefs (actions for files) to ~/.config/geany/filedefs"
+	cp ~/PyExpLabSys/bootstrap/filetypes.common ~/.config/geany/filedefs/
+	cp ~/PyExpLabSys/bootstrap/filetypes.python ~/.config/geany/filedefs/
+    else
+	echobad "pycheckers configuration for geany NOT installed. First install "
+	echobad "geany and then rerun pycheckers step"
+    fi
     echogood "+++++> DONE"
 fi
 
@@ -187,8 +197,8 @@ fi
 if [ $reset_bash == "YES" ];then
     echo
     echobold "##> NOTE! ~/PyExpLabSys/bin has been added to PATH, which means"
-    echobold "##> that the user specific rgit and kgit commands (for Robert"
-    echobold "##> and Kenneth) can be used."
+    echobold "##> that the user specific rgit, kgit and agit commands (for "
+    echobold "##> Robert, Kenneth and Anders) can be used."
     echobold "##>"
     echobold "##> NOTE! Your bash environment has been modified."
     echobold "##> Run: \"source ~/.bashrc\" to make the changes take effect."

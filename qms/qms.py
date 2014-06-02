@@ -13,6 +13,7 @@ import SQL_saver
 
 import qmg_status_output
 import qmg_meta_channels
+#import read_ms_channel_list
 
 #import qmg420
 import  qmg422
@@ -109,6 +110,61 @@ class qms():
         cnxn.close()
         return(id_number)
 
+
+    def read_ms_channel_list(self, filename='channel_list.txt'):
+        channel_list = {}
+        channel_list['ms'] = {}
+        channel_list['meta'] = {}
+
+        f = open(filename, 'r')
+        datafile = f.read()
+        lines = datafile.split('\n')
+
+        data_lines = []
+        for line in lines:
+            if (len(line) > 0) and (not line[0] == '#'):
+                data_lines.append(line)
+
+        ms = 1
+        meta = 1
+        for line in data_lines:
+            items = line.split(':')
+            key = items[0].lower().strip()
+            if  key == 'comment':
+                comment = items[1].strip()
+
+            if key == 'autorange':
+                autorange = items[1].lower().strip() == 'yes'
+
+            if key == 'ms_channel':
+                params = items[1].split(',')
+                for j in range(0,len(params)):
+                    params[j] = params[j].strip()
+                label = params[params.index('masslabel')+1]
+                speed = int(params[params.index('speed')+1])
+                mass = params[params.index('mass')+1]
+                amp_range = params[params.index('amp_range')+1]
+                channel_list['ms'][ms] = {'masslabel':label, 'speed':speed,'mass':mass,'amp_range':amp_range}
+                ms += 1
+
+            if key == 'meta_channel':
+                params = items[1].split(',')
+                for j in range(0,len(params)):
+                    params[j] = params[j].strip()
+                host = params[params.index('host')+1]
+                port = int(params[params.index('port')+1])
+                label = params[params.index('label')+1]
+                command = params[params.index('command')+1]
+                channel_list['meta'][meta] = {'host':host, 'port':port,'label':label,'command':command}
+                meta += 1
+
+        #TODO: The channel list format should be changed so that the general
+        #      parameters are in a third dictionary key
+        channel_list['ms'][0] = {'comment':comment, 'autorange':autorange}
+
+        return channel_list
+
+
     def create_ms_channellist(self, channel_list, timestamp, no_save=False):
         """ This function creates the channel-list and the associated mysql-entries """
         #TODO: Implement various ways of creating the channel-list
@@ -158,7 +214,7 @@ class qms():
                 autorange_complete = False
                 while not autorange_complete:
                     for i in range(1, ns+1):
-                        value = qmg.get_single_sample()
+                        value = self.qmg.get_single_sample()
                         #logging.info(value)
                         try:
                             value = float(value)
@@ -209,7 +265,6 @@ class qms():
                 time.sleep(0.25)
             time.sleep(0.1)
         self.operating_mode = "Idling"
-        
 
     def mass_scan(self, first_mass=0, scan_width=50, comment='Mass-scan'):
         start_time = time.time()
@@ -256,10 +311,12 @@ class qms():
             self.measurement_runtime = time.time()-start_time
             time.sleep(0.1)
         time.sleep(0.5)
-        
+ 
 if __name__ == "__main__":
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+
     sql_queue = Queue.Queue()
-    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactorNG')
+    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
     sql_saver.daemon = True
     sql_saver.start()
 
@@ -267,29 +324,18 @@ if __name__ == "__main__":
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
+
     #printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     #printer.daemon = True
     #printer.start()
     #qms.mass_scan(0,50,comment = 'Optimizing H2-peak')
-
     
     time.sleep(1)
-    
-    channel_list = {}
-    channel_list[0] = {'comment':'HD-exchange Pt 7 nm N8, const. temp. 30C-50C','autorange':True}
-    #channel_list[0] = {'comment':'DELETE','autorange':False}
-    channel_list[1] = {'mass':2.2,'speed':10, 'amp_range':6, 'masslabel':'M2'}
-    channel_list[2] = {'mass':3.14,'speed':10, 'amp_range':6, 'masslabel':'M3'}
-    channel_list[3] = {'mass':4.13,'speed':10, 'amp_range':6, 'masslabel':'M4'}
-    channel_list[4] = {'mass':18,'speed':10, 'amp_range':6, 'masslabel':'M18'}
-    channel_list[5] = {'mass':19,'speed':10, 'amp_range':6, 'masslabel':'M19'}
-    channel_list[5] = {'mass':20,'speed':10, 'amp_range':6, 'masslabel':'M20'}
-    channel_list[6] = {'mass':28,'speed':10, 'amp_range':5, 'masslabel':'M28'}
-    channel_list[7] = {'mass':32,'speed':10, 'amp_range':6, 'masslabel':'M32'}
-    channel_list[8] = {'mass':40,'speed':10, 'amp_range':6, 'masslabel':'M40'}
-    channel_list[9] = {'mass':44,'speed':10, 'amp_range':6, 'masslabel':'M44'}
 
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    channel_list = qms.read_ms_channel_list('channel_list.txt')
+    printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
+    printer.daemon = True
+    printer.start()
 
     #meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list[0]['comment'], 5)
     #meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
@@ -309,4 +355,14 @@ if __name__ == "__main__":
      
     print qms.mass_time(channel_list, timestamp)
     
+    #print channel_list
+    #qms.mass_scan(0, 50, comment = 'Test scan - qgm422')
+    qms.mass_time(channel_list['ms'], timestamp)
+
+    time.sleep(1)
     printer.stop()
+
+    #print qmg.read_voltages()
+    #print qmg.sem_status(voltage=2200, turn_on=True)
+    #print qmg.emission_status(current=0.1,turn_on=True)
+    #print qmg.qms_status()

@@ -4,6 +4,7 @@ import time
 from PyExpLabSys.drivers.pfeiffer import TPG262
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.sockets import LiveSocket
 import credentials
 
 
@@ -26,6 +27,9 @@ def main():
     db_logger.start()
     LOGGER.info('Initiated and started database logger')
 
+    livesocket = LiveSocket(codenames, 0.2)
+    livesocket.start()
+
     loadlock_last = {'value': 1E20, 'time': 0}
     uvgun_last = {'value': 1E20, 'time': 0}
 
@@ -35,6 +39,8 @@ def main():
             # (value1, (status_code1, status_message1),
             # value2, (status_code2, status_message2))
             value_ll, code_ll, value_uv, code_uv = tpg.pressure_gauges()
+            livesocket.set_point_now('thetaprobe_pressure_loadlock', value_ll)
+            livesocket.set_point_now('thetaprobe_pressure_uvgun', value_uv)
 
             ### Load lock
             if code_ll[0] in [0, 1]:  # If measurement is OK or underranged
@@ -58,6 +64,7 @@ def main():
     except KeyboardInterrupt:
         LOGGER.info('Keyboard interrupt. Shutting down')
         db_logger.stop()
+        livesocket.stop()
         LOGGER.info('Database logger stoppped. Exiting!')
 
 

@@ -13,8 +13,11 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket = self.request[1]
 
         if recieved_data[0:12] == "set_setpoint":
-            val = int(float(recieved_data[12:].strip()))
-            success = chiller.set_setpoint(val)
+            try:
+                val = int(float(recieved_data[12:].strip()))
+                success = chiller.set_setpoint(val)
+            except:
+                data = 'failed'
             time.sleep(0.5)
             if success:
                 data = "ok"
