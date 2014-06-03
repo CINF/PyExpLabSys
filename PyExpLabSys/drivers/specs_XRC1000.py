@@ -334,7 +334,7 @@ class XRC1000(threading.Thread):
         :return: The direct reply from the device
         :rtype: str
         """
-        self.direct_comm('ANO 2')
+        #self.direct_comm('ANO 2')
         reply = self.comm('STAN')
         time.sleep(1)
         self.update_status()
@@ -346,8 +346,8 @@ class XRC1000(threading.Thread):
         :return: The direct reply from the device
         :rtype: str
         """
-        self.comm('ANO 2')
-        time.sleep(1)
+        #self.comm('ANO 2')
+        #time.sleep(1)
         self.comm('UAN 12e3')
         time.sleep(1)
         self.comm('IEM 20e-3')
@@ -447,7 +447,7 @@ class XRC1000(threading.Thread):
             
     
     def automated_operate(self):
-        self.direct_comm('ANO 2')
+        self.direct_comm('ANO 1')
         self.direct_comm('STAN')
         self.direct_comm('UAON')
         self.direct_comm('UAN 12e3') # 12kV
