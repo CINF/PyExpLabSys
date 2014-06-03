@@ -5,14 +5,14 @@ import struct
 class Brooks():
 
     def __init__(self, devices):
-        self.f = serial.Serial('COM4',19200)
+        self.f = serial.Serial('/dev/ttyUSB2',19200)
         self.f.parity   = serial.PARITY_ODD
         self.f.bytesize = serial.EIGHTBITS
         self.f.stopbits = serial.STOPBITS_ONE
         deviceid = self.comm('8280000000000b06' + self.pack(devices[0][-8:]))
         long_address = '0a5a' + deviceid[-6:] #0a5a should in principle also be extracted
         self.long_address = long_address
-        
+
     def pack(self, input_string):
         #This function lacks basic error checking....
         klaf = ''

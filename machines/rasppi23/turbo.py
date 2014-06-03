@@ -11,12 +11,14 @@ import PyExpLabSys.drivers.pfeiffer_turbo_pump as tp
 import credentials
 
 ports = FindSerialPorts.find_ports()
+print ports
 for port in ports:
+    print port
     mainpump = tp.TurboDriver(adress=2,port='/dev/' + port)
     try:
-        mainpump.read_rotation_speed()
+        print mainpump.read_rotation_speed()
         break
-    except IOError:
+    except:
         pass
 print 'Serial port: ' + port
 mainpump.start()
@@ -104,3 +106,4 @@ while mainpump.running:
     if temp_motor_logger.trigged:
         db_logger.enqueue_point_now('mgw_chamber_turbo_temp_motor', temp_motor)
         temp_motor_logger.trigged = False
+
