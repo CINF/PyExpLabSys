@@ -128,15 +128,17 @@ class compound_udp_meta_channel(threading.Thread):
 
             sqltime = str((time.time() - start_time) * 1000)
             
-            
             try:
                 val_array = received.split(',')
                 values = {}
                 for channel in val_array:
                     val = channel.split(':')
                     values[int(val[0])] = float(val[1])
-            except ValueError:
+            except ValueError, IndexError:
                 logging.warn('Unable to parse udp compound string')
+                break
+            except: 
+                logging.error('Key-error in compund read')
                 break
                 
             for channel in self.channel_list:

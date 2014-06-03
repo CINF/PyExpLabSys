@@ -15,8 +15,8 @@ import qmg_status_output
 import qmg_meta_channels
 #import read_ms_channel_list
 
-import qmg420
-#import  qmg422
+#import qmg420
+import  qmg422
 
 class qms():
 
@@ -34,14 +34,16 @@ class qms():
         self.measurement_runtime = 0
         self.stop = False
         self.chamber = 'dummy'
+        #self.chamber = 'microreactorNG'
         self.channel_list = {}
         
         #Clear log file
         with open('qms.txt', 'w'):
             pass
-        logging.basicConfig(filename="qms.txt", level=logging.INFO)
+        logging.basicConfig(filename="qms.txt", level=logging.INFO,format='%(asctime)s %(message)s')
         logging.info("Program started. Log level: " + str(loglevel))
-        logging.basicConfig(level=logging.INFO)
+        # logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
         
 
     def communication_mode(self, computer_control=False):
@@ -201,7 +203,7 @@ class qms():
         self.current_timestamp = ids[0]
         
         while self.stop == False:
-            if self.autorange:
+            if not self.autorange:
                 for i in range(1, ns+1):
                     #TODO: Decrease measurement time during autorange
                     self.config_channel(channel=i, amp_range=4)
@@ -248,7 +250,11 @@ class qms():
                 if value == "":
                     break
                 else:
-                    value = float(value)
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        value = -1
+                        logging.error('Value error, could not convert to float')
                     if self.qmg.type == '420':
                         value = value / 10**(ms_channel_list[channel]['amp_range']+5)
                     query  = 'insert into '
@@ -314,20 +320,41 @@ if __name__ == "__main__":
     sql_saver.daemon = True
     sql_saver.start()
 
-    qmg = qmg420.qmg_420()
+    qmg = qmg422.qmg_422()
 
     qms = qms(qmg, sql_queue)
     qms.communication_mode(computer_control=True)
+
+    #printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
+    #printer.daemon = True
+    #printer.start()
+    #qms.mass_scan(0,50,comment = 'Optimizing H2-peak')
+    
+    time.sleep(1)
+
     channel_list = qms.read_ms_channel_list('channel_list.txt')
     printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
     printer.daemon = True
     printer.start()
 
+    #meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list[0]['comment'], 5)
+    #meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
+    #meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
+    #meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
+    #meta_udp.create_channel('RTD Temperature', 'rasppi05', 9992, 'read_rtdval')
+    #meta_udp.daemon = True
+    #meta_udp.start()
 
-    meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
-    meta_udp.daemon = True
-    meta_udp.start()
-
+    #meta_flow = qmg_meta_channels.compound_udp_meta_channel(qms, timestamp, channel_list[0]['comment'],5,'rasppi16',9998, 'read_all')
+    #meta_flow.create_channel('Sample Pressure',0)
+    #meta_flow.create_channel('Flow, O2',1)
+    #meta_flow.create_channel('Flow, H2',4)
+    #meta_flow.create_channel('Flow, D2',6)
+    #meta_flow.daemon = True
+    #meta_flow.start()
+     
+    print qms.mass_time(channel_list, timestamp)
+    
     #print channel_list
     #qms.mass_scan(0, 50, comment = 'Test scan - qgm422')
     qms.mass_time(channel_list['ms'], timestamp)
