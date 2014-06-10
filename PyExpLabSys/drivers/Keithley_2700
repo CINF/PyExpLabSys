@@ -6,16 +6,16 @@ from scpi import SCPI
 class Keithley2700(SCPI):
 
     def __init__(self):
+        #http://www.keithley.com/data?asset=10642 
         SCPI.__init__(self, '/dev/ttyS0', 'serial')
         self.f.baudrate = 19200
         self.f.timeout = 5
+    
+    def current_setup(self):
+        self.scpi_comm(*RST)
+        self.scpi_comm(":SENSE:FUNCTION: 'VOLT:DC'")
+        self.scpi_comm(":SYSTEM:AZERO:STATE OFF")
 
-    def channel_name(self, channel):
-        if channel == 1:
-            ch = 'a'
-        if channel == 2:
-            ch = 'b'
-        return(ch)
     
     def read_current(self, channel=1):
         ch = self.channel_name(channel)
