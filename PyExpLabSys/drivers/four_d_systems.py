@@ -36,9 +36,9 @@ class PicasoCommon(object):
     Picaso devices
     """
 
-    def __init__(self):
-        self.serial = serial.Serial(port='/dev/ttyUSB0',
-                                    baudrate=9600,
+    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600):
+        self.serial = serial.Serial(port=serial_device,
+                                    baudrate=baudrate,
                                     bytesize=serial.EIGHTBITS,
                                     parity=serial.PARITY_NONE,
                                     stopbits=serial.STOPBITS_ONE,
@@ -280,7 +280,7 @@ class PicasoCommon(object):
 def test():
     import time
     """Text and draw test"""
-    picaso = PicasoCommon()
+    picaso = PicasoCommon(serial_device='/dev/ttyAMA0', baudrate=9600)
     try:
         print "Ask for SPE version"
         print picaso.get_spe_version()
