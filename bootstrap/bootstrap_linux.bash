@@ -57,6 +57,7 @@ pycheckers  Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
 all         All of the above
+doc         Install extra packages needed for writing docs (NOT part of all)
 "
 ##################
 # EDIT POINT END #
@@ -190,6 +191,28 @@ if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
 	echobad "pycheckers configuration for geany NOT installed. First install "
 	echobad "geany and then rerun pycheckers step"
     fi
+    echogood "+++++> DONE"
+fi
+
+# Install extra packages needed for writing docs
+if [ $1 == "docs" ];then
+    # TODO add sphinx and extra package needed to dependency graph
+    echobold "===> INSTALLING EXTRA PACKAGES FOR WRITING DOCS"
+    echo
+
+    # Sphinx and graphviz
+    echoblue "---> Installing python-sphinx and graphviz with apt-get"
+    sudo apt-get install python-sphinx graphviz
+
+    # sphinxcontrib-napoleon, test if pip is there
+    pip --version > /dev/null
+    if [ $? -eq 0 ];then
+	echoblue "---> Installing sphinxcontrib-napoleon with pip"
+	sudo pip install -U sphinxcontrib-napoleon
+    else
+	echobad "pip not installed, run install step and then re-try this step"
+    fi
+
     echogood "+++++> DONE"
 fi
 
