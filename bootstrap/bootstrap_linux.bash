@@ -218,20 +218,22 @@ if [ $1 == "docs" ];then
 fi
 
 if [ $1 == "abelec" ];then
+    # TODO: Improve script to allow multiple executions
     echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
     echo
 
+    sudo touch /etc/modprobe.d/raspi-blacklist.conf # Make sure file is there before removing
     sudo rm /etc/modprobe.d/raspi-blacklist.conf
     echogood "Removed raspi-blacklist"
     cd ~/
     git clone https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
     echogood "Cloned git reposetory"
     bashrc_addition="
-    export PYTHONPATH=$HOME/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/
+    export PYTHONPATH=$PYTHONPATH:$HOME/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/
     "
     echo "$bashrc_addition" >> ~/.bashrc
     echogood "Added reposetory to python path"
-    sudo sh -c 'echo "spi-dev" >> /etc/modules'
+    sudo sh -c 'echo "i2c-dev" >> /etc/modules'
     echogood "Added spi-dev to auto-loaded modules"
     echogood "+++++> DONE"
 fi
