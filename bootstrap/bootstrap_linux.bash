@@ -58,6 +58,7 @@ pycheckers  Install Python code style checkers and hook them up to emacs and
 
 all         All of the above
 doc         Install extra packages needed for writing docs (NOT part of all)
+abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
 "
 ##################
 # EDIT POINT END #
@@ -215,6 +216,26 @@ if [ $1 == "docs" ];then
 
     echogood "+++++> DONE"
 fi
+
+if [ $1 == "abelec" ];then
+    echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
+    echo
+
+    sudo rm /etc/modprobe.d/raspi-blacklist.conf
+    echogood "Removed raspi-blacklist"
+    cd ~/
+    git clone https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
+    echogood "Cloned git reposetory"
+    bashrc_addition="
+    export PYTHONPATH=$HOME/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/
+    "
+    echo "$bashrc_addition" >> ~/.bashrc
+    echogood "Added reposetory to python path"
+    sudo sh -c 'echo "spi-dev" >> /etc/modules'
+    echogood "Added spi-dev to auto-loaded modules"
+    echogood "+++++> DONE"
+fi
+
 
 # Print message about resetting bash after bash modifications
 if [ $reset_bash == "YES" ];then
