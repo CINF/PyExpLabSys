@@ -12,7 +12,7 @@
 apt1="openssh-server emacs python-pip graphviz screen"
 
 # apt install packages line 2, python extensions
-apt2="python-mysqldb python-serial"
+apt2="python-mysqldb python-serial python-smbus"
 
 # apt install packages line 3, code checkers
 apt3="pep8 pyflakes pylint"
@@ -57,6 +57,8 @@ pycheckers  Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
 all         All of the above
+doc         Install extra packages needed for writing docs (NOT part of all)
+abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
 "
 ##################
 # EDIT POINT END #
@@ -192,6 +194,50 @@ if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
     fi
     echogood "+++++> DONE"
 fi
+
+# Install extra packages needed for writing docs
+if [ $1 == "docs" ];then
+    # TODO add sphinx and extra package needed to dependency graph
+    echobold "===> INSTALLING EXTRA PACKAGES FOR WRITING DOCS"
+    echo
+
+    # Sphinx and graphviz
+    echoblue "---> Installing python-sphinx and graphviz with apt-get"
+    sudo apt-get install python-sphinx graphviz
+
+    # sphinxcontrib-napoleon, test if pip is there
+    pip --version > /dev/null
+    if [ $? -eq 0 ];then
+	echoblue "---> Installing sphinxcontrib-napoleon with pip"
+	sudo pip install -U sphinxcontrib-napoleon
+    else
+	echobad "pip not installed, run install step and then re-try this step"
+    fi
+
+    echogood "+++++> DONE"
+fi
+
+if [ $1 == "abelec" ];then
+    # TODO: Improve script to allow multiple executions
+    echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
+    echo
+
+    sudo touch /etc/modprobe.d/raspi-blacklist.conf # Make sure file is there before removing
+    sudo rm /etc/modprobe.d/raspi-blacklist.conf
+    echogood "Removed raspi-blacklist"
+    cd ~/
+    git clone https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
+    echogood "Cloned git reposetory"
+    bashrc_addition="
+    export PYTHONPATH=$PYTHONPATH:$HOME/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/
+    "
+    echo "$bashrc_addition" >> ~/.bashrc
+    echogood "Added reposetory to python path"
+    sudo sh -c 'echo "i2c-dev" >> /etc/modules'
+    echogood "Added spi-dev to auto-loaded modules"
+    echogood "+++++> DONE"
+fi
+
 
 # Print message about resetting bash after bash modifications
 if [ $reset_bash == "YES" ];then

@@ -13,3 +13,4 @@ more general equipment like temperature read out units.
     :maxdepth: 4
     
     drivers_pfeiffer
+    drivers_four_d_systems
