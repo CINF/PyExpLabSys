@@ -226,15 +226,35 @@ if [ $1 == "abelec" ];then
     sudo rm /etc/modprobe.d/raspi-blacklist.conf
     echogood "Removed raspi-blacklist"
     cd ~/
-    git clone https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
-    echogood "Cloned git reposetory"
-    bashrc_addition="
-    export PYTHONPATH=$PYTHONPATH:$HOME/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/
-    "
-    echo "$bashrc_addition" >> ~/.bashrc
-    echogood "Added reposetory to python path"
-    sudo sh -c 'echo "i2c-dev" >> /etc/modules'
-    echogood "Added spi-dev to auto-loaded modules"
+    
+    export ABDIR=$HOME/ABElectronics_Python_Libraries/
+    if [ ! -d "$ABDIR" ]; then
+	git clone https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
+	echogood "Cloned git reposetory"
+    else
+        cd "$ABDIR"
+	git pull
+	echogood "Updated git repository"
+    fi
+
+    echo ${PYTHONPATH}
+    bashrc_addition="export PYTHONPATH=${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
+    grep SigmaPi ~/.bashrc > /dev/null
+    if [ $? -eq 0 ];then
+	echobad "---> PATH already setup in .bashrc. NO MODIFICATION IS MADE"
+    else
+	echo "$bashrc_addition" >> ~/.bashrc
+	echogood "Added reposetory to python path"
+    fi
+
+    grep i2c-dev /etc/modules > /dev/null
+    if [ $? -eq 0 ];then
+	echobad "---> i2c-dev already added to modules"
+    else
+	sudo sh -c 'echo "i2c-dev" >> /etc/modules'
+	echogood "Added spi-dev to auto-loaded modules"
+    fi
+
     echogood "+++++> DONE"
 fi
 
