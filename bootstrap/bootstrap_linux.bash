@@ -238,7 +238,7 @@ if [ $1 == "abelec" ];then
     fi
 
     echo ${PYTHONPATH}
-    bashrc_addition="export PYTHONPATH=${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
+    bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
     grep SigmaPi ~/.bashrc > /dev/null
     if [ $? -eq 0 ];then
 	echobad "---> PATH already setup in .bashrc. NO MODIFICATION IS MADE"
@@ -254,6 +254,10 @@ if [ $1 == "abelec" ];then
 	sudo sh -c 'echo "i2c-dev" >> /etc/modules'
 	echogood "Added spi-dev to auto-loaded modules"
     fi
+
+    echogood "Adding user to spi and i2c groups"
+    sudo usermod -a -G spi pi
+    sudo usermod -a -G i2c pi
 
     echogood "+++++> DONE"
 fi
