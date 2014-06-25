@@ -12,7 +12,7 @@
 apt1="openssh-server emacs python-pip graphviz screen"
 
 # apt install packages line 2, python extensions
-apt2="python-mysqldb python-serial python-smbus"
+apt2="python-mysqldb python-serial"
 
 # apt install packages line 3, code checkers
 apt3="pep8 pyflakes pylint"
@@ -220,6 +220,7 @@ fi
 if [ $1 == "abelec" ];then
     # TODO: Improve script to allow multiple executions
     echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
+    sudo apt-get install i2c-tools python-smbus
     echo
 
     sudo touch /etc/modprobe.d/raspi-blacklist.conf # Make sure file is there before removing
