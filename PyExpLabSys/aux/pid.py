@@ -1,11 +1,11 @@
 class PID():
     
-    def __init__(self):
+    def __init__(self, Kp=0.15, Ki=0.0025, Kd=0, Pmax=54):
         self.setpoint = -9999
-        self.Kp = 0.15
-        self.Ki = 0.0025
-        self.Kd = 0
-        self.Pmax = 54
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.Pmax = Pmax
         self.IntErr = 0
 
     def ResetIntError(self):
