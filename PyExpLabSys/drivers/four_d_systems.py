@@ -32,6 +32,13 @@ import serial
 
 # Constant(s)
 ACKNOWLEDGE = '\x06'
+TEXT_PROPERTY_TO_COMMAND = {
+    'bold': 'FFDE',
+    'inverse': 'FFDC',
+    'italic': 'FFDD',
+    'opacity': 'FFDF',
+    'underline': 'FFDB'
+}
 
 
 class PicasoCommon(object):
@@ -39,7 +46,8 @@ class PicasoCommon(object):
     Picaso devices
     """
 
-    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600):
+    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600,
+                 check_in_waiting=True):
         """Initialize the driver
 
         The serial device and the baudrate are configurable, as described
@@ -50,6 +58,10 @@ class PicasoCommon(object):
         Args:
             serial_device (str): The serial device to open communication on
             baud_rate (int): The baudrate for the communication
+            check_in_waiting (bool): There if there are bytes left in waiting
+                after a reply has been fetched. This will make it easier to
+                find wrong reply lenghts, but will send one extra serial request
+                per command
         """
         self.serial = serial.Serial(port=serial_device,
                                     baudrate=baudrate,
@@ -57,12 +69,13 @@ class PicasoCommon(object):
                                     parity=serial.PARITY_NONE,
                                     stopbits=serial.STOPBITS_ONE,
                                     timeout=3)
+        self.check_in_waiting = check_in_waiting
 
     def close(self):
         """Close the serial communication"""
         self.serial.close()
 
-    def _send_command_get_reply(self, command, reply_length=0, output='raw'):
+    def _send_command_get_reply(self, command, reply_length=0):
         """Send a command and return status and reply
 
         Args:
@@ -70,30 +83,41 @@ class PicasoCommon(object):
                 for 0x001B
             reply_length (int): The length of the expected reply i.e. WITHOUT
                 an acknowledge
-            output (str): The format for the reply, possibly value are
-                ``'raw'`` (default) which returns a hex string and ``'int'``
-                which returns a list of ints
 
         Returns:
-            tuple: ``(status, reply, answer_good)`` where ``status`` is a
-            boolean representing the succes, ``reply`` is the reply as a string
-            (None if none is requested) and ``answer_good`` is a boolean for
-            whether the answer has the correct length (or None if no reply is
-            requested)
+            str: reply is requested, otherwise None
+
+        Raises:
+            PicasoException: If the command fails or if the reply does not have
+                the requested length
         """
         self.serial.write(command.decode('hex'))
         reply_raw = self.serial.read(reply_length + 1)
-        succes = False
+
+        # Check if the an ACK is returned
+        if reply_raw[0] != ACKNOWLEDGE:
+            message = 'The command \'{0}\' failed'.format(command)
+            raise PicaosException(message, exception_type='failed')
+
+        # Extract the reply
         reply = None
-        answer_good = None
-        if len(reply_raw) > 0:
-            succes = reply_raw[0] == ACKNOWLEDGE
-            if reply_length > 0:
-                reply = reply_raw[1:]
-                if output == 'int':
-                    reply = [ord(x) for x in reply]
-                answer_good = len(reply_raw) == reply_length + 1
-        return succes, reply, answer_good
+        if reply_length > 0:
+            if len(reply_raw) != reply_length + 1:
+                message = 'The reply length {0} bytes, did not match the '\
+                          'requested reply length {1} bytes'.format(
+                              len(reply_raw) - 1, reply_length)
+                raise PicasoException(message,
+                                      exception_type='unexpected_reply')
+
+            if self.check_in_waiting:
+                in_waiting = self.serial.inWaiting()
+                if self.serial.inWaiting() != 0:
+                    message = 'Wrong reply length. There are still {0} bytes '\
+                              'left waiting on the serial port'.format(
+                                  in_waiting)
+
+            reply = reply_raw[1:]
+        return reply
 
     def _send_command(self, command):
         """Send command and return success
@@ -136,6 +160,31 @@ class PicasoCommon(object):
         # Format that into a hexstring with 2 bytes
         return '{:04X}'.format(as_int)
 
+    @staticmethod
+    def _from_16_bit_rgb(color):
+        """Convert a `non regular 16 bit RGB
+        <http://en.wikipedia.org/wiki/List_of_monochrome_and_RGB_palettes
+        #16-bit_RGB>`_ to tuple of float e.g (1.0, 0.0, 1.0)
+
+        Args:
+            color (str): Color as 16 bit RGB string
+
+        Returns:
+            tuple: Color as tuple of floats e.g. (1.0, 0.0, 1.0)
+        """
+        # '0001100011001001'
+        #  |-r-||--g-||-b-|
+        bitstring = '{:08b}{:08b}'.format(*[ord(char) for char in color])
+        out = []
+        # Extract the r, g and b parts from the bitstring
+        for start, end in ((0, 5), (5, 11), (11, 16)):
+            # Convert to absolute int value
+            as_int = int(bitstring[start: end], 2)
+            # Convert to relative float (0.0 - 1.0)
+            as_float = (float(as_int)) / (2 ** (end - start) - 1)
+            out.append(as_float)
+        return tuple(out)
+
     # TEXT AND STRING COMMANDS, section 5.1 in the manual
     def move_cursor(self, line, column):  # Section .1
         """Move the cursor to line, column and return boolean for success
@@ -171,6 +220,152 @@ class PicasoCommon(object):
             self._send_command_get_reply(command, 2)
         if success and answer_good:
             return int(reply.encode('hex'), 16)
+
+    def character_width(self, character):  # Sub-section .4
+        """Get the width of a character in pixels with the current font
+
+        Args:
+            character (str): Character to get the width of
+
+        Returns:
+            int: The width in pixels or None on failure
+        """
+        if len(character) != 1:
+            raise ValueError('character must be a string of length 1')
+        command = '001E{:02X}'.format(ord(character))
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return int(reply.encode('hex'), 16)
+
+    def character_height(self, character):  # Sub-section .5
+        """Get the height of a character in pixels with the current font
+
+        Args:
+            character (str): Character to get the height of
+
+        Returns:
+            int: The height in pixels or None on failure
+        """
+        if len(character) != 1:
+            raise ValueError('character must be a string of length 1')
+        command = '001D{:02X}'.format(ord(character))
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return int(reply.encode('hex'), 16)
+
+    def text_foreground_color(self, color):  # Sub-section .6
+        """Sets the foreground color of the text
+
+        Args:
+            color (tuple or string): 24 bit RGB HTML hex string e.g. '#ffffff'
+                or RGB tuple or floats e.g. (1.0, 1.0, 1.0)
+
+        Returns:
+            tuple: Previous color as tuple of floats e.g. (1.0, 1.0, 1.0) or
+                None on failure
+        """
+        command = 'FFE7{0}'.format(self._to_16_bit_rgb(color))
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return self._from_16_bit_rgb(reply)
+
+    def text_width(self, factor):  # Sub-section .9
+        """Sets the text width
+
+        Args:
+            factor (int): Width multiplier (1-16) relative to default width
+
+        Returns:
+            int: Previous width multiplier or None on failure
+        """
+        command = 'FFE4{:04X}'.format(factor)
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return int(reply.encode('hex'), 16)
+
+    def text_height(self, factor):  # Sub-section .10
+        """Sets the text height
+
+        Args:
+            factor (int): Height multiplier (1-16) relative to default height
+
+        Returns:
+            int: Previous height multiplier or None on failure
+        """
+        command = 'FFE3{:04X}'.format(factor)
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return int(reply.encode('hex'), 16)
+
+
+    def text_factor(self, factor):  # Sub-section .9 and .10
+        """Sets the text width and height
+        Args:
+            factor (int): Width and height multiplier (1-16) relative to
+                default width and height
+
+        Returns:
+            tuple: Previous width and height multipliers or None on failure
+        """
+        previous_width = self.text_width(factor)
+        previous_height = self.text_height(factor)
+        if None not in [previous_width, previous_height]:
+            return (previous_width, previous_height)
+
+    def text_x_gap(self, pixels):  # Sub-section .11
+        """Sets the horizontal gap between chars in pixels
+
+        Args:
+            pixels (int): The requested horizontal gap in pixels
+
+        Return:
+            int: The previous horizontal gap in pixels
+        """
+        command = 'FFE2{:04X}'.format(pixels)
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return int(reply.encode('hex'), 16)
+
+    def text_y_gap(self, pixels):  # Sub-section .11
+        """Sets the vertical gap between chars in pixels
+
+        Args:
+            pixels (int): The requested vertical gap in pixels
+
+        Return:
+            int: The previous vertical gap in pixels
+        """
+        command = 'FFE1{:04X}'.format(pixels)
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return int(reply.encode('hex'), 16)
+
+    def text_attribute(self, attribute, status=True):  # Sub-section .13 - .17
+        """Sets the text attribute status
+
+        Args:
+            attribute (str): The attribute to set, can be one of 'bold',
+                'inverse', 'italic', 'opacity' and 'underline' where 'inverse'
+                inter changes the back and foreground colors of the text
+            status (bool): Boolean for the text attribute status, where True
+                means 'on' or 'opaque' in the case of opacity
+
+        Returns:
+            bool: The previous status or None on failure
+
+        Raises:
+            ValueError
+        """
+        if attribute not in TEXT_PROPERTY_TO_COMMAND:
+            message = 'Attribute \'{0}\' unknown. Valid attributes are {1}'\
+                .format(attribute, TEXT_PROPERTY_TO_COMMAND.keys())
+            raise ValueError(message)
+        status = '0001' if status else '0000'
+        command = TEXT_PROPERTY_TO_COMMAND[attribute] + status
+        success, reply, answer_good = self._send_command_get_reply(command, 2)
+        if success and answer_good:
+            return True if reply == '\x00\x01' else False
+        
 
     # GRAPHICS COMMANDS, section 5.2 in the manual
     def clear_screen(self):  # Sub-section .1
@@ -325,15 +520,75 @@ class PicasoCommon(object):
         Returns:
             str: The version or ``None`` on failure
         """
-        succes, reply, good = self._send_command_get_reply('001B', 2, 'int')
+        succes, reply, good = self._send_command_get_reply('001B', 2)
+        reply = [ord(x) for x in reply]
         if succes and good:
             return '{}.{}'.format(*reply)
+
+
+class PicasoException(Exception):
+    """Exception for Picaso communication
+
+    The ``exception_type`` parameter can be either, ``'failed'`` or
+    ``'unexpected_reply'``
+    """
+
+    def __init__(self, message, exception_type):
+        super(PicasoException, self).__init__(message)
+        self.exception_type = exception_type
+
+
+class PicasouLCD28PTU(PicasoCommon):
+    """Driver for the Picaso 28 PTU Pi LCD display
+
+    For details on the methods that can be called on this class see the
+    documentation for FIXME PicasoCommon
+    """
+
+    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600,
+                 check_in_waiting=True):
+        super(PicasouLCD28PTU, self).__init__(serial_device, baudrate)
+
+
+def test_single():
+    """Use the various methods to test the driver"""
+    import time
+    picaso = PicasouLCD28PTU(serial_device='/dev/ttyUSB0', baudrate=9600)
+    try:
+        print '\nGet the display model'
+        print picaso.get_display_model()
+        print "\nClear Screen"
+        print picaso.clear_screen()
+
+        # TEST WIDTH AND HEIGHT COMMANDS
+        # TEST GAP COMMANDS
+        # TEST TEXT PROPERTY COMMANDS
+        # Put command here
+
+        print '\nPut string \'Hallo\''
+        print picaso.put_string('Hallo')
+        print "\nSet bold"
+        print picaso.text_attribute('inverse')
+        print "\nSet bold"
+        print picaso.text_attribute('inverse')
+        print '\nPut string \'World\''
+        print picaso.put_string('World')
+
+        print '\nWait 5 sec'
+        time.sleep(5)
+        print "Close"
+        picaso.close()
+    except Exception as exception:
+        import traceback
+        traceback.print_exc()
+        picaso.close()
+        raise exception
 
 
 def test():
     """Use the various methods to test the driver"""
     import time
-    picaso = PicasoCommon(serial_device='/dev/ttyAMA0', baudrate=9600)
+    picaso = PicasoCommon(serial_device='/dev/ttyUSB0', baudrate=9600)
     try:
         print "Ask for SPE version"
         print picaso.get_spe_version()
@@ -383,4 +638,4 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
+    test_single()
