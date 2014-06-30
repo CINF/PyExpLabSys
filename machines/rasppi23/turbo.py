@@ -3,24 +3,14 @@
 import logging
 import time
 
-import FindSerialPorts
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataSocket
 from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.pfeiffer_turbo_pump as tp
 import credentials
 
-ports = FindSerialPorts.find_ports()
-print ports
-for port in ports:
-    print port
-    mainpump = tp.TurboDriver(adress=2,port='/dev/' + port)
-    try:
-        print mainpump.read_rotation_speed()
-        break
-    except:
-        pass
-print 'Serial port: ' + port
+port = 'serial/by-id/usb-FTDI_FT232R_USB_UART_AH01G9H4-if00-port0'
+mainpump = tp.TurboDriver(adress=2,port='/dev/' + port)
 mainpump.start()
 
 tui = tp.CursesTui(mainpump)
