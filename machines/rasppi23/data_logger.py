@@ -107,13 +107,8 @@ if __name__ == '__main__':
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
-    ports = FindSerialPorts.find_ports()
-    for port in ports:
-        print port
-        xgs = xgs600.XGS600Driver('/dev/' + port)
-        if len(xgs.read_software_version()) > 0:
-            break
-
+    port = 'serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0'
+    xgs = xgs600.XGS600Driver('/dev/' + port)
     print xgs.read_all_pressures()
 
     reader = PressureReader(xgs)
