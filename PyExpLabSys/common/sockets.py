@@ -23,6 +23,7 @@ import SocketServer
 import time
 import json
 import logging
+import Queue
 
 
 LOGGER = logging.getLogger(__name__)
@@ -34,6 +35,10 @@ BAD_CHARS = ['#', ',', ';', ':']
 UNKNOWN_COMMAND = 'UNKNOWN_COMMMAND'
 #: The string used to indicate old or obsoleted data
 OLD_DATA = 'OLD_DATA'
+#: The answer prefix used when a push failed
+PUSH_ERROR = 'ERROR'
+#: The answer prefix used when a push succeds
+PUSH_ACK = 'ACK'
 #:The variable used to contain all the data.
 #:
 #:The format of the DATA variable is the following. The DATA variable is a
@@ -52,6 +57,8 @@ OLD_DATA = 'OLD_DATA'
 #:  }
 #:
 DATA = {}
+#: The dict that transforms strings to types
+TYPE_FROM_STRING = {'int': int, 'float': float, 'str': str, 'bool': bool}
 
 
 class DataUDPHandler(SocketServer.BaseRequestHandler):
@@ -519,7 +526,7 @@ class LiveSocket(CommonDataSocket):
                                                           codename))
 
 
-class RecieveUDPHandler(SocketServer.BaseRequestHandler):
+class PushUDPHandler(SocketServer.BaseRequestHandler):
     """This class handles the UDP requests for the :class:`.DataRecieveSocket`
     """
 
@@ -527,9 +534,16 @@ class RecieveUDPHandler(SocketServer.BaseRequestHandler):
         """Set data corresponding to the request
 
         The handler understands the following commands:
-        :param json_wn: Json with names
-        :param raw_wn_float: Raw with names float
-        :param raw_wn_str: Raw with names string
+        :param json_wn: Json with names. The data should be a JSON encoded dict
+            with codename->value content.
+        :param raw_wn: Raw with names. The data should be a string with data on
+            the following format: codename1:type:data;codename2:type:data;...
+            where type is the type of the data and can be one of 'int', 'float'
+            'str' and 'bool'. NOTE that neither the names or any data strings
+            can contain any of the characters in BAD_CHARS. The data is a comma
+            separated list of data items of that type. If there are more than
+            one, they will be put in a tuple. An example of a complete raw_wn
+            string could look like: gun_status:bool:True;parameters:int:30,10
         """
         request = self.request[0]
         self.port = self.server.server_address[1]
@@ -539,42 +553,193 @@ class RecieveUDPHandler(SocketServer.BaseRequestHandler):
             return_value = UNKNOWN_COMMAND
         else:
             command, data = request.split('#')
-            if command == 'json_wn':
-                return_value = self._json_with_names(data)
-            elif command == 'raw_wn_float':
-                return_value = self._raw_with_names(float, data)
-            elif command == 'raw_wn_str':
-                return_value = self._raw_with_names(str, data)
-            else:
-                return_value = UNKNOWN_COMMAND
+            try:
+                if command == 'json_wn':
+                    return_value = self._json_with_names(data)
+                elif command == 'raw_wn':
+                    return_value = self._raw_with_names(data)
+                else:
+                    return_value = UNKNOWN_COMMAND
+            except ValueError as exception:
+                return_value = '{}#{}'.format(PUSH_ERROR, exception.message)
 
         socket.sendto(return_value, self.client_address)
 
-    def _raw_with_names(self, data_type, data):
-        """Add raw data to the queue, cast type according to data_type"""
-        # parse name, value pairs, cast and add
-        pass
+    def _raw_with_names(self, data):
+        """Add raw data to the queue"""
+        data_out = {}
+        # Split in data parts e.g: 'codenam1:type:dat1,dat2'
+        for part in data.split(';'):
+            # Split the part up
+            try:
+                codename, data_type, data_string = part.split(':')
+            except ValueError:
+                message = 'The data part \'{}\' did not match the expected '\
+                    'format of 3 parts divided by \':\''.format(part)
+                raise ValueError(message)
+            # Parse the type
+            try:
+                type_function = TYPE_FROM_STRING[data_type]
+            except KeyError:
+                message = 'The data type \'{}\' is unknown. Only {} are '\
+                    'allowed'.format(data_type, TYPE_FROM_STRING.keys())
+                raise ValueError(message)
+            # Convert the data
+            try:
+                data_converted = tuple(
+                    [type_function(dat) for dat in data_string.split(',')]
+                )
+            except ValueError as exception:
+                message = 'Unable to convert values to \'{}\'. Error is: {}'\
+                    .format(data_type, exception.message)
+                raise ValueError(message)
+            # Remove tuple for length 1 data
+            if len(data_converted) == 1:
+                data_converted = data_converted[0]
+            # Inset the data
+            data_out[codename] = data_converted
+
+        # Put the data in the queue
+        DATA[self.port]['queue'].put(data_out)
+        return '{}#{}'.format(PUSH_ACK, data_out)
+
 
     def _json_with_names(self, data):
         """Add json encoded data to the data queue"""
-        DATA[self.port]['queue'].put(json.loads(data))
+        # Decode as JSON
+        try:
+            data_dict = json.loads(data)
+        except ValueError:
+            message = 'The string \'{}\' could not be decoded as JSON'.\
+                format(data)
+            raise ValueError(message)
+        # Check type (normally not done, but we want to be sure)
+        if not isinstance(data_dict, dict):
+            message = 'The object \'{}\' returned after decoding the JSON '\
+                'string is not a dict'.format(data_dict)
+            raise ValueError(message)
+
+        # Put the data in queue
+        DATA[self.port]['queue'].put(data_dict)
+        return '{}#{}'.format(PUSH_ACK, data_dict)
 
 
-class DataReceiveSocket(threading.Thread):
+class DataPushSocket(threading.Thread):
     """This class implements a data recieve socket and provides options for
     enqueuing, calling back or doing nothing on reciept of data
     """
 
-    def __init__(self, codenames, port=8500):
-        # Init thread
-        super(DataReceiveSocket, self).__init__()
-        self.daemon = True
-        # Init local data
-        self.port = port
-
+    def __init__(self, port=8500, action='enqueue', queue=None,
+                 call_back=None):
+        """Initialiaze the DataReceiveSocket
         
+        Arguments:
+            port (int): The network port to start the socket server on
+            action (string): Determined the action performed on incoming data.
+                If set to ``'enqueue'`` (default) the incoming data will be
+                enqueued, if set to ``'call_back'`` a call back function will
+                be called.
+            queue (Queue): If action is 'enqueue' and this value is set, it
+                will be used as the data queue instead the default which is a
+                new Queue.Queue() instance without any further configuration.
+        """
+        LOGGER.debug('DRS: Initialize')
+        # Init thread
+        super(DataPushSocket, self).__init__()
+        self.daemon = True
+        self._stop = False
+        # Init local data and action
+        self.port = port
+        self.action = action
+
+        # Set call_back and queue depending on action
+        self._call_back_thread = None
+        if action == 'call_back':
+            if call_back is None:
+                message = 'When action is set to \'call_back\' a call back '\
+                    'function must be supplied as the call_back parameter'
+                raise ValueError(message)
+            queue = Queue.Queue()
+            self._call_back_thread = CallBackThread(queue, call_back)
+        elif action == 'enqueue':
+            if queue is None:
+                queue = Queue.Queue()
+        else:
+            message = 'Unknown action \'{}\'. Must be one of: {}'.\
+                format(action, ['enqueue', 'call_back'])
+            raise ValueError(message)
+        DATA[port] = {'queue': queue}
+
+        # Setup server
+        self.server = SocketServer.UDPServer(('', port), PushUDPHandler)
+        LOGGER.info('DRS: Initialized')
+
+    def run(self):
+        """Start the UPD socket server"""
+        LOGGER.info('DRS: Start')
+        if self._call_back_thread is not None:
+            self._call_back_thread.start()
+        self.server.serve_forever()
+        LOGGER.info('DRS: Run ended')
+
+    def stop(self):
+        """Stop the UDP server
+
+        .. note:: Closing the server **and** deleting the
+            :py:class:`SocketServer.UDPServer` socket instance is necessary to
+            free up the port for other usage
+        """
+        LOGGER.debug('DRS: Stop requested')
+        if self._call_back_thread is not None:
+            self._call_back_thread.stop()
+        time.sleep(0.1)
+        self.server.shutdown()
+        # Wait 0.1 sec to prevent the interpreter from destroying the
+        # environment before we are done
+        time.sleep(0.1)
+        # Delete the data, to allow forming another socket on this port
+        del DATA[self.port]
+        LOGGER.info('DRS: Stopped')
+
+    @property
+    def queue(self):
+        """Getter for the queue"""
+        return DATA[self.port]['queue']
 
 
+class CallBackThread(threading.Thread):
+    """Class to handle the calling back for a DataReceiveSocket"""
 
+    def __init__(self, queue, call_back):
+        """Initialize the local variables"""
+        LOGGER.debug('CBT: Initialize')
+        # Initialize the thread
+        super(CallBackThread, self).__init__()
+        self.daemon = True
+        self._stop = False
 
+        # Set variables
+        self.queue = queue
+        self.call_back = call_back
+        LOGGER.info('CBT: Initialized')
 
+    def run(self):
+        """Start the calling back"""
+        LOGGER.info('CBT: Run')
+        while not self._stop:
+            # get a item from the queue and call back
+            try:
+                # The get times out every second, to make sure that the thread
+                # can be shut down
+                item = self.queue.get(True, 1)
+                self.call_back(item)
+                LOGGER.debug('CBT: Call back called with arg: {}'.format(item))
+            except Queue.Empty:
+                pass
+        LOGGER.info('CBT: Run stopped')
+
+    def stop(self):
+        """Stop the calling back"""
+        LOGGER.debug('CBT: Stop requested')
+        self._stop = True
+        LOGGER.info('CBT: Stopped')
