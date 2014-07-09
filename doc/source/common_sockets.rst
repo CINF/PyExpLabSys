@@ -18,7 +18,7 @@ common functionality, such as;
 from the :class:`CommonDataSocket` class, as illustrated in the
 diagram below.
 
-.. inheritance-diagram:: PyExpLabSys.common.sockets.DataSocket PyExpLabSys.common.sockets.DateDataSocket
+.. inheritance-diagram:: PyExpLabSys.common.sockets.DataSocket PyExpLabSys.common.sockets.DateDataSocket PyExpLabSys.common.sockets.DataPushSocket
 
 The CommonDataSocket class
 ==========================
@@ -107,5 +107,25 @@ The data UDP handler
 ====================
 
 .. autoclass:: PyExpLabSys.common.sockets.DataUDPHandler
+    :members:
+    :special-members:
+
+The DataPushSocket class
+========================
+
+.. autoclass:: PyExpLabSys.common.sockets.DataPushSocket
+    :members:
+    :special-members:
+    :show-inheritance:
+
+Usage example
+-------------
+
+Usage
+
+The push UDP handler
+====================
+
+.. autoclass:: PyExpLabSys.common.sockets.PushUDPHandler
     :members:
     :special-members:
