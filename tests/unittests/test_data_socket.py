@@ -5,6 +5,9 @@
 import time
 import socket
 import json
+import SocketServer
+# Allow for fast restart of a socket on a port for test purposes
+SocketServer.UDPServer.allow_reuse_address = True
 # Extra modules
 import pytest
 # Own imports
@@ -63,7 +66,6 @@ def test_live_init():
     assert(data[8000]['sane_interval'] - 1.0 < 1E-8)
 
     live_socket.stop()
-    time.sleep(0.1)
 
     print 'live init done'
 
@@ -103,53 +105,9 @@ def test_live_multiple_variables():
         time.sleep(0.1)
 
     live_socket.stop()
-    time.sleep(0.1)
 
     print 'live multiple variables done'
 
-
-def test_live_already_served():
-    codenames = ['name1', 'name2']
-    live_socket = LiveSocket(codenames, 1.0)
-    live_socket.start()
-
-    HOST = "127.0.0.1"
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    port = 8000
-
-    # Make both already served
-    sock.sendto('data', (HOST, port))
-    data, _ = sock.recvfrom(1024)
-
-    for n in range(3):
-        now = time.time()
-
-        live_socket.set_point('name1', (now, n))        
-        # Test no new data for 'name1'
-        sock.sendto('data', (HOST, port))
-        data, _ = sock.recvfrom(1024)
-        expected = [[now, n], 'NND']
-        assert(json.loads(data) == expected)
-        
-        # And test that it works after asking twice
-        sock.sendto('data', (HOST, port))
-        data, _ = sock.recvfrom(1024)
-        expected = ['NND', 'NND']
-        assert(json.loads(data) == expected)
-        
-        live_socket.set_point('name2', (now, n+1))
-        # Test no new data for 'name2'
-        sock.sendto('data', (HOST, port))
-        data, _ = sock.recvfrom(1024)
-        expected = ['NND', [now, n+1]]
-        assert(json.loads(data) == expected)
-
-        time.sleep(0.01)
-
-    live_socket.stop()
-    time.sleep(0.1)
-
-    print 'live test no now data done'  
 
 def test_live_wrong_codename():
     codenames = ['name1', 'name2']
@@ -161,7 +119,6 @@ def test_live_wrong_codename():
         live_socket.set_point('bad name', (1, 2))
 
     live_socket.stop()
-    time.sleep(0.1)
 
     print 'live wrong codename done'
 
@@ -282,7 +239,6 @@ def multiple_data_sockets(sockettype):
     
     data_socket0.stop()
     data_socket1.stop()
-    time.sleep(0.1)
 
     print 'multiple sockets done'
 
@@ -375,7 +331,6 @@ def multiple_variables(sockettype):
         time.sleep(0.1)
 
     data_socket.stop()
-    time.sleep(0.1)
 
     print 'multiple variables done'
 
@@ -395,7 +350,6 @@ def define_timeout(sockettype):
     data_socket.stop()
     assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
     del data_socket
-    time.sleep(0.1)
 
     # Test one measurement with single timeout in list
     data_socket = sockettype(['one'], port=7000, timeouts=[47])
@@ -404,7 +358,6 @@ def define_timeout(sockettype):
     data_socket.stop()
     assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
     del data_socket
-    time.sleep(0.1)
 
     # Test two measurements with single timeout
     data_socket = sockettype(['one', 'two'], port=7000, timeouts=42)
@@ -414,7 +367,6 @@ def define_timeout(sockettype):
     data_socket.stop()
     assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
     del data_socket
-    time.sleep(0.1)
 
     # Test two measurements with two timeouts in list
     data_socket = sockettype(['one', 'two'], port=7000, timeouts=[42, 47])
@@ -424,7 +376,6 @@ def define_timeout(sockettype):
     data_socket.stop()
     assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
     del data_socket
-    time.sleep(0.1)
 
     print 'define timeout done'
 
@@ -498,7 +449,6 @@ def data_timeout(sockettype, usetimestamp=False):
     assert(json.loads(data1) == expected1)
 
     data_socket.stop()
-    time.sleep(0.1)
 
     print 'multiple variables done'
 
