@@ -15,13 +15,14 @@ from PyExpLabSys.common.sockets import DataPushSocket, CallBackThread
 import PyExpLabSys.common.sockets
 DATA = PyExpLabSys.common.sockets.DATA
 
-from PyExpLabSys.common.utilities import get_logger
-LOGGER = get_logger('Hallo', level='debug')
+#from PyExpLabSys.common.utilities import get_logger
+#   LOGGER = get_logger('Hallo', level='debug')
 
 
 # Module variables
 HOST = "localhost"
 PORT = 8500
+NAME = 'Driver push socket for giant laser on the moon'
 
 
 @pytest.yield_fixture
@@ -35,7 +36,7 @@ def sock():
 @pytest.yield_fixture
 def dps():
     """DataPushSocket (no-args) fixture"""
-    dps = DataPushSocket()
+    dps = DataPushSocket(NAME)
     dps.start()
     yield dps
     dps.stop()
@@ -66,33 +67,33 @@ def test_bad_init():
     """Test initializing with wrong parameters"""
     # Unknown action
     with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(action='oo')
+        DataPushSocket(NAME, action='oo')
     message = 'Unknown action \'oo\'. Must be one of: [\'enqueue\', '\
     '\'callback\']'
     assert(str(excinfo.value) == message)
 
     # Action 'callback' but supplied callback not call_able
     with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(action='callback', callback='not callable str')
+        DataPushSocket(NAME, action='callback', callback='not callable str')
     message = 'Value for callback: \'not callable str\' is not callable'
     assert(str(excinfo.value) == message)
 
     # Action 'callback' but no supplied callback
     with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(action='callback')
+        DataPushSocket(NAME, action='callback')
     message = 'Value for callback: \'None\' is not callable'
     assert(str(excinfo.value) == message)
 
     # queue given but action not enqueue (deault action is store_last)
     with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(queue=Queue.Queue())
+        DataPushSocket(NAME, queue=Queue.Queue())
     message = 'The \'queue\' argument can only be used when the action is '\
         '\'enqueue\''
     assert(str(excinfo.value) == message)
 
     # callback given but action not callback (deault action is store_last)
     with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(callback=dir)
+        DataPushSocket(NAME, callback=dir)
     message = 'The \'callback\' argument can only be used when the action is '\
         '\'callback\''
     assert(str(excinfo.value) == message)
@@ -117,6 +118,8 @@ class TestInit(object):
         assert(dps.updated == (None, {}))
         assert((DATA[PORT]['updated_time'],
                 DATA[PORT]['updated']) == dps.updated)
+        # name
+        assert(DATA[PORT]['name'] == NAME)
    
     def test_init_default(self, dps):
         """Test initialization with default patameters"""
@@ -126,7 +129,7 @@ class TestInit(object):
 
     def test_init_enqueue(self):
         """Test initialization with when action is enqueue"""
-        dps = DataPushSocket(action='enqueue')
+        dps = DataPushSocket(NAME, action='enqueue')
         dps.start()
         self.init_common_tests(dps, 'enqueue')
         assert(isinstance(dps.queue, Queue.Queue))
@@ -136,7 +139,7 @@ class TestInit(object):
     def test_init_custom_queue(self):
         """Test initialization when action is enqueue and use custom queue"""
         queue = Queue.Queue()
-        dps = DataPushSocket(action='enqueue', queue=queue)
+        dps = DataPushSocket(NAME, action='enqueue', queue=queue)
         dps.start()
         self.init_common_tests(dps, 'enqueue')
         assert(dps.queue is queue)
@@ -146,7 +149,7 @@ class TestInit(object):
     def test_init_callback(self):
         """Test initialization with default patameters"""
         # Test init of callback
-        dps = DataPushSocket(action='callback', callback=dir)
+        dps = DataPushSocket(NAME, action='callback', callback=dir)
         dps.start()
         self.init_common_tests(dps, 'callback')
         assert(isinstance(dps.queue, Queue.Queue))
@@ -216,7 +219,17 @@ def test_raw_wn_bad_data(dps, sock):
     assert(received == message)
 
 
+def test_name(dps, sock):
+    """Test the get name command"""
+    command = 'name'
+    sock.sendto(command, (HOST, PORT))
+    received = sock.recv(1024)
+    assert(received == '{}#{}'.format(PyExpLabSys.common.sockets.PUSH_ACK,
+                                      NAME))
+
+
 class TestDataTransfer(object):
+    """Test the data transfer functionality"""
 
     def reply_test(self, reply, data):
         """Perform test and comparisons on the reply"""
@@ -381,7 +394,7 @@ class TestCallBack(object):
         self.received = []
         local_data = []
 
-        dps = DataPushSocket(action='callback', callback=self.callback)
+        dps = DataPushSocket(NAME, action='callback', callback=self.callback)
         dps.start()
         # Add 10 data points
         for data in data_sample['data']:
@@ -414,7 +427,7 @@ def test_enqueue(sock, data_sample, queue):
     """Test that data is enqueued (queue fixture returns both custom queue and
     None)
     """
-    dps = DataPushSocket(action='enqueue', queue=queue)
+    dps = DataPushSocket(NAME, action='enqueue', queue=queue)
     dps.start()
     # Send data
     for data in data_sample['data']:
@@ -438,7 +451,7 @@ def test_enqueue(sock, data_sample, queue):
 def test_own_dequeuer(sock, data_sample, queue):
     """Test manual dequeuer (queue fixture returns both custom queue and None)
     """
-    dps = DataPushSocket(action='enqueue', queue=queue)
+    dps = DataPushSocket(NAME, action='enqueue', queue=queue)
     dequeuer = Dequeuer(dps.queue)
     dps.start()
     # Send data

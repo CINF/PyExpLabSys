@@ -571,13 +571,18 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 be put in a list. An example of a complete raw_wn string could
                 look like:\n
                 raw_wn#greeting:str:Live long and prosper;numbers:int:47,42
+            name (str): Return the name of the socket server. Note; the command
+                must not be followed by a '#' i.e. the complete command is
+                'name'
         """
         LOGGER.debug('PUH: Request received')
         request = self.request[0]
         self.port = self.server.server_address[1]
         socket = self.request[1]
 
-        if request.count('#') != 1:
+        if request == 'name':
+            return_value = '{}#{}'.format(PUSH_ACK, DATA[self.port]['name'])
+        elif request.count('#') != 1:
             return_value = UNKNOWN_COMMAND
         else:
             command, data = request.split('#')
@@ -677,11 +682,15 @@ class DataPushSocket(threading.Thread):
     enqueuing, calling back or doing nothing on reciept of data
     """
 
-    def __init__(self, port=8500, action='store_last', queue=None,
+    def __init__(self, name, port=8500, action='store_last', queue=None,
                  callback=None):
         """Initialiaze the DataReceiveSocket
         
         Arguments:
+            name (str): The name of the socket server. Used for identification
+                and therefore should contain enough information about location
+                and purpose to unambiguously identify the socket server. E.g:
+                ``'Driver push socket for giant laser on the moon'``
             port (int): The network port to start the socket server on (default
                 is 8500)
             action (string): Determined the action performed on incoming data.
@@ -726,7 +735,7 @@ class DataPushSocket(threading.Thread):
         # Set callback and queue depending on action
         self._callback_thread = None
         content = {'action': action, 'last': None, 'updated': {},
-                   'last_time': None, 'updated_time': None}
+                   'last_time': None, 'updated_time': None, 'name': name}
         if action == 'store_last':
             pass
         elif action == 'enqueue':
