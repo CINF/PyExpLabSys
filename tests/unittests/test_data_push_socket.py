@@ -2,7 +2,6 @@
 """Unit tests for the DataPushSocket"""
 
 import Queue
-import socket
 import time
 import json
 import ast
@@ -16,21 +15,13 @@ import PyExpLabSys.common.sockets
 DATA = PyExpLabSys.common.sockets.DATA
 
 #from PyExpLabSys.common.utilities import get_logger
-#   LOGGER = get_logger('Hallo', level='debug')
+#LOGGER = get_logger('Hallo', level='debug')
 
 
 # Module variables
 HOST = "localhost"
 PORT = 8500
 NAME = 'Driver push socket for giant laser on the moon'
-
-
-@pytest.yield_fixture
-def sock():
-    """Client socket fixture"""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    yield sock
-    sock.close()
 
 
 @pytest.yield_fixture
@@ -56,6 +47,7 @@ def data_sample(request):
         out['updated'].update(data)
     return out
 
+
 @pytest.fixture(params=['built_in_queue', 'custom_queue'])
 def queue(request):
     """Generate the queue parameter, either None or Queue.Queue()"""
@@ -68,19 +60,20 @@ def test_bad_init():
     # Unknown action
     with pytest.raises(ValueError) as excinfo:
         DataPushSocket(NAME, action='oo')
-    message = 'Unknown action \'oo\'. Must be one of: [\'enqueue\', '\
-    '\'callback\']'
+    message = 'Unknown action \'oo\'. Must be one of: [\'store_last\', '\
+        '\'enqueue\', \'callback_async\', \'callback_direct\']'
     assert(str(excinfo.value) == message)
 
     # Action 'callback' but supplied callback not call_able
     with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, action='callback', callback='not callable str')
+        DataPushSocket(NAME, action='callback_async',
+                       callback='not callable str')
     message = 'Value for callback: \'not callable str\' is not callable'
     assert(str(excinfo.value) == message)
 
     # Action 'callback' but no supplied callback
     with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, action='callback')
+        DataPushSocket(NAME, action='callback_async')
     message = 'Value for callback: \'None\' is not callable'
     assert(str(excinfo.value) == message)
 
@@ -95,7 +88,7 @@ def test_bad_init():
     with pytest.raises(ValueError) as excinfo:
         DataPushSocket(NAME, callback=dir)
     message = 'The \'callback\' argument can only be used when the action is '\
-        '\'callback\''
+        '\'callback_async\' or \'callback_direct\''
     assert(str(excinfo.value) == message)
 
 
@@ -149,9 +142,9 @@ class TestInit(object):
     def test_init_callback(self):
         """Test initialization with default patameters"""
         # Test init of callback
-        dps = DataPushSocket(NAME, action='callback', callback=dir)
+        dps = DataPushSocket(NAME, action='callback_async', callback=dir)
         dps.start()
-        self.init_common_tests(dps, 'callback')
+        self.init_common_tests(dps, 'callback_async')
         assert(isinstance(dps.queue, Queue.Queue))
         assert(DATA[PORT]['queue'] is dps.queue)  
         assert(isinstance(dps._callback_thread, CallBackThread))
@@ -394,7 +387,8 @@ class TestCallBack(object):
         self.received = []
         local_data = []
 
-        dps = DataPushSocket(NAME, action='callback', callback=self.callback)
+        dps = DataPushSocket(NAME, action='callback_async',
+                             callback=self.callback)
         dps.start()
         # Add 10 data points
         for data in data_sample['data']:
