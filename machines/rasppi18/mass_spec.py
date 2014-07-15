@@ -27,22 +27,21 @@ qms.chamber = 'stm312' #Uncomment this to save data in correct db
 
 
 qms.communication_mode(computer_control=True)
-#channel_list = qms.read_ms_channel_list('channel_list.txt')
-#printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
-#printer.daemon = True
-#printer.start()
+channel_list = qms.read_ms_channel_list('channel_list.txt')
+printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
+printer.daemon = True
+printer.start()
 
-#meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
-#meta_udp.daemon = True
-#meta_udp.start()
+meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
+meta_udp.daemon = True
+meta_udp.start()
 
-#qms.mass_scan(0,50,comment = 'Test scan - qgm422')
+qms.mass_scan(0,50,comment = 'After bakeout')
 #print qms.mass_time(channel_list['ms'], timestamp)
 
-#time.sleep(1)
-#printer.stop()
+time.sleep(1)
+printer.stop()
 
-#print qmg.read_voltages()
-print qmg.sem_status(voltage=2200, turn_off=True)
-print qmg.emission_status(current=0.1,turn_off=True)
-#print qmg.qms_status()
+#print qmg.sem_status(voltage=2200, turn_on=True)
+#print qmg.emission_status(current=0.1,turn_on=True)
+

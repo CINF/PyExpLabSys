@@ -22,6 +22,7 @@ bronk = bronkhorst.Bronkhorst('/dev/ttyUSB3')
 name[3] = bronk.read_serial()
 name[3] = name[3].strip()
 
+"""
 bronk = bronkhorst.Bronkhorst('/dev/ttyUSB4')
 name[4] = bronk.read_serial()
 name[4] = name[4].strip()
@@ -37,12 +38,14 @@ name[6] = name[6].strip()
 bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
 name[7] = bronk.read_serial()
 name[7] = name[7].strip()
+"""
 
 # Array containing the controllers actually connected
 bronk_present = {}
 print name
 counter = 0
-for i in range(0,8):
+#for i in range(0,8):
+for i in range(0,4):
 
     if name[i] == 'M13201551A':
         pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
@@ -75,16 +78,18 @@ for i in range(0,8):
         bronk_present[counter] = 'flow4'
         counter = counter + 1
 
-    if name[i] == 'x':
+    if name[i] == 'M11200362B':
         flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
         print("flow5:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'flow5'
+        flow5.set_control_mode() #Change to accept setpoint from rs232 interface
         counter = counter + 1
 
-    if name[i] == 'x':
-        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
+    if name[i] == 'M11200362H':
+        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
         print("flow6:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'flow6'
+        flow6.set_control_mode() #Change to accept setpoint from rs232 interface
         counter = counter + 1
 
 #This specific raspberry pi communication with mass flow and pressure controllers
@@ -108,11 +113,13 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             print "read_flow_4"
             data = str(flow4.read_measure())
         if received_data == "read_flow_5":
-            print "read_flow_5"
-            data = str(flow5.read_measure())
+            value = flow5.read_measure()
+            print "read_flow_5 to {}".format(value)
+            data = str(value)
         if received_data == "read_flow_6":
-            print "read_flow_6"
-            data = str(flow6.read_measure())
+            value = flow6.read_measure()
+            print "read_flow_6 to {}".format(value)
+            data = str(value)
         if received_data == "read_pressure":
             print "read_pressure"
             data = str(pressure.read_measure())
@@ -210,16 +217,18 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         if received_data[0:11] == "set_flow_6:":
             val = float(received_data[11:].strip())
             flow6.set_setpoint(val)
+            print 'Set flow6: ' + str(val)
             data = "ok"
         if received_data[0:13] == "set_pressure:":
             val = float(received_data[13:].strip())
+            print('Set pressure: ' + str(val))
             pressure.set_setpoint(val)
             data = "ok"
 
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.86.123", 9998 #Rasppi24
+    HOST, PORT = "10.54.7.24", 9998 #Rasppi24
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()

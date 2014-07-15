@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0904
+# pylint: disable=C0103,R0904,C0301
 
 """
 Self contained module to run a Pfeiffer turbo pump including fall-back
@@ -10,8 +10,6 @@ import time
 import curses
 import threading
 import logging
-import MySQLdb
-from datetime import datetime
 
 import sys
 sys.path.append('/home/pi/PyExpLabSys/')
@@ -40,17 +38,23 @@ class CursesTui(threading.Thread):
             #else:
             #    self.screen.addstr(3, 30, 'Pump at constant speed')
             self.screen.addstr(4, 2, 'Gas mode: ' + self.turbo.status['gas_mode'] + '      ')
+            self.screen.addstr(5, 2, 'Vent mode: ' + self.turbo.status['vent_mode'] + '      ')
+            self.screen.addstr(6, 2, 'Sealing gas: ' + self.turbo.status['sealing_gas'] + '      ')
 
-            self.screen.addstr(6, 2, "Rotation speed: {0:.2f}Hz      ".format(self.turbo.status['rotation_speed']))
-            self.screen.addstr(7, 2, "Drive current: {0:.2f}A        ".format(self.turbo.status['drive_current']))
-            self.screen.addstr(8, 2, "Drive power: {0:.0f}W          ".format(self.turbo.status['drive_power']))
+            self.screen.addstr(8, 2, "Rotation speed: {0:.2f}Hz      ".format(self.turbo.status['rotation_speed']))
+            self.screen.addstr(8, 28, "Setpoint speed: {0:.2f}Hz      ".format(self.turbo.status['set_rotation_speed']))
+            self.screen.addstr(9, 2, "Drive current: {0:.2f}A        ".format(self.turbo.status['drive_current']))
+            self.screen.addstr(10, 2, "Drive power: {0:.0f}W          ".format(self.turbo.status['drive_power']))
 
-            self.screen.addstr(10, 2, "Temperature, Electronics: {0:.0f}C      ".format(self.turbo.status['temp_electronics']))
-            self.screen.addstr(11, 2, "Temperature, Bottom: {0:.0f}C           ".format(self.turbo.status['temp_bottom']))
-            self.screen.addstr(12, 2, "Temperature, Bearings: {0:.0f}C         ".format(self.turbo.status['temp_bearings']))
-            self.screen.addstr(13, 2, "Temperature, Motor: {0:.0f}C            ".format(self.turbo.status['temp_motor']))
+            self.screen.addstr(12, 2, "Temperature, Electronics: {0:.0f}C      ".format(self.turbo.status['temp_electronics']))
+            self.screen.addstr(13, 2, "Temperature, Bottom: {0:.0f}C           ".format(self.turbo.status['temp_bottom']))
+            self.screen.addstr(14, 2, "Temperature, Bearings: {0:.0f}C         ".format(self.turbo.status['temp_bearings']))
+            self.screen.addstr(15, 2, "Temperature, Motor: {0:.0f}C            ".format(self.turbo.status['temp_motor']))
 
-            self.screen.addstr(15,2, 'q: quit, u: spin up, d: spin down')
+            self.screen.addstr(18, 2, "Operating hours: {0:.0f} ({1:.1f}days)    ".format(self.turbo.status['operating_hours'], self.turbo.status['operating_hours'] / 24.0))
+            self.screen.addstr(19, 2, "Driver runtime: {0:.1f}s    ".format(self.turbo.status['runtime']))
+            self.screen.addstr(20, 2, 'Port: ' + self.turbo.f.port)
+            self.screen.addstr(21, 2, 'q: quit, u: spin up, d: spin down')
 
             n = self.screen.getch()
             if n == ord('q'):
@@ -71,8 +75,8 @@ class CursesTui(threading.Thread):
         curses.endwin()
 
 
-class DataLogger(threading.Thread):
-    """ Datalogging for turbo controller """
+class TurboReader(threading.Thread):
+    """ Keeps track of all data from a turbo pump with the intend of logging them """
     def __init__(self, turbo_instance):
         #TODO: Add support for several pumps
         threading.Thread.__init__(self)
@@ -128,27 +132,6 @@ class DataLogger(threading.Thread):
         self.log['temp_bearings']['last_recorded_value'] = 0
         self.log['temp_bearings']['last_recorded_time'] = 0
 
-    def sqlInsert(self, query):
-        """ Helper function to insert data into database """
-        try:
-            cnxn = MySQLdb.connect(host="servcinf", user="mgw", passwd="mgw", db="cinfdata")
-            cursor = cnxn.cursor()
-        except:
-            print "Unable to connect to database"
-            return()
-        try:
-            cursor.execute(query)
-            cnxn.commit()
-        except:
-            print "SQL-error, query written below:"
-            print query
-            cnxn.close()
-
-
-    def sqlTime(self):
-        sqltime = datetime.now().isoformat(' ')[0:19]
-        return(sqltime)
-
     def run(self):
         for i in range(0, self.mal):
             time.sleep(0.5)
@@ -163,16 +146,37 @@ class DataLogger(threading.Thread):
                     p = self.log[param]
                     p['mean'][i] = self.turbo.status[param]
                     mean = sum(p['mean']) / float(len(p['mean']))
-                    time_trigged = (time.time() - p['last_recorded_time']) > p['time']
-                    val_trigged = not (p['last_recorded_value'] * p['change'] < mean < p['last_recorded_value'] * p['change'])
 
-                    if (time_trigged or val_trigged):
-                        p['last_recorded_value'] = mean
-                        p['last_recorded_time'] = time.time()
-                        meas_time = self.sqlTime()
-                        sql = "insert into dateplots_mgw set type=\"" + param + "\", time=\"" +  meas_time + "\", value = " + str(mean)
-                        #print sql
-                        self.sqlInsert(sql)
+
+class TurboLogger(threading.Thread):
+    """ Read a specific value and determine whether it should be logged """
+    def __init__(self, turboreader, parameter, maximumtime=600):
+        threading.Thread.__init__(self)
+        self.turboreader = turboreader
+        self.parameter = parameter
+        self.value = None
+        self.maximumtime = maximumtime
+        self.quit = False
+        self.last_recorded_time = 0
+        self.last_recorded_value = 0
+        self.trigged = False
+
+    def read_value(self):
+        """ Read the value of the logger """
+        return(self.value)
+
+    def run(self):
+        while not self.quit:
+            time.sleep(2.5)
+            p = self.turboreader.log[self.parameter]
+            mean = sum(p['mean']) / float(len(p['mean']))
+            self.value = mean
+            time_trigged = (time.time() - self.last_recorded_time) > self.maximumtime
+            val_trigged = not (self.last_recorded_value * 0.9 < self.value < self.last_recorded_value * 1.1)
+            if (time_trigged or val_trigged):
+                self.trigged = True
+                self.last_recorded_time = time.time()
+                self.last_recorded_value = self.value
 
 
 class TurboDriver(threading.Thread):
@@ -192,9 +196,15 @@ class TurboDriver(threading.Thread):
         self.f.timeout = 0.1
         self.adress = adress
         self.status = {}  # Hold parameters to be accessible by gui
+        self.status['starttime'] = time.time()
+        self.status['runtime'] = 0
         self.status['rotation_speed'] = 0
+        self.status['set_rotation_speed'] = 0
+        self.status['operating_hours'] = 0
         self.status['pump_accelerating'] = False
         self.status['gas_mode'] = ''
+        self.status['vent_mode'] = ''
+        self.status['sealing_gas'] = ''
         self.status['drive_current'] = 0
         self.status['drive_power'] = 0
         self.status['temp_electronics'] = 0
@@ -225,17 +235,15 @@ class TurboDriver(threading.Thread):
             command = action + command + length + datatype
         crc = self.crc_calc(adress_string + command)
         self.f.write(adress_string + command + crc + '\r')
-        a = ''
-        response = ''
-        while not (a == '\r'):
-            a = self.f.read()
-            if len(a)==0:
-                raise(IOError('Communication Error'))
-            response += a
-        length = int(response[8:10])
-        reply = response[10:10+length]
-        crc = response[10+length:10+length+3]
-        if crc:
+        response = self.f.readline()
+        try:
+            length = int(response[8:10])
+            reply = response[10:10 + length]
+            crc = response[10 + length:10 + length + 3]
+        except ValueError:
+            logging.warn('Value error, unreadable reply')
+            reply = -1
+        if crc: # TODO: This is always true! Implement real crc check
             return reply
         else:
             return 'Error!'
@@ -262,11 +270,33 @@ class TurboDriver(threading.Thread):
         """
         command = '398'
         reply = self.comm(command, True)
-        val = int(reply)/60.0
+        val = int(reply) / 60.0
         #logging.warn(val)
         #command = '309'
         #reply = self.comm(command, True)
         #logging.warn(reply)
+        return(val)
+
+    def read_set_rotation_speed(self):
+        """ Read the intended rotational speed of the pump
+
+        :return: The intended rotaional speed in Hz
+        :rtype: Int
+        """
+        command = '308'
+        reply = self.comm(command, True)
+        val = int(reply)
+        return(val)
+
+    def read_operating_hours(self):
+        """ Read the number of operating hours
+
+        :return: Number of operating hours
+        :rtype: Int
+        """
+        command = '311'
+        reply = self.comm(command, True)
+        val = int(reply)
         return(val)
 
     def read_gas_mode(self):
@@ -274,16 +304,49 @@ class TurboDriver(threading.Thread):
         :return: The gas mode
         :rtype: Str
         """
-
         command = '027'
         reply = self.comm(command, True)
         mode = int(reply)
+        mode_string = ''
         if mode == 0:
-            return 'Heavy gasses'
+            mode_string = 'Heavy gasses'
         if mode == 1:
-            return 'Light gasses'
+            mode_string = 'Light gasses'
         if mode == 2:
-            return 'Helium'
+            mode_string = 'Helium'
+        return(mode_string)
+
+    def read_vent_mode(self):
+        """ Read the venting mode
+        :return: The venting mode
+        :rtype: Str
+        """
+        command = '030'
+        reply = self.comm(command, True)
+        mode = int(reply)
+        mode_string = ''
+        if mode == 0:
+            mode_string = 'Delayed Venting'
+        if mode == 1:
+            mode_string = 'No Venting'
+        if mode == 2:
+            mode_string = 'Direct Venting'
+        return(mode_string)
+
+    def read_sealing_gas(self):
+        """ Read whether sealing gas is applied
+        :return: The sealing gas mode
+        :rtype: Str
+        """
+        command = '050'
+        reply = self.comm(command, True)
+        mode = int(reply)
+        mode_string = ''
+        if mode == 0:
+            mode_string = 'No sealing gas'
+        if mode == 1:
+            mode_string = 'Sealing gas on'
+        return(mode_string)
 
     def is_pump_accelerating(self):
         """ Read if pump is accelerating
@@ -366,21 +429,31 @@ class TurboDriver(threading.Thread):
         return return_val
 
     def run(self):
+        round_robin_counter = 0
         while self.running:
-            time.sleep(0.1)
-            self.status['pump_accelerating'] = self.is_pump_accelerating()
+            #time.sleep(0.1)
+            self.status['runtime'] = time.time() - self.status['starttime']
             self.status['rotation_speed'] = self.read_rotation_speed()
-            self.status['gas_mode'] = self.read_gas_mode()
 
             power = self.read_drive_power()
             self.status['drive_current'] = power['current']
             self.status['drive_power'] = power['power']
 
-            temp = self.read_temperature()
-            self.status['temp_electronics'] = temp['elec']
-            self.status['temp_bottom'] = temp['bottom']
-            self.status['temp_bearings'] = temp['bearings']
-            self.status['temp_motor'] = temp['motor']
+            if round_robin_counter == 0:
+                temp = self.read_temperature()
+                self.status['temp_electronics'] = temp['elec']
+                self.status['temp_bottom'] = temp['bottom']
+                self.status['temp_bearings'] = temp['bearings']
+                self.status['temp_motor'] = temp['motor']
+            if round_robin_counter == 1:
+                self.status['pump_accelerating'] = self.is_pump_accelerating()
+                self.status['set_rotation_speed'] = self.read_set_rotation_speed()
+                self.status['gas_mode'] = self.read_gas_mode()
+                self.status['vent_mode'] = self.read_vent_mode()
+                self.status['sealing_gas'] = self.read_sealing_gas()
+                self.status['operating_hours'] = self.read_operating_hours()
+            round_robin_counter += 1
+            round_robin_counter = round_robin_counter % 2
 
             if self.status['spin_up']:
                 self.turn_pump_on()
@@ -393,11 +466,12 @@ class TurboDriver(threading.Thread):
 if __name__ == '__main__':
     ports = FindSerialPorts.find_ports()
     for port in ports:
+        print port
         mainpump = TurboDriver(adress=2,port='/dev/' + port)
         try:
             mainpump.read_rotation_speed()
             break
-        except IOError:
+        except:
             pass
     print 'Serial port: ' + port
     mainpump.start()
