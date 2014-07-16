@@ -130,7 +130,7 @@ class qms():
         for line in data_lines:
             items = line.split(':')
             key = items[0].lower().strip()
-            if  key == 'comment':
+            if key == 'comment':
                 comment = items[1].strip()
 
             if key == 'autorange':
@@ -140,10 +140,10 @@ class qms():
                 params = items[1].split(',')
                 for j in range(0,len(params)):
                     params[j] = params[j].strip()
-                label = params[params.index('masslabel')+1]
-                speed = int(params[params.index('speed')+1])
-                mass = params[params.index('mass')+1]
-                amp_range = params[params.index('amp_range')+1]
+                label = params[params.index('masslabel') + 1]
+                speed = int(params[params.index('speed') + 1])
+                mass = params[params.index('mass') + 1]
+                amp_range = int(params[params.index('amp_range') + 1])
                 channel_list['ms'][ms] = {'masslabel':label, 'speed':speed,'mass':mass,'amp_range':amp_range}
                 ms += 1
 
@@ -238,7 +238,7 @@ class qms():
                         self.config_channel(channel=i, amp_range=ranges[i])
                         ms_channel_list[i]['amp_range'] = ranges[i]
                         #logging.info('Value: ' + str(value) + '  Range: ' + str(ranges[i]))
-    
+
             self.qmg.set_channel(1)
             self.qmg.start_measurement()
             time.sleep(0.1)
@@ -256,7 +256,7 @@ class qms():
                         value = -1
                         logging.error('Value error, could not convert to float')
                     if self.qmg.type == '420':
-                        value = value / 10**(ms_channel_list[channel]['amp_range']+5)
+                        value = value / 10**(ms_channel_list[channel]['amp_range'] + 5)
                     query  = 'insert into '
                     query += 'xy_values_' + self.chamber + ' '
                     query += 'set measurement="' + str(ids[channel])
