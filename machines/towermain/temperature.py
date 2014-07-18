@@ -6,7 +6,7 @@ it also log significant temperature points to the database.
 import time
 
 from PyExpLabSys.drivers.omega import CNi3244_C24
-from PyExpLabSys.common.sockets import DateDataSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.utilities import get_logger
 
@@ -17,6 +17,7 @@ TEMPERATURE_CHANGE_THRESHOLD = 0.3
 TIMEOUT = 600
 SHORT_NAME = 'tts'
 NAME = 'tower_temperature_sample'
+FULL_NAME = 'Tower temperature of sample'
 
 
 def main_measure_loop(cni, socket, db_logger):
@@ -46,7 +47,7 @@ def main_measure_loop(cni, socket, db_logger):
 def main():
     LOGGER.info('main started')
     cni = CNi3244_C24(0)
-    socket = DateDataSocket([SHORT_NAME], timeouts=1.0)
+    socket = DateDataPullSocket(FULL_NAME, [SHORT_NAME], timeouts=1.0)
     socket.start()
     db_logger = ContinuousLogger(
         table='dateplots_tower', username='N/A', password='N/A',
