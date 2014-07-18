@@ -1,3 +1,4 @@
+# pylint: disable=too-many-arguments,too-many-lines
 # -*- coding: utf-8 -*-
 """The sockets module contains various implementations of UDP socket servers
 (at present 4 in total) for transmission of data over the network. The
@@ -36,8 +37,8 @@ Presently the module contains the following socket servers:
 
 .. note:: The module variable :data:`.DATA` is a dict shared for all socket
  servers started from this module. It contains all the data, queues, settings
- etc. It can be a good place to look if, to get a behind the scenes look at what
- is happening.
+ etc. It can be a good place to look if, to get a behind the scenes look at
+ what is happening.
 """
 
 import threading
@@ -58,12 +59,14 @@ def bool_translate(string):
     if not str(string) in ['True', 'False']:
         message = 'Cannot translate the string \'{}\' to a boolean. Only the '\
             'strings \'True\' or \'False\' are allowed'
-        raise ValueError(message)        
+        raise ValueError(message)
     return True if str(string) == 'True' else False
 
 
 PULLUHLOG = logging.getLogger(__name__ + '.PullUDPHandler')
 PULLUHLOG.addHandler(logging.NullHandler())
+
+
 class PullUDPHandler(SocketServer.BaseRequestHandler):
     """Request handler for the :class:`.DateDataPullSocket` and
     :class:`.DateDataPullSocket` socket servers. The commands this request
@@ -72,7 +75,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         """Return data corresponding to the request
-        
+
         The handler understands the following commands:
 
         **COMMANDS**
@@ -101,10 +104,11 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
          * **name** (*str*): Return the name of the socket server
         """
         command = self.request[0]
+        # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
-        socket = self.request[1]
-        PULLUHLOG.debug('Request \'{}\' received from {} on port {}'\
-            .format(command, self.client_address, self.port))
+        sock = self.request[1]
+        PULLUHLOG.debug('Request \'{}\' received from {} on port {}'
+                        .format(command, self.client_address, self.port))
 
         if command.count('#') == 1:
             data = self._single_value(command)
@@ -112,9 +116,9 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
             # The name command if also handled here
             data = self._all_values(command)
 
-        socket.sendto(data, self.client_address)
-        PULLUHLOG.debug('Sent back \'{}\' to {}'\
-            .format(data, self.client_address))
+        sock.sendto(data, self.client_address)
+        PULLUHLOG.debug('Sent back \'{}\' to {}'
+                        .format(data, self.client_address))
 
     def _single_value(self, command):
         """Return a string for a single point
@@ -145,6 +149,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
 
         return out
 
+    # pylint: disable=too-many-branches
     def _all_values(self, command):
         """Return a string for all points or names
 
@@ -168,7 +173,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         # Return a json encoded string with list of all measurements
         elif command == 'json':
             points = []
-            for codename in DATA[self.port]['codenames']:                
+            for codename in DATA[self.port]['codenames']:
                 if self._old_data(codename):
                     data = OLD_DATA
                 else:
@@ -247,9 +252,11 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
 
 CDPULLSLOG = logging.getLogger(__name__ + '.CommonDataPullSocket')
 CDPULLSLOG.addHandler(logging.NullHandler())
+
+
 class CommonDataPullSocket(threading.Thread):
     """Abstract class that implements common data pull socket functionality.
-    
+
     This common class is responsible for:
 
      * Initializing the thread
@@ -258,6 +265,7 @@ class CommonDataPullSocket(threading.Thread):
      * Initializing DATA with common attributes
     """
 
+    # pylint: disable=too-many-branches
     def __init__(self, name, codenames, port, default_x, default_y, timeouts,
                  init_timeouts=True, handler_class=PullUDPHandler):
         """For parameter description of ``name``, ``codenames``, ``port``,
@@ -279,7 +287,6 @@ class CommonDataPullSocket(threading.Thread):
         self.port = port
 
         # Check for existing servers on this port
-        global DATA
         if port in DATA:
             message = 'A UDP server already exists on port: {}'.format(port)
             CDPULLSLOG.error(message)
@@ -295,7 +302,6 @@ class CommonDataPullSocket(threading.Thread):
         else:
             # If only a single value is given turn it into a list
             timeouts = [timeouts] * len(codenames)
-        # Check for name that has 
 
         # Prepare DATA
         DATA[port] = {'codenames': list(codenames), 'data': {}, 'name': name}
@@ -356,6 +362,8 @@ class CommonDataPullSocket(threading.Thread):
 
 DPULLSLOG = logging.getLogger(__name__ + '.DataPullSocket')
 DPULLSLOG.addHandler(logging.NullHandler())
+
+
 class DataPullSocket(CommonDataPullSocket):
     """This class implements a UDP socket server for serving x, y type data.
     The UDP server uses the :class:`.PullUDPHandler` class to handle
@@ -388,8 +396,8 @@ class DataPullSocket(CommonDataPullSocket):
         DPULLSLOG.info('Initialize with: {}'.format(call_spec_string()))
         # Run super init to initialize thread, check input and initialize data
         super(DataPullSocket, self).__init__(
-            name, codenames, port=port, default_x=default_x, default_y=default_y,
-            timeouts=timeouts
+            name, codenames, port=port, default_x=default_x,
+            default_y=default_y, timeouts=timeouts
         )
         DATA[port]['type'] = 'data'
         # Init timestamps
@@ -400,26 +408,29 @@ class DataPullSocket(CommonDataPullSocket):
 
     def set_point(self, codename, point, timestamp=None):
         """Set the current point for codename
-        
-        :param codename: Name for the measurement whose current point should be
-            set
-        :type codename: str
-        :param value: Current point as a list or tuple of 2 floats: [x, y]
-        :type value: list or tuble
-        :param timestamp: A unix timestamp that indicates when the point was
-            measured. If it is not set, it is assumed to be now. This value is
-            used to evaluate if the point is new enough if timeouts are set.
-        :type timestamp: float
+
+        Args:
+            codename (str): Name for the measurement whose current point should
+                be set
+            value (iterable): Current point as a list or tuple of 2 floats:
+                [x, y]
+            timestamp (float): A unix timestamp that indicates when the point
+                was measured. If it is not set, it is assumed to be now. This
+                value is used to evaluate if the point is new enough if
+                timeouts are set.
         """
         DATA[self.port]['data'][codename] = tuple(point)
         if timestamp is None:
             timestamp = time.time()
         DATA[self.port]['timestamps'][codename] = timestamp
-        DPULLSLOG.debug('Point {} for \'{}\' set'.format(tuple(point), codename))
+        DPULLSLOG.debug('Point {} for \'{}\' set'
+                        .format(tuple(point), codename))
 
 
 DDPULLSLOG = logging.getLogger(__name__ + '.DateDataPullSocket')
 DDPULLSLOG.addHandler(logging.NullHandler())
+
+
 class DateDataPullSocket(CommonDataPullSocket):
     """This class implements a UDP socket server for serving data as a function
     of time. The UDP server uses the :class:`.PullUDPHandler` class to handle
@@ -460,33 +471,35 @@ class DateDataPullSocket(CommonDataPullSocket):
 
     def set_point_now(self, codename, value):
         """Set the current y-value for codename using the current time as x
-        
-        :param codename: Name for the measurement whose current value should be
-            set
-        :type codename: str
-        :param value: y-value
-        :type value: float
+
+        Args:
+            codename (str): Name for the measurement whose current value should
+                be set
+            value (float): y-value
         """
         self.set_point(codename, (time.time(), value))
         DDPULLSLOG.debug('Added time to value and called set_point')
 
     def set_point(self, codename, point):
         """Set the current point for codename
-        
-        :param codename: Name for the measurement whose current point should be
-            set
-        :type codename: str
-        :param point: Current point as a list (or tuple) of 2 floats: [x, y]
-        :type point: list or tuple
+
+        Args:
+            codename (str): Name for the measurement whose current point should
+                be set
+            point (iterable): Current point as a list (or tuple) of 2 floats:
+                [x, y]
         """
         DATA[self.port]['data'][codename] = tuple(point)
-        DDPULLSLOG.debug('Point {} for \'{}\' set'.format(tuple(point), codename))
+        DDPULLSLOG.debug('Point {} for \'{}\' set'
+                         .format(tuple(point), codename))
 
 
 PUSHUHLOG = logging.getLogger(__name__ + '.PushUDPHandler')
 PUSHUHLOG.addHandler(logging.NullHandler())
+
+
 class PushUDPHandler(SocketServer.BaseRequestHandler):
-    """This class handles the UDP requests for the :class:`.DataRecieveSocket`
+    """This class handles the UDP requests for the :class:`.DataPushSocket`
     """
 
     def handle(self):
@@ -515,14 +528,17 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         """
         request = self.request[0]
         PUSHUHLOG.debug('Request \'{}\'received'.format(request))
+        # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
-        socket = self.request[1]
+        sock = self.request[1]
 
+        # Parse the request and call the appropriate helper methods
         if request == 'name':
-            return_value = '{}#{}'.format(PUSH_ACK, DATA[self.port]['name'])
+            return_value = '{}#{}'.format(PUSH_RET, DATA[self.port]['name'])
         elif request.count('#') != 1:
-            return_value = UNKNOWN_COMMAND
+            return_value = '{}#{}'.format(PUSH_ERROR, UNKNOWN_COMMAND)
         else:
+            # Parse a command on the form command#data
             command, data = request.split('#')
             try:
                 if command == 'json_wn':
@@ -530,18 +546,22 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 elif command == 'raw_wn':
                     return_value = self._raw_with_names(data)
                 else:
-                    return_value = UNKNOWN_COMMAND
+                    return_value = '{}#{}'.format(PUSH_ERROR, UNKNOWN_COMMAND)
+            # Several of the helper methods will raise ValueError on wrong
+            # input
             except ValueError as exception:
                 return_value = '{}#{}'.format(PUSH_ERROR, exception.message)
 
         PUSHUHLOG.debug('Send back: {}'.format(return_value))
-        socket.sendto(return_value, self.client_address)
+        sock.sendto(return_value, self.client_address)
 
     def _raw_with_names(self, data):
         """Add raw data to the queue"""
-        PUSHUHLOG.debug('Parse raw with names')
+        PUSHUHLOG.debug('Parse raw with names: {}'.format(data))
         data_out = {}
-        # Split in data parts e.g: 'codenam1:type:dat1,dat2'
+        # Split in data parts e.g: 'codenam1:type:dat1,dat2'. NOTE if no data
+        # is passed (data is ''), the split will return '', which will make
+        # .split(':') fail
         for part in data.split(';'):
             # Split the part up
             try:
@@ -580,7 +600,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
     def _json_with_names(self, data):
         """Add json encoded data to the data queue"""
-        PUSHUHLOG.debug('Parse json')
+        PUSHUHLOG.debug('Parse json with names: {}'.format(data))
         try:
             data_dict = json.loads(data)
         except ValueError:
@@ -599,33 +619,232 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         return self._set_data(data_dict)
 
     def _set_data(self, data):
-        """Set the data in 'last' and 'updated' and enqueue it if the action
-        requires it
+        """Set the data in 'last' and 'updated' and enqueue and/or make
+        callback call if the action requires it
+
+        Args:
+            data (dict): The data set to set/enqueue/callback
+
+        Returns:
+            (str): The request return value
         """
-        PUSHUHLOG.debug('Set data')
+        PUSHUHLOG.debug('Set data: {}'.format(data))
         timestamp = time.time()
         DATA[self.port]['last'] = data
         DATA[self.port]['last_time'] = timestamp
         DATA[self.port]['updated'].update(data)
         DATA[self.port]['updated_time'] = timestamp
+
         # Put the data in queue for actions that require that
         if DATA[self.port]['action'] in ['enqueue', 'callback_async']:
             DATA[self.port]['queue'].put(data)
-        # Return the ACK message with the interpreted data
-        return '{}#{}'.format(PUSH_ACK, data)
+
+        # Execute the callback for actions that require that. Notice, the
+        # different branches determines which output format gets send back
+        # ACKnowledge or RETurn (value on callback)
+        if DATA[self.port]['action'] == 'callback_direct':
+            try:
+                # Call the callback
+                return_value = DATA[self.port]['callback'](data)
+                # Format the return value depending on return_format
+                if DATA[self.port]['return_format'] == 'json':
+                    out = self._format_return_json(return_value)
+                elif DATA[self.port]['return_format'] == 'raw':
+                    out = self._format_return_raw(return_value)
+                elif DATA[self.port]['return_format'] == 'string':
+                    out = self._format_return_string(return_value)
+                else:
+                    # The return format values should be checked on
+                    # instantiation
+                    message = 'Bad return format. REPORT AS BUG.'
+                    out = '{}#{}'.format(PUSH_ERROR, message)
+            # pylint: disable=broad-except
+            except Exception as exception:  # Catch anything it might raise
+                out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+        else:
+            # Return the ACK message with the interpreted data
+            out = '{}#{}'.format(PUSH_ACK, data)
+
+        return out
+
+    @staticmethod
+    def _format_return_json(value):
+        """Format the return value as json
+
+        Args:
+            value (json serializable): The data structure to serialize with
+                JSON
+
+        Returns:
+            (str): The request return value
+        """
+        PUSHUHLOG.debug('Format return json: {}'.format(value))
+        try:
+            out = '{}#{}'.format(PUSH_RET, json.dumps(value))
+        except TypeError as exception:
+            out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+        return out
+
+    @staticmethod
+    def _format_return_string(value):
+        """Format the return value as a string
+
+        Args:
+            value (str): Anything with a str representation. The expected type
+                IS a str, in which what will be returned is the str itself
+
+        Returns:
+            (str): The request return value
+        """
+        PUSHUHLOG.debug('Format return string: {}'.format(value))
+        try:
+            out = '{}#{}'.format(PUSH_RET, str(value))
+        # pylint: disable=broad-except
+        except Exception as exception:  # Have no idea, maybe attribute error
+            out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+        return out
+
+    def _format_return_raw(self, argument):
+        """Format the value argument in raw format. When used as a return value
+        the raw format accepts two argument structures.
+
+        ``argument`` can either be a dict, where the keys are strs and the
+        values are simple types or lists with elements of the same simple type.
+        This will turn:
+            {'answer': 42, 'values': [42, 47], 'answer_good': False}
+        into:
+            'answer:int:42;values:int:42,47:answer_good:bool:False'
+
+        The other possibility is that ``argument`` is a list of lists. This
+        structure is suitable e.g. for passing a list of points. In this case
+        all values in the structure must be of the same simple type. This will
+        turn:
+            [[7.0, 42.0], [7.5, 45.5], [8.0, 47.0]]
+        into:
+            '7.0,42.0&7.5,45.5&8.0,47.0'
+
+        See the :meth:`.handle` method for details.
+
+        Ars:
+            argument (dict or list): The values to to convert
+
+        Returns:
+            (str): The request return value
+        """
+        PUSHUHLOG.debug('Format return raw: {}'.format(argument))
+        try:
+            if argument is None:
+                out = '{}#{}'.format(PUSH_RET, 'None')
+            elif isinstance(argument, dict):
+                out = self._format_return_raw_dict(argument)
+            elif isinstance(argument, list):
+                out = self._format_return_raw_list(argument)
+            else:
+                message = 'Return value must be a dict or list with return '\
+                    'format \'raw\''
+                raise ValueError(message)
+        # pylint: disable=broad-except
+        except Exception as exception:
+            message = 'Raw conversion failed with message'
+            out = '{}#{}:{}'.format(PUSH_EXCEP, message, exception.message)
+
+        return out
+
+    @staticmethod
+    def _format_return_raw_dict(argument):
+        """Format return raw value which is a dict. See
+        :meth:`._format_return_raw` for details
+        """
+        PUSHUHLOG.debug('Format return raw dict: {}'.format(argument))
+        # Items holds the strings for each key, value pair e.g.
+        # 'codename1:type:data'
+        items = []
+        # Manually serializing is ugly ...! and probably error prone :( Where
+        # possible use JSON, where people smarter than me have though about
+        # corner cases
+        for key, value in argument.items():
+            if isinstance(value, list) and len(value) > 0:
+                # Check all values in list are of some type
+                types = [type(element) for element in value]
+                element_type = types[0]
+                if types != len(types) * [element_type]:
+                    message = 'With return format raw, value in list '\
+                        'must have same type'
+                    raise ValueError(message)
+
+                value_string = ','.join([str(element) for element in value])
+            elif isinstance(value, list) and len(value) == 0:
+                # An empty list gets turned into type='', value=''
+                element_type = ''
+                value_string = ''
+            else:
+                # Single element conversion
+                element_type = type(value)
+                value_string = str(value)
+
+            # Check that the element type makes sense for raw conversion
+            if element_type not in [int, float, bool, str]:
+                message = 'With return format raw, the item type can '\
+                    'only be one of \'int\', \'float\', \'bool\' and '\
+                    '\'str\''
+                raise TypeError(message)
+
+            # pylint: disable=maybe-no-member
+            item_str = '{}:{}:{}'.format(str(key), element_type.__name__,
+                                         value_string)
+            items.append(item_str)
+
+        return '{}#{}'.format(PUSH_RET, ';'.join(items))
+
+    @staticmethod
+    def _format_return_raw_list(argument):
+        """Format return raw value which is a dict. See
+        :meth:`._format_return_raw` for detials
+        """
+        PUSHUHLOG.debug('Format return raw list: {}'.format(argument))
+        types = []
+        # List of strings with points as x,y
+        items = []
+        for item in argument:
+            if not isinstance(item, list):
+                message = 'With return format raw on a list, the elements '\
+                    'themselves be lists'
+                raise ValueError(message)
+            types += [type(element) for element in item]
+            converted = [str(element) for element in item]
+            items.append(','.join(converted))
+
+        # Check that they are all of same type
+        element_type = types[0]
+        if types != len(types) * [element_type]:
+            message = 'With return format raw on a list of lists, all values '\
+                ' in list must have same type'
+            raise ValueError(message)
+
+        # Check that the element type makes sense for raw conversion
+        if element_type not in [int, float, bool, str]:
+            message = 'With return format raw, the item type can only be one '\
+                'of \'int\', \'float\', \'bool\' and \'str\''
+            raise TypeError(message)
+
+        return '{}#{}:{}'.format(PUSH_RET, element_type.__name__,
+                                 '&'.join(items))
 
 
 DPUSHSLOG = logging.getLogger(__name__ + '.DataPushSocket')
 DPUSHSLOG.addHandler(logging.NullHandler())
+
+
 class DataPushSocket(threading.Thread):
     """This class implements a data push socket and provides options for
     enqueuing, calling back or doing nothing on reciept of data
     """
 
+    # pylint: disable=too-many-branches
     def __init__(self, name, port=8500, action='store_last', queue=None,
-                 callback=None):
+                 callback=None, return_format='json'):
         """Initialiaze the DataReceiveSocket
-        
+
         Arguments:
             name (str): The name of the socket server. Used for identification
                 and therefore should contain enough information about location
@@ -634,27 +853,52 @@ class DataPushSocket(threading.Thread):
             port (int): The network port to start the socket server on (default
                 is 8500)
             action (string): Determined the action performed on incoming data.
-                If set to ``'store_last'`` (default) the incoming data will be
-                stored, as a dict, only in the two properties;
-                :attr:`~.last` and :attr:`~.updated`, where :attr:`~.last`
-                contains only the data from the last reception and
-                :attr:`~.updated` contains the newest value for each codename
-                that has been received ever. Saving to these two properties
-                will always be done, also with the other actions. If ``action``
-                is set to ``'enqueue'`` the incoming data will also be
-                enqueued. If set to ``'callback_async'``, a callback function
-                will also be called with the incoming data as an argument. The
-                calls to the callback function will in this case happen
-                asynchronously in a seperate thread. If ``action`` is set to
-                ``'callback_direct'`` a callback function will also be called
-                and the result will be returned, provided it has a str
-                representation.
-            queue (Queue): If action is 'enqueue' and this value is set, it
-                will be used as the data queue instead the default which is a
-                new Queue.Queue() instance without any further configuration.
+                The possible values are:
+
+                 * ``'store_last'`` (default and always) the incoming data
+                   will be stored, as a dict, only in the two properties;
+                   :attr:`~.last` and :attr:`~.updated`, where :attr:`~.last`
+                   contains only the data from the last reception and
+                   :attr:`~.updated` contains the newest value for each
+                   codename that has been received ever. Saving to these two
+                   properties **will always be done**, also with the other
+                   actions.
+                 * ``'enqueue'``; the incoming data will also be enqueued
+                 * ``'callback_async'`` a callback function will also be
+                   called with the incoming data as an argument. The calls to
+                   the callback function will in this case happen
+                   asynchronously in a seperate thread
+                 * ``'callback_direct'`` a callback function will also be
+                   called and the result will be returned, provided it has a
+                   str representation. The return value format can be set with
+                   ``return_format``
+            queue (Queue.Queue): If action is 'enqueue' and this value is set,
+                it will be used as the data queue instead the default which is
+                a new :py:class:`Queue.Queue` instance without any further
+                configuration.
             callback (callable): A callable that will be called on incoming
                 data. The callable should accept a single argument that is the
                 data as a dictionary.
+            return_format (str): The return format used when sending callback
+                return values back (used with the ``'callback_direct'``
+                action). The value can be:
+
+                 * ``'json'``, which, if possible, will send the value back
+                   encoded as json
+                 * ``'raw'`` which, if possible, will encode a dict of values,
+                   a list of lists or None. If it is a dict, each value may
+                   be a list of values with same type, in the same way as they
+                   are received with the ``'raw_wn'`` command in the
+                   :meth:`.PushUDPHandler.handle` method. If the return value
+                   is a list of lists (useful e.g. for several data points),
+                   then **all** values must be of the same type. The format
+                   sent back looks like: ``'1.0,42.0&1.5,45.6&2.0,47.0'``,
+                   where '&' separates the inner lists and ',' the points in
+                   those lists
+                 * ``'string'`` in which case the callback must return a
+                   string and it will be passed through as is.
+
+
         """
         DPUSHSLOG.info('Initialize with: {}'.format(call_spec_string()))
         # Init thread
@@ -676,6 +920,15 @@ class DataPushSocket(threading.Thread):
             message = 'The \'callback\' argument can only be used when the '\
                 'action is \'callback_async\' or \'callback_direct\''
             raise ValueError(message)
+        if action in ['callback_async', 'callback_direct']:
+            if not callable(callback):
+                message = 'Value for callback: \'{}\' is not callable'\
+                    .format(callback)
+                raise ValueError(message)
+        if return_format not in ['json', 'raw', 'string']:
+            message = 'The \'return_format\' argument may only be one of the '\
+                '\'json\', \'raw\' or \'string\' values'
+            raise ValueError(message)
 
         # Set callback and queue depending on action
         self._callback_thread = None
@@ -689,12 +942,11 @@ class DataPushSocket(threading.Thread):
             else:
                 content['queue'] = queue
         elif action == 'callback_async':
-            if not callable(callback):
-                message = 'Value for callback: \'{}\' is not callable'\
-                    .format(callback)
-                raise ValueError(message)
             content['queue'] = Queue.Queue()
             self._callback_thread = CallBackThread(content['queue'], callback)
+        elif action == 'callback_direct':
+            content['callback'] = callback
+            content['return_format'] = return_format
         else:
             message = 'Unknown action \'{}\'. Must be one of: {}'.\
                 format(action, ['store_last', 'enqueue', 'callback_async',
@@ -745,14 +997,16 @@ class DataPushSocket(threading.Thread):
 
     @property
     def queue(self):
-        """Get the queue, returns None if ``action`` is ``'store_last'``"""
+        """Get the queue, returns None if ``action`` is ``'store_last'`` or
+        ``'callback_direct'``
+        """
         DPUSHSLOG.info('DPS: queue property used')
         return DATA[self.port].get('queue')
 
     @property
     def last(self):
         """Get a copy of the last data
-        
+
         Returns
             tuple: ``(last_data_time, last_data)`` where ``last_data`` is the
                 data from the last reception and ``last_data_time`` is the Unix
@@ -798,11 +1052,20 @@ class DataPushSocket(threading.Thread):
 
 CBTLOG = logging.getLogger(__name__ + '.CallBackThread')
 CBTLOG.addHandler(logging.NullHandler())
+
+
 class CallBackThread(threading.Thread):
     """Class to handle the calling back for a DataReceiveSocket"""
 
     def __init__(self, queue, callback):
-        """Initialize the local variables"""
+        """Initialize the local variables
+
+        Args:
+            queue (Queue.Queue): The queue that queues up the arguments for the
+                callback function
+            callback (callable): The callable that will be called when there
+                are items in the queue
+        """
         CBTLOG.info('Initialize with: {}'.format(call_spec_string()))
         # Initialize the thread
         super(CallBackThread, self).__init__()
@@ -855,6 +1118,8 @@ class PortStillReserved(Exception):
 
 LUHLOG = logging.getLogger(__name__ + '.LiveUDPHandler')
 LUHLOG.addHandler(logging.NullHandler())
+
+
 class LiveUDPHandler(SocketServer.BaseRequestHandler):
     """Request handler for the :class:`.DateDataSocket` and
     :class:`.DateDataSocket` sockets
@@ -879,10 +1144,11 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
             be expected to be available
         :param name: Return the name of the socket server
         """
+        # pylint: disable=attribute-defined-outside-init
         command = self.request[0]
         self.port = self.server.server_address[1]
-        socket = self.request[1]
-        LUHLOG.debug('Request \'{}\' received from {} on port {}'\
+        sock = self.request[1]
+        LUHLOG.debug('Request \'{}\' received from {} on port {}'
                      .format(command, self.client_address, self.port))
 
         if command == 'data':
@@ -899,12 +1165,14 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
         else:
             data = UNKNOWN_COMMAND
 
-        socket.sendto(data, self.client_address)
+        sock.sendto(data, self.client_address)
         LUHLOG.debug('Sent back: \'{}\''.format(data))
 
 
 LSLOG = logging.getLogger(__name__ + '.LiveSocket')
 LSLOG.addHandler(logging.NullHandler())
+
+
 class LiveSocket(CommonDataPullSocket):
     """This class implements a Live Socket"""
 
@@ -928,7 +1196,7 @@ class LiveSocket(CommonDataPullSocket):
 
     def set_point_now(self, codename, value):
         """Set the current y-value for codename using the current time as x
-        
+
         :param codename: Name for the measurement whose current value should be
             set
         :type codename: str
@@ -940,7 +1208,7 @@ class LiveSocket(CommonDataPullSocket):
 
     def set_point(self, codename, point):
         """Set the current point for codename
-        
+
         :param codename: Name for the measurement whose current point should be
             set
         :type codename: str
@@ -957,8 +1225,9 @@ class LiveSocket(CommonDataPullSocket):
         LSLOG.debug('Point {} for \'{}\' set'.format(tuple(point), codename))
 
 
+### Module variables
 #: The list of characters that are not allowed in code names
-BAD_CHARS = ['#', ',', ';', ':']
+BAD_CHARS = ['#', ',', ';', ':', '&']
 #: The string returned if an unknown command is sent to the socket
 UNKNOWN_COMMAND = 'UNKNOWN_COMMMAND'
 #: The string used to indicate old or obsoleted data
@@ -967,6 +1236,11 @@ OLD_DATA = 'OLD_DATA'
 PUSH_ERROR = 'ERROR'
 #: The answer prefix used when a push succeds
 PUSH_ACK = 'ACK'
+#: The answer prefix for when a callback or callback value formatting produces
+#: an exception
+PUSH_EXCEP = 'EXCEP'
+#: The answer prefix for a callback return value
+PUSH_RET = 'RET'
 #:The variable used to contain all the data.
 #:
 #:The format of the DATA variable is the following. The DATA variable is a
