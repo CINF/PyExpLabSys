@@ -24,8 +24,7 @@ PyExpLabSys/test/integration_tests/test_four_d_systems.py
     serial communication.
 
 .. seealso:: Docs for this implementation are on the wiki at:
-    https://cinfwiki.fysik.dtu.dk/cinfwiki/Equipment#Picaso_uLCD-28PTU
-    or online at:
+    https://cinfwiki.fysik.dtu.dk/cinfwiki/Equipment#Picaso_uLCD-28PTU    or online at:
     http://www.4dsystems.com.au/product/4D_Workshop_4_IDE/downloads
 
 """
@@ -283,6 +282,24 @@ class PicasoCommon(object):
         reply = self._send_command(command, 2)
         return self._from_16_bit_rgb(reply)
 
+    def text_background_color(self, color):  # Sub-section .7
+        """Sets the background color of the text
+
+        Args:
+            color (tuple or string): 24 bit RGB HTML hex string e.g. '#ffffff'
+                or RGB tuple or floats e.g. (1.0, 1.0, 1.0)
+
+        Returns:
+            tuple: Previous color as tuple of floats e.g. (1.0, 1.0, 1.0)
+
+        Raises:
+            PicasoException: If the command fails or if the reply does not have
+                the expected length
+        """
+        command = 'FFE6{0}'.format(self._to_16_bit_rgb(color))
+        reply = self._send_command(command, 2)
+        return self._from_16_bit_rgb(reply)
+
     def text_width(self, factor):  # Sub-section .9
         """Sets the text width
 
@@ -422,6 +439,56 @@ class PicasoCommon(object):
             *(start + end), color=self._to_16_bit_rgb(color)
         )
         return self._send_command(command)
+
+    def draw_rectangle(self, top_left, bottom_right, color):  # Sub-section .6
+        """Draw a rectangle
+
+        Args:
+            top_left (tuple): Coordinates of top left corner (x, y)
+            bottom_right (tuple): Coordinates of bottom right corner (x, y)
+            color (tuple or string): 24 bit RGB HTML hex string e.g. '#ffffff'
+                or RGB tuple or floats e.g. (1.0, 1.0, 1.0)
+
+        Raises:
+            PicasoException: If the command fails
+        """
+        command = 'FFC5{:04X}{:04X}{:04X}{:04X}{color}'.format(
+            *(top_left + bottom_right), color=self._to_16_bit_rgb(color)
+        )
+        return self._send_command(command)
+
+    # Sub-section .6
+    def draw_filled_rectangle(self, top_left, bottom_right, color):
+        """Draw a filled rectangle
+
+        Args:
+            top_left (tuple): Coordinates of top left corner (x, y)
+            bottom_right (tuple): Coordinates of bottom right corner (x, y)
+            color (tuple or string): 24 bit RGB HTML hex string e.g. '#ffffff'
+                or RGB tuple or floats e.g. (1.0, 1.0, 1.0)
+
+        Raises:
+            PicasoException: If the command fails
+        """
+        command = 'FFC4{:04X}{:04X}{:04X}{:04X}{color}'.format(
+            *(top_left + bottom_right), color=self._to_16_bit_rgb(color)
+        )
+        return self._send_command(command)
+
+    def move_origin(self, x, y):
+        """Move the origin to a point, forming the basis for the next graphics
+        or text command
+
+        Args:
+            x (int): X-coordinate for the new origin
+            y (int): Y-coordinate for the new origin
+
+        Raises:
+            PicasoException: If the command fails
+        """
+        command = 'FFCC{:04X}{:04X}'.format(x, y)
+        return self._send_command(command)
+        
 
     def screen_mode(self, mode):  # Sub-section 34
         """Sets the screen mode
@@ -589,3 +656,70 @@ class PicasoException(Exception):
     def __init__(self, message, exception_type):
         super(PicasoException, self).__init__(message)
         self.exception_type = exception_type
+
+
+class Button(object):
+    """Class that represents a button to use in the interface"""
+
+    def __init__(self, picaso, top_left, bottom_right, text,
+                 text_justify='center', left_justify_indent=None,
+                 text_color='#000000', inactive_color='#B2B2B2',
+                 active_color='#979797'):
+        self.picaso = picaso
+        self.text = text
+        self.text_justify = text_justify
+        self.left_justify_indent = left_justify_indent
+        self.text_color = text_color
+        self.inactive_color = inactive_color
+        self.active_color = active_color
+        # Geometry
+        self.top_left = None
+        self.bottom_right = None
+        self.button_height = None
+        self.button_width = None
+        self.set_position(top_left, bottom_right)
+        # Text properties
+        self.char_height = picaso.character_height('C')
+        self.char_width = picaso.character_width('C')
+
+    def set_position(self, top_left, bottom_right):
+        """Set position of the button"""
+        self.top_left = top_left
+        self.bottom_right = bottom_right
+        self.button_height = bottom_right[1] - top_left[1]
+        self.button_width = bottom_right[0] - top_left[0]
+
+    def draw_button(self, active=False):
+        """Draw button with either its active or inactive background color"""
+        # Draw rectangle
+        color = self.active_color if active else self.inactive_color
+        self.picaso.draw_filled_rectangle(self.top_left, self.bottom_right,
+                                          color)
+
+        # Calculate text origin y-coordinate by creating splitting remaining
+        # vertical space or default to top of button
+        origin_y = (self.button_height - self.char_height) / 2 +\
+                   self.top_left[1]
+        origin_y = max(origin_y, self.top_left[1])
+
+        # Calculate text origin x-coordinate dependent on justification
+        if self.text_justify == 'left':
+            # If left HERE
+            if self.left_justify_indent:
+                origin_x = self.top_left[0] + self.left_justify_indent
+            else:
+                origin_x = self.top_left[0] + self.char_width / 2
+        else:
+            text_width = len(self.text) * self.char_width
+            origin_x = (self.button_width - text_width) / 2 + self.top_left[0]
+            origin_x = max(origin_x, self.top_left[0])
+
+        # Set text background and foreground color and write text
+        self.picaso.move_origin(origin_x, origin_y)
+        old_foreground_color = self.picaso.text_foreground_color(
+            self.text_color)
+        old_background_color = self.picaso.text_background_color(color)
+        self.picaso.put_string(self.text)
+        # Restore colors
+        self.picaso.text_foreground_color(old_foreground_color)
+        self.picaso.text_background_color(old_background_color)
