@@ -7,8 +7,19 @@ import os
 import time
 import subprocess
 from BarCodeScanner import *
+from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU
 
 bc = BeerClass()
+
+for port in range(10):
+    try:
+        device = '/dev/ttyUSB{}'.format(port)
+        picaso = PicasouLCD28PTU(serial_device=device, baudrate=9600)
+        print picaso.get_spe_version()
+    except:
+        pass
+
+sys.exit()
 
 def read_barcode():
     """Read the barcode and return the number or None on error"""
