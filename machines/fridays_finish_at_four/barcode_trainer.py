@@ -3,7 +3,9 @@
 """Barcode scanner module"""
 
 import sys
+from BarCodeScanner import *
 
+bc = BeerClass()
 
 def read_barcode():
     """Read the barcode and return the number or None on error"""
@@ -32,11 +34,15 @@ def new():
         data['name'] = input_with_type(message, str)
         message = 'type alcohol precentage: '
         data['alc'] = input_with_type(message, float)
+        message = 'type volume in liters: '
+        data['volume'] = input_with_type(message, float)
     except ValueError:
         print 'Wrong input!... are you drunk?'
         return
     
     print data
+    #bc.insert_item(data['barcode'], data['price'], data['name'], data['alc'], data['volume'])
+    bc.insert_item(**data)
 
 
 def update():
@@ -45,7 +51,18 @@ def update():
     # select field to update
     # Read new value for this field
     # Update data base entry
-    pass
+    data = {}
+    try:
+        data['barcode'] = read_barcode()
+        bc.get_item(data['barcode'])
+        message = 'state the field to update: '
+        data['field'] = input_with_type(message, str)
+        message_new = 'state the new value: '
+        data['value'] = raw_input('state the new value: ')
+        bc.replace_item(data['barcode'], data['field'], data['value'])
+    except ValueError:
+        print 'Wrong input!... are you drunk?'
+        return
     
 def input_with_type(prompt, type_function):
     '''Read input from raw input and type convert'''
