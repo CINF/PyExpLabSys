@@ -31,6 +31,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         recieved_data = self.request[0].strip()
+        print recieved_data
         data = "test"
         socket = self.request[1]
         print recieved_data
@@ -38,10 +39,11 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             data = str(mks_containment.read_pressure())
         if recieved_data == "read_buffer":
             data = str(mks_buffer.read_pressure())
+            print data
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.87.216", 9999 #Rasppi07
+    HOST, PORT = "130.225.87.216", 9997 #Rasppi07
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()
