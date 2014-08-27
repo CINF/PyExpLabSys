@@ -1,7 +1,6 @@
 import sys
 import SocketServer
-sys.path.append('../')
-import mks_925_pirani
+import PyExpLabSys.drivers.mks_925_pirani as mks_925_pirani
 
 #Assigning of proper /dev/tty*
 1107638964
