@@ -31,11 +31,11 @@ class qmg_420():
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer
-        
+
         Implements the low-level protocol for RS-232 communication with the
         instrument. High-level protocol can be implemented using this as a
         helper
-        
+
         """
         t = time.time()
         logging.debug("Command in progress: " + command)
@@ -47,7 +47,7 @@ class qmg_420():
                           ": Contains: " + debug_info)            
         ret = " "
 
-        commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA', 'CHM', 'SPE', 'FIR', 'WID','RUN', 'STP', 'RAN', 'CHA', 'SYN']
+        commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA', 'CHM', 'SPE', 'FIR', 'WID','RUN', 'STP', 'RAN', 'CHA', 'SYN', 'CYC', 'STA']
         self.f.write(command + '\r')
         mem = command.split(' ')[0]
         if not mem in commands_without_reply:
@@ -140,58 +140,87 @@ class qmg_420():
         timestep = self.status('RSC', 5)
         return timestep
 
+    def measurement_running(self):
+        running = self.comm('STW')[6] == '0'
+        return running
+
+    def mass_time(self, ns):
+        self.comm('OPM 1') #0, single. 1, multi
+        #self.comm('CTR ,0') #Trigger mode, 0=auto trigger
+        self.comm('CYC 1') #Number of repetitions
+        #self.comm('CBE ,1') #First measurement channel in multi mode
+        #self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
+
+    def start_measurement(self):
+        self.comm('RUN')
+
+    def waiting_samples(self):
+        length = int(self.comm('RBC'))
+        if length > 2:
+            samples = length - 2
+        else:
+            length = 0
+        return length
+
+    def communication_mode(self, computer_control=False):
+        return ''
+
+    def first_mass(self, mass):
+        self.comm('FIR ' + str(mass))
+
+    def get_multiple_samples(self, number):
+        values = [0] * number
+        for i in range(0, number):
+            val = self.comm(chr(5))
+            if not (val == ''):
+                values[i] = val
+        return values
+
+    def get_single_sample(self):
+        error = 0
+        while (self.waiting_samples() == 0) and (error < 40):
+            time.sleep(0.2)
+            error = error + 1
+        if error > 39:
+            logging.error('Sample did arrive on time')
+            value = ""
+        else:
+            value = self.comm(chr(5))
+        return value
+
+    def config_channel(self, channel, mass=-1, speed=-1, amp_range=-1,enable=""):
+        """ Config a MS channel for measurement """
+        self.set_channel(channel)
+        self.comm('OPM 1')
+
+        if mass>-1:
+            self.first_mass(mass)
+
+        if speed>-1:
+            self.speed(speed)
+
+        if amp_range>-1:
+            self.comm('RAN ' + str(amp_range))
+
+        if enable == "yes":
+            self.comm('STA 1')
+        if enable == "no":
+            self.comm('STA 0')
+
+        #Default values, not currently choosable from function parameters
+        #self.comm('DSE ,0')  #Use default SEM voltage
+        #self.comm('DTY ,1')  #Use SEM for ion detection
+        self.comm('CHM 2')  #Single mass measurement (opposed to mass-scan)
+        #self.comm('CHM 3')  #peak processor
+        #self.comm('MRE ,15') #Peak resolution
+
+
 
     def mass_scan(self, first_mass, scan_width):
         self.comm('FIR ' + str(first_mass))
         self.comm('WID ' + str(scan_width))
         self.comm('OPM 0')
         self.comm('CHA 0')
+        self.comm('RAN ' + str(2))
         self.comm('CHM 0') # Mass scan, to enable FIR filter, set value to 1
-
-        self.speed(5)
-
-        status = self.comm('RSC').split(',')
-        steps = status[7]
-        speed = status[5]
-        print status
-        print speed
-
-        if steps == '0':
-           measurements_pr_step = 64
-        if steps == '1':
-           measurements_pr_step = 32
-        if steps == '2':
-           measurements_pr_step = 16
-
-        if speed < 3:
-            measurements_pr_step = measurements_pr_step / 2    
-            
-        if speed < 1:
-            measurements_pr_step = measurements_pr_step / 2    
-
-
-        number_of_samples = measurements_pr_step * scan_width
-        samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
-        print samples_pr_unit
-        self.comm('RUN')
-        time.sleep(0.5)
-        print self.comm('HEA')
-        print self.comm('STW')[8]
-        running = self.comm('STW')[6] == '0'
-        while running:
-           running = self.comm('STW')[6] == '0'
-           time.sleep(1)
-
-        t = time.time()
-        header = self.comm('HEA').split(',')
-
-        data = {}
-        data['x'] = []
-        data['y'] = []
-        
-        for i in range(0,number_of_samples):
-           val = self.comm(chr(5))
-           data['y'].append(float(val) + 1e-5)
-           data['x'].append(first_mass + i / samples_pr_unit)
-
-        return data
+        self.comm('STA 1')
