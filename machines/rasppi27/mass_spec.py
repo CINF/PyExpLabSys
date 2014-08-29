@@ -26,15 +26,15 @@ sql_saver.start()
 qmg = qmg420.qmg_420()
 qms = ms.qms(qmg, sql_queue)
 
-qms.chamber = 'microreactor' #Uncomment this to save data in correct db
+#qms.chamber = 'microreactor' #Uncomment this to save data in correct db
 
 qms.communication_mode(computer_control=True)
+
 channel_list = qms.read_ms_channel_list('channel_list.txt')
 printer = qmg_status_output.qms_status_output(qms, sql_saver_instance=sql_saver)
 printer.daemon = True
 printer.start()
 
-"""
 meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
 meta_udp.daemon = True
 meta_udp.start()
@@ -48,10 +48,9 @@ meta_flow.create_channel('Flow3, He', 3)
 meta_flow.create_channel('Flow4, H2', 4)
 meta_flow.daemon = True
 meta_flow.start()
-"""
 
-qms.mass_scan(0, 50, comment = 'Testing position of Hydrogen and Deuterium')
-#print qms.mass_time(channel_list['ms'], timestamp)
+#qms.mass_scan(0, 100, comment = 'Testing for oil after UPS failure')
+print qms.mass_time(channel_list['ms'], timestamp)
 
 time.sleep(1)
 printer.stop()

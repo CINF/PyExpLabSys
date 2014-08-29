@@ -40,7 +40,7 @@ class CursesTui(threading.Thread):
             self.screen.addstr(12, 40, "Setpoint: {0:.2f}mA".format(self.eci.setpoint))
             self.screen.addstr(13, 2, "Measured voltage: {0:.4f}mV    ".format(self.eci.measured_voltage * 1000))
             try:
-                self.screen.addstr(14, 2, "Update rate: {0:.1f}Hz    ".format(1/self.eci.looptime))
+                self.screen.addstr(14, 2, "Update rate: {0:.1f}Hz    ".format(1 / self.eci.looptime))
             except ZeroDivisionError:
                 pass
 

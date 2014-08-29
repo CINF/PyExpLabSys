@@ -236,9 +236,13 @@ class TurboDriver(threading.Thread):
         crc = self.crc_calc(adress_string + command)
         self.f.write(adress_string + command + crc + '\r')
         response = self.f.readline()
-        length = int(response[8:10])
-        reply = response[10:10 + length]
-        crc = response[10 + length:10 + length + 3]
+        try:
+            length = int(response[8:10])
+            reply = response[10:10 + length]
+            crc = response[10 + length:10 + length + 3]
+        except ValueError:
+            logging.warn('Value error, unreadable reply')
+            reply = -1
         if crc: # TODO: This is always true! Implement real crc check
             return reply
         else:
@@ -300,16 +304,17 @@ class TurboDriver(threading.Thread):
         :return: The gas mode
         :rtype: Str
         """
-
         command = '027'
         reply = self.comm(command, True)
         mode = int(reply)
+        mode_string = ''
         if mode == 0:
-            return 'Heavy gasses'
+            mode_string = 'Heavy gasses'
         if mode == 1:
-            return 'Light gasses'
+            mode_string = 'Light gasses'
         if mode == 2:
-            return 'Helium'
+            mode_string = 'Helium'
+        return(mode_string)
 
     def read_vent_mode(self):
         """ Read the venting mode
@@ -319,12 +324,14 @@ class TurboDriver(threading.Thread):
         command = '030'
         reply = self.comm(command, True)
         mode = int(reply)
+        mode_string = ''
         if mode == 0:
-            return 'Delayed Venting'
+            mode_string = 'Delayed Venting'
         if mode == 1:
-            return 'No Venting'
+            mode_string = 'No Venting'
         if mode == 2:
-            return 'Direct Venting'
+            mode_string = 'Direct Venting'
+        return(mode_string)
 
     def read_sealing_gas(self):
         """ Read whether sealing gas is applied
@@ -334,10 +341,12 @@ class TurboDriver(threading.Thread):
         command = '050'
         reply = self.comm(command, True)
         mode = int(reply)
+        mode_string = ''
         if mode == 0:
-            return 'No sealing gas'
+            mode_string = 'No sealing gas'
         if mode == 1:
-            return 'Sealing gas on'
+            mode_string = 'Sealing gas on'
+        return(mode_string)
 
     def is_pump_accelerating(self):
         """ Read if pump is accelerating

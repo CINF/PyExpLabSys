@@ -25,9 +25,12 @@ class Bronkhorst():
     def read_measure(self):
         read_pressure = ':06800401210120\r\n' # Read pressure
         val = self.comm(read_pressure)
-        val = val[-6:]
-        num = int(val,16)
-        pressure = (1.0 * num / 32000) * self.max_setting
+        try:
+            val = val[-6:]
+            num = int(val,16)
+            pressure = (1.0 * num / 32000) * self.max_setting
+        except ValueError:
+            pressure = -99
         return pressure
 
     def set_setpoint(self,setpoint):

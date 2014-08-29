@@ -57,6 +57,8 @@ pycheckers  Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
 all         All of the above
+doc         Install extra packages needed for writing docs (NOT part of all)
+abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
 "
 ##################
 # EDIT POINT END #
@@ -192,6 +194,75 @@ if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
     fi
     echogood "+++++> DONE"
 fi
+
+# Install extra packages needed for writing docs
+if [ $1 == "docs" ];then
+    # TODO add sphinx and extra package needed to dependency graph
+    echobold "===> INSTALLING EXTRA PACKAGES FOR WRITING DOCS"
+    echo
+
+    # Sphinx and graphviz
+    echoblue "---> Installing python-sphinx and graphviz with apt-get"
+    sudo apt-get install python-sphinx graphviz
+
+    # sphinxcontrib-napoleon, test if pip is there
+    pip --version > /dev/null
+    if [ $? -eq 0 ];then
+	echoblue "---> Installing sphinxcontrib-napoleon with pip"
+	sudo pip install -U sphinxcontrib-napoleon
+    else
+	echobad "pip not installed, run install step and then re-try this step"
+    fi
+
+    echogood "+++++> DONE"
+fi
+
+if [ $1 == "abelec" ];then
+    # TODO: Improve script to allow multiple executions
+    echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
+    sudo apt-get install i2c-tools python-smbus
+    echo
+
+    sudo touch /etc/modprobe.d/raspi-blacklist.conf # Make sure file is there before removing
+    sudo rm /etc/modprobe.d/raspi-blacklist.conf
+    echogood "Removed raspi-blacklist"
+    cd ~/
+    
+    export ABDIR=$HOME/ABElectronics_Python_Libraries/
+    if [ ! -d "$ABDIR" ]; then
+	git clone https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
+	echogood "Cloned git reposetory"
+    else
+        cd "$ABDIR"
+	git pull
+	echogood "Updated git repository"
+    fi
+
+    echo ${PYTHONPATH}
+    bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
+    grep SigmaPi ~/.bashrc > /dev/null
+    if [ $? -eq 0 ];then
+	echobad "---> PATH already setup in .bashrc. NO MODIFICATION IS MADE"
+    else
+	echo "$bashrc_addition" >> ~/.bashrc
+	echogood "Added reposetory to python path"
+    fi
+
+    grep i2c-dev /etc/modules > /dev/null
+    if [ $? -eq 0 ];then
+	echobad "---> i2c-dev already added to modules"
+    else
+	sudo sh -c 'echo "i2c-dev" >> /etc/modules'
+	echogood "Added spi-dev to auto-loaded modules"
+    fi
+
+    echogood "Adding user to spi and i2c groups"
+    sudo usermod -a -G spi pi
+    sudo usermod -a -G i2c pi
+
+    echogood "+++++> DONE"
+fi
+
 
 # Print message about resetting bash after bash modifications
 if [ $reset_bash == "YES" ];then
