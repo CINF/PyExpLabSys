@@ -6,8 +6,8 @@ import logging
 import time
 import FindSerialPorts
 from PyExpLabSys.common.loggers import ContinuousLogger
-from PyExpLabSys.common.sockets import DateDataSocket
-from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
+#from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.xgs600 as xgs600
 import PyExpLabSys.drivers.omega_D6400 as D6400
 import credentials
@@ -23,7 +23,7 @@ class PressureReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            time.sleep(1)
+            time.sleep(2)
             pressures = self.xgs.read_all_pressures()
             self.chamberpressure = pressures[0]
 
@@ -154,7 +154,7 @@ if __name__ == '__main__':
                       'vhp_T_purifying_reactor',
                       'vhp_T_furnace']
 
-    socket = DateDataSocket(['vhp_mass_spec_pressure'] + temp_codenames, timeouts=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+    socket = DateDataPullSocket('vhp', ['vhp_mass_spec_pressure'] + temp_codenames, timeouts=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     socket.start()
 
     db_logger = ContinuousLogger(table='dateplots_vhp_setup',
