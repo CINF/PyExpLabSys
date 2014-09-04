@@ -2,18 +2,18 @@
 
 import MySQLdb
 
-class BeerClass(object):
 
+class BarDatabase(object):
+    """Class for comunicating with database"""
     def __init__(self):
         dbpath = "Beerdb"
-        self.connection = MySQLdb.connect(host='127.0.0.1', user='fridays',
+        self.connection = MySQLdb.connect(host='servcinf', user='fridays',
                                           passwd='fridays', db='cinfdata',
-                                          port=9090)
+                                          port=3306)
         self.cursor = self.connection.cursor()
 
     def insert_item(self, barcode, price, name, alc, volume=None, energy_content=None, beer_description=None, brewery=None):
         """ cursor insert statement with data
-        
         args:
             barcode (int): Barcode of item ( mostly beer or wine)
             price (int): Price of item in DKK. Always in positive
@@ -28,7 +28,7 @@ class BeerClass(object):
         values = (barcode, price, name, alc, volume, energy_content, beer_description, brewery)
         with self.connection:
             self.cursor.execute("INSERT INTO fridays_items VALUES(%s, %s, %s, %s, %s, %s, %s, %s)", values)
-    
+
     def replace_item(self, barcode, field, value):
         # cursor replace one or more statements with data
         print field, value
@@ -39,12 +39,12 @@ class BeerClass(object):
                 self.cursor.execute(query, (value, barcode))
             except Exception as exception:
                 print exception.message
-    
+
     def replace_items(self, barcode, **kwargs):
         print kwargs
         for key, value in kwargs.items():
             self.replace_item(barcode, key, value)
-    
+
     def get_item(self, barcode, statement=None):
         with self.connection:
             if statement==None:
@@ -57,10 +57,8 @@ class BeerClass(object):
                 out = row[0][0]
             else:
                 print "Statement not found in b_item"
-            
             #print out
         return out
-        
 
     def insert_user(self, user_id, name):
         # cursor insert statement with data
@@ -68,12 +66,12 @@ class BeerClass(object):
         values = (user_id, name)
         with self.connection:
             self.cursor.execute("INSERT INTO b_users VALUES(?, ?)", values)
-            
+
     def get_user(self, user_id):
         raise NotImplementedError
         with self.connection:
             self.cursor.execute("SELECT * FROM b_users WHERE user_id=?", (user_id,))
-            
+
             row = self.cursor.fetchall()
             print row[0]
         return row[0]
@@ -133,3 +131,7 @@ class BeerClass(object):
             grade = self.cursor.fetchall()
             print count, grade
         return count, grade
+
+    def get_type(self, barcode):
+        """Returns type of barcode"""
+        return "beer"
