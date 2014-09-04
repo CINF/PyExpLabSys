@@ -6,7 +6,9 @@ class BeerClass(object):
 
     def __init__(self):
         dbpath = "Beerdb"
-        self.connection = MySQLdb.connect(host='servcinf', user='fridays', passwd='fridays', db='cinfdata')
+        self.connection = MySQLdb.connect(host='127.0.0.1', user='fridays',
+                                          passwd='fridays', db='cinfdata',
+                                          port=9090)
         self.cursor = self.connection.cursor()
 
     def insert_item(self, barcode, price, name, alc, volume=None, energy_content=None, beer_description=None, brewery=None):

@@ -7,8 +7,8 @@ import time
 
 import FindSerialPorts
 from PyExpLabSys.common.loggers import ContinuousLogger
-from PyExpLabSys.common.sockets import DateDataSocket
-from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
+#from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.xgs600 as xgs600
 import credentials
 
@@ -106,7 +106,6 @@ class PressureLogger(threading.Thread):
 if __name__ == '__main__':
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
-
     port = 'serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0'
     xgs = xgs600.XGS600Driver('/dev/' + port)
     print xgs.read_all_pressures()
@@ -123,11 +122,11 @@ if __name__ == '__main__':
     chamber_logger.start()
     buffer_logger.start()
 
-    socket = DateDataSocket(['chamber_pressure', 'buffer_pressure'], timeouts=[1.0, 1.0])
+    socket = DateDataPullSocket('mgw',['chamber_pressure', 'buffer_pressure'], timeouts=[1.0, 1.0])
     socket.start()
 
-    livesocket = LiveSocket(['chamber_pressure', 'buffer_pressure'], 2)
-    livesocket.start()
+    #livesocket = LiveSocket(['chamber_pressure', 'buffer_pressure'], 2)
+    #livesocket.start()
 
     db_logger = ContinuousLogger(table='dateplots_mgw', username=credentials.user, password=credentials.passwd, measurement_codenames=['mgw_pressure_chamber', 'mgw_pressure_buffer','mgw_reactor_pressure'])
     db_logger.start()
@@ -138,8 +137,8 @@ if __name__ == '__main__':
         r = reactor_logger.value
         socket.set_point_now('chamber_pressure', c)
         socket.set_point_now('buffer_pressure', b)
-        livesocket.set_point_now('chamber_pressure', c)
-        livesocket.set_point_now('buffer_pressure', b)
+        #livesocket.set_point_now('chamber_pressure', c)
+        #livesocket.set_point_now('buffer_pressure', b)
 
         if reactor_logger.trigged:
             print(r)
@@ -155,4 +154,5 @@ if __name__ == '__main__':
             print(b)
             db_logger.enqueue_point_now('mgw_pressure_buffer', b)
             buffer_logger.trigged = False
+
 
