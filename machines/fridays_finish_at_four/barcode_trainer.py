@@ -3,14 +3,20 @@
 """Barcode scanner module"""
 
 import sys
-from BarCodeScanner import *
+from bar_database import *
+from PyExpLabSys.drivers.vivo_technologies import BlockingLS689A, detect_barcode_device
 
-bc = BeerClass()
+
+bar_database = BarDatabase()
+
 
 def read_barcode():
     """Read the barcode and return the number or None on error"""
     print 'Scan barcode now!'
-    line = sys.stdin.readline().strip()
+    dev_ = detect_barcode_device()
+    bbr = BlockingLS689A(dev_)
+    #bbr.start()
+    line = bbr.read_barcode()
 
     out = int(line)
     return out
@@ -42,7 +48,7 @@ def new():
     
     print data
     #bc.insert_item(data['barcode'], data['price'], data['name'], data['alc'], data['volume'])
-    bc.insert_item(**data)
+    bar_database.insert_item(**data)
 
 
 def update():
@@ -54,12 +60,12 @@ def update():
     data = {}
     try:
         data['barcode'] = read_barcode()
-        bc.get_item(data['barcode'])
+        bar_database.get_item(data['barcode'])
         message = 'state the field to update: '
         data['field'] = input_with_type(message, str)
         message_new = 'state the new value: '
         data['value'] = raw_input('state the new value: ')
-        bc.replace_item(data['barcode'], data['field'], data['value'])
+        bar_database.replace_item(data['barcode'], data['field'], data['value'])
     except ValueError:
         print 'Wrong input!... are you drunk?'
         return
