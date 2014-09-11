@@ -15,7 +15,7 @@ apt1="openssh-server emacs python-pip graphviz screen"
 apt2="python-mysqldb python-serial"
 
 # apt install packages line 3, code checkers
-apt3="pep8 pyflakes pylint"
+apt3="pyflakes pylint"
 
 # packages to be installe by pip
 pippackages="minimalmodbus"
