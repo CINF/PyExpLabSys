@@ -9,10 +9,11 @@ import pickle
 import wiringpi2 as wp
 import PyExpLabSys.auxiliary.pid as PID
 from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.sockets import DataPushSocket
 
 
 class CursesTui(threading.Thread):
-    """ Text user interface for Volvo heating controll """
+    """ Text user interface for furnace heating control """
     def __init__(self, heating_class):
         threading.Thread.__init__(self)
         self.start_time = time.time()
@@ -63,11 +64,12 @@ class CursesTui(threading.Thread):
 
 class PowerCalculatorClass(threading.Thread):
     """ Calculate the wanted amount of power """
-    def __init__(self, datasocket):
+    def __init__(self, datasocket, pushsocket):
         threading.Thread.__init__(self)
         self.datasocket = datasocket
+        self.pushsocket = pushsocket
         self.power = 0
-        self.setpoint = 200
+        self.setpoint = 150
         self.pid = PID.PID()
         self.pid.Kp = 0.0150
         self.pid.Ki = 0.0001
@@ -146,11 +148,22 @@ class PowerCalculatorClass(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
         t = 0
+        pushupdatetime = 0
         while not self.quit:
             sock.sendto(data_temp, ('localhost', 9001))
             received = sock.recv(1024)
             self.temperature = float(received[received.find(',') + 1:])
             self.power = self.pid.WantedPower(self.temperature)
+            try:
+                setpoint = self.pushsocket.last[1]['setpoint']
+                new_update = self.pushsocket.last[0]
+            except TypeError:
+                setpoint = None
+            if (setpoint is not None) and (setpoint != self.setpoint) and (pushupdatetime < new_update):
+                self.update_setpoint(setpoint)
+                pushupdatetime = new_update
+            
+
             """
             sock.sendto(data_ramp, ('localhost', 9999))
             received = sock.recv(1024)
@@ -200,7 +213,10 @@ datasocket = DateDataPullSocket('furnaceroom_controller',
                                 port=9000)
 datasocket.start()
 
-P = PowerCalculatorClass(datasocket)
+pushsocket = DataPushSocket('furnaceroom_push_control', action='store_last')
+pushsocket.start()
+
+P = PowerCalculatorClass(datasocket, pushsocket)
 #print P.ramp_calculator(2)
 #print P.ramp_calculator(2000)
 P.daemon = True
