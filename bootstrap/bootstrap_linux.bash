@@ -62,6 +62,7 @@ pycheckers  Install Python code style checkers and hook them up to emacs and
 all         All of the above
 doc         Install extra packages needed for writing docs (NOT part of all)
 abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
+qt          Setup GUI environment: Qt and Qwt (for plots)
 "
 ##################
 # EDIT POINT END #
@@ -269,6 +270,17 @@ if [ $1 == "abelec" ];then
     echogood "+++++> DONE"
 fi
 
+# GUI section (Qt and Qwt)
+if [ $1 == "qt" ];then
+    echobold "===> INSTALLING EXTRA PACKAGES FOR GUIS"
+    echo
+
+    # qt and pyqwt
+    echoblue "---> Installing python-qt4 and python-qwt5-qt4 with apt-get"
+    sudo apt-get install python-qt4 python-qwt5-qt4
+
+    echogood "+++++> DONE"
+fi
 
 # Print message about resetting bash after bash modifications
 if [ $reset_bash == "YES" ];then
