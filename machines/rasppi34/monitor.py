@@ -71,7 +71,8 @@ class GasAlarmMonitor(object):
         self.detector_levels_last_times = \
             {detector_num: 0 for detector_num in self.detector_numbers}
         self.detector_status_last_values = \
-            {detector_num: {'inhibit': False, 'status': ['OK']}
+            {detector_num: {'inhibit': False, 'status': ['OK'],
+                            'codename': self.detector_info[detector_num].identity}
              for detector_num in self.detector_numbers}
         self.detector_status_last_times = \
             {detector_num: 0 for detector_num in self.detector_numbers}
@@ -136,15 +137,16 @@ class GasAlarmMonitor(object):
         else:
             LOGGER.debug('Level logging condition false')
 
-        self.log_detector_status(detector_num, levels)
+        self.log_detector_status(detector_num, levels, conf)
 
-    def log_detector_status(self, detector_num, levels):
+    def log_detector_status(self, detector_num, levels, conf):
         """Sub function to log single detector status"""
         now = time.time()
         # Force log every 24 hours
         time_condition = \
             now - self.detector_status_last_times[detector_num] > 86400
-        status = {'inhibit': levels.inhibit, 'status': levels.status}
+        status = {'inhibit': levels.inhibit, 'status': levels.status,
+                  'codename': conf.identity}
         value_condition = \
             (status != self.detector_status_last_values[detector_num])
 
