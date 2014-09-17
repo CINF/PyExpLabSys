@@ -148,9 +148,13 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     echobold "===> INSTALLING PACKAGES"
     echoblue "---> Updating package archive information"
     sudo apt-get update
-    echoblue "----> Removing large uneeded packages"
-    echoblue "----> Remove: $apt_remove"
-    sudo apt-get -y remove $apt_remove
+    if [ $USER == "pi" ];then
+	echoblue "----> Removing large uneeded packages"
+	echoblue "----> Remove: $apt_remove"
+	sudo apt-get -y remove $apt_remove
+	echoblue "---> Remove un-needed packages after removal, if any"
+	sudo apt-get -y autoremove
+    fi
     echoblue "---> Upgrade all existing packages"
     sudo apt-get -y dist-upgrade
     echoblue "---> Installing packages"
