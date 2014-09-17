@@ -159,6 +159,7 @@ class GasAlarmMonitor(object):
                 '(time, device, status, check_in) '\
                 'VALUES (FROM_UNIXTIME(%s), %s, %s, %s);'
             values = (now, detector_num, json.dumps(status), check_in)
+            self._wake_mysql()
             self.db_cursor.execute(query, values)
             # Update last values
             self.detector_status_last_times[detector_num] = now
@@ -182,6 +183,7 @@ class GasAlarmMonitor(object):
                 '(time, device, status, check_in) '\
                 'VALUES (FROM_UNIXTIME(%s), %s, %s, %s);'
             values = (now, 255, json.dumps(power_status), check_in)
+            self._wake_mysql()
             self.db_cursor.execute(query, values)
             # Update last values
             self.central_power_status_last_time = now
@@ -209,12 +211,18 @@ class GasAlarmMonitor(object):
                 '(time, device, status, check_in) '\
                 'VALUES (FROM_UNIXTIME(%s), %s, %s, %s);'
             values = (now, 254, json.dumps(generel_status), check_in)
+            self._wake_mysql()
             self.db_cursor.execute(query, values)
             # Update last values
             self.central_status_last_time = now
             self.central_status_last_value = generel_status
         else:
             LOGGER.debug('Central generel status logging confition false')
+
+    def _wake_mysql(self):
+        """Send a ping via the connection and re-initialize the cursor"""
+        self.db_connection.ping(True)
+        self.db_cursor = self.db_connection.cursor()
 
 
 if __name__ == '__main__':
