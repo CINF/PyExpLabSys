@@ -44,7 +44,7 @@ class XGSClass(threading.Thread):
     """ Pressure reader """
     def __init__(self):
         threading.Thread.__init__(self)
-        self.xgs = xgs600.XGS600Driver()
+        self.xgs = xgs600.XGS600Driver('/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0')
         self.pressure = None
         self.quit = False
         self.last_recorded_time = 0

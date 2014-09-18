@@ -1,32 +1,17 @@
 import sys
 import SocketServer
+import socket
 sys.path.append('../')
 import pentax_picture as pentax
 import omegabus
 import omega_CNi32
-import FindSerialPorts
 
 ports = FindSerialPorts.find_ports()
-print ports
-for p in ports:
-    bus = omegabus.OmegaBus('/dev/' + p)
-    try:
-        break
-    except:
-        pass
-print 'Omegabus: ' + p
+port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
+TC_reader = omegabus.OmegaBus('/dev/serial/by-id/' + port)
 
-for p in ports:
-    omegaCN = omega_CNi32.omega_comm('/dev/' + p)
-    if (omegaCN.ReadTemperature() > -9000):
-        break
-print 'Omega CNi: ' + p
-
-#TC_reader = omegabus.OmegaBus()
-TC_reader = bus
-
-#omega = omega_CNi32.omega_comm('/dev/ttyUSB0')
-omega = omegaCN
+port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+omega = omega_CNi32.omega_comm('/dev/serial/by-id/' + port)
 
 #This specific raspberry pi handles temperature reading
 #And takes images with the pentax camera
@@ -58,6 +43,5 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 
 if __name__ == "__main__":
     HOST, PORT = "130.225.86.181", 9999 #Rasppi12
-
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()

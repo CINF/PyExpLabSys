@@ -146,8 +146,21 @@ class ContinuousLogger(threading.Thread):
         LOGGER.debug('CL: instance attributes initialized')
         # Dict used to translate code_names to measurement numbers
         self._codename_translation = {}
-        # Init database connection and get measurement numbers from codenames
-        self._init_connection()
+        # Init database connection, allow for the system not fully up
+        database_up = False
+        db_connection_starttime = time.time()
+        while not database_up:
+            try:
+                LOGGER.debug('CL: Try to open database connection')
+                self._init_connection()
+                database_up = True
+            except StartupException:
+                if time.time() - db_connection_starttime > 300:
+                    raise
+                LOGGER.debug(
+                    'CL: Database connection not formed, retry in 20 sec')
+                time.sleep(20)
+        # Get measurement numbers from codenames
         self._init_measurement_numbers(measurement_codenames)
         LOGGER.info('CL: __init__ done')
 

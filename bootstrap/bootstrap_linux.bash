@@ -9,13 +9,16 @@
 # apt install packages line 1, general packages
 # NOTE pip is placed here, because right now it pulls in python2.6, which
 # I prefer is complete before installing python packages
-apt1="openssh-server emacs python-pip graphviz screen"
+apt1="openssh-server emacs python-pip graphviz screen ntp"
 
 # apt install packages line 2, python extensions
 apt2="python-mysqldb python-serial"
 
 # apt install packages line 3, code checkers
-apt3="pep8 pyflakes pylint"
+apt3="pyflakes pylint"
+
+# remove selcted packages
+apt_remove="wolfram-engine oracle-java7-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde*"
 
 # packages to be installe by pip
 pippackages="minimalmodbus"
@@ -58,6 +61,8 @@ pycheckers  Install Python code style checkers and hook them up to emacs and
 
 all         All of the above
 doc         Install extra packages needed for writing docs (NOT part of all)
+abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
+qt          Setup GUI environment: Qt and Qwt (for plots)
 "
 ##################
 # EDIT POINT END #
@@ -143,8 +148,15 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     echobold "===> INSTALLING PACKAGES"
     echoblue "---> Updating package archive information"
     sudo apt-get update
+    if [ $USER == "pi" ];then
+	echoblue "----> Removing large uneeded packages"
+	echoblue "----> Remove: $apt_remove"
+	sudo apt-get -y remove $apt_remove
+	echoblue "---> Remove un-needed packages after removal, if any"
+	sudo apt-get -y autoremove
+    fi
     echoblue "---> Upgrade all existing packages"
-    sudo apt-get dist-upgrade
+    sudo apt-get -y dist-upgrade
     echoblue "---> Installing packages"
     echoblue "----> Install: $apt1"
     sudo apt-get -y install $apt1
@@ -153,7 +165,7 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     echoblue "----> Install: $apt3"
     sudo apt-get -y install $apt3
     echoblue "---> Remove un-needed packages, if any"
-    sudo apt-get autoremove
+    sudo apt-get -y autoremove
     echoblue "---> Clear apt cache"
     sudo apt-get clean
     echogood "+++++> DONE"
@@ -212,6 +224,64 @@ if [ $1 == "docs" ];then
     else
 	echobad "pip not installed, run install step and then re-try this step"
     fi
+
+    echogood "+++++> DONE"
+fi
+
+if [ $1 == "abelec" ];then
+    # TODO: Improve script to allow multiple executions
+    echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
+    sudo apt-get install i2c-tools python-smbus
+    echo
+
+    sudo touch /etc/modprobe.d/raspi-blacklist.conf # Make sure file is there before removing
+    sudo rm /etc/modprobe.d/raspi-blacklist.conf
+    echogood "Removed raspi-blacklist"
+    cd ~/
+    
+    export ABDIR=$HOME/ABElectronics_Python_Libraries/
+    if [ ! -d "$ABDIR" ]; then
+	git clone https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
+	echogood "Cloned git reposetory"
+    else
+        cd "$ABDIR"
+	git pull
+	echogood "Updated git repository"
+    fi
+
+    echo ${PYTHONPATH}
+    bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
+    grep SigmaPi ~/.bashrc > /dev/null
+    if [ $? -eq 0 ];then
+	echobad "---> PATH already setup in .bashrc. NO MODIFICATION IS MADE"
+    else
+	echo "$bashrc_addition" >> ~/.bashrc
+	echogood "Added reposetory to python path"
+    fi
+
+    grep i2c-dev /etc/modules > /dev/null
+    if [ $? -eq 0 ];then
+	echobad "---> i2c-dev already added to modules"
+    else
+	sudo sh -c 'echo "i2c-dev" >> /etc/modules'
+	echogood "Added spi-dev to auto-loaded modules"
+    fi
+
+    echogood "Adding user to spi and i2c groups"
+    sudo usermod -a -G spi pi
+    sudo usermod -a -G i2c pi
+
+    echogood "+++++> DONE"
+fi
+
+# GUI section (Qt and Qwt)
+if [ $1 == "qt" ];then
+    echobold "===> INSTALLING EXTRA PACKAGES FOR GUIS"
+    echo
+
+    # qt and pyqwt
+    echoblue "---> Installing python-qt4 and python-qwt5-qt4 with apt-get"
+    sudo apt-get install python-qt4 python-qwt5-qt4
 
     echogood "+++++> DONE"
 fi
