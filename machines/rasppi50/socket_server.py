@@ -54,8 +54,7 @@ if __name__ == "__main__":
     for index in range(0, 21):  # Set GPIO pins to output
         wp.digitalWrite(index, 1)
 
-
-    HOST, PORT = "10.54.7.32", 9999  # Rasppi33
+    HOST, PORT = "10.54.7.50", 9999  # Rasppi33
 
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()
