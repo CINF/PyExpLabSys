@@ -73,6 +73,7 @@ exception, do the following:
 
 .. code-block:: python
 
+    from PyExpLabSys.common.utilities import get_logger
     LOGGER = get_logger('Test logger')
 
     def main():
