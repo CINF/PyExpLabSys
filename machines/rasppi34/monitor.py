@@ -13,6 +13,7 @@ import json
 import credentials
 from PyExpLabSys.drivers.crowcon import Vortex
 from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 # Set log filesize to 10 MB
 LOGGER = get_logger('b307gasalarm', file_log=True, level='debug',
@@ -38,6 +39,13 @@ class GasAlarmMonitor(object):
                                           measurement_codenames=codenames)
         self.db_logger.start()
         LOGGER.info('Logger started')
+
+        # Each value is measured about every 5 sec, so sane interval about 2
+        self.live_socket = LiveSocket(name='gas_alarm_307_live',
+                                      codenames=codenames,
+                                      sane_interval=2.0)
+        self.live_socket.start()
+        LOGGER.info('Live socket started')
 
         # Start driver
         self.vortex = Vortex('/dev/ttyUSB0', 1)
@@ -89,6 +97,8 @@ class GasAlarmMonitor(object):
         """Close the logger and the connection to the Vortex"""
         self.db_logger.stop()
         LOGGER.info('Logger stopped')
+        self.live_socket.stop()
+        LOGGER.info('Live socket stopped')
         self.vortex.close()
         LOGGER.info('Vortex driver closed')
 
@@ -102,6 +112,7 @@ class GasAlarmMonitor(object):
 
     def main(self):
         """Main monitoring and logging loop"""
+        # Each iteration takes about 5 sec
         while True:
             # Log detectors
             for detector_num in self.detector_numbers:
@@ -121,6 +132,8 @@ class GasAlarmMonitor(object):
 
         # Detector level
         now = time.time()
+        # Always send to live socket
+        self.live_socket.set_point_now(codename, levels.level)
         # Force log every 10 m
         time_condition = \
             now - self.detector_levels_last_times[detector_num] > 600
