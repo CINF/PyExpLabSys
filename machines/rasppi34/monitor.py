@@ -245,9 +245,10 @@ if __name__ == '__main__':
         gas_alarm_monitor.main()
     except KeyboardInterrupt:
         gas_alarm_monitor.close()
-    except:
+    except Exception as exception:
+        LOGGER.exception(exception)
         gas_alarm_monitor.close()
-        raise
+        raise exception
 
     time.sleep(2)
     LOGGER.info('Program has stopped')
