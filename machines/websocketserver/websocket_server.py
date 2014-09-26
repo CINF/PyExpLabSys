@@ -14,7 +14,8 @@ from autobahn.websocket import WebSocketServerFactory, \
     WebSocketServerProtocol, listenWS
 
 from PyExpLabSys.common.utilities import get_logger
-LOG = get_logger('ws-server', level='info')
+LOG = get_logger('ws-server', level='debug', file_log=True,
+                 file_max_bytes=10485760)
 
 MALFORMED_SUBSCRIPTION = 'Error: Malformed subscription line: {}'
 DATA = {}
@@ -319,8 +320,8 @@ def main():
     #log.startLogging(sys.stdout)
     # Create context factor with key and certificate
     context_factory = ssl.DefaultOpenSSLContextFactory(
-        '/home/kenni/Dokumenter/websockets/autobahn/keys/server.key',
-        '/home/kenni/Dokumenter/websockets/autobahn/keys/server.crt'
+        '/home/kenni/certs/fysik.dtu.dk.key',
+        '/home/kenni/certs/fysik.dtu.dk.crt'
     )
     # Form the webserver factory
     factory = WebSocketServerFactory("wss://localhost:9001", debug=True)
