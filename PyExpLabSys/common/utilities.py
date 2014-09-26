@@ -2,6 +2,8 @@
 logger with the :py:mod:`logging` module.
 """
 
+import sys
+import inspect
 import logging
 import platform
 from logging.handlers import RotatingFileHandler, SMTPHandler
@@ -127,3 +129,19 @@ class CustomSMTPWarningHandler(CustomSMTPHandler):
         """Cursom emit that checks if: warning =< level < error"""
         if logging.WARNING <= record.levelno < logging.ERROR:
             super(CustomSMTPWarningHandler, self).emit(record)
+
+
+def call_spec_string():
+    """Return the argument names and values of the method or function it was
+    called from as a string
+
+    Returns:
+        str: The argument string, e.g:
+            (name='hallo', codenames=['aa', 'bb'], port=8000)
+    """
+    frame = sys._getframe(1)
+    argvals = inspect.getargvalues(frame)
+    if argvals.args[0] == 'self':
+        return inspect.formatargvalues(argvals.args[1:], *argvals[1:])
+    else:
+        return inspect.formatargvalues(*argvals)
