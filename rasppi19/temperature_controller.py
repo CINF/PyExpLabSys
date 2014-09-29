@@ -15,6 +15,46 @@ import PID
 #output = 'print'
 output = 'curses'
 
+class CursesTui(threading.Tread):
+    def __init__(self,powersupply):
+        treading.Tread.__init__(self)
+        self.ps = powersupply
+        self.screen = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        curses.curs_set(False)
+        self.screen.keypad(1)
+        self.screen.nodelay(1)
+        self.time = time.time()
+        self.countdown = False
+        self.last_key = None
+        self.running = True
+        
+    def run(self,):
+        while self.running:
+            self.screen.addstr(3, 2, 'Power Supply for HPC stm312, ID: ')# + str(self.ps.status('ID'))
+            if self.ps.status['eroor'] != None:
+                self.screen.addstr(18,2, 'Latest error message: ' + str(self.ps.status['error']) + ' at time: ' + str(self.ps.status['error time']))
+            self.screen.addstr(19,2,"Runtime: {0:.0f}s".format(time.time() - self.time))
+            self.screen.addstr(21,2,"q: quit program, ")
+            self.screen.addstr(24,2, ' Latest key: ' + str(self.last_key))
+            n = self.screen.getch()
+            if n == ord("q"):
+                self.ps.running = False
+                self.running = False
+                self.last_key = chr(n)
+            elif n == ord(''):
+                self.ps.goto_manual = True
+                self.last_key = chr(n)
+        time.sleep(5)
+        self.stop()
+        print EXCEPTION
+
+    def stop(self):
+        curses.nocbreak()
+        self.screen.keypad(0)
+        curses.echo()
+        curses.endwin()
 def sqlTime():
     sqltime = datetime.now().isoformat(' ')[0:19]
     return(sqltime)
@@ -86,7 +126,7 @@ class PowerCalculatorClass(threading.Thread):
         self.pid.Kp = 0.035
         self.pid.Ki = 0.00022
         self.pid.Kd = 0
-        self.pid.Pmax = 80
+        self.pid.Pmax = 8
         self.pid.UpdateSetpoint(self.setpoint)
         self.temp_class = temp_class
         
@@ -142,9 +182,9 @@ while not quit:
             trigger = trigger + 1
             if trigger > 20:
                 meas_time = sqlTime()
-                sql = "insert into dateplots_stm312 set type=\"hp_psu_voltage\", time=\"" +  meas_time + "\", value = \"" + str(U) + "\""
+                sql = "insert into dateplots_stm312 set type=40, time=\"" +  meas_time + "\", value = \"" + str(U) + "\""
                 sqlInsert(sql)
-                sql = "insert into dateplots_stm312 set type=\"hp_psu_current\", time=\"" +  meas_time + "\", value = \"" + str(I) + "\""
+                sql = "insert into dateplots_stm312 set type=41, time=\"" +  meas_time + "\", value = \"" + str(I) + "\""
                 sqlInsert(sql)
                 trigger = 0
 
@@ -202,3 +242,13 @@ while not quit:
 
 heater.SetVoltage(0)
 heater.OutputStatus(False)
+if __name__ == '__main__':
+    """
+    ps = powersupply()
+    ps.start()
+
+    tui = CursesTui(ps)
+    tui.daemon = True
+    tui.start()
+    """
+    pass
