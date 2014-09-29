@@ -15,7 +15,7 @@ import PID
 #output = 'print'
 output = 'curses'
 
-class CursesTui(threading.Tread):
+class CursesTui(threading.Thread):
     def __init__(self,powersupply):
         treading.Tread.__init__(self)
         self.ps = powersupply
