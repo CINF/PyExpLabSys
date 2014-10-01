@@ -25,9 +25,16 @@ class Bronkhorst():
     def read_measure(self):
         read_pressure = ':06800401210120\r\n' # Read pressure
         val = self.comm(read_pressure)
-        val = val[-6:]
-        num = int(val,16)
-        pressure = (1.0 * num / 32000) * self.max_setting
+        error = 0
+        while error < 10:
+            try:
+                val = val[-6:]
+                num = int(val,16)
+                pressure = (1.0 * num / 32000) * self.max_setting
+                break
+            except ValueError:
+                pressure = -99
+                error = error + 1
         return pressure
 
     def set_setpoint(self,setpoint):
@@ -61,9 +68,18 @@ class Bronkhorst():
 
     def read_serial(self):
         read_serial = ':1A8004F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
-        response = self.comm(read_serial)
-        response = response[13:-84]
-        response = response.decode('hex')
+        error = 0
+        while error < 10:
+            response = self.comm(read_serial)
+            response = response[13:-84]
+            try:
+                response = response.decode('hex')
+            except TypeError:
+                response = ''
+            if response == '':
+                error = error + 1
+            else:
+                error = 10
         return str(response)
 
     def read_unit(self):

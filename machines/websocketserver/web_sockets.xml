@@ -1,0 +1,5 @@
+<sockets>
+    <!-- thetaprobe -->
+    <socket>rasppi25:8000</socket>
+    <socket>rasppi04:8000</socket>
+</sockets>
