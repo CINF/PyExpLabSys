@@ -81,21 +81,23 @@ class ISeries(object):
         """Return the temperature"""
         LOGGER.debug('read_temperature called')
         command = 'X01'
-        try:
-            response = float(self.command(command, response_length=5))
-        except ValueError:
-            print 'AAA'
-            response = None
-        LOGGER.debug('read_temperature return {}'.format(response))
+        error = 1
+        while (error > 0) and (error < 10):
+            try:
+                response = float(self.command(command, response_length=5))
+                error = 0
+            except ValueError:
+                error = error + 1
+                print 'AAA'
+                response = None
+                LOGGER.debug('read_temperature return {}'.format(response))
         return response
-
 
     def close(self):
         """Close the connection to the device"""
         LOGGER.debug('Driver asked to close')
         self.serial.close()
         LOGGER.info('Driver closed')
-
 
 
 class CNi3244_C24(ISeries):
