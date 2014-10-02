@@ -1,32 +1,22 @@
+# pylint: disable=R0913,W0142,C0103
+
+""" Temperature reader for microreactors """
 import sys
 import SocketServer
+import PyExpLabSys.drivers.omega_cni as omega_CNi32
+import PyExpLabSys.drivers.omegabus as omegabus
 sys.path.append('../')
 import pentax_picture as pentax
-import omegabus
-import omega_CNi32
-import FindSerialPorts
+#import omega_CNi32 as omega_CNi32
 
-ports = FindSerialPorts.find_ports()
-print ports
-for p in ports:
-    bus = omegabus.OmegaBus('/dev/' + p)
-    try:
-        break
-    except:
-        pass
-print 'Omegabus: ' + p
+port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
+TC_reader = omegabus.OmegaBus('/dev/serial/by-id/' + port)
 
-for p in ports:
-    omegaCN = omega_CNi32.omega_comm('/dev/' + p)
-    if (omegaCN.ReadTemperature() > -9000):
-        break
-print 'Omega CNi: ' + p
+port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+omega = omega_CNi32.ISeries('/dev/serial/by-id/' + port, 9600)
 
-#TC_reader = omegabus.OmegaBus()
-TC_reader = bus
-
-#omega = omega_CNi32.omega_comm('/dev/ttyUSB0')
-omega = omegaCN
+print(omega.read_temperature())
+print '----'
 
 #This specific raspberry pi handles temperature reading
 #And takes images with the pentax camera
@@ -45,11 +35,8 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             pentax.AcquireImage('/usr/share/mini-httpd/html/tmp.jpg')
             data = "http://rasppi04/tmp.jpg"
         if recieved_data == "tempNG":
-            #data = str(TC_reader.ReadValue(1))
-            data = str(omega.ReadTemperature())
-            if data == '0':
-                time.sleep(0.01)
-                data = str(omega.ReadTemperature())
+            data = str(omega.read_temperature())
+            print data
         if recieved_data == "tempOld":
             data = str(TC_reader.ReadValue(2))
         if recieved_data == "tempRoom":
@@ -57,7 +44,6 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.86.181", 9999 #Rasppi12
-
+    HOST, PORT = "10.54.7.12", 9999 #Rasppi12
     server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
     server.serve_forever()

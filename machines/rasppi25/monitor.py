@@ -1,4 +1,4 @@
-"""Continous logger for the Pfeiffer gauges on the theta probe"""
+"""Continuous logger for the Pfeiffer gauges on the theta probe"""
 
 import time
 from PyExpLabSys.drivers.pfeiffer import TPG262
@@ -27,7 +27,8 @@ def main():
     db_logger.start()
     LOGGER.info('Initiated and started database logger')
 
-    livesocket = LiveSocket(codenames, 0.2)
+    name = 'Thetaprobe pressure load lock and UV gun'
+    livesocket = LiveSocket(name, codenames, 0.2)
     livesocket.start()
 
     loadlock_last = {'value': 1E20, 'time': 0}
@@ -38,7 +39,13 @@ def main():
             # get the values: returns:
             # (value1, (status_code1, status_message1),
             # value2, (status_code2, status_message2))
-            value_ll, code_ll, value_uv, code_uv = tpg.pressure_gauges()
+            try:
+                value_ll, code_ll, value_uv, code_uv = tpg.pressure_gauges()
+            except IOError:
+                LOGGER.info(
+                    'Serial communication failed. Sleep 10 and try again.')
+                time.sleep(10)
+                continue
             livesocket.set_point_now('thetaprobe_pressure_loadlock', value_ll)
             livesocket.set_point_now('thetaprobe_pressure_uvgun', value_uv)
 

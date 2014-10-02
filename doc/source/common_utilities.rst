@@ -6,6 +6,9 @@ The utilities module
 This module contains convenience functions for quick setup of common
 tasks.
 
+.. contents:: Table of Contents
+   :depth: 3
+
 Get a logger
 ============
 
@@ -16,11 +19,14 @@ the imported PyExpLabSys components to the same logging location. The
 function has the ability to setup logging both to a terminal and to a
 log file, including setting up log rotation.
 
-Usage example
--------------
+``get_logger`` usage examples
+=============================
 
-To get a named logger that will only output logging information to the
-terminal do:
+Logging to terminal and send emails on warnings and above (default)
+-------------------------------------------------------------------
+
+To get a named logger that will output logging information to the
+terminal and send emails on warnings and above, do the following:
 
 .. code-block:: python
 
@@ -28,9 +34,23 @@ terminal do:
     LOGGER = get_logger('name_of_my_logger')
 
 where the ``name_of_my_logger`` should be some descriptive name for
-what the program/script does e.g. "coffee_machine_count_monitor". From
-the returned ``LOGGER``, information can now be logged via the usual
-``.info()``, ``.warning()`` methods etc.
+what the program/script does e.g. "coffee_machine_count_monitor".
+
+From the returned ``LOGGER``, information can now be logged via the
+usual ``.info()``, ``.warning()`` methods etc.
+
+To turn logging to the terminal of (and only use the other configured
+logging handlers), set the optional boolean ``terminal_log`` parameter
+to ``False``.
+
+The email notification on warnings and above is on-by-default and is
+controlled by the two optional boolean parameters
+``email_on_warnings`` and ``email_on_errors``. It will send emails on
+logged warnings to the warnings list and on logged errors (and above)
+to the error list.
+
+Rotating file logger
+--------------------
 
 To get a named logger that also logs to a file do:
 
@@ -44,19 +64,41 @@ file name can be changed via the option ``file_name``, the same way as
 the maximum log file size and number of saved backups can be changed,
 as documented :func:`below <.get_logger>`.
 
-To get a logger that logs only to a file and not to the terminal do:
+
+Getting the logger to send emails on un-caught exceptions
+---------------------------------------------------------
+
+To also make the logger send en email, containing any un-caught
+exception, do the following:
 
 .. code-block:: python
 
     from PyExpLabSys.common.utilities import get_logger
-    LOGGER = get_logger('name_of_my_logger', file_log=True, terminal_log=False)
+    LOGGER = get_logger('Test logger')
 
-utilities module
-----------------
+    def main():
+	pass  # All your main code that might raise exceptions
 
-.. automodule:: PyExpLabSys.common.utilities
+    if __name__ == '__main__':
+        try:
+            main()
+        except KeyboardInterrupt:
+            pass  # Shut down code here
+        except Exception as exception:
+            LOGGER.exception(exception)
+            # Possibly shut down code here
+            raise exception
 
-get_logger function
-----------------------
+.. note:: In the example there is a seperate ``except`` for the
+    ``KeyboardInterrupt`` exception, to make it possible to use
+    keyboard interrupts to shut the program down, without sending an
+    exception email about it.
 
+
+Auto-generated module documentation
+===================================
+
+.. autodata:: PyExpLabSys.common.utilities.MAIL_HOST
+.. autodata:: PyExpLabSys.common.utilities.WARNING_EMAIL
+.. autodata:: PyExpLabSys.common.utilities.ERROR_EMAIL
 .. autofunction:: PyExpLabSys.common.utilities.get_logger

@@ -41,7 +41,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         comm = 'read_global_pressure'
         if recieved_data[0:len(comm)] == comm:
             print 'read_global_pressure'
-            data = str(global_temperature)
+            data = str(global_pressure)
 
         if recieved_data[0:11] == "set_hp_temp":
             val = float(recieved_data[11:].strip())

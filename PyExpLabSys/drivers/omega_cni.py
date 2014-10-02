@@ -21,17 +21,18 @@ class ISeries(object):
     pre_string = chr(42)
     end_string = chr(13)
 
-    def __init__(self, port):
+    def __init__(self, port, baudrate=19200, comm_stnd='rs485'):
         """Initialize internal parameters
 
         :param port: A serial port designation as understood by `pySerial
             <http://pyserial.sourceforge.net/pyserial_api.html#native-ports>`_
         """
         LOGGER.debug('Initialize driver')
-        self.serial = serial.Serial(port, 19200, bytesize=serial.SEVENBITS,
+        self.serial = serial.Serial(port, baudrate, bytesize=serial.SEVENBITS,
                                     parity=serial.PARITY_ODD,
                                     stopbits=serial.STOPBITS_ONE,
                                     timeout=2)
+        self.comm_stnd = comm_stnd
         time.sleep(0.1)
         LOGGER.info('Driver initialized')
 
@@ -45,6 +46,9 @@ class ISeries(object):
             response from the device.
         :type response_length: int
         """
+
+        # Hints for rs485 implementation in the bottom of this file
+
         LOGGER.debug('command called with {}, {}'.format(command,
                                                          response_length))
         self.serial.write(self.pre_string + command + self.end_string)
@@ -59,6 +63,8 @@ class ISeries(object):
         response = self.serial.read(self.serial.inWaiting())
         # Strip \r from responseRemove the echo response from the device
         LOGGER.debug('comand return {}'.format(response[:-1]))
+        if response[0:len(command)] == command:
+            response = response[len(command):]
         return response[:-1]
 
     def reset_device(self):
@@ -78,6 +84,7 @@ class ISeries(object):
         try:
             response = float(self.command(command, response_length=5))
         except ValueError:
+            print 'AAA'
             response = None
         LOGGER.debug('read_temperature return {}'.format(response))
         return response
@@ -101,3 +108,18 @@ class CNi3244_C24(ISeries):
             <http://pyserial.sourceforge.net/pyserial_api.html#native-ports>`_
         """        
         super(CNi3244_C24, self).__init__(port)
+
+"""
+def comm(self,command, address=1):
+pre_string = chr(42)
+end_string = chr(13)
+if self.comm_stnd == 'rs485':
+length_command = len(command) + 2
+else:
+length_command = len(command)
+if self.comm_stnd == 'rs485':
+comm_string = pre_string + '0' + str(address) + command + end_string
+else:
+comm_string = pre_string + command + end_string
+self.f.write(comm_string)
+"""

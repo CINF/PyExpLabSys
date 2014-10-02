@@ -6,39 +6,16 @@ import bronkhorst
 # Code for assigning the controllers to proper /dev/tty*
 name = {}
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB0')
-name[0] = bronk.read_serial()
-name[0] = name[0].strip()
-
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB1')
-name[1] = bronk.read_serial()
-name[1] = name[1].strip()
-
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB2')
-name[2] = bronk.read_serial()
-name[2] = name[2].strip()
-
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB3')
-name[3] = bronk.read_serial()
-name[3] = name[3].strip()
-
-"""
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB4')
-name[4] = bronk.read_serial()
-name[4] = name[4].strip()
-
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB5')
-name[5] = bronk.read_serial()
-name[5] = name[5].strip()
-
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB6')
-name[6] = bronk.read_serial()
-name[6] = name[6].strip()
-
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
-name[7] = bronk.read_serial()
-name[7] = name[7].strip()
-"""
+for i in range(0,4):
+    error = 0
+    name[i] = ''
+    while (error < 5) and (name[i]==''):
+        bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        name[i] = bronk.read_serial()
+        name[i] = name[i].strip()
+        error = error + 1
+        print error
+    print name[i]
 
 # Array containing the controllers actually connected
 bronk_present = {}
