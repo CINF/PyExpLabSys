@@ -20,21 +20,29 @@ from datetime import datetime
 import MySQLdb
 
 import sys
-sys.path.append('../')
-import CPX400DP as CPX
+sys.path.append('../../')
+import PyExpLabSys.drivers.cpx400dp as CPX
 
 
 #output = 'print'
-output = 'curses'
+#output = 'curses'
 
 class PID():
+    """Implementation of a PID routine
+
+    Iterates over all devices in /dev/input/event?? and looks for one that has
+    'Barcode Reader' in its description.
+
+    Returns:
+        str: The Barcode Scanner device path
+    """
     
     def __init__(self, case=None):
         """The input parameter case is used to simplify that several system is sharing the software, each with it own parametors."""
         if case == None:
             self.gain = {'Kp':0.15,'Ki':0.0025,'Kd':0.0,'Pmax':54.0, 'Pmin':0.0}
             pass
-        elif case = 'stm312 hpc':
+        elif case == 'stm312 hpc':
             self.gain = {'Kp':0.15, 'Ki':0.0025, 'Kd':0.0, 'Pmax':54.0, 'Pmin':0.0}
             
         """ Provid a starting setpoit to ensure that the PID does not apply any power before an actual setpoit is set."""
@@ -46,7 +54,7 @@ class PID():
         self.Pmin = self.gain['Pmin']
         
     def initialize(self,):
-        # initialize delta t variables
+        """ Initialize delta t variables. """
         self.currtm = time.time()
         self.prevtm = self.currtm
 
@@ -58,15 +66,23 @@ class PID():
         self.Cd = 0
         self.P = 0
 
-    def ResetIntError(self):
+    def reset_integrated_error(self):
+        """ Reset the I value, integrated error. """
         self.Ci = 0
 
-    def UpdateSetpoint(self, setpoint):
+    def update_setpoint(self, setpoint):
         """ Update the setpoint."""
         self.setpoint = setpoint
         return setpoint
 
-    def WantedPower(self,T):
+    def get_new_Power(self,T):
+        """ Get new power for system, P_i+1 
+
+        :param T: Actual temperature
+        :type T: float
+        :returns: best guess of need power
+        :rtype: float
+        """
         error = self.setpoint - T
         self.currtm = time.time()               # get t
         dt = self.currtm - self.prevtm          # get delta t
@@ -100,13 +116,13 @@ class PID():
         """ Check if output is valid. """
         if P > self.Pmax:
             P = self.Pmax
-        if P<0:
+        if P < 0:
             P = 0 
         return P
 
 class CursesTui(threading.Thread):
     def __init__(self,powercontrolclass):
-        treading.Tread.__init__(self)
+        threading.Thread.__init__(self)
         self.pcc = powercontrolclass
         self.screen = curses.initscr()
         curses.noecho()
@@ -183,12 +199,14 @@ def sqlInsert(query):
     cnxn.close()
 
 
-if output == 'curses':
+"""if output == 'curses':
     screen = curses.initscr()
     curses.noecho()
     curses.cbreak()
     curses.curs_set(False)
     screen.keypad(1)
+"""
+
 
 """
 def TellTheWorld(message,pos=[0,0]):
@@ -248,7 +266,7 @@ class PowerCalculatorClass(threading.Thread):
         #global power
         while self.running:
             self.power = self.pid.WantedPower(self.temp_class.temperature)
-            self.pid.UpdateSetpoint(self.setpoint)
+            self.pid.UpdateSetpoint(self.setpoint)SetVoltage
             time.sleep(0.25)
         self.pid.UpdateSetpoint(-200)
     def stop(self,):
@@ -257,6 +275,7 @@ class PowerCalculatorClass(threading.Thread):
 """
 
 class PowerControlClass(threading.Thread):
+    
     def __init__(self,):
         threading.Thread.__init__(self)
         #self.PowerCalculatorClass = PID_class
@@ -264,25 +283,26 @@ class PowerControlClass(threading.Thread):
         self.status = {}
         self.status['Mode'] = 'Temperature Control' #, 'Power Control'
         self.status['error'] = None
-        self.init_PID()
-        self.init_heater()
+        self.init_PID_class()
+        #self.init_temp_class()
+        self.init_heater_class()
     
-    def init_Temp(self,temp_class):
+    def init_temp_class(self,temp_class):
         self.temp_class = temp_class
         
-    def init_PID(self,):
-        self.power = 0
-        self.setpoint = -200
-        self.pid = PID.PID()
+    def init_PID_class(self,):
+        self.power = 0.0
+        self.setpoint = -200.0
+        self.pid = PID()
         self.pid.Kp = 0.035
         self.pid.Ki = 0.00022
-        self.pid.Kd = 0
-        self.pid.Pmax = 8
-        self.pid.UpdateSet/home/aufn/.spyder2/.temp.pypoint(self.setpoint)
+        self.pid.Kd = 0.0
+        self.pid.Pmax = 8.0
+        self.pid.update_setpoint(self.setpoint)
         self.status['Wanted power'] = self.power
         self.status['Setpoint'] = self.setpoint
         
-    def init_heater(self,):
+    def init_heater_class(self,):
         for i in range(0,10):
             heater = CPX.CPX400DPDriver(1,usbchannel=i)
             if not heater.debug:
@@ -290,36 +310,36 @@ class PowerControlClass(threading.Thread):
         self.heater = heater
         
     def init_resistance(self,):
-        self.heater.SetVoltage(2)
-        self.heater.OutputStatus(True)
+        self.heater.set_voltage(2)
+        self.heater.output_status(on=True)
         time.sleep(1)
-        I_calib = self.heater.ReadActualCurrent()
-        self.heater.OutputStatus(False)
+        I_calib = self.heater.read_actual_current()
+        self.heater.output_status(on=False)
         self.R_calib = 2.0/I_calib
         
     def OutputOn(self,):
         self.status['Output'] = True
-        self.heater.OutputStatus(True)
+        self.heater.output_status(on=True)
         
     def OutputOff(self,):
         self.status['Output'] = False
-        self.heater.OutputStatus(False)
+        self.heater.output_status(on=False)
         
     def update_output(self,):
-        self.status['Current'] = heater.ReadActualCurrent()
-        self.status['Voltage'] = heater.ReadActualVoltage()
+        self.status['Current'] = heater.read_actual_current()
+        self.status['Voltage'] = heater.read_actual_voltage()
         self.status['Actual Power'] = self.status['Current']* self.status['Voltage']
         self.status['Resistance'] = self.status['Voltage'] / self.status['Current']
         pass
     
     def run(self,):
-        self.heater.SetVoltage(0)
+        self.heater.set_voltage(0)
         self.OutputOn()
         while self.running:
             self.status['Setpoint'] = read_setpoint()
             if self.status['Mode'] == 'Temperature Control':
-                self.pid.UpdateSetpoint(self.status['Setpoint'])
-                self.status['Wanted power'] = self.pid.WantedPower(self.temp_class.temperature)
+                self.pid.update_setpoint(self.status['Setpoint'])
+                self.status['Wanted power'] = self.pid.get_new_Power(self.temp_class.temperature)
                 self.status['Wanted Voltage'] = ( self.status['Wanted power']* self.status['Resistance'] )**0.5
             elif self.status['Mode'] == 'Power Control':
                 if self.status['Setpoint'] > 0 or self.status['Setpoint'] < 100:
@@ -333,13 +353,13 @@ class PowerControlClass(threading.Thread):
                     self.status['Wanted Voltage'] = self.status['Setpoint']
             time.sleep(0.25)            
             try:
-                self.heater.SetVoltage(self.status['Wanted Voltage'])
+                self.heater.set_voltage(self.status['Wanted Voltage'])
                 if self.heater.debug:
                     raise serial.serialutil.SerialException
             except serial.serialutil.SerialException:
                 self.init_heater()
             self.update_output()
-        self.pid.UpdateSetpoint(-200)
+        self.pid.update_setpoint(-200)
         self.OutputOff()
         self.stop()
         
@@ -408,7 +428,7 @@ while not quit:
             usb_reset += 1
             for i in range(0,10):
                 heater = CPX.CPX400DPDriver(1,usbchannel=i)
-                if not heater.debug:
+                if not heater.d/home/aufn/.spyder2/.temp.pyebug:
                     break
             #del heater
             #time.sleep(0.1)
@@ -458,17 +478,18 @@ heater.OutputStatus(False)
 """
 
 if __name__ == '__main__':
-    """
-    classes: 
+    print('Program start')
+    
+    #classes: 
     TempClass = TemperatureClass()
     TempClass.start()
     
     pcc = PowerControlClass()
-    pcc.init_Temp(TempClass)
+    pcc.init_temp_class(TempClass)
     pcc.start()
 
     tui = CursesTui(pcc)
     tui.daemon = True
     tui.start()
-    """
-    pass
+    
+    print('Program End')
