@@ -16,20 +16,21 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         global global_temperature
 
         recieved_data = self.request[0].strip()
+        print recieved_data
         data = "test"
         socket = self.request[1]
 
         comm = 'set_global_temp'
         if recieved_data[0:len(comm)] == comm:
             val = float(recieved_data[len(comm)+1:].strip())
-            print val
+            #print val
             global_temperature = val
             data = "ok"
 
         comm = 'set_global_pressure'
         if recieved_data[0:len(comm)] == comm:
             val = float(recieved_data[len(comm)+1:].strip())
-            print val
+            #print val
             global_pressure = val
             data = "ok"
 
@@ -40,32 +41,40 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
 
         comm = 'read_global_pressure'
         if recieved_data[0:len(comm)] == comm:
-            print 'read_global_pressure'
+            #print 'read_global_pressure'
             data = str(global_pressure)
-
-        if recieved_data[0:11] == "set_hp_temp":
-            val = float(recieved_data[11:].strip())
-            print val
+            
+        comm = "set_hp_temp"
+        if recieved_data[0:len(comm)] == comm:
+            val = float(recieved_data[len(comm)+1:].strip())
+            #print val
             hp_temp = val
             data = "ok"
-        if recieved_data[0:12] == "read_hp_temp":
-            print "read_hp_temp"
-            print hp_temp
+        
+        comm = "read_hp_temp"
+        if recieved_data[0:len(comm)] == comm:
+            #print "read_hp_temp"
+            #print hp_temp
             data = str(hp_temp)
-
-        if recieved_data[0:12] == "set_setpoint":
-            val = float(recieved_data[13:].strip())
+        
+        comm = "set_setpoint"
+        if recieved_data[0:len(comm)] == comm:
+            #print recieved_data
+            val = float(recieved_data[len(comm)+1:].strip())
+            #print recieved_data[13:].strip()
             setpoint = val
             data = "ok"
             print val
-        if recieved_data[0:13] == "read_setpoint":
+        
+        comm = "read_setpoint"
+        if recieved_data[0:len(comm)] == comm:
             print "read_setpoint"
             data = str(setpoint)
-        
+        print recieved_data + data
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.86.188", 9990 #rasppi19
+    HOST, PORT = "10.54.7.19", 9990 #rasppi19
 
     hp_temp = -998
     setpoint = -8888
