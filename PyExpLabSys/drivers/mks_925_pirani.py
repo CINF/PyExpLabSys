@@ -3,40 +3,47 @@ import time
 
 class mks_comm():
 
-    def __init__(self,port):
-        self.f = serial.Serial(port,9600,timeout=2)
-	time.sleep(0.1)
+    def __init__(self, port):
+        self.f = serial.Serial(port, 9600, timeout=2)
+        time.sleep(0.1)
 
-    def comm(self,command):
+    def comm(self, command):
         prestring = '@254'
         endstring = ';FF'
-	self.f.write(prestring + command + endstring)
-	time.sleep(0.3)
-	return_string = self.f.read(self.f.inWaiting())
-	return return_string
-		
-    def read_pressure(self):
-        command = 'PR1?'
-	signal = self.comm(command)
-        signal = signal[7:-3]
-        #print signal
-        try:
-            signal = float(signal)
-        except: 
-            signal = -1
-	return(signal)
+        self.f.write(prestring + command + endstring)
+        time.sleep(0.3)
+        return_string = self.f.read(self.f.inWaiting())
+        return return_string
 
-    def set_comm_speed(self,speed):
+    def read_pressure(self):
+        """ Read the pressure from the device """
+        command = 'PR1?'
+        error = 1
+        while (error > 0) and (error < 10):
+            signal = self.comm(command)
+            signal = signal[7:-3]
+            try:
+                signal = float(signal)
+                error = 0
+            except ValueError:
+                error = error + 1
+                signal = -1
+        return signal
+
+    def set_comm_speed(self, speed):
+        """ Change the baud rate """
         command = 'BR!' + str(speed)
         signal = self.comm(command)
         return(signal)
 
-    def change_unit(self,unit): #STRING: TORR, PASCAL, MBAR
+    def change_unit(self, unit): #STRING: TORR, PASCAL, MBAR
+        """ Change the unit of the return value """
         command = 'U!' + unit
         signal = self.comm(command)
         return(signal)
 
     def read_serial(self):
+        """ Read the serial number of the device """
         command = 'SN?'
         signal = self.comm(command)
         signal = signal[7:-3]
