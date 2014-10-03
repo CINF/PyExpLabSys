@@ -49,8 +49,9 @@ class SCPI:
     
     def read_software_version(self, short=False):
         version_string = self.scpi_comm("*IDN?")
+        version_string = version_string.strip()
         return(version_string)    
-    
+
     def reset_device(self):
         self.scpi_comm("*RST")
         return(True)
