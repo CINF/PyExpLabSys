@@ -6,18 +6,13 @@ import struct
 
 class Brooks():
 
-    def __init__(self, port='/dev/ttyUSB0'):
-        self.devices = ['3F2320902001'] # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.devices = ['F25631001']
-        self.devices = ['F25969001']
-
-        print self.devices[0][-8:]
+    def __init__(self, device, port='/dev/ttyUSB0'):
         self.ser = serial.Serial(port, 19200)
         self.ser.parity = serial.PARITY_ODD
         self.ser.bytesize = serial.EIGHTBITS
         self.ser.stopbits = serial.STOPBITS_ONE
         deviceid = self.comm('8280000000000b06'
-                             + self.pack(self.devices[0][-8:]))
+                             + self.pack(device[-8:]))
         manufactor_code = '0a'
         device_type = deviceid[12:14]
         long_address = manufactor_code + device_type + deviceid[-6:]
