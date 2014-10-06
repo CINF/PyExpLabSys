@@ -10,8 +10,8 @@ class InterfaceOutOfBoundsError(Exception):
 
 class CPX400DPDriver(SCPI):
 
-    def __init__(self,output,usbchannel = 0):
-        SCPI.__init__(self,'/dev/ttyACM' + str(usbchannel),'serial')
+    def __init__(self,output, port):
+        SCPI.__init__(self, port, 'serial')
         if not (output == 1 or output == 2):
             raise InterfaceOutOfBoundsError(output)
         else:
