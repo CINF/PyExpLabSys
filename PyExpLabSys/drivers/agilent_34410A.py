@@ -1,23 +1,22 @@
-from SCPI import SCPI
+from scpi import SCPI
 
 
 class Agilent34410ADriver(SCPI):
 
-    def __init__(self):
-        #SCPI.__init__(self,'/dev/usbtmc0','file')
-        SCPI.__init__(self,'microreactor-agilent-34410A','lan')
+    def __init__(self, device, port='lan'):
+        SCPI.__init__(self, device, port)
 
     def config_current_measurement(self):
         """ Configures the instrument to measure current. """
         # FIXME: Take parameter to also be able to select AC
         self.scpi_comm("CONFIGURE:CURRENT:DC")
-        return(True)
+        return True
 
     def config_resistance_measurement(self):
         """ Configures the instrument to measure resistance. """ 
         # FIXME: Take parameter to also be able to select 4W
         self.scpi_comm("CONFIGURE:RESISTANCE")
-        return(True)
+        return True
 
     def select_measurement_function(self, function):
         """ Select a measurement function.
