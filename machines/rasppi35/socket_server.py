@@ -21,6 +21,7 @@ class FlowControl(threading.Thread):
         while self.running:
             time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
+            print qsize
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 mfc = element.keys()[0]
@@ -29,14 +30,15 @@ class FlowControl(threading.Thread):
 
             for mfc in self.mfcs:
                 flow =  self.mfcs[mfc].read_flow()
-                print(mfc + ': ' + str(flow))
+                #print(mfc + ': ' + str(flow))
                 self.pullsocket.set_point_now(mfc, flow)
 
+
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRR44-if00-port0'
-devices = ['F25600004','F25600005']
+devices = ['F25600004', 'F25600005', 'F25600006', 'F25600001', 'F25600002', 'F25600003', 'F25698001']
 datasocket = DateDataPullSocket('vhp_mfc_control',
                                 devices,
-                                timeouts=[3.0, 3.0],
+                                timeouts=[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
                                 port=9000)
 datasocket.start()
 
@@ -52,5 +54,6 @@ for device in devices:
 fc = FlowControl(mfcs, datasocket, pushsocket)
 fc.start()
 
-time.sleep(15)
-fc.running = False
+while True:
+    pass
+
