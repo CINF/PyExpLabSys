@@ -24,20 +24,33 @@ def host_status(host,method=""):
             up = False
     return up
 
-def uptime(host,method,username='pi',password='cinf123'):
+def uptime(host, method, username='pi', password='cinf123'):
     uptime_string = ""
     if method == 'ssh':
-        uptime_string = subprocess.check_output(["sshpass", "-p",password, "ssh",'-o LogLevel=quiet','-oUserKnownHostsFile=/dev/null', '-oStrictHostKeyChecking=no', username + "@" + host, 'uptime'])
+        uptime_string = subprocess.check_output(["sshpass", 
+                                                 "-p", 
+                                                 password,
+                                                 "ssh",
+                                                 '-o LogLevel=quiet',
+                                                 '-oUserKnownHostsFile=/dev/null',
+                                                 '-oStrictHostKeyChecking=no',
+                                                 username + "@" + host, 
+                                                 'cat /proc/uptime /proc/loadavg'])
+    """
+    Will need to modify uptime script on these hosts...
     if method== 'http':
         f = urllib2.urlopen('http://' + host + '/uptime.php')
         uptime_string = f.read()
         f.close()
+    """
     if uptime_string!="":
-        parts = uptime_string.split()
-        return_string = parts[2] + ' ' + parts[3] + " " + parts[4][:-1] + " hours. Load: " + parts[9]
+        uptime = uptime_string.split('\n')[0]
+        up = str(int(float(uptime.split()[0]) / (60*60*25)))
+        load = uptime_string.split('\n')[1].split()[2]
+        return_value = [up, load]
     else:
-        return_string = ""
-    return return_string
+        return_value = ['', '']
+    return return_value
 
 
 class CheckHost(threading.Thread):
@@ -50,12 +63,13 @@ class CheckHost(threading.Thread):
     def run(self):
         while not self.hosts.empty():
             host = hosts.get_nowait()
+            print host
             up = host_status(host[0],host[2])
             if up:
-                uptime_string = uptime(host[0],host[2])
+                uptime_val = uptime(host[0],host[2])
             else:
-                uptime_string = ""
-            self.results.put([host[0],up,uptime_string,host[3],host[1]])
+                uptime_val = ['', '']
+            self.results.put([host[0], up, uptime_val[0], uptime_val[1], host[3], host[1]])
             self.hosts.task_done()
 
 if __name__ == "__main__":
@@ -104,7 +118,7 @@ if __name__ == "__main__":
     results = Queue.Queue()
     t = time.time()
     host_checkers = {}
-    for i in range(0, 20):
+    for i in range(0, 1):
         host_checkers[i] = CheckHost(hosts, results)
         host_checkers[i].start()
     hosts.join()
@@ -120,9 +134,10 @@ if __name__ == "__main__":
         if host[1]:
             status_string += "1;"
             status_string += host[2] + ";"
+            status_string += host[3] + ";"
         else:
-            status_string += "0;;"
-        status_string += host[3] + ";"
-        status_string += host[4]
+            status_string += "0;;;"
+        status_string += host[4] + ";"
+        status_string += host[5]
         status_string += "\n"
     print(status_string)
