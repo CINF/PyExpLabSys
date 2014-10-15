@@ -57,19 +57,19 @@ class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
                 self.get_data(msg)
 
     def subscribe(self, msg):
-        """Subscribe for a set of codenames for a specific ip_port"""
-        # msg is on the form: subscribe#port:ip;codename1,codename2...
+        """Subscribe for a set of codenames for a specific hostname_port"""
+        # msg is on the form: subscribe#hostname:port;codename1,codename2...
         LOG.info('wshandler: subscribe called with: ' + msg)
         _, args = msg.split('#')
-        port_ip, codenames_string = args.split(';')
+        hostname_port, codenames_string = args.split(';')
         codenames = codenames_string.split(',')
-        if port_ip == '' or '' in codenames:
+        if hostname_port == '' or '' in codenames:
             msg = MALFORMED_SUBSCRIPTION.format(msg)
             LOG.warning('wshandler: ' + msg)
         else:
             number = len(self.subscriptions)
-            self.subscriptions.append((port_ip, codenames))
-            msg += '#{}#{}'.format(number, DATA[port_ip]['sane_interval'])
+            self.subscriptions.append((hostname_port, codenames))
+            msg += '#{}#{}'.format(number, DATA[hostname_port]['sane_interval'])
         self.json_send_message(msg)
 
     def get_data(self, msg):
@@ -81,12 +81,12 @@ class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
             out = 'Invalid subscription: ' + msg
         else:
             if number in range(len(self.subscriptions)):
-                port_ip, codenames = self.subscriptions[number]
+                hostname_port, codenames = self.subscriptions[number]
                 out = [number, []]
                 for codename in codenames:
                     index_in_global = \
-                        DATA[port_ip]['codenames'].index(codename)
-                    out[1].append(DATA[port_ip]['data'][index_in_global])
+                        DATA[hostname_port]['codenames'].index(codename)
+                    out[1].append(DATA[hostname_port]['data'][index_in_global])
             else:
                 out = 'Invalid subscription number: ' + msg
 
@@ -100,13 +100,13 @@ class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
 class UDPConnection(threading.Thread):
     """Class that handles an UDP connection to one data provider"""
 
-    def __init__(self, ip_port):
-        LOG.info('{}: __init__ start'.format(ip_port))
+    def __init__(self, hostname_port):
+        LOG.info('{}: __init__ start'.format(hostname_port))
         super(UDPConnection, self).__init__()
         self.daemon = True
         self._stop = False
-        self.ip_port = ip_port
-        self.ip_address, self.port = ip_port.split(':')
+        self.hostname_port = hostname_port
+        self.hostname, self.port = hostname_port.split(':')
         self.port = int(self.port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -116,48 +116,49 @@ class UDPConnection(threading.Thread):
         sane_interval = self._send_and_get('sane_interval')
         codenames = self._send_and_get('codenames')
         if sane_interval is None or codenames is None:
-            LOG.error('{}: Could not retrieve sane interval or codenames. '
-                      'Make thread stop without performing any action'
-                      .format(ip_port)
-                      )
+            LOG.info('{}: Could not retrieve sane interval or codenames. '
+                     'Make thread stop without performing any action'
+                     .format(hostname_port)
+            )
             self._stop = True
         else:
-            DATA[ip_port]['sane_interval'] = sane_interval
+            DATA[hostname_port]['sane_interval'] = sane_interval
             LOG.info('{}: sane_interval {} retrieved'.format(
-                ip_port, sane_interval)
+                hostname_port, sane_interval)
             )
             self.socket.settimeout(sane_interval * 2)
 
-            DATA[ip_port]['codenames'] = codenames
+            DATA[hostname_port]['codenames'] = codenames
             LOG.info('{}: codenames {} retrieved'.format(
-                ip_port, str(codenames))
+                hostname_port, str(codenames))
             )
-        LOG.info('{}: __init__ ended'.format(ip_port))
+        LOG.info('{}: __init__ ended'.format(hostname_port))
 
     def run(self):
-        LOG.info('{}: run start'.format(self.ip_port))
+        LOG.info('{}: run start'.format(self.hostname_port))
         while not self._stop:
             data = self._send_and_get('data')
             if data is None:
-                LOG.error('{}: Get data timed out, stopping!'
-                          .format(self.ip_port))
+                LOG.info('{}: Get data timed out, stopping!'
+                         .format(self.hostname_port))
                 self._stop = True
             else:
-                DATA[self.ip_port]['data'] = data
-                LOG.debug('{}: Retrieved data {}'.format(self.ip_port, data))
+                DATA[self.hostname_port]['data'] = data
+                LOG.debug('{}: Retrieved data {}'.
+                          format(self.hostname_port, data))
 
-            time.sleep(DATA[self.ip_port]['sane_interval'])
+            time.sleep(DATA[self.hostname_port]['sane_interval'])
 
-        LOG.info('{}: run ended'.format(self.ip_port))
+        LOG.info('{}: run ended'.format(self.hostname_port))
 
     def stop(self):
         """Stops the UPD connection"""
-        LOG.info('{}: stop'.format(self.ip_port))
+        LOG.info('{}: stop'.format(self.hostname_port))
         self._stop = True
 
     def _send_and_get(self, command):
         """ Send command and get response """
-        self.socket.sendto(command, (self.ip_address, self.port))
+        self.socket.sendto(command, (self.hostname, self.port))
         try:
             data, _ = self.socket.recvfrom(1024)
             data = json.loads(data)
@@ -182,7 +183,7 @@ class UDPConnectionSteward(threading.Thread):
         self.main_interval = 1
         # The UDP definitions are a set of hostname:port strings
         self.udp_definitions = set()
-        # The UDP defitions are used as keys for the UDP connections
+        # The UDP definitions are used as keys for the UDP connections
         self.udp_connections = {}
         LOG.info('steward: __init__ end')
 
@@ -230,9 +231,9 @@ class UDPConnectionSteward(threading.Thread):
 
         # Stop all the UPD connections
         sane = 0.1
-        for ip_port, connection in self.udp_connections.items():
-            LOG.info('steward: Stopping thread {0}'.format(ip_port))
-            sane = max(sane, DATA[ip_port]['sane_interval'])
+        for hostname_port, connection in self.udp_connections.items():
+            LOG.info('steward: Stopping thread {0}'.format(hostname_port))
+            sane = max(sane, DATA[hostname_port]['sane_interval'])
             connection.stop()
         LOG.debug('steward: Largest sane interval: ' + str(sane))
 
@@ -274,39 +275,39 @@ class UDPConnectionSteward(threading.Thread):
 
     def _delete_dead_connections(self):
         """Delete any of the existing connections that are no longer alive"""
-        for ip_port, connection in self.udp_connections.items():
+        for hostname_port, connection in self.udp_connections.items():
             if not connection.is_alive():
-                LOG.error('steward: Connection {} was dead. Deleting '
-                          'it'.format(ip_port))
-                del self.udp_connections[ip_port]
-                del DATA[ip_port]
+                LOG.info('steward: Connection {} was dead. Deleting '
+                         'it'.format(hostname_port))
+                del self.udp_connections[hostname_port]
+                del DATA[hostname_port]
 
     def _delete_removed_connections(self, removed_connections):
         """Delete removed connections"""
-        for ip_port in removed_connections:
-            LOG.info('steward: Deleting connection: {}'.format(ip_port))
-            sane = DATA[ip_port]['sane_interval']
-            self.udp_connections[ip_port].stop()
+        for hostname_port in removed_connections:
+            LOG.info('steward: Deleting connection: {}'.format(hostname_port))
+            sane = DATA[hostname_port]['sane_interval']
+            self.udp_connections[hostname_port].stop()
             # The sane interval is used as wait time in the main run
             # loop and therefore there can be as much as a sane
             # interval delay before the thread has stopped
             time.sleep(2 * sane)
-            if self.udp_connections[ip_port].is_alive():
+            if self.udp_connections[hostname_port].is_alive():
                 LOG.error('steward: Connection {} will not shut down'
-                          .format(ip_port)
+                          .format(hostname_port)
                           )
 
-            del self.udp_connections[ip_port]
-            del DATA[ip_port]
+            del self.udp_connections[hostname_port]
+            del DATA[hostname_port]
 
     def _add_new_connections(self, new_connections):
         """Add new connections and start them"""
-        for ip_port in new_connections:
-            LOG.info('steward: Adding connection: {0}'.format(ip_port))
-            DATA[ip_port] = {'data': None, 'codenames': None,
+        for hostname_port in new_connections:
+            LOG.info('steward: Adding connection: {0}'.format(hostname_port))
+            DATA[hostname_port] = {'data': None, 'codenames': None,
                              'sane_interval': None}
-            self.udp_connections[ip_port] = UDPConnection(ip_port)
-            self.udp_connections[ip_port].start()
+            self.udp_connections[hostname_port] = UDPConnection(hostname_port)
+            self.udp_connections[hostname_port].start()
 
 
 def main():
