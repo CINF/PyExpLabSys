@@ -6,22 +6,36 @@ import sys
 import inspect
 import logging
 import platform
+import time
+from collections import deque
 from logging.handlers import RotatingFileHandler, SMTPHandler
-
-
-LOGGER_LEVELS = {'debug': logging.DEBUG,
-                 'info': logging.INFO,
-                 'warning': logging.WARNING,
-                 'error': logging.ERROR,
-                 'critical': logging.CRITICAL}
 
 
 #: The email list warning emails are sent to
 WARNING_EMAIL = 'pyexplabsys-warning@fysik.dtu.dk'
-#: The email host used to send emails on logged warnings and errors
-MAIL_HOST = 'mail.fysik.dtu.dk'
 #: The email list error emails are sent to
 ERROR_EMAIL = 'pyexplabsys-error@fysik.dtu.dk'
+#: The email host used to send emails on logged warnings and errors
+MAIL_HOST = 'mail.fysik.dtu.dk'
+
+# Limit emails to 5 of each kind per day, but send blocked emails along with
+# the next allowed email
+#: The maximum number of emails the logger will send in
+#: :data:`.EMAIL_THROTTLE_TIME`
+MAX_EMAILS_PER_PERIOD = 5
+EMAIL_TIMES = {
+    logging.WARNING:
+    deque([0] * MAX_EMAILS_PER_PERIOD, maxlen=MAX_EMAILS_PER_PERIOD),
+    logging.ERROR:
+    deque([0] * MAX_EMAILS_PER_PERIOD, maxlen=MAX_EMAILS_PER_PERIOD)
+}
+#: The time period that the numbers of emails will be limited within
+EMAIL_THROTTLE_TIME = 24 * 60 * 60
+#: The maximum number of messages in the email backlog that will be sent when
+#: the next email is let through
+EMAIL_BACKLOG_LIMIT = 250
+EMAIL_BACKLOG = {logging.WARNING: deque(maxlen=EMAIL_BACKLOG_LIMIT),
+                 logging.ERROR: deque(maxlen=EMAIL_BACKLOG_LIMIT)}
 
 
 # pylint: disable=too-many-arguments, too-many-locals
@@ -110,6 +124,30 @@ def get_logger(name, level='INFO', terminal_log=True, file_log=False,
 class CustomSMTPHandler(SMTPHandler):
     """PyExpLabSys modified SMTP handler"""
 
+    def emit(self, record):
+        """Custom emit that throttles the number of email sent"""
+        email_log = EMAIL_TIMES[self.level]
+        email_backlog = EMAIL_BACKLOG[self.level]
+        now = time.time()
+
+        # Get the time of the oldest email
+        oldest_email_time = min(email_log)
+        # If the oldest email was sent more than throttle time ago, allow this
+        # one through
+        if oldest_email_time < (now - EMAIL_THROTTLE_TIME):
+            email_log.append(now)
+            # If there is a backlog, add it to the message before sending
+            if len(email_backlog) > 0:
+                backlog = '\n'.join(email_backlog)
+                # Explicitely convert record.msg to str to allow for
+                # logging.exception() with exception as arg instead of msg
+                record.msg = str(record.msg) + '\n\nBacklog:\n' + backlog
+                email_backlog.clear()
+
+            super(CustomSMTPHandler, self).emit(record)
+        else:
+            email_backlog.append(self.formatter.format(record))
+
     def getSubject(self, record):
         """Returns subject with hostname"""
         base_subject = super(CustomSMTPHandler, self).getSubject(record)
@@ -126,7 +164,7 @@ class CustomSMTPWarningHandler(CustomSMTPHandler):
     """Custom SMTP handler to emit record only if: warning =< level < error"""
 
     def emit(self, record):
-        """Cursom emit that checks if: warning =< level < error"""
+        """Custom emit that checks if: warning =< level < error"""
         if logging.WARNING <= record.levelno < logging.ERROR:
             super(CustomSMTPWarningHandler, self).emit(record)
 
