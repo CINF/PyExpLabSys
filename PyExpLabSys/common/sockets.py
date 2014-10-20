@@ -51,7 +51,9 @@ import logging
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
-from .utilities import call_spec_string
+from .utilities import call_spec_string, SystemStatus
+# Instantiate a global system status object
+SYSTEM_STATUS = SystemStatus()
 
 
 def bool_translate(string):
@@ -61,6 +63,30 @@ def bool_translate(string):
             'strings \'True\' or \'False\' are allowed'
         raise ValueError(message)
     return True if str(string) == 'True' else False
+
+
+def socket_server_status():
+    """Returns the status of all socket servers"""
+    status_dict = {}
+    for port, data in DATA.items():
+        if data['activity']['check_activity']:
+            since_last_activity = time.time() -\
+                data['activity']['last_activity']
+            if since_last_activity < data['activity']['activity_timeout']:
+                status = 'OK'
+            else:
+                status = 'INACTIVE'
+        else:
+            status = 'DISABLED'
+            since_last_activity = None
+
+        status_dict[port] = {
+            'name': data['name'],
+            'type': data['type'],
+            'status': status,
+            'since_last_activity': since_last_activity
+        }
+    return status_dict
 
 
 PULLUHLOG = logging.getLogger(__name__ + '.PullUDPHandler')
@@ -102,6 +128,8 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
          * **codenames_json** (*str*): Return a list of the codenames contained
            in a :py:mod:`json` string
          * **name** (*str*): Return the name of the socket server
+         * **status** (*str*): Return the system status and status for all
+           socket servers.
         """
         command = self.request[0]
         # pylint: disable=attribute-defined-outside-init
@@ -113,7 +141,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         if command.count('#') == 1:
             data = self._single_value(command)
         else:
-            # The name command if also handled here
+            # The "name" and "status" commands are also handled here
             data = self._all_values(command)
 
         sock.sendto(data, self.client_address)
@@ -209,6 +237,12 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         # Return the socket server name
         elif command == 'name':
             out = DATA[self.port]['name']
+        # Return status of system and all socket servers
+        elif command == 'status':
+            out = json.dumps({
+                'system_status': SYSTEM_STATUS.complete_status(),
+                'socket_server_status': socket_server_status()
+            })
         # The command is not known
         else:
             out = UNKNOWN_COMMAND
@@ -267,17 +301,37 @@ class CommonDataPullSocket(threading.Thread):
 
     # pylint: disable=too-many-branches
     def __init__(self, name, codenames, port, default_x, default_y, timeouts,
-                 init_timeouts=True, handler_class=PullUDPHandler):
-        """For parameter description of ``name``, ``codenames``, ``port``,
-        ``default_x``, ``default_y`` and ``timeouts`` see
-        :meth:`.DataPullSocket.__init__` or
-        :meth:`.DateDataPullSocket.__init__`.
+                 check_activity, activity_timeout, init_timeouts=True,
+                 handler_class=PullUDPHandler,
+                 ):
+        """
 
         Args:
+            name (str): The name of the DataPullSocket server. Used for
+                identification and therefore should contain enough information
+                about location and purpose to unambiguously identify the socket
+                server. E.g:
+                ``'DataPullSocket with data from giant laser on the moon'``
+            codenames (list): List of codenames for the measurements. The names
+                must be unique and cannot contain the characters: ``#,;:`` and
+                SPACE
+            port (int): Network port to use for the socket (deafult 9010)
+            default_x (float): The x value the measurements are initiated with
+            default_y (float): The y value the measurements are initiated with
+            timeouts (float or list of floats): The timeouts (in seconds as
+                floats) the determines when the date data socket regards the
+                data as being to old and reports that. If a list of timeouts is
+                supplied there must be one value for each codename and in the
+                same order.
             init_timeouts (bool): Whether timeouts should be instantiated in
                 the :data:`.DATA` module variable
             handler_class (Sub-class of SocketServer.BaseRequestHandler): The
                 UDP handler to use in the server
+            check_activity (bool): Whether the socket server should monitor
+                activity. What detemines activity is described in the derived
+                socket servers.
+            activity_timeout (float or int): The timespan in seconds which
+                constitutes in-activity
         """
         CDPULLSLOG.info('Initialize with: {}'.format(call_spec_string()))
         # Init thread
@@ -304,7 +358,16 @@ class CommonDataPullSocket(threading.Thread):
             timeouts = [timeouts] * len(codenames)
 
         # Prepare DATA
-        DATA[port] = {'codenames': list(codenames), 'data': {}, 'name': name}
+        DATA[port] = {
+            'codenames': list(codenames),
+            'data': {},
+            'name': name,
+            'activity': {
+                'check_activity': check_activity,
+                'activity_timeout': activity_timeout,
+                'last_activity': time.time()
+            }
+        }
         if init_timeouts:
             DATA[port]['timeouts'] = {}
         for name, timeout in zip(codenames, timeouts):
@@ -359,6 +422,11 @@ class CommonDataPullSocket(threading.Thread):
         del DATA[self.port]
         CDPULLSLOG.info('Stopped')
 
+    def poke(self):
+        """Poke the socket server to let it know that there is activity"""
+        if DATA[self.port]['activity']['check_activity']:
+            DATA[self.port]['activity']['last_activity'] = time.time()
+
 
 DPULLSLOG = logging.getLogger(__name__ + '.DataPullSocket')
 DPULLSLOG.addHandler(logging.NullHandler())
@@ -372,32 +440,24 @@ class DataPullSocket(CommonDataPullSocket):
     """
 
     def __init__(self, name, codenames, port=9010, default_x=47, default_y=47,
-                 timeouts=None):
+                 timeouts=None, check_activity=True, activity_timeout=900,
+                 poke_on_set=True):
         """Init data and UPD server
 
+        For parameter description of ``name``, ``codenames``, ``port``,
+        ``default_x``, ``default_y``, ``timeouts``, ``check_activity`` and
+        ``activity_timeout`` see :meth:`.CommonDataPullSocket.__init__`.
+
         Args:
-            name (str): The name of the DataPullSocket server. Used for
-                identification and therefore should contain enough information
-                about location and purpose to unambiguously identify the socket
-                server. E.g:
-                ``'DataPullSocket with data from giant laser on the moon'``
-            codenames (list): List of codenames for the measurements. The names
-                must be unique and cannot contain the characters: ``#,;:`` and
-                SPACE
-            port (int): Network port to use for the socket (deafult 9010)
-            default_x (float): The x value the measurements are initiated with
-            default_y (float): The y value the measurements are initiated with
-            timeouts (float or list of floats): The timeouts (in seconds as
-                floats) the determines when the date data socket regards the
-                data as being to old and reports that. If a list of timeouts is
-                supplied there must be one value for each codename and in the
-                same order.
+            poke_on_set (bool): Whether to poke the socket server when a point
+                is set, to let it know there is activity
         """
         DPULLSLOG.info('Initialize with: {}'.format(call_spec_string()))
         # Run super init to initialize thread, check input and initialize data
         super(DataPullSocket, self).__init__(
             name, codenames, port=port, default_x=default_x,
-            default_y=default_y, timeouts=timeouts
+            default_y=default_y, timeouts=timeouts,
+            check_activity=check_activity, activity_timeout=activity_timeout
         )
         DATA[port]['type'] = 'data'
         # Init timestamps
@@ -405,6 +465,8 @@ class DataPullSocket(CommonDataPullSocket):
         for name in codenames:
             DATA[port]['timestamps'][name] = 0.0
         DPULLSLOG.debug('Initialized')
+        # Init poke_on_set
+        self.poke_on_set = poke_on_set
 
     def set_point(self, codename, point, timestamp=None):
         """Set the current point for codename
@@ -425,6 +487,9 @@ class DataPullSocket(CommonDataPullSocket):
         DATA[self.port]['timestamps'][codename] = timestamp
         DPULLSLOG.debug('Point {} for \'{}\' set'
                         .format(tuple(point), codename))
+        # Poke if required
+        if DATA[self.port]['activity']['check_activity'] and self.poke_on_set:
+            self.poke()
 
 
 DDPULLSLOG = logging.getLogger(__name__ + '.DateDataPullSocket')
@@ -440,34 +505,30 @@ class DateDataPullSocket(CommonDataPullSocket):
     """
 
     def __init__(self, name, codenames, port=9000, default_x=0, default_y=47,
-                 timeouts=None):
+                 timeouts=None, check_activity=True, activity_timeout=900,
+                 poke_on_set=True):
         """Init data and UPD server
 
+        For parameter description of ``name``, ``codenames``, ``port``,
+        ``default_x``, ``default_y``, ``timeouts``, ``check_activity`` and
+        ``activity_timeout`` see :meth:`.CommonDataPullSocket.__init__`.
+
         Args:
-            name (str): The name of the DateDataPullSocket server. Used for
-                identification and therefore should contain enough information
-                about location and purpose to unambiguously identify the socket
-                server. E.g:
-                ``'DateDataPullSocket with data from giant laser on the moon'``
-            codenames (list): List of codenames for the measurements. The names
-                must be unique and cannot contain the characters: ``#,;:`` and
-                SPACE
-            port (int): Network port to use for the socket (default 9000)
-            default_x (float): The x value the measurements are initiated with
-            default_y (float): The y value the measurements are initiated with
-            timeouts (float or list of floats): The timeouts (in seconds as
-                floats) that determines when the date data socket regards the
-                data as being to old and reports that
+            poke_on_set (bool): Whether to poke the socket server when a point
+                is set, to let it know there is activity
         """
         DDPULLSLOG.info('Initialize with: {}'.format(call_spec_string()))
         # Run super init to initialize thread, check input and initialize data
         super(DateDataPullSocket, self).__init__(
             name, codenames, port=port, default_x=default_x,
-            default_y=default_y, timeouts=timeouts
+            default_y=default_y, timeouts=timeouts,
+            check_activity=check_activity, activity_timeout=activity_timeout
         )
         # Set the type
         DATA[port]['type'] = 'date'
         DDPULLSLOG.debug('Initialized')
+        # Init poke_on_set
+        self.poke_on_set = poke_on_set
 
     def set_point_now(self, codename, value):
         """Set the current y-value for codename using the current time as x
@@ -492,6 +553,9 @@ class DateDataPullSocket(CommonDataPullSocket):
         DATA[self.port]['data'][codename] = tuple(point)
         DDPULLSLOG.debug('Point {} for \'{}\' set'
                          .format(tuple(point), codename))
+        # Poke if required
+        if DATA[self.port]['activity']['check_activity'] and self.poke_on_set:
+            self.poke()
 
 
 PUSHUHLOG = logging.getLogger(__name__ + '.PushUDPHandler')
@@ -524,7 +588,8 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
            complete raw_wn string could look like:\n
            ``'raw_wn#greeting:str:Live long and prosper;numbers:int:47,42'``
          * **name** (*str*): Return the name of the PushSocket server
-
+         * **status** (*str*): Return the system status and status for all
+           socket servers.
         """
         request = self.request[0]
         PUSHUHLOG.debug('Request \'{}\'received'.format(request))
@@ -535,6 +600,11 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         # Parse the request and call the appropriate helper methods
         if request == 'name':
             return_value = '{}#{}'.format(PUSH_RET, DATA[self.port]['name'])
+        elif request == 'status':
+            return_value = json.dumps({
+                'system_status': SYSTEM_STATUS.complete_status(),
+                'socket_server_status': socket_server_status()
+            })
         elif request.count('#') != 1:
             return_value = '{}#{}'.format(PUSH_ERROR, UNKNOWN_COMMAND)
         else:
@@ -842,7 +912,8 @@ class DataPushSocket(threading.Thread):
 
     # pylint: disable=too-many-branches
     def __init__(self, name, port=8500, action='store_last', queue=None,
-                 callback=None, return_format='json'):
+                 callback=None, return_format='json', check_activity=False,
+                 activity_timeout=900):
         """Initialiaze the DataReceiveSocket
 
         Arguments:
@@ -932,8 +1003,14 @@ class DataPushSocket(threading.Thread):
 
         # Set callback and queue depending on action
         self._callback_thread = None
-        content = {'action': action, 'last': None, 'updated': {},
-                   'last_time': None, 'updated_time': None, 'name': name}
+        content = {
+            'action': action, 'last': None, 'type': 'push', 'updated': {},
+            'last_time': None, 'updated_time': None, 'name': name,
+            'activity': {'check_activity': check_activity,
+                         'activity_timeout': activity_timeout,
+                         'last_activity': time.time()
+            }
+        }
         if action == 'store_last':
             pass
         elif action == 'enqueue':
@@ -1049,6 +1126,11 @@ class DataPushSocket(threading.Thread):
         DATA[self.port]['updated'].clear()
         DATA[self.port]['updated_time'] = None
 
+    def poke(self):
+        """Poke the socket server to let it know that there is activity"""
+        if DATA[self.port]['activity']['check_activity']:
+            DATA[self.port]['activity']['last_activity'] = time.time()
+
 
 CBTLOG = logging.getLogger(__name__ + '.CallBackThread')
 CBTLOG.addHandler(logging.NullHandler())
@@ -1143,6 +1225,8 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
         :param sane_interval: Return the sane interval with which new data can
             be expected to be available
         :param name: Return the name of the socket server
+         * **status** (*str*): Return the system status and status for all
+           socket servers.
         """
         # pylint: disable=attribute-defined-outside-init
         command = self.request[0]
@@ -1162,6 +1246,11 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
             data = json.dumps(DATA[self.port]['sane_interval'])
         elif command == 'name':
             data = json.dumps(DATA[self.port]['name'])
+        elif command == 'status':
+            data = json.dumps({
+                'system_status': SYSTEM_STATUS.complete_status(),
+                'socket_server_status': socket_server_status()
+            })
         else:
             data = UNKNOWN_COMMAND
 
@@ -1177,12 +1266,14 @@ class LiveSocket(CommonDataPullSocket):
     """This class implements a Live Socket"""
 
     def __init__(self, name, codenames, sane_interval, port=8000,
-                 default_x=0, default_y=47):
+                 default_x=0, default_y=47, timeouts=None, check_activity=True,
+                 activity_timeout=900, poke_on_set=True):
 
         LSLOG.info('Initialize with: {}'.format(call_spec_string()))
         super(LiveSocket, self).__init__(
-            name, codenames, port, default_x, default_y, None,
-            init_timeouts=False, handler_class=LiveUDPHandler
+            name, codenames, port, default_x, default_y, timeouts=None,
+            check_activity=check_activity, activity_timeout=activity_timeout,
+            init_timeouts=False, handler_class=LiveUDPHandler,
         )
         # Set the type and the the sane_interval
         DATA[port]['type'] = 'live'
@@ -1193,6 +1284,8 @@ class LiveSocket(CommonDataPullSocket):
         for codename in codenames:
             DATA[port]['last_served'][codename] = (default_x, default_y)
         LSLOG.debug('Initilized')
+        # Init poke_on_set
+        self.poke_on_set = poke_on_set
 
     def set_point_now(self, codename, value):
         """Set the current y-value for codename using the current time as x
@@ -1223,6 +1316,9 @@ class LiveSocket(CommonDataPullSocket):
             raise ValueError(message)
         DATA[self.port]['data'][codename] = tuple(point)
         LSLOG.debug('Point {} for \'{}\' set'.format(tuple(point), codename))
+        # Poke if required
+        if DATA[self.port]['activity']['check_activity'] and self.poke_on_set:
+            self.poke()
 
 
 ### Module variables
