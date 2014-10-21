@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Unittests for the sockets code"""
+"""Unittests for the sockets code
+
+NOTE: The sock fixture used in this module is defined in the conftest.py
+"""
 
 # Built-in imports
 import time
@@ -11,6 +14,7 @@ SocketServer.UDPServer.allow_reuse_address = True
 import pytest
 # Own imports
 import PyExpLabSys.common.sockets
+DATA = PyExpLabSys.common.sockets.DATA
 from PyExpLabSys.common.sockets import DataPullSocket, DateDataPullSocket
 
 #from PyExpLabSys.common.utilities import get_logger
@@ -20,6 +24,11 @@ from PyExpLabSys.common.sockets import DataPullSocket, DateDataPullSocket
 # Module variables
 HOST = '127.0.0.1'
 NAME = 'Usage statistics from giant moon laser'
+DEFAULT_PORTS = {
+    DateDataPullSocket: 9000,
+    DataPullSocket: 9010,
+}
+DEFAULT_CODENAMES = ['Laser1', 'Laser2']
 
 # Test fixtures
 @pytest.fixture(
@@ -199,43 +208,14 @@ def test_multiple_variables(sockettype, sock):
     data_socket.stop()
 
 
-def test_define_timeout(sockettype):
+def test_cleanup(sockettype):
     """Test the definition of the timeouts and the cleaning up of data with
     stop"""
     # Test one measurement with single timeout
-    data_socket = sockettype(NAME, ['one'], port=7000, timeouts=47)
+    data_socket = sockettype(NAME, DEFAULT_CODENAMES)
     data_socket.start()
-    assert(PyExpLabSys.common.sockets.DATA[7000]['timeouts'] == {'one': 47})
     data_socket.stop()
     assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
-    del data_socket
-
-    # Test one measurement with single timeout in list
-    data_socket = sockettype(NAME, ['one'], port=7000, timeouts=[47])
-    data_socket.start()
-    assert(PyExpLabSys.common.sockets.DATA[7000]['timeouts'] == {'one': 47})
-    data_socket.stop()
-    assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
-    del data_socket
-
-    # Test two measurements with single timeout
-    data_socket = sockettype(NAME, ['one', 'two'], port=7000, timeouts=42)
-    data_socket.start()
-    expected = {'one': 42, 'two': 42}
-    assert(PyExpLabSys.common.sockets.DATA[7000]['timeouts'] == expected)
-    data_socket.stop()
-    assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
-    del data_socket
-
-    # Test two measurements with two timeouts in list
-    data_socket = sockettype(NAME, ['one', 'two'], port=7000,
-                             timeouts=[42, 47])
-    data_socket.start()
-    expected = {'one': 42, 'two': 47}
-    assert(PyExpLabSys.common.sockets.DATA[7000]['timeouts'] == expected)
-    data_socket.stop()
-    assert(PyExpLabSys.common.sockets.DATA.get(7000) is None)
-    del data_socket
 
 
 def test_data_timeout(socket_and_use_timestamp, sock):
@@ -299,3 +279,135 @@ def test_data_timeout(socket_and_use_timestamp, sock):
     assert(json.loads(data1) == expected1)
 
     data_socket.stop()
+
+
+class TestInit(object):
+    """Class that wraps test of successful initialization"""
+
+    def test_defaults(self, sockettype):
+        """Test of default values on init"""
+        # Setup
+        pullsocket = sockettype(NAME, DEFAULT_CODENAMES)
+        pullsocket.start()
+        port = DEFAULT_PORTS[pullsocket.__class__]
+
+        # Test initialization of data dict
+        # Keys at base level
+        assert(isinstance(DATA.get(port), dict))
+        keynames = ['activity', 'codenames', 'data', 'name', 'timeouts',
+                    'type']
+        if pullsocket.__class__.__name__ == 'DataPullSocket':
+            keynames.insert(5, 'timestamps')
+        assert(sorted(DATA[port].keys()) == keynames)
+
+        # activity
+        assert(isinstance(DATA[port]['activity'], dict))
+        assert(sorted(DATA[port]['activity']) == 
+               ['activity_timeout', 'check_activity', 'last_activity'])
+        assert(DATA[port]['activity']['check_activity'] is True)
+        # activity values
+        assert(DATA[port]['activity']['activity_timeout'] == 900)
+
+        # codenames
+        assert(isinstance(DATA[port]['codenames'], list))
+        # codename values
+        assert(DATA[port]['codenames'] == DEFAULT_CODENAMES)
+        
+        # data
+        assert(isinstance(DATA[port]['data'], dict))
+        # default data values
+        for name in DEFAULT_CODENAMES:
+            assert(isinstance(DATA[port]['data'][name], tuple))
+            assert(DATA[port]['data'][name] == (0.0, 0.0))
+
+        # name
+        assert(isinstance(DATA[port]['name'], str))
+        # name value
+        assert(DATA[port]['name'] == NAME)
+
+        # timeouts
+        assert(isinstance(DATA[port]['timeouts'], dict))
+        # timeouts values
+        for name in DEFAULT_CODENAMES:
+            assert(DATA[port]['timeouts'][name] is None)
+
+        # timestamps
+        if pullsocket.__class__.__name__ == 'DataPullSocket':
+            assert(isinstance(DATA[port]['timestamps'], dict))
+            # timestamps values
+            for name in DEFAULT_CODENAMES:
+                assert(DATA[port]['timestamps'][name] == 0.0)
+
+        # type
+        assert(isinstance(DATA[port]['type'], str))
+        if pullsocket.__class__.__name__ == 'DataPullSocket':
+            assert(DATA[port]['type'] == 'data')
+        else:
+            assert(DATA[port]['type'] == 'date')
+
+        # port
+        assert(len(DATA.keys()) == 1)
+        assert(isinstance(DATA.keys()[0], int))
+        assert(DATA.keys()[0] == port)
+
+        # Tear down
+        pullsocket.stop()
+
+    def test_port(self, sockettype):
+        """Test initialization with custom port"""
+        pullsocket = sockettype(NAME, DEFAULT_CODENAMES, port=4747)
+        pullsocket.start()
+        assert(len(DATA.keys()) == 1)
+        assert(isinstance(DATA.keys()[0], int))
+        assert(DATA.keys()[0] == 4747)
+        pullsocket.stop()
+        
+    def test_default_values(self, sockettype):
+        """Test the default x and y values"""
+        pullsocket = sockettype(NAME, DEFAULT_CODENAMES,
+                                default_x=42.0, default_y=47.0)
+        port = DEFAULT_PORTS[pullsocket.__class__]
+        pullsocket.start()
+        for name in DEFAULT_CODENAMES:
+            assert(DATA[port]['data'][name] == (42.0, 47.0))
+        pullsocket.stop()
+
+    def test_timeouts(self, sockettype):
+        """Test initializatin of custom timeouts"""
+        # For combinations of defining one or more measurements
+        for codenames in [DEFAULT_CODENAMES[:1], DEFAULT_CODENAMES]:
+            # Test defining one default timeout outside of list
+            pullsocket = sockettype(NAME, codenames, timeouts=47)
+            port = DEFAULT_PORTS[pullsocket.__class__]
+            pullsocket.start()
+            expected_timeouts = dict([[cn, 47] for cn in codenames])
+            assert(DATA[port]['timeouts'] == expected_timeouts)
+            pullsocket.stop()
+
+            # Test defining one or more defaults in a list
+            if len(codenames) == 1:
+                timeouts = [47]
+            else:
+                timeouts = [47, 42]
+            pullsocket = sockettype(NAME, codenames, timeouts=timeouts)
+            port = DEFAULT_PORTS[pullsocket.__class__]
+            pullsocket.start()
+            expected_timeouts = dict(zip(codenames, timeouts))
+            assert(DATA[port]['timeouts'] == expected_timeouts)
+            pullsocket.stop()
+
+    def test_check_activity(self, sockettype):
+        """Test settings the check_activity value"""
+        pullsocket = sockettype(NAME, DEFAULT_CODENAMES, check_activity=False)
+        port = DEFAULT_PORTS[pullsocket.__class__]
+        pullsocket.start()
+        assert(DATA[port]['activity']['check_activity'] is False)
+        pullsocket.stop()
+
+    def test_activity_timeout(self, sockettype):
+        """Test settings the check_activity value"""
+        pullsocket = sockettype(NAME, DEFAULT_CODENAMES, activity_timeout=47.0)
+        port = DEFAULT_PORTS[pullsocket.__class__]
+        pullsocket.start()
+        assert(DATA[port]['activity']['activity_timeout'] == 47.0)
+        pullsocket.stop()
