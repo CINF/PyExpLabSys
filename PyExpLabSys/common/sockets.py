@@ -439,9 +439,9 @@ class DataPullSocket(CommonDataPullSocket):
     documented in the :meth:`.PullUDPHandler.handle()` method.
     """
 
-    def __init__(self, name, codenames, port=9010, default_x=47, default_y=47,
-                 timeouts=None, check_activity=True, activity_timeout=900,
-                 poke_on_set=True):
+    def __init__(self, name, codenames, port=9010, default_x=0.0,
+                 default_y=0.0, timeouts=None, check_activity=True,
+                 activity_timeout=900, poke_on_set=True):
         """Init data and UPD server
 
         For parameter description of ``name``, ``codenames``, ``port``,
@@ -504,9 +504,9 @@ class DateDataPullSocket(CommonDataPullSocket):
 
     """
 
-    def __init__(self, name, codenames, port=9000, default_x=0, default_y=47,
-                 timeouts=None, check_activity=True, activity_timeout=900,
-                 poke_on_set=True):
+    def __init__(self, name, codenames, port=9000, default_x=0.0,
+                 default_y=0.0, timeouts=None, check_activity=True,
+                 activity_timeout=900, poke_on_set=True):
         """Init data and UPD server
 
         For parameter description of ``name``, ``codenames``, ``port``,
