@@ -1215,17 +1215,19 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
 
         The handler understands the following commands:
 
-        :param data: Return all values as a list of points (which in themselves
-            are lists) e.g: ``[[x1, y1], [x2, y2]]``), contained in a
-            :py:mod:`json` string. The order of the points is the same order
-            the codenames was given to the :meth:`.LiveSocket.__init__` method
-            in and is returned by the ``codenames`` command.
-        :param codenames: Return a list of the codenames contained in a
-            :py:mod:`json` string
-        :param sane_interval: Return the sane interval with which new data can
-            be expected to be available
-        :param name: Return the name of the socket server
-         * **status** (*str*): Return the system status and status for all
+        **COMMANDS**
+
+         * **data** (*str*): Returns all values as a list of points (which in
+           themselves are lists) e.g: ``[[x1, y1], [x2, y2]]``), contained in a
+           :py:mod:`json` string. The order of the points is the same order the
+           codenames was given to the :meth:`.LiveSocket.__init__` method in
+           and is returned by the ``codenames`` command.
+         * **codenames** (*str*): Returns a list of the codenames contained in
+           a :py:mod:`json` string
+         * **sane_interval** (*str*): Returns the sane interval with which new
+           data can be expected to be available
+         * **name** (*str*): Returns the name of the socket server
+         * **status** (*str*): Returns the system status and status for all
            socket servers.
         """
         # pylint: disable=attribute-defined-outside-init
@@ -1288,25 +1290,24 @@ class LiveSocket(CommonDataPullSocket):
         self.poke_on_set = poke_on_set
 
     def set_point_now(self, codename, value):
-        """Set the current y-value for codename using the current time as x
+        """Sets the current y-value for codename using the current time as x
 
-        :param codename: Name for the measurement whose current value should be
-            set
-        :type codename: str
-        :param value: y-value
-        :type value: float
+        Args:
+            codename (str): Name for the measurement whose current value should
+                be set
+            value (float): y-value
         """
         self.set_point(codename, (time.time(), value))
         LSLOG.debug('Added time to value and called set_point')
 
     def set_point(self, codename, point):
-        """Set the current point for codename
+        """Sets the current point for codename
 
-        :param codename: Name for the measurement whose current point should be
-            set
-        :type codename: str
-        :param point: Current point as a list (or tuple) of 2 floats: [x, y]
-        :type point: list or tuple
+        Args:
+            codename (str): Name for the measurement whose current point should
+                be set
+            point (list or tuple): Current point as a list (or tuple) of 2
+                floats: [x, y]
         """
         if not codename in DATA[self.port]['codenames']:
             message = 'Codename \'{}\' not recognized. Use one of: {}'.format(
