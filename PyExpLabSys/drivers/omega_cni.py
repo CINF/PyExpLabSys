@@ -21,7 +21,7 @@ class ISeries(object):
     pre_string = chr(42)
     end_string = chr(13)
 
-    def __init__(self, port, baudrate=19200, comm_stnd='rs485'):
+    def __init__(self, port, baudrate=19200, comm_stnd='rs232'):
         """Initialize internal parameters
 
         :param port: A serial port designation as understood by `pySerial
@@ -36,7 +36,7 @@ class ISeries(object):
         time.sleep(0.1)
         LOGGER.info('Driver initialized')
 
-    def command(self, command, response_length=None):
+    def command(self, command, response_length=None, address=None):
         """Run a command and return the result
 
         :param command: The command to execute
@@ -47,11 +47,13 @@ class ISeries(object):
         :type response_length: int
         """
 
-        # Hints for rs485 implementation in the bottom of this file
-
         LOGGER.debug('command called with {}, {}'.format(command,
                                                          response_length))
-        self.serial.write(self.pre_string + command + self.end_string)
+        if self.comm_stnd == 'rs485':
+            command = '0' + str(address) + command
+        comm_string = (self.pre_string + command + self.end_string)
+        self.serial.write(comm_string)
+
         if response_length is not None:
             while self.serial.inWaiting() < response_length + 1:
                 # If faster replies are needed this can be lowered to e.g. 0.05
@@ -67,24 +69,27 @@ class ISeries(object):
             response = response[len(command):]
         return response[:-1]
 
-    def reset_device(self):
+    def reset_device(self, address=None):
         """Reset the device"""
         command = 'Z02'
-        return self.command(command)
+        return self.command(command, address=address)
 
-    def identify_device(self):
+    def identify_device(self, address=None):
         """Return the identity of the device"""
         command = 'R26'
-        return self.command(command)
+        address = 2
+        return self.command(command, address=address)
 
-    def read_temperature(self):
+    def read_temperature(self, address=None):
         """Return the temperature"""
         LOGGER.debug('read_temperature called')
         command = 'X01'
         error = 1
         while (error > 0) and (error < 10):
             try:
-                response = float(self.command(command, response_length=5))
+                response = float(self.command(command,
+                                              response_length=5,
+                                              address=address))
                 error = 0
             except ValueError:
                 error = error + 1
@@ -111,17 +116,9 @@ class CNi3244_C24(ISeries):
         """        
         super(CNi3244_C24, self).__init__(port)
 
-"""
-def comm(self,command, address=1):
-pre_string = chr(42)
-end_string = chr(13)
-if self.comm_stnd == 'rs485':
-length_command = len(command) + 2
-else:
-length_command = len(command)
-if self.comm_stnd == 'rs485':
-comm_string = pre_string + '0' + str(address) + command + end_string
-else:
-comm_string = pre_string + command + end_string
-self.f.write(comm_string)
-"""
+if __name__ == '__main__':
+    # This port name should be chages to a local port to do a local test
+    port = 'usb-FTDI_USB-RS485_Cable_FTWGGPAS-if00-port0'
+    omega = ISeries('/dev/serial/by-id/' + port, 9600, comm_stnd='rs485')
+    print omega.identify_device()
+
