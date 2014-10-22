@@ -57,7 +57,7 @@ SYSTEM_STATUS = SystemStatus()
 
 
 def bool_translate(string):
-    """Return boolean value from strings 'True' or 'False'"""
+    """Returns boolean value from strings 'True' or 'False'"""
     if not str(string) in ['True', 'False']:
         message = 'Cannot translate the string \'{}\' to a boolean. Only the '\
             'strings \'True\' or \'False\' are allowed'
@@ -100,7 +100,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
     """
 
     def handle(self):
-        """Return data corresponding to the request
+        """Returns data corresponding to the request
 
         The handler understands the following commands:
 
@@ -149,7 +149,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
                         .format(data, self.client_address))
 
     def _single_value(self, command):
-        """Return a string for a single point
+        """Returns a string for a single point
 
         Args:
             command (str): Complete command
@@ -179,7 +179,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
 
     # pylint: disable=too-many-branches
     def _all_values(self, command):
-        """Return a string for all points or names
+        """Returns a string for all points or names
 
         Args:
             command (str): Complete command
@@ -250,7 +250,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         return out
 
     def _old_data(self, codename):
-        """Check if the data for codename has timed out
+        """Checks if the data for codename has timed out
 
         Args:
             codename (str): The codename whose data should be checked for
@@ -304,7 +304,8 @@ class CommonDataPullSocket(threading.Thread):
                  check_activity, activity_timeout, init_timeouts=True,
                  handler_class=PullUDPHandler,
                  ):
-        """
+        """Initializes internal variables and data structure in the 
+        :data:`.DATA` module variable
 
         Args:
             name (str): The name of the DataPullSocket server. Used for
@@ -402,13 +403,13 @@ class CommonDataPullSocket(threading.Thread):
         CDPULLSLOG.debug('Initialized')
 
     def run(self):
-        """Start the UPD socket server"""
+        """Starts the UPD socket server"""
         CDPULLSLOG.info('Run')
         self.server.serve_forever()
         CDPULLSLOG.info('Run ended')
 
     def stop(self):
-        """Stop the UDP server
+        """Stops the UDP server
 
         .. note:: Closing the server **and** deleting the socket server
                 instance is necessary to free up the port for other usage
@@ -423,7 +424,7 @@ class CommonDataPullSocket(threading.Thread):
         CDPULLSLOG.info('Stopped')
 
     def poke(self):
-        """Poke the socket server to let it know that there is activity"""
+        """Pokes the socket server to let it know that there is activity"""
         if DATA[self.port]['activity']['check_activity']:
             DATA[self.port]['activity']['last_activity'] = time.time()
 
@@ -442,7 +443,7 @@ class DataPullSocket(CommonDataPullSocket):
     def __init__(self, name, codenames, port=9010, default_x=0.0,
                  default_y=0.0, timeouts=None, check_activity=True,
                  activity_timeout=900, poke_on_set=True):
-        """Init data and UPD server
+        """Initializes internal variables and UPD server
 
         For parameter description of ``name``, ``codenames``, ``port``,
         ``default_x``, ``default_y``, ``timeouts``, ``check_activity`` and
@@ -469,7 +470,7 @@ class DataPullSocket(CommonDataPullSocket):
         self.poke_on_set = poke_on_set
 
     def set_point(self, codename, point, timestamp=None):
-        """Set the current point for codename
+        """Sets the current point for codename
 
         Args:
             codename (str): Name for the measurement whose current point should
@@ -507,7 +508,7 @@ class DateDataPullSocket(CommonDataPullSocket):
     def __init__(self, name, codenames, port=9000, default_x=0.0,
                  default_y=0.0, timeouts=None, check_activity=True,
                  activity_timeout=900, poke_on_set=True):
-        """Init data and UPD server
+        """Init internal variavles and UPD server
 
         For parameter description of ``name``, ``codenames``, ``port``,
         ``default_x``, ``default_y``, ``timeouts``, ``check_activity`` and
@@ -531,7 +532,7 @@ class DateDataPullSocket(CommonDataPullSocket):
         self.poke_on_set = poke_on_set
 
     def set_point_now(self, codename, value):
-        """Set the current y-value for codename using the current time as x
+        """Sets the current y-value for codename using the current time as x
 
         Args:
             codename (str): Name for the measurement whose current value should
@@ -542,7 +543,7 @@ class DateDataPullSocket(CommonDataPullSocket):
         DDPULLSLOG.debug('Added time to value and called set_point')
 
     def set_point(self, codename, point):
-        """Set the current point for codename
+        """Sets the current point for codename
 
         Args:
             codename (str): Name for the measurement whose current point should
@@ -567,7 +568,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
     """
 
     def handle(self):
-        """Set data corresponding to the request
+        """Sets data corresponding to the request
 
         The handler understands the following commands:
 
@@ -626,7 +627,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         sock.sendto(return_value, self.client_address)
 
     def _raw_with_names(self, data):
-        """Add raw data to the queue"""
+        """Adds raw data to the queue"""
         PUSHUHLOG.debug('Parse raw with names: {}'.format(data))
         data_out = {}
         # Split in data parts e.g: 'codenam1:type:dat1,dat2'. NOTE if no data
@@ -669,7 +670,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         return self._set_data(data_out)
 
     def _json_with_names(self, data):
-        """Add json encoded data to the data queue"""
+        """Adds json encoded data to the data queue"""
         PUSHUHLOG.debug('Parse json with names: {}'.format(data))
         try:
             data_dict = json.loads(data)
@@ -689,7 +690,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         return self._set_data(data_dict)
 
     def _set_data(self, data):
-        """Set the data in 'last' and 'updated' and enqueue and/or make
+        """Sets the data in 'last' and 'updated' and enqueue and/or make
         callback call if the action requires it
 
         Args:
@@ -739,7 +740,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
     @staticmethod
     def _format_return_json(value):
-        """Format the return value as json
+        """Formats the return value as json
 
         Args:
             value (json serializable): The data structure to serialize with
@@ -757,7 +758,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
     @staticmethod
     def _format_return_string(value):
-        """Format the return value as a string
+        """Formats the return value as a string
 
         Args:
             value (str): Anything with a str representation. The expected type
@@ -775,8 +776,8 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         return out
 
     def _format_return_raw(self, argument):
-        """Format the value argument in raw format. When used as a return value
-        the raw format accepts two argument structures.
+        """Formats the value argument in raw format. When used as a return
+        value the raw format accepts two argument structures.
 
         ``argument`` can either be a dict, where the keys are strs and the
         values are simple types or lists with elements of the same simple type.
@@ -822,7 +823,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
     @staticmethod
     def _format_return_raw_dict(argument):
-        """Format return raw value which is a dict. See
+        """Formats return raw value which is a dict. See
         :meth:`._format_return_raw` for details
         """
         PUSHUHLOG.debug('Format return raw dict: {}'.format(argument))
@@ -868,8 +869,8 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
     @staticmethod
     def _format_return_raw_list(argument):
-        """Format return raw value which is a dict. See
-        :meth:`._format_return_raw` for detials
+        """Formats return raw value which is a dict. See
+        :meth:`._format_return_raw` for details
         """
         PUSHUHLOG.debug('Format return raw list: {}'.format(argument))
         types = []
@@ -914,7 +915,7 @@ class DataPushSocket(threading.Thread):
     def __init__(self, name, port=8500, action='store_last', queue=None,
                  callback=None, return_format='json', check_activity=False,
                  activity_timeout=900):
-        """Initialiaze the DataReceiveSocket
+        """Initializes the DataPushSocket
 
         Arguments:
             name (str): The name of the socket server. Used for identification
@@ -1046,7 +1047,7 @@ class DataPushSocket(threading.Thread):
         DPUSHSLOG.debug('DPS: Initialized')
 
     def run(self):
-        """Start the UPD socket server"""
+        """Starts the UPD socket server"""
         DPUSHSLOG.info('DPS: Start')
         if self._callback_thread is not None:
             self._callback_thread.start()
@@ -1054,7 +1055,7 @@ class DataPushSocket(threading.Thread):
         DPUSHSLOG.info('DPS: Run ended')
 
     def stop(self):
-        """Stop the UDP socket server
+        """Stops the UDP socket server
 
         .. note:: Closing the server **and** deleting the
             :py:class:`SocketServer.UDPServer` socket instance is necessary to
@@ -1074,7 +1075,7 @@ class DataPushSocket(threading.Thread):
 
     @property
     def queue(self):
-        """Get the queue, returns None if ``action`` is ``'store_last'`` or
+        """Gets the queue, returns None if ``action`` is ``'store_last'`` or
         ``'callback_direct'``
         """
         DPUSHSLOG.info('DPS: queue property used')
@@ -1082,7 +1083,7 @@ class DataPushSocket(threading.Thread):
 
     @property
     def last(self):
-        """Get a copy of the last data
+        """Gets a copy of the last data
 
         Returns
             tuple: ``(last_data_time, last_data)`` where ``last_data`` is the
@@ -1099,7 +1100,7 @@ class DataPushSocket(threading.Thread):
 
     @property
     def updated(self):
-        """Get a copy of the updated total data, returns empty dict if no data
+        """Gets a copy of the updated total data, returns empty dict if no data
         has been received yet
 
         Returns:
@@ -1113,13 +1114,13 @@ class DataPushSocket(threading.Thread):
                 DATA[self.port]['updated'].copy())
 
     def set_last_to_none(self):
-        """Set the last data point and last data point time to None"""
+        """Sets the last data point and last data point time to None"""
         DPUSHSLOG.debug('DPS: Set last to none')
         DATA[self.port]['last'] = None
         DATA[self.port]['last_time'] = None
 
     def clear_updated(self):
-        """Clear the total updated data and set the time of last update to
+        """Clears the total updated data and set the time of last update to
         None
         """
         DPUSHSLOG.debug('DPS: Clear updated')
@@ -1127,7 +1128,7 @@ class DataPushSocket(threading.Thread):
         DATA[self.port]['updated_time'] = None
 
     def poke(self):
-        """Poke the socket server to let it know that there is activity"""
+        """Pokes the socket server to let it know that there is activity"""
         if DATA[self.port]['activity']['check_activity']:
             DATA[self.port]['activity']['last_activity'] = time.time()
 
@@ -1160,7 +1161,7 @@ class CallBackThread(threading.Thread):
         CBTLOG.debug('CBT: Initialized')
 
     def run(self):
-        """Start the calling back"""
+        """Starts the calling back"""
         CBTLOG.info('CBT: Run')
         while not self._stop:
             # get a item from the queue and call back
@@ -1175,7 +1176,7 @@ class CallBackThread(threading.Thread):
         CBTLOG.info('CBT: Run stopped')
 
     def stop(self):
-        """Stop the calling back"""
+        """Stops the calling back"""
         CBTLOG.debug('CBT: Stop requested')
         self._stop = True
         CBTLOG.info('CBT: Stopped')
@@ -1208,24 +1209,26 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
     """
 
     def handle(self):
-        """Return data corresponding to the request
+        """Returns data corresponding to the request
 
         All data is returned as json strings even though the command names does
         not indicate it.
 
         The handler understands the following commands:
 
-        :param data: Return all values as a list of points (which in themselves
-            are lists) e.g: ``[[x1, y1], [x2, y2]]``), contained in a
-            :py:mod:`json` string. The order of the points is the same order
-            the codenames was given to the :meth:`.LiveSocket.__init__` method
-            in and is returned by the ``codenames`` command.
-        :param codenames: Return a list of the codenames contained in a
-            :py:mod:`json` string
-        :param sane_interval: Return the sane interval with which new data can
-            be expected to be available
-        :param name: Return the name of the socket server
-         * **status** (*str*): Return the system status and status for all
+        **COMMANDS**
+
+         * **data** (*str*): Returns all values as a list of points (which in
+           themselves are lists) e.g: ``[[x1, y1], [x2, y2]]``), contained in a
+           :py:mod:`json` string. The order of the points is the same order the
+           codenames was given to the :meth:`.LiveSocket.__init__` method in
+           and is returned by the ``codenames`` command.
+         * **codenames** (*str*): Returns a list of the codenames contained in
+           a :py:mod:`json` string
+         * **sane_interval** (*str*): Returns the sane interval with which new
+           data can be expected to be available
+         * **name** (*str*): Returns the name of the socket server
+         * **status** (*str*): Returns the system status and status for all
            socket servers.
         """
         # pylint: disable=attribute-defined-outside-init
@@ -1288,25 +1291,24 @@ class LiveSocket(CommonDataPullSocket):
         self.poke_on_set = poke_on_set
 
     def set_point_now(self, codename, value):
-        """Set the current y-value for codename using the current time as x
+        """Sets the current y-value for codename using the current time as x
 
-        :param codename: Name for the measurement whose current value should be
-            set
-        :type codename: str
-        :param value: y-value
-        :type value: float
+        Args:
+            codename (str): Name for the measurement whose current value should
+                be set
+            value (float): y-value
         """
         self.set_point(codename, (time.time(), value))
         LSLOG.debug('Added time to value and called set_point')
 
     def set_point(self, codename, point):
-        """Set the current point for codename
+        """Sets the current point for codename
 
-        :param codename: Name for the measurement whose current point should be
-            set
-        :type codename: str
-        :param point: Current point as a list (or tuple) of 2 floats: [x, y]
-        :type point: list or tuple
+        Args:
+            codename (str): Name for the measurement whose current point should
+                be set
+            point (list or tuple): Current point as a list (or tuple) of 2
+                floats: [x, y]
         """
         if not codename in DATA[self.port]['codenames']:
             message = 'Codename \'{}\' not recognized. Use one of: {}'.format(
@@ -1343,16 +1345,63 @@ PUSH_RET = 'RET'
 #:dict, where each key is an integer port number and the value is the data for
 #:the socket server on that port. The data for each individual socket server is
 #:always a dict, but the contained values will depend on which kind of socket
-#:server it is.
+#:server it is, Examples below.
 #:
-#:For a :class:`DateDataSocket` the dict will resemble this example:
+#:For a :class:`DateDataPullSocket` the dict will resemble this example:
 #:
 #: .. code-block:: python
 #:
-#:  {'type': 'date', 'codenames': ['ex1', 'ex2'],
-#:   'timeouts': {'ex1': 3, 'ex2': 0.7},
-#:   'data': {'ex1': [1234.5, 47.0], 'ex2':[1234.2, 42.0]}
-#:  }
+#:  {'activity': {'activity_timeout': 900,
+#:                'check_activity': True,
+#:                'last_activity': 1413983209.82526},
+#:   'codenames': ['var1'],
+#:   'data': {'var1': (0.0, 0.0)},
+#:   'name': 'my_socket',
+#:   'timeouts': {'var1': None},
+#:   'type': 'date'}
+#:
+#:For a :class:`DataPullSocket` the dict will resemble this example:
+#:
+#: .. code-block:: python
+#:
+#:  {'activity': {'activity_timeout': 900,
+#:                'check_activity': True,
+#:                'last_activity': 1413983209.825451},
+#:   'codenames': ['var1'],
+#:   'data': {'var1': (0.0, 0.0)},
+#:   'name': 'my_data_socket',
+#:   'timeouts': {'var1': None},
+#:   'timestamps': {'var1': 0.0},
+#:   'type': 'data'}
+#:
+#:For a :class:`DataPushSocket` the dict will resemble this example:
+#:
+#: .. code-block:: python
+#:
+#:  {'action': 'store_last',
+#:   'activity': {'activity_timeout': 900,
+#:                'check_activity': False,
+#:                'last_activity': 1413983209.825681},
+#:   'last': None,
+#:   'last_time': None,
+#:   'name': 'my_push_socket',
+#:   'type': 'push',
+#:   'updated': {},
+#:   'updated_time': None}
+#:
+#:For a :class:`LiveSocket` the dict will resemble this example:
+#:
+#: .. code-block:: python
+#:
+#:  {'activity': {'activity_timeout': 900,
+#:                'check_activity': True,
+#:                'last_activity': 1413983209.825589},
+#:   'codenames': ['var1'],
+#:   'data': {'var1': (0, 47)},
+#:   'last_served': {'var1': (0, 47)},
+#:   'name': 'my_live_socket',
+#:   'sane_interval': 0.1,
+#:   'type': 'live'}
 #:
 DATA = {}
 #: The dict that transforms strings to convertion functions

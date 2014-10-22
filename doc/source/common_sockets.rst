@@ -5,7 +5,7 @@ The sockets module
 The data sockets are convenience classes that make it easier to send
 data back and forth between machines. All the data sockets are socket
 **servers**, i.e. they handle requests, and to interact with them it
-is necessary to work as a client. The main purpose these sockets is to
+is necessary to work as a client. The main purpose of these sockets is to
 hide the complexity and present a easy-to-use interface while
 performing e.g. error checking in the background.
 
@@ -324,6 +324,92 @@ from the :class:`CommonDataPullSocket` class, as illustrated in the
 diagram below.
 
 .. inheritance-diagram:: PyExpLabSys.common.sockets
+
+Status of a socket server
+=========================
+
+All 4 socket servers understand the ``status`` command. This command will
+return some information about the status of the machine the socket server is
+running on and the status of **all** socket servers running on this
+machine. The reason the command returns the status for all the socket servers
+running on the machine is, that what this command is really meant for, is to
+get the status of *the system* and so it should not be necessary to communicate
+with several socket servers to get that.
+
+The data returned is a :py:mod:`json` encoded dictionary, which looks like
+this:
+
+.. code-block:: python
+
+  {u'socket_server_status':
+            {u'8000': {u'name': u'my_live_socket',
+                       u'since_last_activity': 0.0009279251098632812,
+                       u'status': u'OK',
+                       u'type': u'live'},
+             u'9000': {u'name': u'my_socket',
+                       u'since_last_activity': 0.0011229515075683594,
+                       u'status': u'OK',
+                       u'type': u'date'}},
+   u'system_status':
+            {u'filesystem_usage': {u'free_bytes': 279182213120,
+                                   u'total_bytes': 309502345216},
+             u'last_apt_cache_change_unixtime': 1413984912.529932,
+             u'last_git_fetch_unixtime': 1413978995.4109764,
+             u'load_average': {u'15m': 0.14, u'1m': 0.1, u'5m': 0.15},
+             u'max_python_mem_usage_bytes': 37552128,
+             u'number_of_python_threads': 3,
+             u'uptime': {u'idle_sec': 321665.77,
+                         u'uptime_sec': 190733.39}}}
+
+Socket server status
+--------------------
+
+The **socket servers status** is broken down into one dictionary for each
+socket server, indexed by their ports. The status for the individual socket
+server comprise of the following items:
+
+:name (*str*): The name of the socket server
+:since_last_activity (*float*): The number of seconds since last activity on
+    the socket server
+:status (*str*): The status of the socket server. It will return either
+    ``'OK'`` if the last activity was newer than the activity timeout, or
+    ``'INACTIVE'`` if the last activity was older than the activity timeout or
+    ``'DISABLED'`` is activity monitoring is disabled for the socket server.
+:type: The type of the socket server
+
+System status
+-------------
+
+The **system status** items depends on the operating system the socket server
+is running on.
+
+All operating systems
+^^^^^^^^^^^^^^^^^^^^^
+
+:last_git_fetch_unixtime (*float*): The unix timestamp of the last git fetch of
+    the 'origin' remote, which points at the `Github archive
+    <https://github.com/CINF/PyExpLabSys>`_
+:max_python_mem_usage_bytes (*int*): The maximum memory usage of Python in bytes
+:number_of_python_threads (*int*): The number of Python threads in use
+
+Linux operating systems
+^^^^^^^^^^^^^^^^^^^^^^^
+
+:uptime (*dict*): Information about system uptime (from ``/proc/uptime``). The
+    value ``'uptime_sec'`` contains the system uptime in seconds and the value
+    ``'idle_sec'`` contains the idle time in seconds. NOTE: While the uptime is
+    measured in wall time, the idle time is measured in CPU time, which means
+    that if the system is multi core, it will add up idle time for all the
+    cores.
+:last_apt_cache_change_unixtime (*float*): The unix time stamp of the last
+   change to the apt cache, which should be a fair approcimation to the last
+   time the system was updated
+:load_average(*dict*): The load average (roughly number of active processes)
+    over the last 1, 5 and 15 minutes (from ``/proc/loadavg``). For a detailed
+    explanation see `the /proc/loadavg section from the proc man-page
+    <http://linux.die.net/man/5/proc>`_
+:filesystem_usage (*dict*): The number of total and free bytes for the
+    filesystem the PyExpLabSys archive is located on
 
 Auto-generated module documentation
 ===================================
