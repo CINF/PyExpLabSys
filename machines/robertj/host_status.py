@@ -6,6 +6,7 @@ import signal
 import threading
 import Queue
 import time
+import json
 
 def host_status(host,method=""):
     up = True
@@ -25,7 +26,10 @@ def host_status(host,method=""):
     return up
 
 def uptime(host, method, username='pi', password='cinf123'):
-    uptime_string = ""
+    return_value = {}
+    return_value['up'] = ''
+    return_value['load'] = ''
+
     if method == 'ssh':
         uptime_string = subprocess.check_output(["sshpass", 
                                                  "-p", 
@@ -36,6 +40,23 @@ def uptime(host, method, username='pi', password='cinf123'):
                                                  '-oStrictHostKeyChecking=no',
                                                  username + "@" + host, 
                                                  'cat /proc/uptime /proc/loadavg'])
+        uptime = uptime_string.split('\n')[0]
+        up = str(int(float(uptime.split()[0]) / (60*60*24)))
+        load = uptime_string.split('\n')[1].split()[2]
+        return_value['up'] = up
+        return_value['load'] = load
+
+    if method == 'socket':
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto('status', (host, 9000))
+        received = sock.recv(1024)
+        status = json.loads(received)
+        system_status = status['system_status']
+        up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
+        load = str(system_status['load_average']['15m'])
+        return_value['up'] = up
+        return_value['load'] = load
+
     """
     Will need to modify uptime script on these hosts...
     if method== 'http':
@@ -43,13 +64,6 @@ def uptime(host, method, username='pi', password='cinf123'):
         uptime_string = f.read()
         f.close()
     """
-    if uptime_string!="":
-        uptime = uptime_string.split('\n')[0]
-        up = str(int(float(uptime.split()[0]) / (60*60*25)))
-        load = uptime_string.split('\n')[1].split()[2]
-        return_value = [up, load]
-    else:
-        return_value = ['', '']
     return return_value
 
 
@@ -63,13 +77,15 @@ class CheckHost(threading.Thread):
     def run(self):
         while not self.hosts.empty():
             host = hosts.get_nowait()
-            print host
             up = host_status(host[0],host[2])
             if up:
                 uptime_val = uptime(host[0],host[2])
             else:
-                uptime_val = ['', '']
-            self.results.put([host[0], up, uptime_val[0], uptime_val[1], host[3], host[1]])
+                uptime_val = {}
+                uptime_val['up'] = ''
+                uptime_val['load'] = ''
+             #print uptime_val
+            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[1]])
             self.hosts.task_done()
 
 if __name__ == "__main__":
@@ -101,10 +117,16 @@ if __name__ == "__main__":
     hosts.put(['rasppi31','Raspberry Pi','ssh','STM 312 - sputter gun'])
     hosts.put(['rasppi33','Raspberry Pi','ssh','VHP-setup, valve-control'])
     hosts.put(['rasppi34','Raspberry Pi','ssh','Gas Alarm, 307'])
+    hosts.put(['rasppi35','Raspberry Pi','ssh','VHP Setup, flow controllers'])
+    hosts.put(['rasppi37','Raspberry Pi','ssh','Coupled Reactor, MKS MFCs'])
+    hosts.put(['rasppi40','Raspberry Pi','ssh','Valve Control box, Coupled Reactor'])
+    hosts.put(['rasppi41','Raspberry Pi','ssh','Coupled reactor, 307. Temperature measurement'])
     hosts.put(['rasppi43','Raspberry Pi','ssh','VHP-setup, pressure and temperature'])
+    hosts.put(['rasppi44','Raspberry Pi','ssh','Valve Control box, unknown setup'])
+    hosts.put(['rasppi46','Raspberry Pi','ssh','Coupled Reactor, Brooks MFCs'])
     hosts.put(['rasppi47','Raspberry Pi','ssh','Furnace Room, Temperature Control'])
     hosts.put(['rasppi49','Raspberry Pi','ssh','TOF emission control'])
-    hosts.put(['rasppi51','Raspberry Pi','ssh','309, CVD chamber'])
+    hosts.put(['rasppi51','Raspberry Pi','socket','309, CVD chamber'])
     hosts.put(['rasppi53','Raspberry Pi','ssh','Mobile gas-wall multi purpose'])
     hosts.put(['rasppi54','Raspberry Pi','ssh','307, Muffle furnace'])
     hosts.put(['rasppi100','Raspberry Pi','ssh','Turbo controller, Microreactor'])
@@ -118,7 +140,7 @@ if __name__ == "__main__":
     results = Queue.Queue()
     t = time.time()
     host_checkers = {}
-    for i in range(0, 1):
+    for i in range(0, 20):
         host_checkers[i] = CheckHost(hosts, results)
         host_checkers[i].start()
     hosts.join()
