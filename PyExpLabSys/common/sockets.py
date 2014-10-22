@@ -1345,16 +1345,63 @@ PUSH_RET = 'RET'
 #:dict, where each key is an integer port number and the value is the data for
 #:the socket server on that port. The data for each individual socket server is
 #:always a dict, but the contained values will depend on which kind of socket
-#:server it is.
+#:server it is, Examples below.
 #:
-#:For a :class:`DateDataSocket` the dict will resemble this example:
+#:For a :class:`DateDataPullSocket` the dict will resemble this example:
 #:
 #: .. code-block:: python
 #:
-#:  {'type': 'date', 'codenames': ['ex1', 'ex2'],
-#:   'timeouts': {'ex1': 3, 'ex2': 0.7},
-#:   'data': {'ex1': [1234.5, 47.0], 'ex2':[1234.2, 42.0]}
-#:  }
+#:  {'activity': {'activity_timeout': 900,
+#:                'check_activity': True,
+#:                'last_activity': 1413983209.82526},
+#:   'codenames': ['var1'],
+#:   'data': {'var1': (0.0, 0.0)},
+#:   'name': 'my_socket',
+#:   'timeouts': {'var1': None},
+#:   'type': 'date'}
+#:
+#:For a :class:`DataPullSocket` the dict will resemble this example:
+#:
+#: .. code-block:: python
+#:
+#:  {'activity': {'activity_timeout': 900,
+#:                'check_activity': True,
+#:                'last_activity': 1413983209.825451},
+#:   'codenames': ['var1'],
+#:   'data': {'var1': (0.0, 0.0)},
+#:   'name': 'my_data_socket',
+#:   'timeouts': {'var1': None},
+#:   'timestamps': {'var1': 0.0},
+#:   'type': 'data'}
+#:
+#:For a :class:`DataPushSocket` the dict will resemble this example:
+#:
+#: .. code-block:: python
+#:
+#:  {'action': 'store_last',
+#:   'activity': {'activity_timeout': 900,
+#:                'check_activity': False,
+#:                'last_activity': 1413983209.825681},
+#:   'last': None,
+#:   'last_time': None,
+#:   'name': 'my_push_socket',
+#:   'type': 'push',
+#:   'updated': {},
+#:   'updated_time': None}
+#:
+#:For a :class:`LiveSocket` the dict will resemble this example:
+#:
+#: .. code-block:: python
+#:
+#:  {'activity': {'activity_timeout': 900,
+#:                'check_activity': True,
+#:                'last_activity': 1413983209.825589},
+#:   'codenames': ['var1'],
+#:   'data': {'var1': (0, 47)},
+#:   'last_served': {'var1': (0, 47)},
+#:   'name': 'my_live_socket',
+#:   'sane_interval': 0.1,
+#:   'type': 'live'}
 #:
 DATA = {}
 #: The dict that transforms strings to convertion functions
