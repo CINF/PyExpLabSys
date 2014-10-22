@@ -193,17 +193,9 @@ class SystemStatus(object):
     """Class that fetches set of system status information"""
 
     def __init__(self):
-        print __file__
-        # Don't force a dependency non python-git
-        try:
-            import git
-            self.repo = git.Repo(__file__)
-        except ImportError:
-            self.repo = None
-
         # Form the list of which items to measure on different platforms
         self.platform = sys.platform
-        self.all_list = ['last_git_commit', 'max_python_mem_usage_bytes',
+        self.all_list = ['last_git_fetch', 'max_python_mem_usage_bytes',
                          'number_of_python_threads']
         if self.platform == 'linux2':
             self.all_list += ['uptime', 'last_apt_cache_change_unixtime',
@@ -217,24 +209,22 @@ class SystemStatus(object):
         return all_items
 
     # All platforms
-    def last_git_commit(self):
+    def last_git_fetch(self):
         """Returns the unix timestamp and author time zone offset in seconds of
         the last git commit
         """
-        if self.repo:
-            last_commit_dict = {
-                'author_date_unixtime':
-                    self.repo.heads.master.commit.authored_date,
-                'author_tz_offset_sec':
-                self.repo.heads.master.commit.author_tz_offset
-            }
+        # Get dirname of current file and add two parent directory entries a
+        # .git and a FETCH_HEAD in a hopefullt crossplatform manner, result:
+        # /home/pi/PyExpLabSys/PyExpLabSys/common/../../.git/FETCH_HEAD
+        fetch_head_file = os.path.join(
+            os.path.dirname(__file__),
+            *[os.path.pardir] * 2 + ['.git', 'FETCH_HEAD']
+        )
+        # Check for last change
+        if os.access(fetch_head_file, os.F_OK):
+            return os.path.getmtime(fetch_head_file)
         else:
-            last_commit_dict = {
-                'author_date_unixtime': None,
-                'author_tz_offset_sec': None,
-                'ERROR': 'Install python-git to get the info'
-            }
-        return last_commit_dict
+            return None
 
     @staticmethod
     def max_python_mem_usage_bytes():
