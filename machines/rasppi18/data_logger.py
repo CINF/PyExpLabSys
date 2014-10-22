@@ -5,7 +5,7 @@ import threading
 import time
 import logging
 from PyExpLabSys.common.loggers import ContinuousLogger
-from PyExpLabSys.common.sockets import DateDataSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
 #from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.omega_D6400 as omega_D6400
 
@@ -14,7 +14,8 @@ class BaratronClass(threading.Thread):
     """ Pressure reader """
     def __init__(self):
         threading.Thread.__init__(self)
-        self.baratron = omega_D6400.OmegaD6400(address=1, port='/dev/ttyUSB1')
+        port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWE9PXJ-if00-port0'
+        self.baratron = omega_D6400.OmegaD6400(address=1, port=port)
         self.pressure = None
         self.quit = False
         self.last_recorded_time = 0
@@ -28,7 +29,7 @@ class BaratronClass(threading.Thread):
     def run(self):
         while not self.quit:
             time.sleep(0.5)
-            self.pressure = self.baratron.read_voltage(0)
+            self.pressure = self.baratron.read_value(1)
             time_trigged = (time.time() - self.last_recorded_time) > 120
             val_trigged = not (self.last_recorded_value * 0.9 < self.pressure < self.last_recorded_value * 1.1)
             if self.pressure < 0.01:
@@ -46,7 +47,7 @@ pressure_measurement.start()
 
 time.sleep(2)
 
-datasocket = DateDataSocket(['baratron'], timeouts=[1.0])
+datasocket = DateDataPullSocket('stm_baratron',['baratron'], timeouts=[1.0])
 datasocket.start()
 
 db_logger = ContinuousLogger(table='dateplots_stm312', username='stm312', password='stm312', measurement_codenames=['stm312_hp_baratron'])

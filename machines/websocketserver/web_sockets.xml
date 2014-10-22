@@ -1,5 +1,8 @@
 <sockets>
     <!-- thetaprobe -->
     <socket>rasppi25:8000</socket>
+    <!-- Volvo I think -->
     <socket>rasppi04:8000</socket>
+    <!-- Gas alarm 307 -->
+    <socket>rasppi34:8000</socket>
 </sockets>
