@@ -18,6 +18,19 @@ import PyExpLabSys.drivers.mks_pi_pc as mks_pipc
 
 #import credentials
 
+name = 'stm312 HPC pressure'
+codenames = ['pressure','setpoint']
+socket = DateDataPullSocket(name, codenames)
+
+"""
+db_logger_stm312 = ContinuousLogger(table='dateplots_stm312',# stm312 pressure controller pressure
+                             username='dummy', password='dummy', # get from credentials
+                             measurement_codenames = ['pressure'])
+db_logger_ocs = ContinuousLogger(table='dateplots_oldclustersource',# oldclustersource pirani
+                                 username='dummy', password='dummy', # get from credentials
+                                 measurement_codenames = ['pressure'])
+"""
+
 class CursesTui(threading.Thread):
     def __init__(self,pressure_control,pirani):
         threading.Thread.__init__(self)
@@ -127,7 +140,12 @@ class PcClass(threading.Thread):
         self.trigged = False
         self.running = True
         self.ERROR = None
+        self.socket_avalible = False
 
+    def add_socket_server(self,socket):
+        self.socket = socket
+        self.socket_avalible = True
+    
     def read_pressure(self):
         """ Read the pressure """
         return(self.pressure)
@@ -146,9 +164,9 @@ class PcClass(threading.Thread):
         self.set_setpoint(self.setpoint)
         return(True)
 
-    def update_setpoint(self):
-        """ Read the setpoint from external socket server """
-        HOST, PORT = "130.225.86.182", 9999
+    #def update_setpoint(self):
+    #    """ Read the setpoint from external socket server """
+    """    HOST, PORT = "130.225.86.182", 9999
         data = "read_setpoint_pressure"
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(data + "\n", (HOST, PORT))
@@ -156,35 +174,43 @@ class PcClass(threading.Thread):
         setpoint = int(float(received))
         self.set_setpoint(setpoint)
         return(setpoint)
+    """
 
     def set_setpoint(self, setpoint):
         """ Set the setpoint """
-        #try:
-        #    self.pc.set_setpoint(int(setpoint))
-        #except Exception, e:
-        #    self.ERROR = e
-        self.setpoint = setpoint
+        self.setpoint = int(setpoint)
+        try:
+            self.pc.set_setpoint(self.setpoint)
+        except Exception, e:
+            self.ERROR = e
+        if self.socket_avalible:
+            self.socket.set_point_now('setpoint',self.setpoint)
         return(True)
 
     def run(self):
         while self.running:
             time.sleep(0.5)
             self.pressure = self.pc.read_pressure()
-            self.update_setpoint()
+            if self.socket_avalible:
+                self.socket.set_point_now('pressure',self.pressure)
+            #self.update_setpoint()
             try:
                 self.pc.set_setpoint(int(self.setpoint))
             except Exception, e:
                 self.ERROR = e
-            #time_trigged = (time.time() - self.last_recorded_time) > 120
-            #val_trigged = not ((self.last_recorded_value * 0.9) <= self.pressure <= (self.last_recorded_value * 1.1))
-            #if (time_trigged or val_trigged):
-            #    self.trigged = True
-            #    self.last_recorded_time = time.time()
-            #    self.last_recorded_value = self.pressure
+            if self.db_logger_avalible:
+                time_trigged = (time.time() - self.last_recorded_time) > 120
+                val_trigged = not ((self.last_recorded_value * 0.9) <= self.pressure <= (self.last_recorded_value * 1.1))
+                if (time_trigged or val_trigged):
+                    self.trigged = True
+                    self.last_recorded_time = time.time()
+                    self.last_recorded_value = self.pressure
+                    self.db_logger.enqueue_point_now('',self.pressure)
         self.stop()
         
     def stop(self,):
         self.running = False
+        self.socket.stop()
         print('PcClass is stopping')
 
 
@@ -201,6 +227,16 @@ class PiraniClass(threading.Thread):
         self.trigged = False
         self.running = True
         self.ERROR = None
+        self.socket_avalible = False
+        self.db_logger_avalible = False
+
+    #def add_socket_server(self,socket):
+    #    self.socket = socket
+    #    self.socket_avalible = True
+
+    def add_logger(self,db_logger):
+        self.db_logger = db_logger
+        #self.db_logger_avalible = True
 
     def read_pressure(self):
         """ Read the pressure """
@@ -213,12 +249,14 @@ class PiraniClass(threading.Thread):
                 self.pressure = float(self.pirani.read_pressure())
             except Exception, e:
                 self.ERROR = e
-            #time_trigged = (time.time() - self.last_recorded_time) > 120
-            #val_trigged = not (self.last_recorded_value * 0.9 < self.pressure < self.last_recorded_value * 1.1)
-            #if (time_trigged or val_trigged) and (self.pressure > 0):
-            #    self.trigged = True
-            #    self.last_recorded_time = time.time()
-            #    self.last_recorded_value = self.pressure
+            if self.db_logger_avalible:
+                time_trigged = (time.time() - self.last_recorded_time) > 120
+                val_trigged = not (self.last_recorded_value * 0.9 < self.pressure < self.last_recorded_value * 1.1)
+                if (time_trigged or val_trigged) and (self.pressure > 0):
+                    self.trigged = True
+                    self.last_recorded_time = time.time()
+                    self.last_recorded_value = self.pressure
+                    self.db_logger.engueue_point_now('pirani',self.pressure)
         self.stop()
 
     def stop(self,):
@@ -267,7 +305,13 @@ while True:
 
 if __name__ == '__main__':
     print('program start')
+    socket.start()
+    #db_logger_stm312.start()
+    db_logger_ocs.start()
+    time.sleep(1)
+
     pc = PcClass()
+    pc.add_socket_server(socket)
     pirani = PiraniClass()
     time.sleep(2)
     
