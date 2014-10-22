@@ -195,7 +195,7 @@ class SystemStatus(object):
     def __init__(self):
         # Form the list of which items to measure on different platforms
         self.platform = sys.platform
-        self.all_list = ['last_git_fetch', 'max_python_mem_usage_bytes',
+        self.all_list = ['last_git_fetch_unixtime', 'max_python_mem_usage_bytes',
                          'number_of_python_threads']
         if self.platform == 'linux2':
             self.all_list += ['uptime', 'last_apt_cache_change_unixtime',
@@ -209,7 +209,7 @@ class SystemStatus(object):
         return all_items
 
     # All platforms
-    def last_git_fetch(self):
+    def last_git_fetch_unixtime(self):
         """Returns the unix timestamp and author time zone offset in seconds of
         the last git commit
         """
