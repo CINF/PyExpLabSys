@@ -77,7 +77,6 @@ class ISeries(object):
     def identify_device(self, address=None):
         """Return the identity of the device"""
         command = 'R26'
-        address = 2
         return self.command(command, address=address)
 
     def read_temperature(self, address=None):
@@ -88,7 +87,6 @@ class ISeries(object):
         while (error > 0) and (error < 10):
             try:
                 response = float(self.command(command,
-                                              response_length=5,
                                               address=address))
                 error = 0
             except ValueError:
@@ -120,5 +118,9 @@ if __name__ == '__main__':
     # This port name should be chages to a local port to do a local test
     port = 'usb-FTDI_USB-RS485_Cable_FTWGGPAS-if00-port0'
     omega = ISeries('/dev/serial/by-id/' + port, 9600, comm_stnd='rs485')
-    print omega.identify_device()
+    print omega.identify_device(1)
+    print omega.identify_device(2)
+
+    print omega.read_temperature(1)
+    print omega.read_temperature(2)
 
