@@ -5,7 +5,7 @@ import threading
 import curses
 import PyExpLabSys.drivers.cpx400dp as CPX
 import PyExpLabSys.aux.pid as pid
-from PyExpLabSys.common.sockets import DateDataSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
 #from PyExpLabSys.common.loggers import ContinuousLogger
 #from PyExpLabSys.common.sockets import LiveSocket
 from ABElectronics_DeltaSigmaPi import DeltaSigma
@@ -85,17 +85,19 @@ class EmissionControl(threading.Thread):
         self.bias['grid_current'] = 0
         self.bias['device'].output_status(True)
         self.looptime = 0
-        self.update_setpoint(0.2)
+        self.update_setpoint(0.7)
         self.adc = DeltaSigma(0x68, 0x69, 18)
         self.adc.setPGA(8)  # Adjust this if resistor value is changed
         self.running = True
         self.wanted_voltage = 0
         self.emission_current = 999
-        self.pid = pid.PID(2, 0.07, 0, 9)
+        self.pid = pid.PID(2, 0.03, 0, 9)
         self.pid.UpdateSetpoint(self.setpoint)
 
     def set_bias(self, bias):
         """ Set the bias-voltage """
+        if self.datasocket is not None:
+            self.datasocket.set_point_now('ionenergy', bias)
         if bias > -1:
             self.bias['device'].set_voltage(bias)
         if bias < 5:
@@ -156,7 +158,7 @@ class EmissionControl(threading.Thread):
 
 if __name__ == '__main__':
 
-    datasocket = DateDataSocket(['setpoint', 'emission'], timeouts=[999999, 1.0])
+    datasocket = DateDataPullSocket('emission_tof', ['setpoint', 'emission','ionenergy'], timeouts=[999999, 1.0,999999999])
     datasocket.start()
 
     ec = EmissionControl(datasocket)
