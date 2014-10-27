@@ -148,7 +148,7 @@ class CursesTui(threading.Thread):
 
 if __name__ == '__main__':
     print('Program start')
-    sc = XRC1000()
+    sc = XRC1000(port='/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0')
     sc.daemon = True
     sc.start()
 
