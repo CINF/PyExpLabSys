@@ -76,11 +76,11 @@ def test_enqueue_point():
         time_ = time.time()
         point = math.sin(time_)
         data1.append([time_, point])
-        db_logger.enqueue_point('dummy_sine_one', time_, point)
+        db_logger.enqueue_point('dummy_sine_one', (time_, point))
         time_ = time.time()
         point = math.sin(time_ + math.pi)
         data2.append([time_, point])
-        db_logger.enqueue_point('dummy_sine_two', time_, point)
+        db_logger.enqueue_point('dummy_sine_two', (time_, point))
     time.sleep(1)
     db_logger.stop()
 
