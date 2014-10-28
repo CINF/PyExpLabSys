@@ -143,7 +143,7 @@ class GasAlarmMonitor(object):
         if time_condition or value_condition:
             LOGGER.debug('Send level to db trigged in time: {} or value: '
                          '{}'.format(time_condition, value_condition))
-            self.db_logger.enqueue_point(codename, now, levels.level)
+            self.db_logger.enqueue_point(codename, (now, levels.level))
             # Update last values
             self.detector_levels_last_values[detector_num] = levels.level
             self.detector_levels_last_times[detector_num] = now
