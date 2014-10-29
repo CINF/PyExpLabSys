@@ -42,7 +42,6 @@ def next_tab(driver):
 
 def fullscreen(driver):
     """Send the browser to full screen mode (F11)"""
-    #body = driver.find_element_by_name("body")
     ActionChains(driver).send_keys(Keys.F11).perform()
 
 
@@ -76,8 +75,8 @@ def get_pages(root):
 
 def main():
     """The main method"""
-    #driver = get_firefox()
-    driver = get_chromium()
+    driver = get_firefox()
+    #driver = get_chromium()
 
     # Read in general and page settings
     tree = XML.parse('pages.xml')
