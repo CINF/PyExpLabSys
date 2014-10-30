@@ -37,6 +37,11 @@ class CursesTui(threading.Thread):
             self.screen.addstr(12,2, 'Channel duty cycles')
             for i in range(1,7):
                 self.screen.addstr(13,6*i, str(self.baker.dutycycles[i-1]))
+            
+            if self.baker.run_ramp == True:
+                self.screen.addstr(15, 2, str(self.baker.ramp.present()))
+            else:
+                self.screen.addstr(15, 2, "                                ")  
 
             n = self.screen.getch()
 
@@ -44,30 +49,31 @@ class CursesTui(threading.Thread):
 
             if n == ord('1'):
                 self.baker.modify_dutycycle(1,0.1)
-            if n == ord('!'):
+            elif n == ord('!'):
                 self.baker.modify_dutycycle(1,-0.1)
-            if n == ord('2'):
+            elif n == ord('2'):
                 self.baker.modify_dutycycle(2,0.1)
-            if n == ord('"'):
+            elif n == ord('"'):
                 self.baker.modify_dutycycle(2,-0.1)
-            if n == ord('3'):
+            elif n == ord('3'):
                 self.baker.modify_dutycycle(3,0.1)
-            if n == ord('#'):
+            elif n == ord('#'):
                 self.baker.modify_dutycycle(3,-0.1)
-            if n == ord('4'):
+            elif n == ord('4'):
                 self.baker.modify_dutycycle(4,0.1)
-            if n == 194: #... '¤':
+            elif n == 194: #... '¤':
                 self.baker.modify_dutycycle(4,-0.1)
-            if n == ord('5'):
+            elif n == ord('5'):
                 self.baker.modify_dutycycle(5,0.1)
-            if n == ord('%'):
+            elif n == ord('%'):
                 self.baker.modify_dutycycle(5,-0.1)
-            if n == ord('6'):
+            elif n == ord('6'):
                 self.baker.modify_dutycycle(6,0.1)
-            if n == ord('&'):
+            elif n == ord('&'):
                 self.baker.modify_dutycycle(6,-0.1)
-
-            if n == ord('q'):
+            elif n == ord('l'):
+                self.baker.load_ramp()
+            elif n == ord('q'):
                 self.baker.quit = True
                 self.screen.addstr(2, 2, 'Quitting....')
 
@@ -162,11 +168,12 @@ class Bakeout(threading.Thread):
         return  self.dutycycles[channel-1]
 
 
-    def set_all_dutycycle(self,value_list):
-        if len(value_list) == 7: #first value is always 0
-            for value,index in value_list.itemize():
-                self.set_dutycycle(index, value)
-        return self.dutycycle
+    def set_all_dutycycles(self,value_list):
+        if len(value_list) == 6:
+            for index, value in enumerate(value_list):
+                channel = index + 1
+                self.set_dutycycle(channel, value)
+        return self.dutycycles
 
     def load_ramp(self,):
         import ramp
@@ -182,7 +189,7 @@ class Bakeout(threading.Thread):
         while not self.quit:
             self.watchdog.reset_ttl()
             if self.run_ramp == True:
-                self.set_all_dutycycle(self.ramp.present())
+                self.set_all_dutycycles(self.ramp.present())
             try:
                 for i in range(1,7):
                     if (1.0*cycle/totalcycles) < self.dutycycles[i-1]:
