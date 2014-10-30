@@ -134,6 +134,7 @@ class Bakeout(threading.Thread):
         for i in range(0, 7): #Set GPIO pins to output
             wp.pinMode(i, 1)
         self.dutycycles = [0.0,0.0,0.0,0.0,0.0,0.0]
+        self.run_ramp = False
 
     def activate(self, pin):
         if self.watchdog.watchdog_safe:
@@ -152,6 +153,27 @@ class Bakeout(threading.Thread):
              self.dutycycles[channel-1] = 0.0
         return  self.dutycycles[channel-1]
 
+    def set_dutycycle(self, channel, value):
+        self.dutycycles[channel-1] =  value
+        if  self.dutycycles[channel-1] > 1:
+             self.dutycycles[channel-1] = 1.0
+        if self.dutycycles[channel-1] < 0.01:
+             self.dutycycles[channel-1] = 0.0
+        return  self.dutycycles[channel-1]
+
+
+    def set_all_dutycycle(self,value_list):
+        if len(value_list) == 7: #first value is always 0
+            for value,index in value_list.itemize():
+                self.set_dutycycle(index, value)
+        return self.dutycycle
+
+    def load_ramp(self,):
+        import ramp
+        reload(ramp)
+        self.ramp = ramp.ramp()
+        self.run_ramp = True
+        
     def run(self):
         totalcycles = 10
 
@@ -159,6 +181,8 @@ class Bakeout(threading.Thread):
         cycle = 0
         while not self.quit:
             self.watchdog.reset_ttl()
+            if self.run_ramp == True:
+                self.set_all_dutycycle(self.ramp.present())
             try:
                 for i in range(1,7):
                     if (1.0*cycle/totalcycles) < self.dutycycles[i-1]:
