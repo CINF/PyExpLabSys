@@ -5,10 +5,11 @@ class ValueLogger(threading.Thread):
     """ Read a continuously updated values and decides
     whether it is time to log a new point """
     def __init__(self, value_reader, maximumtime=600,
-                 comp_type = 'lin', comp_val = 1):
+                 comp_type = 'lin', comp_val = 1, channel = None):
         threading.Thread.__init__(self)
         self.valuereader = value_reader
         self.value = None
+        self.channel = channel
         self.maximumtime = maximumtime
         self.status = {}
         self.compare = {}
@@ -35,13 +36,23 @@ class ValueLogger(threading.Thread):
     def run(self):
         while not self.status['quit']:
             time.sleep(1)
-            self.value = self.valuereader.value()
+            if self.channel is None:
+                self.value = self.valuereader.value()
+            else:
+                self.value = self.valuereader.value(self.channel)
+
             time_trigged = ((time.time() - self.last['time'])
                             > self.maximumtime)
-            # TODO: Here we should check for the comp_type
-            val_trigged = not (self.last['val'] - self.compare['val']
-                               < self.value
-                               < self.last['val'] + self.compare['val'])
+
+            if self.compare['type'] == 'lin':
+                val_trigged = not (self.last['val'] - self.compare['val']
+                                   < self.value
+                                   < self.last['val'] + self.compare['val'])
+            if self.compare['type'] == 'log':
+                val_trigged = not (self.last['val'] * (1 - self.compare['val'])
+                                   < self.value
+                                   < self.last['val'] * (1 + self.compare['val']))
+
             if (time_trigged or val_trigged) and (self.value > 0):
                 self.status['trigged'] = True
                 self.last['time'] = time.time()
