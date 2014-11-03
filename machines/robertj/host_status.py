@@ -91,7 +91,7 @@ class CheckHost(threading.Thread):
                 uptime_val['up'] = ''
                 uptime_val['load'] = ''
             #print uptime_val
-            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[1]])
+            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[4], host[1]])
             self.hosts.task_done()
 
 if __name__ == "__main__":
@@ -139,6 +139,7 @@ if __name__ == "__main__":
         else:
             status_string += "0;;;"
         status_string += host[4] + ";"
-        status_string += host[5]
+        status_string += host[5] + ";"
+        status_string += host[6]
         status_string += "\n"
     print(status_string)
