@@ -9,4 +9,6 @@
     <socket>rasppi39:8000</socket>
     <!-- Cooling water pressure -->
     <socket>rasppi02:8000</socket>
+    <!-- Cooling water temperature -->
+    <socket>rasppi23:8000</socket>
 </sockets>
