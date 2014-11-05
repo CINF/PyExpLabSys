@@ -5,4 +5,8 @@
     <socket>rasppi04:8000</socket>
     <!-- Gas alarm 307 -->
     <socket>rasppi34:8000</socket>
+    <!-- N5 argon gas line -->
+    <socket>rasppi39:8000</socket>
+    <!-- Cooling water pressure -->
+    <socket>rasppi02:8000</socket>
 </sockets>
