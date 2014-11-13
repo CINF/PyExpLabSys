@@ -282,12 +282,11 @@ class SystemStatus(object):
         }
         return status
 
-    @staticmethod
-    def max_python_mem_usage_bytes():
+    def max_python_mem_usage_bytes(self):
         """Returns the python memory usage"""
         pagesize = self.resource.getpagesize()
         this_process = self.resource.getrusage(
-			self.resource.RUSAGE_SELF).ru_maxrss
+            self.resource.RUSAGE_SELF).ru_maxrss
         children = self.resource.getrusage(
-			self.resource.RUSAGE_CHILDREN).ru_maxrss
+            self.resource.RUSAGE_CHILDREN).ru_maxrss
         return (this_process + children) * pagesize
