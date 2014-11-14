@@ -16,13 +16,14 @@ from PyExpLabSys.common.sockets import DataPushSocket
 import PyExpLabSys.drivers.mks_925_pirani as mks_pirani
 import PyExpLabSys.drivers.mks_pi_pc as mks_pipc
 
-#import credentials
+import credentials
 
+"""
 name = 'stm312 HPC pressure'
 codenames = ['pressure','setpoint']
 socket = DateDataPullSocket(name, codenames)
 
-"""
+
 db_logger_stm312 = ContinuousLogger(table='dateplots_stm312',# stm312 pressure controller pressure
                              username='dummy', password='dummy', # get from credentials
                              measurement_codenames = ['pressure'])
@@ -32,8 +33,9 @@ db_logger_ocs = ContinuousLogger(table='dateplots_oldclustersource',# oldcluster
 """
 
 class CursesTui(threading.Thread):
-    def __init__(self,pressure_control,pirani):
+    def __init__(self, pressure_control, pirani, pullsocket):
         threading.Thread.__init__(self)
+        self.pullsocket = pullsocket
         self.pc = pressure_control
         self.pirani = pirani
         self.screen = curses.initscr()
@@ -77,7 +79,7 @@ class CursesTui(threading.Thread):
             self.screen.addstr(16, 2, "Runtime: {0:.0f}s     ".format(time.time() - self.time))
             if self.last_key != None:
                 self.screen.addstr(18, 2, " Latest key: {}       ".format(self.last_key))
-            self.screen.addstr(21, 2, "q: quit program     ")
+            self.screen.addstr(21, 2, "q: quit program, z: increment setpoint, x: decrement setpoint     ")
             #self.screen.addstr(22, 2, "t: PID temperature control, i, fixed current, v: fixed voltage, p: fixed power     ")
             
             n = self.screen.getch()
@@ -133,7 +135,7 @@ class PcClass(threading.Thread):
         port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWDW3A2-if00-port0'
         self.pc = mks_pipc.Mks_Pi_Pc(port = port)
         self.pressure = None
-        self.setpoint = 2000
+        self.setpoint = 200
         self.quit = False
         self.last_recorded_time = 0
         self.last_recorded_value = 0
@@ -141,9 +143,11 @@ class PcClass(threading.Thread):
         self.running = True
         self.ERROR = None
         self.socket_avalible = False
+        self.db_logger_avalible = False
 
-    def add_socket_server(self,socket):
-        self.socket = socket
+    def add_socket_server(self,pullsocket,pushsocket):
+        self.pullsocket = pullsocket
+        self.pushsocket = pushsocket
         self.socket_avalible = True
     
     def read_pressure(self):
@@ -155,13 +159,14 @@ class PcClass(threading.Thread):
         return(self.setpoint)
 
     def increment_setpoint(self,):
-        self.setpoint += 10
-        self.set_setpoint(self.setpoint)
+        self.update_setpoint(self.setpoint + 10)
+        #self.setpoint += 10
+        #self.set_setpoint(self.setpoint)
         return(True)
     
     def decrement_setpoint(self,):
-        self.setpoint -= 10
-        self.set_setpoint(self.setpoint)
+        self.update_setpoint(self.setpoint - 10)
+        #self.set_setpoint(self.setpoint)
         return(True)
 
     #def update_setpoint(self):
@@ -184,20 +189,34 @@ class PcClass(threading.Thread):
         except Exception, e:
             self.ERROR = e
         if self.socket_avalible:
-            self.socket.set_point_now('setpoint',self.setpoint)
+            self.pullsocket.set_point_now('setpoint',self.setpoint)
         return(True)
 
+    def update_setpoint(self, setpoint=None):
+        """ Update the setpoint """
+        self.setpoint = setpoint
+        self.pullsocket.set_point_now('setpoint', setpoint)
+        return setpoint
+
     def run(self):
+        sp_updatetime = 0
         while self.running:
             time.sleep(0.5)
             self.pressure = self.pc.read_pressure()
+            self.pc.set_setpoint(self.setpoint)
             if self.socket_avalible:
-                self.socket.set_point_now('pressure',self.pressure)
+                self.pullsocket.set_point_now('pressure',self.pressure)
             #self.update_setpoint()
             try:
-                self.pc.set_setpoint(int(self.setpoint))
-            except Exception, e:
-                self.ERROR = e
+                setpoint = self.pushsocket.last[1]['setpoint']
+                new_update = self.pushsocket.last[0]
+                self.message = str(new_update)
+            except (TypeError, KeyError): # Setpoint has never been sent
+                setpoint = None
+            if ((setpoint is not None) and
+                (setpoint != self.setpoint) and (sp_updatetime < new_update)):
+                self.update_setpoint(setpoint)
+                sp_updatetime = new_update
             if self.db_logger_avalible:
                 time_trigged = (time.time() - self.last_recorded_time) > 120
                 val_trigged = not ((self.last_recorded_value * 0.9) <= self.pressure <= (self.last_recorded_value * 1.1))
@@ -210,7 +229,7 @@ class PcClass(threading.Thread):
         
     def stop(self,):
         self.running = False
-        self.socket.stop()
+        #self.socket.stop()
         print('PcClass is stopping')
 
 
@@ -263,6 +282,10 @@ class PiraniClass(threading.Thread):
         self.running = False
         print('PiraniClass is stopping')
 
+class Baratron(threading.Thread):
+    def __init__(self,):
+        pass
+
 #logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 #logging.basicConfig(level=logging.ERROR)
 
@@ -303,24 +326,31 @@ while True:
     time.sleep(0.5)
 """
 
+Pullsocket = DateDataPullSocket('stm312 hpc pressure control', ['pressure', 'setpoint'])
+Pushsocket = DataPushSocket('stm312 hpc pressure control', action='store_last')
+
+
 if __name__ == '__main__':
     print('program start')
-    socket.start()
+    Pullsocket.start()
+    Pushsocket.start()
+    #socket.start()
     #db_logger_stm312.start()
-    db_logger_ocs.start()
+    #db_logger_ocs.start()
     time.sleep(1)
 
     pc = PcClass()
-    pc.add_socket_server(socket)
+    pc.add_socket_server(Pullsocket,Pushsocket)
     pirani = PiraniClass()
     time.sleep(2)
     
     pc.start()
+    pc.set_setpoint(2000)
     pirani.start()
     time.sleep(2)
     #print(pirani.pressure)
     
-    tui = CursesTui(pc, pirani)
+    tui = CursesTui(pc, pirani, Pullsocket)
     tui.deamon = True
     tui.start()
     
