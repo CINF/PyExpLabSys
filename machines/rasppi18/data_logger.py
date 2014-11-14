@@ -8,7 +8,7 @@ from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 #from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.omega_D6400 as omega_D6400
-
+import credentials
 
 class BaratronClass(threading.Thread):
     """ Pressure reader """
@@ -47,17 +47,17 @@ pressure_measurement.start()
 
 time.sleep(2)
 
-datasocket = DateDataPullSocket('stm_baratron',['baratron'], timeouts=[1.0])
+datasocket = DateDataPullSocket('stm312_hpc_baratron',['stm312_hpc_baratron'], timeouts=[1.0])
 datasocket.start()
 
-db_logger = ContinuousLogger(table='dateplots_stm312', username='stm312', password='stm312', measurement_codenames=['stm312_hp_baratron'])
+db_logger = ContinuousLogger(table='dateplots_stm312', username=credentials.user, password = credentials.passwd, measurement_codenames=['stm312_hpc_baratron'])
 db_logger.start()
 
 while True:
     time.sleep(1)
     baratron = pressure_measurement.read_pressure()
-    datasocket.set_point_now('baratron', baratron)
+    datasocket.set_point_now('stm312_hpc_baratron', baratron)
     if pressure_measurement.trigged:
         print(baratron)
-        db_logger.enqueue_point_now('stm312_hp_baratron', baratron)
+        db_logger.enqueue_point_now('stm312_hpc_baratron', baratron)
         pressure_measurement.trigged = False
