@@ -306,6 +306,9 @@ class qmg_422():
         #Default values, not currently choosable from function parameters
         self.comm('DSE ,0')  #Use default SEM voltage
         self.comm('DTY ,1')  #Use SEM for ion detection
+        self.comm('SDT ,1')  #Use SEM for ion detection
+        #self.comm('DTY ,0')  #Use Faraday cup for ion detection
+        #self.comm('SDT ,0')  #Use Faraday cup for ion detection
         self.comm('AMO ,2')  #Auto-range #RANGE SELECTION NOT IMPLEMENTED!!!!!!!!!!
         self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
         self.comm('MRE ,15') #Peak resolution
@@ -327,7 +330,7 @@ class qmg_422():
         self.comm('SMC, 0') #Channel 0
         self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
         self.comm('MST ,2') #Steps
-        self.comm('MSD ,12') #Speed
+        self.comm('MSD ,10') #Speed
         self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
