@@ -45,6 +45,11 @@ def fullscreen(driver):
     ActionChains(driver).send_keys(Keys.F11).perform()
 
 
+def refresh(driver):
+    """Refreshes the browser"""
+    driver.refresh()
+
+
 def typed_element(element):
     """Return the type converted value of an element"""
     if 'type' in element.attrib:
@@ -69,6 +74,7 @@ def get_pages(root):
         page_list = []
         for element in page:
             page_list.append([element.tag, typed_element(element)])
+        page_list.append(['last_update', time.time() - 3300])
         pages.append(dict(page_list))
     return pages
 
@@ -101,6 +107,16 @@ def main():
     try:
         while True:
             next_tab(driver)
+            last_update = by_ids[driver.title]['last_update']
+            if time.time() - last_update > 3600:
+                remember_title = driver.title
+                print 'refreshing', driver.title
+                refresh(driver)
+                driver.execute_script(
+                    'document.title = "{}";'.format(remember_title)
+                    )
+                by_ids[driver.title]['last_update'] = time.time()
+
             waittime = by_ids[driver.title]['show_factor'] *\
                 settings['standard_showtime']
             print 'showing:', driver.title, 'for', waittime, 'seconds'
