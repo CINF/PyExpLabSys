@@ -4,24 +4,14 @@
   </settings>
   <pages>
     <page>
-      <id>thetaprobe_pressure</id>
-      <url>https://cinfdata.fysik.dtu.dk/thetaprobe/websockets_simple.php?type=websocket_simple1</url>
-      <show_factor type='float'>1.0</show_factor>
+      <id>water_and_n5_312</id>
+      <url>https://cinfdata.fysik.dtu.dk/hall/live.php?type=live_values</url>
+      <show_factor type='float'>2</show_factor>
     </page>
     <page>
-      <id>b307_gasalarm</id>
-      <url>https://cinfdata.fysik.dtu.dk/gasmonitor307/websockets_simple.php?type=websocket_simple1</url>
-      <show_factor type='float'>2.0</show_factor>
-    </page>
-    <page>
-      <id>xkcd</id>
-      <url>http://xkcd.com/</url>
-      <show_factor type='float'>1.0</show_factor>
-    </page>
-    <page>
-      <id>employee_of_the_month</id>
-      <url>https://cinfwiki.fysik.dtu.dk/cinfwiki/EmployeeOfTheMonth</url>
-      <show_factor type='float'>1.0</show_factor>
+      <id>b307_gasmonitor</id>
+      <url>https://cinfdata.fysik.dtu.dk/gasmonitor307/live.php?type=live_values</url>
+      <show_factor type='float'>2</show_factor>
     </page>
   </pages>
 </pager>
