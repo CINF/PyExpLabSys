@@ -71,26 +71,13 @@ or if it is preferred to keep track of the timestamp manually:
 	new_value = driver.get_value()
         now = time.time()
 	if contition_to_log_is_true:
-	    db_logger.enqueue_point_now('dummy_sine_one', now, new_value)
+	    db_logger.enqueue_point('dummy_sine_one', (now, new_value))
 
-loggers module
---------------
+Auto-generated module documentation
+-----------------------------------
 
 .. automodule:: PyExpLabSys.common.loggers
-
-ContinuousLogger class
-----------------------
-
-.. autoclass:: PyExpLabSys.common.loggers.ContinuousLogger
     :members:
+    :member-order: bysource
     :special-members:
-
-timeout_query function
-----------------------
-
-.. autofunction:: PyExpLabSys.common.loggers.timeout_query
-
-StartupException exception
---------------------------
-
-.. autoexception:: PyExpLabSys.common.loggers.StartupException
+    :show-inheritance:

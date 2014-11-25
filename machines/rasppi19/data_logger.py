@@ -1,41 +1,15 @@
 import threading
-import Queue
 import time
 from datetime import datetime
 import MySQLdb
-import socket
-import serial
-
-import sys
-sys.path.append('../')
-import FindSerialPorts
-import omega_CNi32 as omega
-
-def network_comm(host, port, string):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(0.1)
-    sock.sendto(string + "\n", (host, port))
-    received = sock.recv(1024)
-    return received
+import PyExpLabSys.drivers.omega_cni as omega
+from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.loggers import ContinuousLogger
+import credentials
 
 def sqlTime():
     sqltime = datetime.now().isoformat(' ')[0:19]
     return(sqltime)
-
-def sqlInsert(query):
-    try:
-        cnxn = MySQLdb.connect(host="servcinf",user="stm312",passwd="stm312",db="cinfdata")
-	cursor = cnxn.cursor()
-    except:
-	print "Unable to connect to database"
-	return()
-    try:
-	cursor.execute(query)
-	cnxn.commit()
-    except:
-	print "SQL-error, query written below:"
-	print query
-    cnxn.close()
 
 def OCSsqlInsert(query):
     try:
@@ -52,119 +26,54 @@ def OCSsqlInsert(query):
 	print query
     cnxn.close()
 
-class STMReader(threading.Thread):
-    def __init__(self, stm):
-        threading.Thread.__init__(self)
-        self.stm = stm
-        self.stm_temp = -9999
 
-    def run(self):
-        while not quit:
-            time.sleep(1)
-            self.stm_temp = self.stm.ReadTemperature()
-            #print self.stm_temp
-
-class OCSReader(threading.Thread):
-    def __init__(self, ocs):
+class Reader(threading.Thread):
+    def __init__(self, omega, pullsocket):
         threading.Thread.__init__(self)
-        self.ocs = ocs
+        self.omega = omega
+        self.pullsocket = pullsocket
+        self.hp_temp = -9999
         self.ocs_temp = -9999
 
     def run(self):
         while not quit:
-            time.sleep(0.9)
-            temp = self.ocs.ReadTemperature(address=2)
-            print temp
-            if temp > -9000:
-                self.ocs_temp = temp
-            #print self.stm_temp
-
-class HPReader(threading.Thread):
-    def __init__(self, hp):
-        threading.Thread.__init__(self)
-        self.hp = hp
-        self.hp_temp = -9999
-
-    def run(self):
-        while not quit:
             time.sleep(1)
-            temp = self.hp.ReadTemperature(address=1)
-            if temp > -998:
-                self.hp_temp = temp
-            if self.hp_temp >-998:
-                try:
-                    network_comm('rasppi19', 9990, 'set_hp_temp ' + str(self.hp_temp))
-                except:
-                    print 'Timeout'
-
-class Reader(threading.Thread):
-    def __init__(self, reader):
-        threading.Thread.__init__(self)
-        self.reader = reader
-        self.hp_temp = -9999
-
-    def run(self):
-        while not quit:
-            time.sleep(1)
-            hp_temp = self.reader.ReadTemperature(address=1)
-            ocs_temp = self.reader.ReadTemperature(address=2)
-            #print hp_temp
-            #print ocs_temp
+            hp_temp = self.omega.read_temperature(address=1)
+            ocs_temp = self.omega.read_temperature(address=2)
             if ocs_temp > -998:
                 self.ocs_temp = ocs_temp
             if hp_temp > -998:
                 self.hp_temp = hp_temp
-            if self.hp_temp >-998:
+            if self.hp_temp > -998:
                 try:
-                    network_comm('rasppi19', 9990, 'set_hp_temp ' + str(self.hp_temp))
+                    self.pullsocket.set_point_now('stm312_hp_temperature', self.hp_temp)
                 except:
                     print 'Timeout'
 
 
 class HighPressureTemperatureSaver(threading.Thread):
-    def __init__(self, reader):
+    def __init__(self, reader, db_logger):
         threading.Thread.__init__(self)
         self.last_recorded_value = -1
         self.last_recorded_time = 1
         self.reader = reader
+        self.db_logger = db_logger
 
     def run(self):
         while not quit:
             time.sleep(1)
             time_trigged = (time.time() - self.last_recorded_time) > 600
             temp = self.reader.hp_temp
+            print "Temperature: "  + str(temp)
+            print "Last recorded temp: " + str(self.last_recorded_value)
             val_trigged = not (self.last_recorded_value - 1 < temp < self.last_recorded_value + 1 )
             if (time_trigged or val_trigged):
+                print '!!!!!!!!!!!!!'
                 self.last_recorded_value = temp
                 self.last_recorded_time = time.time()
-                meas_time = sqlTime()
-                val = "%.2f" % temp
-                sql = "insert into temperature_stm312hp set time=\"" +  meas_time + "\", temperature = " + val
-                print sql
-                sqlInsert(sql)
+                self.db_logger.enqueue_point_now('stm312_hp_temperature', temp)
+                print(temp)
 
-
-class STMTemperatureSaver(threading.Thread):
-    def __init__(self, reader):
-        threading.Thread.__init__(self)
-        self.last_recorded_value = -1
-        self.last_recorded_time = 1
-        self.reader = reader
-
-    def run(self):
-        while not quit:
-            time.sleep(1)
-            time_trigged = (time.time() - self.last_recorded_time) > 2
-            temp = self.reader.stm_temp
-            val_trigged = not (self.last_recorded_value - 2 < temp < self.last_recorded_value + 2 )
-            if (time_trigged or val_trigged):
-                self.last_recorded_value = temp
-                self.last_recorded_time = time.time()
-                meas_time = sqlTime()
-                val = "%.2f" % temp
-                sql = "insert into temperature_stm312_stm set time=\"" +  meas_time + "\", temperature = " + val
-                print sql
-                sqlInsert(sql)
 
 class OCSTemperatureSaver(threading.Thread):
     def __init__(self, reader):
@@ -190,31 +99,20 @@ class OCSTemperatureSaver(threading.Thread):
 
 
 if __name__ == '__main__':
-    """
-    ports = FindSerialPorts.find_ports()
-    for port in ports:
-        print port
-        try:
-            tc_read = omega.omega_comm('/dev/' + port)
-        except serial.serialutil.SerialException:
-            continue
-        id = tc_read.IdentifyDevice().strip()
-        print id
-        if id == '09':
-            print 'High pressure cell: /dev/' + port
-            hp = tc_read
-        #if id == '09':
-        #    print 'STM: /dev/' + port
-        #    stm = tc_read
-        #if id == '04':
-        #    print 'OCS: /dev/' + port
-        #    ocs = tc_read
-    """
-    tc_reader = omega.omega_comm(port='/dev/ttyUSB0', comm_stnd='rs485')
-    temperature_reader = Reader(tc_reader)
-    temperature_reader.start()
 
     quit = False
+
+    pullsocket = DateDataPullSocket('stm312 hptemp', ['stm312_hp_temperature'], timeouts=[1.0])
+    pullsocket.start()
+
+    db_logger = ContinuousLogger(table='dateplots_stm312',
+                                 username=credentials.user,
+                                 password=credentials.passwd,
+                                 measurement_codenames=['stm312_hp_temperature'])
+    db_logger.start()
+    tc_reader = omega.ISeries('/dev/ttyUSB0', 9600, comm_stnd='rs485')
+    temperature_reader = Reader(tc_reader, pullsocket)
+    temperature_reader.start()
 
     """
     hp = tc_read
@@ -223,15 +121,12 @@ if __name__ == '__main__':
     hp_reader = HPReader(hp)
     hp_reader.start()
 
-    #stm_reader = STMReader(stm)
-    #stm_reader.start()
-
     ocs_reader = OCSReader(ocs)
     ocs_reader.start()
     """
     time.sleep(5)
 
-    hp_saver = HighPressureTemperatureSaver(temperature_reader)
+    hp_saver = HighPressureTemperatureSaver(temperature_reader, db_logger)
     hp_saver.start()
 
     #stm_saver = STMTemperatureSaver(stm_reader)
@@ -245,4 +140,3 @@ if __name__ == '__main__':
             time.sleep(1)
         except KeyboardInterrupt:
             quit = True
-

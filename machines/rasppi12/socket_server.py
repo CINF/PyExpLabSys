@@ -12,11 +12,11 @@ import pentax_picture as pentax
 port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
 TC_reader = omegabus.OmegaBus('/dev/serial/by-id/' + port)
 
-port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
-omega = omega_CNi32.ISeries('/dev/serial/by-id/' + port, 9600)
+#port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+#omega = omega_CNi32.ISeries('/dev/serial/by-id/' + port, 9600)
 
-print(omega.read_temperature())
-print '----'
+#print(omega.read_temperature())
+#print '----'
 
 #This specific raspberry pi handles temperature reading
 #And takes images with the pentax camera

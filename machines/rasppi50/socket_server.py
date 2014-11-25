@@ -1,60 +1,23 @@
-""" Socket server for valve-control box """
+# pylint: disable=R0913,W0142,C0103 
 
 import time
-import SocketServer
-import wiringpi2 as wp
+import PyExpLabSys.common.valve_control as valve_control
+from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.sockets import DataPushSocket
 
-class MyUDPHandler(SocketServer.BaseRequestHandler):
+valve_names = [0] * 20
+for i in range(0, 20):
+    valve_names[i] = str(i + 1)
+Pullsocket = DateDataPullSocket('xrd valve control', valve_names, timeouts=[2]*20)
+Pullsocket.start()
 
-    def handle(self):
-        received_data = self.request[0].strip()
-        data = "test"
-        socket = self.request[1]
+Pushsocket = DataPushSocket('XRD push control', action='enqueue')
+Pushsocket.start()
 
-        if received_data == "read":
-            print "read_all"
-            data = ''
-            for i in range(0, 20):
-                data += str(wp.digitalRead(i))
+vc = valve_control.ValveControl(valve_names, Pullsocket, Pushsocket)
+vc.start()
 
-        for i in range(0, 9):
-            if (received_data[0:11] == "set_state_" + str(i + 1)):
-                val = received_data[11:].strip()
-                if val == '0':
-                    wp.digitalWrite(i, 0)
-                    data = "ok"
-                if val == '1':
-                    wp.digitalWrite(i, 1)
-                    data = "ok"
-
-        for i in range(9, 20):
-            if (received_data[0:12] == "set_state_" + str(i + 1)):
-                val = received_data[12:].strip()
-                if val == '0':
-                    wp.digitalWrite(i, 0)
-                    data = "ok"
-                if val == '1':
-                    wp.digitalWrite(i, 1)
-                    data = "ok"
-
-        socket.sendto(data, self.client_address)
-
-if __name__ == "__main__":
-    wp.wiringPiSetup()
-
+while True:
     time.sleep(1)
 
-    for index in range(0, 21):  # Set GPIO pins to output
-        wp.pinMode(index, 1)
-        wp.digitalWrite(index, 0)
-
-    # Now that all output are low, we can open main safety output
-    wp.digitalWrite(20, 1)
-
-    for index in range(0, 21):  # Set GPIO pins to output
-        wp.digitalWrite(index, 1)
-
-    HOST, PORT = "10.54.7.50", 9999  # Rasppi33
-
-    server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
-    server.serve_forever()
+vc.running = False

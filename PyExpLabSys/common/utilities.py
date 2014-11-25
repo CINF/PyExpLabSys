@@ -8,7 +8,6 @@ import inspect
 import logging
 import platform
 import time
-import resource
 import threading
 from collections import deque
 from logging.handlers import RotatingFileHandler, SMTPHandler
@@ -195,11 +194,14 @@ class SystemStatus(object):
     def __init__(self):
         # Form the list of which items to measure on different platforms
         self.platform = sys.platform
-        self.all_list = ['last_git_fetch', 'max_python_mem_usage_bytes',
+        self.all_list = ['last_git_fetch_unixtime',
                          'number_of_python_threads']
         if self.platform == 'linux2':
+            import resource
+            self.resource = resource
             self.all_list += ['uptime', 'last_apt_cache_change_unixtime',
-                              'load_average', 'filesystem_usage']
+                              'load_average', 'filesystem_usage',
+                              'max_python_mem_usage_bytes']
 
     def complete_status(self):
         """Returns all system status information items as a dictionary"""
@@ -209,7 +211,7 @@ class SystemStatus(object):
         return all_items
 
     # All platforms
-    def last_git_fetch(self):
+    def last_git_fetch_unixtime(self):
         """Returns the unix timestamp and author time zone offset in seconds of
         the last git commit
         """
@@ -225,14 +227,6 @@ class SystemStatus(object):
             return os.path.getmtime(fetch_head_file)
         else:
             return None
-
-    @staticmethod
-    def max_python_mem_usage_bytes():
-        """Returns the python memory usage"""
-        pagesize = resource.getpagesize()
-        this_process = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        children = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
-        return (this_process + children) * pagesize
 
     @staticmethod
     def number_of_python_threads():
@@ -287,3 +281,12 @@ class SystemStatus(object):
             'free_bytes': statvfs.f_frsize * statvfs.f_bfree
         }
         return status
+
+    def max_python_mem_usage_bytes(self):
+        """Returns the python memory usage"""
+        pagesize = self.resource.getpagesize()
+        this_process = self.resource.getrusage(
+            self.resource.RUSAGE_SELF).ru_maxrss
+        children = self.resource.getrusage(
+            self.resource.RUSAGE_CHILDREN).ru_maxrss
+        return (this_process + children) * pagesize

@@ -86,4 +86,8 @@ def logging_criteria(value, last):
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except:
+        LOGGER.exception("Program stopped due to the following exception")
+        raise
