@@ -48,14 +48,20 @@ def uptime(host, method, username='pi', password='cinf123'):
 
     if method == 'socket':
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto('status', (host, 9000))
-        received = sock.recv(1024)
-        status = json.loads(received)
-        system_status = status['system_status']
-        up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
-        load = str(system_status['load_average']['15m'])
-        return_value['up'] = up
-        return_value['load'] = load
+        sock.settimeout(0.1)
+        try:
+            sock.sendto('status', (host, 9000))
+            received = sock.recv(1024)
+            status = json.loads(received)
+            system_status = status['system_status']
+            up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
+            load = str(system_status['load_average']['15m'])
+            return_value['up'] = up
+            return_value['load'] = load
+        except:
+            return_value['up'] = 'Down'
+            return_value['load'] = 'Down'
+            
 
     """
     Will need to modify uptime script on these hosts...
@@ -84,59 +90,32 @@ class CheckHost(threading.Thread):
                 uptime_val = {}
                 uptime_val['up'] = ''
                 uptime_val['load'] = ''
-             #print uptime_val
-            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[1]])
+            #print uptime_val
+            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[4], host[1]])
             self.hosts.task_done()
 
 if __name__ == "__main__":
     t = time.time()
     hosts = Queue.Queue()
-    hosts.put(['rasppi00','Raspberry Pi','ssh','STM312 - X-ray cooling water flow'])
-    hosts.put(['rasppi01','Raspberry Pi','ssh','TOF Pressure'])
-    hosts.put(['rasppi04','Raspberry Pi','ssh','Volvo pressure readout'])
-    hosts.put(['rasppi05','Raspberry Pi','ssh','Microreactors, temperature control'])
-    hosts.put(['rasppi06','Raspberry Pi','ssh','Webcams'])
-    hosts.put(['rasppi08','Raspberry Pi','ssh','Old CS, TC and pressure readout '])
-    hosts.put(['rasppi09','Raspberry Pi','ssh','NH3 - Pressure readout'])
-    hosts.put(['rasppi12','Raspberry Pi','ssh','Microreactors TC-readout'])         
-    hosts.put(['rasppi13','Raspberry Pi','ssh','STM 312, Flow controllers'])         
-    hosts.put(['rasppi14','Raspberry Pi','ssh','NH3 concentration + temperature'])
-    hosts.put(['rasppi15','Raspberry Pi','ssh','Gasmonitor, B312'])
-    hosts.put(['rasppi16','Raspberry Pi','ssh','Microreactor NG, Flows'])
-    hosts.put(['rasppi17','Raspberry Pi','ssh','Microreactor, Mass Spectrometer'])
-    hosts.put(['rasppi19','Raspberry Pi','ssh','STM 312, Temperature control'])         
-    hosts.put(['rasppi20','Raspberry Pi','ssh','STM 312 + PS chillers'])
-    hosts.put(['rasppi21','Raspberry Pi','ssh','Sputterchamber'])
-    hosts.put(['rasppi22','Raspberry Pi','ssh','Bakeout control box - STM312'])
-    hosts.put(['rasppi24','Raspberry Pi','ssh','Old Microreactor - flow controllers'])
-    hosts.put(['rasppi25','Raspberry Pi','ssh','Datalogger thetaprobe'])
-    hosts.put(['rasppi27','Raspberry Pi','ssh','Old Microreactor - massspec'])
-    hosts.put(['rasppi28','Raspberry Pi','ssh','Parallel screening - Pressure readout'])
-    hosts.put(['rasppi29','Raspberry Pi','ssh','Mobile gas wall - valve control'])
-    hosts.put(['rasppi30','Raspberry Pi','ssh','MGW - temperature control'])
-    hosts.put(['rasppi31','Raspberry Pi','ssh','STM 312 - sputter gun'])
-    hosts.put(['rasppi33','Raspberry Pi','ssh','VHP-setup, valve-control'])
-    hosts.put(['rasppi34','Raspberry Pi','ssh','Gas Alarm, 307'])
-    hosts.put(['rasppi35','Raspberry Pi','ssh','VHP Setup, flow controllers'])
-    hosts.put(['rasppi37','Raspberry Pi','ssh','Coupled Reactor, MKS MFCs'])
-    hosts.put(['rasppi40','Raspberry Pi','ssh','Valve Control box, Coupled Reactor'])
-    hosts.put(['rasppi41','Raspberry Pi','ssh','Coupled reactor, 307. Temperature measurement'])
-    hosts.put(['rasppi43','Raspberry Pi','ssh','VHP-setup, pressure and temperature'])
-    hosts.put(['rasppi44','Raspberry Pi','ssh','Valve Control box, unknown setup'])
-    hosts.put(['rasppi46','Raspberry Pi','ssh','Coupled Reactor, Brooks MFCs'])
-    hosts.put(['rasppi47','Raspberry Pi','ssh','Furnace Room, Temperature Control'])
-    hosts.put(['rasppi49','Raspberry Pi','ssh','TOF emission control'])
-    hosts.put(['rasppi51','Raspberry Pi','socket','309, CVD chamber'])
-    hosts.put(['rasppi53','Raspberry Pi','ssh','Mobile gas-wall multi purpose'])
-    hosts.put(['rasppi54','Raspberry Pi','ssh','307, Muffle furnace'])
-    hosts.put(['rasppi100','Raspberry Pi','ssh','Turbo controller, Microreactor'])
-    hosts.put(['rasppi102','Raspberry Pi','ssh','Microreactors Pressure readout'])
-    hosts.put(['microreactor','Windows','rdp','Main PC, Microreactor'])
-    hosts.put(['microreactorng','Windows','None','Main PC, Microreactor NG'])
-    hosts.put(['tofms','Windows','rdp','TOF-MS'])
-    #hosts.put(['sputterchamber','Windows','rdp','Sputterchamber'])
-    #hosts.put(['robertj','Fedora','http','Robert, office'])
 
+    host_file = open('hosts.txt')
+    lines = host_file.readlines()
+    ok_lines = []
+    for line in lines:
+        ok = True
+        if len(line.strip()) == 0:
+            ok = False            
+        if line.strip()[0] == '#':
+            ok = False
+        if ok:
+            ok_lines.append(line)    
+
+    for line in ok_lines:
+        host_line = line.strip().split(',')
+        for i in range(0, len(host_line)):
+            host_line[i] = host_line[i].strip()
+        hosts.put(host_line)
+    
     results = Queue.Queue()
     t = time.time()
     host_checkers = {}
@@ -160,6 +139,7 @@ if __name__ == "__main__":
         else:
             status_string += "0;;;"
         status_string += host[4] + ";"
-        status_string += host[5]
+        status_string += host[5] + ";"
+        status_string += host[6]
         status_string += "\n"
     print(status_string)

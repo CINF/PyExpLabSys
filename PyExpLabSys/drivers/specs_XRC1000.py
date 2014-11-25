@@ -8,6 +8,11 @@ import serial
 import time
 import threading
 import curses
+import socket
+import json
+
+EXCEPTION = None
+log = open('error_log.txt', 'w')
 
 
 class CursesTui(threading.Thread):
@@ -63,27 +68,32 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(13, 2, "Emission Current: {0:.4f}A          ".format(self.sc.status['emission_current']))
                 self.screen.addstr(14, 2, "Anode Voltage: {0:.2f}V          ".format(self.sc.status['anode_voltage']))
                 self.screen.addstr(15, 2, "Anode Power: {0:.2f}W          ".format(self.sc.status['anode_power']))
-            except ValueError:
+                self.screen.addstr(16, 2, "Water flow: {0:.2f}L/min       ".format(self.sc.status['water_flow']))
+            except Exception as exception:
+                global EXCEPTION
+                EXCEPTION = exception
+                #self.screen.addstr(10,2, exception.message)
                 self.screen.addstr(10, 2, "Filament bias: -                   ")
                 self.screen.addstr(11, 2, "Filament Current: -                           ")
                 self.screen.addstr(12, 2, "Filament Power: -                           ")
                 self.screen.addstr(13, 2, "Emission Current: -                             ")
                 self.screen.addstr(14, 2, "Anode Voltage: -                          ")
                 self.screen.addstr(15, 2, "Anode Power: -                      ")
+                self.screen.addstr(16, 2, "water flow: -                          ")
             if self.sc.status['error'] != None:
-                self.screen.addstr(16, 2, "Latest error message: " + str(self.sc.status['error']) + " at time: " + str(self.sc.status['error time']))
+                self.screen.addstr(18, 2, "Latest error message: " + str(self.sc.status['error']) + " at time: " + str(self.sc.status['error time']))
 
-            self.screen.addstr(17, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
+            self.screen.addstr(19, 2, "Runtime: {0:.0f}s       ".format(time.time() - self.time))
             if self.countdown:
                 self.screen.addstr(18, 2, "Time until shutdown: {0:.0f}s       ".format(self.countdown_end_time -time.time()))
                 if time.time() > self.countdown_end_time:
                     self.sc.goto_off = True
                     self.countdown = False
             
-            self.screen.addstr(20, 2, 'q: quit program, s: standby, o: operate, c: cooling, x: shutdown gun')
-            self.screen.addstr(21, 2, ' 3: shutdown in 3h, r: change to remote')
+            self.screen.addstr(21, 2, 'q: quit program, s: standby, o: operate, c: cooling, x: shutdown gun')
+            self.screen.addstr(22, 2, ' 3: shutdown in 3h, r: change to remote')
             
-            self.screen.addstr(23, 2, ' Latest key: ' + str(self.last_key))
+            self.screen.addstr(24, 2, ' Latest key: ' + str(self.last_key))
 
             n = self.screen.getch()
             if n == ord('q'):
@@ -120,6 +130,7 @@ class CursesTui(threading.Thread):
             time.sleep(1)
         time.sleep(5)
         self.stop()
+        print EXCEPTION
 
     def stop(self):
         """ Cleanup the terminal """
@@ -132,13 +143,16 @@ class CursesTui(threading.Thread):
 class XRC1000(threading.Thread):
     """ Driver for X-ray Source Control - XRC 1000"""
 
-    def __init__(self, ):
+    def __init__(self, port=None):
         """ Initialize module
 
         Establish serial connection and create status variable to
         expose the status for the instrument for the various gui's
         """
         threading.Thread.__init__(self)
+        
+        if port == None:
+            port = '/dev/ttyUSB0'
 
         self.status = {}  # Hold parameters to be accecible by gui
         self.status['hv'] = None
@@ -158,6 +172,7 @@ class XRC1000(threading.Thread):
         self.status['emission_current'] = None
         self.status['anode_voltage'] = None
         self.status['anode_power'] = None
+        self.status['water_flow'] = None
         self.status['ID'] = None
         self.running = True
         self.goto_standby = False
@@ -178,7 +193,7 @@ class XRC1000(threading.Thread):
         self.list_of_errors += ['>E251: Unexpected Error code !\n']
         self.get_commands = ['REM?', 'IEM?', 'UAN?', 'IHV?', 'IFI?', 'UFI?', 'PAN?', 'SERNO?', 'ANO?', 'STAT?', 'OPE?']
         #self.simulate = simulate
-        self.f = serial.Serial('/dev/ttyUSB0', 9600, timeout=0.25)
+        self.f = serial.Serial(port, 9600, timeout=0.25)
         #baud: 9600, bits: 8, parity: None
         return_string = self.comm('SERNO?')
         self.status['ID'] = return_string
@@ -194,7 +209,11 @@ class XRC1000(threading.Thread):
         if self.status['remote'] == False:
             self.remote_enable()
         self.get_status()
-            
+        self.init_socket()
+
+    def init_socket(self,):
+        self.address_port = ('rasppi00',9000)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def comm(self, command):
         """ Communication with the instrument
@@ -247,6 +266,19 @@ class XRC1000(threading.Thread):
         reply = self.f.readline()
         return_string = reply
         return(return_string)
+
+    def read_water_flow(self,):
+        """read the water flow from external hardware
+        :return: water flow in L/min
+        :rtype float
+        """
+        try:
+            self.sock.sendto('water_flow#json', self.address_port)
+            answer = self.sock.recvfrom(1024)
+            water_flow_time, water_flow = json.loads(answer[0])
+        except:
+            water_flow = -1.0
+        return water_flow
 
     def read_emission_current(self): #need testing
         """ Read the emission current. Unit A
@@ -506,6 +538,8 @@ class XRC1000(threading.Thread):
         self.status['emission_current'] = self.read_emission_current()
         self.status['anode_voltage'] = self.read_anode_voltage()
         self.status['anode_power'] = self.read_anode_power()
+        self.status['water_flow'] = self.read_water_flow()
+        #log.write(str(self.status) + '\n')
         self.get_status()
 
         return(True)
@@ -535,7 +569,7 @@ class XRC1000(threading.Thread):
 
 
 if __name__ == '__main__':
-    sc = XRC1000()
+    sc = XRC1000(port='/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0')
     #print sc.read_emission_current()
     #print sc.read_filament_voltage()
     #print sc.read_filament_current()

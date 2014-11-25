@@ -28,6 +28,8 @@ class NoneResponse:
     """NoneResponse"""
     def __init__(self):
         LOGGER.debug('NoneResponse class instantiated')
+#: Module variable used to indicate a none response, currently is an instance
+#: if NoneResponse
 NONE_RESPONSE = NoneResponse()
 
 
@@ -60,14 +62,14 @@ class InterruptableThread(threading.Thread):
 def timeout_query(cursor, query, timeout_duration=3):
     """Run a mysql query with a timeout
 
-    :param cursor: The database cursor
-    :type cursor: MySQL cursor
-    :param query: The query to execute
-    :type qeury: str
-    :param timeout_duration: The timeout duration
-    :type timeout_duration: int
-    :return: A tuple of results from the query or ``loggers.NONE_RESPONSE`` if
-        the query timed out
+    Args:
+        cursor (MySQL cursor): The database cursor
+        query (str): The query to execute
+        timeout_duration (int): The timeout duration
+
+    Returns
+        (tuple or :data:`NONE_RESPONSE`): A tuple of results from the query or
+            :py:data:`NONE_RESPONSE` if the query timed out
     """
     LOGGER.debug('timeout_query start')
     # Spawn a thread for the query
@@ -105,28 +107,25 @@ class ContinuousLogger(threading.Thread):
                  dequeue_timeout=1, reconnect_waittime=60, dsn=None):
         """Initialize the continous logger
 
-        :param table: The table to log data to
-        :type table: str
-        :param username: The MySQL username (must have write rights to
-            ``table``)
-        :type username: str
-        :param password: The password for ``user`` in the database
-        :type password: str
-        :param measurement_codenames: List of measurement codenames that this
-            logger will send data to
-        :type measurement_codenames: Iterable containing str
-        :param dequeue_timeout: The timeout (in seconds) for dequeueing an
-            element, which also constitutes the max time to shutdown after the
-            thread has been asked to stop. Default is 1.
-        :type dequeue_timeout: float or int
-        :param reconnect_waittime: Time to wait (in seconds) in between
-            attempts to re-connect to the MySQL database, if the connection has
-            been lost
-        :type reconnect_waittime: float or int
-        :raises StartupException: if it is not possible to start the database
-            connection or translate the code names
-        :param dsn: DSN name of ODBC connection, used on Windows only
-        :type dsn: str
+        Args:
+            table (str): The table to log data to
+            username (str): The MySQL username (must have write rights to
+                ``table``)
+            password (str): The password for ``user`` in the database
+            measurement_codenames (list): List of measurement codenames that
+                this logger will send data to
+            dequeue_timeout (float): The timeout (in seconds) for dequeueing an
+                element, which also constitutes the max time to shutdown after
+                the thread has been asked to stop. Default is 1.
+            reconnect_waittime (float): Time to wait (in seconds) in between
+                attempts to re-connect to the MySQL database, if the connection
+                has been lost
+            dsn (str): DSN name of ODBC connection, used on Windows only
+
+        Raises:
+            StartupException: If it is not possible to start the database
+                connection or translate the code names
+
         """
         LOGGER.info('CL: __init__ called')
         # Initialize thread
@@ -254,29 +253,33 @@ class ContinuousLogger(threading.Thread):
     def enqueue_point_now(self, codename, value):
         """Add a point to the queue and use the current time as the time
 
-        :param codename: The measurement codename that this point will be saved
-            under
-        :type codename: str
-        :param value: The value to be logged
-        :type value: float
-        :return: the Unixtime used
-        :rtype: float
+        Args:
+            codename (str): The measurement codename that this point will be
+                saved under
+            value (float): The value to be logged
+
+        Returns:
+            float: The Unixtime used
         """
         unixtime = time.time()
         LOGGER.debug('CL: Adding timestamp {} to point'.format(unixtime))
-        self.enqueue_point(codename, unixtime, value)
+        self.enqueue_point(codename, (unixtime, value))
         return unixtime
 
-    def enqueue_point(self, codename, unixtime, value):
+    def enqueue_point(self, codename, point):
         """Add a point to the queue
 
-        :param codename: The measurement codename that this point will be saved
-            under
-        :type codename: str
-        :param unixtime: The timestamp for the point
-        :type unixtime: float
-        :param value: The value to be logged
-        :type value: float"""
+        Args:
+            codename (str): The measurement codename that this point will be
+                saved under
+            point (iterable): Current point as a list (or tuple) of 2 floats:
+                [x, y]
+        """
+        try:
+            unixtime, value = point
+        except ValueError:
+            message = '\'point\' must be a iterable with 2 values'
+            raise ValueError(message)
         meas_number = self._codename_translation[codename]
         query = ('INSERT INTO {} (type, time, value) VALUES '
                  '({}, FROM_UNIXTIME({}), {});')
