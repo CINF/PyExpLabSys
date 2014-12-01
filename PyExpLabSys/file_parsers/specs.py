@@ -2,16 +2,85 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-few-public-methods,no-member
 
-"""This file is used to parse XPS data from XML files from the SPECS
-program.
+"""This file is used to parse XPS and ISS data from XML files from the
+SPECS program.
 
 In this file format the spectra (called regions) are containd in
-so-called region groups inside the files. This structure is mirrored
-in the data structure below.
+region groups inside the files. This structure is mirrored in the data
+structure below where classes are provided for the 3 top level objects:
 
-NOTES:
+Files -> Region Groups -> Regions
 
-Any is interpreted as being able to contain one item of different types.
+The parser is strict, in the sense that it will throw an exception if
+it encounters anything it does not understand. To change this behavior
+set the EXCEPTION_ON_UNHANDLED module variable to False.
+
+Usage examples
+^^^^^^^^^^^^^^
+
+To use the file parse, simply feed the top level data structure a path
+to a data file and start to use it:
+
+.. code-block:: python
+
+ from PyExpLabSys.file_parsers.specs import SpecsFile
+ import matplotlib.pyplot as plt
+
+ file_ = SpecsFile('path_to_my_xps_file.xml')
+ # Access the regions groups by iteration
+ for region_group in file_:
+     print '{} regions groups in region group: {}'.format(
+         len(region_group), region_group.name)
+
+ # or by index
+ region_group = file_[0]
+
+ # And again access regions by iteration
+ for region in region_group:
+     print 'region: {}'.format(region.name)
+
+ # or by index
+ region = region_group[0]
+
+ # or you can search for them from the file level
+ region = list(file_.search_regions('Mo'))[0]
+ print region
+ # NOTE the search_regions method returns a generator of results, hence the
+ # conversion to list and subsequent indexing
+
+ # From the regions, the x data can be accessed either as kinetic
+ # or binding energy (for XPS only) and the y data can be accessed
+ # as averages of the counts, either as pure count numbers or as
+ # counts per second. These options works independently of each
+ # other.
+
+ # counts as function of kinetic energy
+ plt.plot(region.x, region.y_avg_counts)
+ plt.show()
+
+ # cps as function of binding energy
+ plt.plot(region.x_be, region.y_avg_cps)
+ plt.show()
+
+ # Files also have a useful str representation that shows the hierachi
+ print file_
+
+NOTES
+^^^^^
+
+The file format seems to basically be a dump, of a large low level
+data structure from the implementation language. With an appropriate
+mapping of low level data structure types to python types (see details
+below and in the simple_convert function), this data structure could have been
+mapped in its entirety to python types, but in order to provide a more
+clear data structure a more object oriented approach has been taken,
+where the top most level data structures are implemented as
+classes. Inside of these classes, the data is parsed into numpy arrays
+and the remaining low level data structures are parsed in python data
+structures with the simple_convert function.
+
+Module Documentation
+^^^^^^^^^^^^^^^^^^^^
 
 """
 
@@ -25,8 +94,6 @@ _LOG.addHandler(logging.NullHandler())
 import numpy as np
 
 
-UNEXPECTED_TYPE_NAME = 'Unexpected XML element with type_name other than '\
-                       '\'{}\' encountered'
 UNHANDLED_XML_COMPONENTS = 'An unhandled XML component \'{}\' was found when '\
                            'parsing a \'{}\''
 # Used in the conversion of elements with type information
@@ -36,10 +103,50 @@ EXCEPTION_ON_UNHANDLED = True
 
 
 def simple_convert(element):
-    """Returns a simple XML structure consisting only of structs,
-    sequences and simple types to dicts, lists and simple Python types.
+    """Converts a XML data structure to pure python types.
 
-    FIXME. More explanation.
+    Args:
+        element (xml.etree.ElementTree.Element): The XML element to convert
+
+    Returns:
+        object: A hierachi of python data structure
+
+    Simple element types are converted as follows:
+
+    +------------------------+
+    | XML type | Python type |
+    +==========+=============+
+    | string   | str         |
+    +----------+-------------+
+    | ulong    | long        |
+    +----------+-------------+
+    | double   | float       |
+    +----------+-------------+
+    | boolean  | bool        |
+    +----------+-------------+
+    | struct   | dict        |
+    +----------+-------------+
+    | sequence | list        |
+    +----------+-------------+
+
+    Arrays are converted to numpy arrays, wherein the type conversion is:
+
+    +-------------------------+
+    | XML type | Python type  |
+    +==========+==============+
+    | ulong    | numpy.uint64 |
+    +----------+--------------+
+    | double   | numpy.double |
+    +----------+--------------+
+
+    Besides these types there are a few special elements that have a
+    custom conversion.
+
+    * **Enum** are simply converted into their value, since enums are
+      considered to be a program implementation detail whose
+      information is not relavant for a data file parser
+    * **Any** is skipped and replaced with its content
+
     """
 
     # parse no content
@@ -73,16 +180,19 @@ def simple_convert(element):
         out = element.text
     # I don't know what to do
     else:
-        raise ValueError('Unknown tag type {}'.format(element.tag))
+        message = 'Unknown tag type {}'.format(element.tag)
+        if EXCEPTION_ON_UNHANDLED:
+            raise ValueError(message)
+        _LOG.warning(message)
 
     return out
 
 
 class SpecsFile(list):
-    """This is the top structure for a parsed file. It contais a list of
-    RegionGroups
+    """This is the top structure for a parsed file which represents a list
+    of RegionGroups
 
-    The class contains a 'filepath' and 'region_group_sequences' attributes.
+    The class contains a 'filepath' attribute.
 
     """
 
@@ -107,8 +217,7 @@ class SpecsFile(list):
             )
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
-            else:
-                _LOG.warning(message)
+            _LOG.warning(message)
         root.remove(_reg_group_seq)
 
         # Check that there are no unhandled XML elements in the root
@@ -118,20 +227,21 @@ class SpecsFile(list):
             )
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
-            else:
-                _LOG.warning(message)
+            _LOG.warning(message)
 
-    def search_regions(self, search_term, case_insensitive=False):
-        """Returns an iterator of search results for regions by name"""
-        if case_insensitive:
-            search_term = search_term.lower()
+    def search_regions(self, search_term):
+        """Returns an generator of search results for regions by name
+
+        Args:
+            search_term (str): The term to search for (case sensitively)
+
+        Returns:
+            generator: An iterator of maching regions
+
+        """
         for region_group in self:
             for region in region_group:
-                if case_insensitive:
-                    name = region.name.lower()
-                else:
-                    name = region.name
-                if search_term in name:
+                if search_term in region.name:
                     yield region
 
     def __repr__(self):
@@ -149,9 +259,10 @@ class SpecsFile(list):
 
 
 class RegionGroup(list):
-    """ Class that represents a region group
+    """Class that represents a region group, which consist of a list of
+    regions
 
-    The class contains a 'name', 'regions' and 'parameters' attribute.
+    The class contains a 'name' and and 'parameters' attribute.
 
     """
 
@@ -222,7 +333,8 @@ class Region(object):
     The class contains attributes for the items listed in the
     'information_names' class variable.
 
-    All auxiliary information is also available from the 'info' attribute.
+    All auxiliary information is also available from the 'info'
+    attribute.
 
     """
 
@@ -232,7 +344,14 @@ class Region(object):
                          'parameters']
 
     def __init__(self, xml, cache_calculated=True):
-        """Parse the XML and initialize internal variables"""
+        """Parse the XML and initialize internal variables
+
+        Args:
+            xml (xml.etree.ElementTree.Element): The region XML element
+            cache_calculated (bool): Whether the calculated x and y values
+                should be cached
+
+        """
         # Internal variables
         self.cache_calculated = cache_calculated
         self._data = {}
@@ -264,7 +383,7 @@ class Region(object):
 
     @property
     def x(self):  # pylint: disable=invalid-name
-        """Returns the kinetic energy x-values"""
+        """Returns the kinetic energy x-values as a Numpy array"""
         if 'x' in self._data:
             # Return cached values
             data = self._data['x']
@@ -284,7 +403,7 @@ class Region(object):
 
     @property
     def x_be(self):
-        """Returns the binding energy x-values"""
+        """Returns the binding energy x-values as a Numpy array"""
         if self.region['analysis_method'] != 'XPS':
             message = "Analysis_method is {}".format(
                 self.region['analysis_method'])
@@ -307,20 +426,37 @@ class Region(object):
 
     @property
     def iter_cycles(self):
-        """Returns an iterable of cycles containing only theirs scans"""
+        """Returns a generator of cycles
+
+        Each cycle is in itself a generator of lists of scans. To
+        iterate over single scans do:
+
+        .. code-block:: python
+
+         for cycle in self.iter_cycles:
+             for scans in cycle:
+                 for scan in scans:
+                     print scan
+
+        or use :py:attr:`iter_scans`, which do just that.
+        """
         for cycle in self.cycles:
             yield (scan['counts'] for scan in cycle['scans'])
 
     @property
     def iter_scans(self):
-        """Returns an iterator of scans"""
+        """Returns an generator of single scans, which in themselves are Numpy
+        arrays
+
+        """
         for cycle in self.iter_cycles:
-            for scan in cycle:
-                yield scan
+            for scans in cycle:
+                for scan in scans:
+                    yield scan
 
     @property
     def y_avg_counts(self):
-        """Returns the average counts"""
+        """Returns the average counts as a Numpy array"""
         if 'y_avg_counts' in self._data:
             # Return cached result
             data = self._data['y_avg_counts']
@@ -339,7 +475,7 @@ class Region(object):
 
     @property
     def y_avg_cps(self):
-        """Returns the average counts per second"""
+        """Returns the average counts per second as a Numpy array"""
         if 'y_avg_cps' in self._data:
             data = self._data['y_avg_cps']
         else:
