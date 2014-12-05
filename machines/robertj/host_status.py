@@ -1,4 +1,5 @@
 import subprocess
+import datetime
 import urllib2
 import telnetlib
 import socket
@@ -29,7 +30,7 @@ def uptime(host, method, username='pi', password='cinf123'):
     return_value = {}
     return_value['up'] = ''
     return_value['load'] = ''
-
+    return_value['git'] = ''
     if method == 'ssh':
         uptime_string = subprocess.check_output(["sshpass", 
                                                  "-p", 
@@ -56,12 +57,14 @@ def uptime(host, method, username='pi', password='cinf123'):
             system_status = status['system_status']
             up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
             load = str(system_status['load_average']['15m'])
+            gittime = system_status['last_git_fetch_unixtime']
+            git = datetime.datetime.fromtimestamp(gittime).strftime('%Y-%m-%d')
             return_value['up'] = up
             return_value['load'] = load
+            return_value['git'] = git
         except:
             return_value['up'] = 'Down'
             return_value['load'] = 'Down'
-            
 
     """
     Will need to modify uptime script on these hosts...
@@ -90,8 +93,8 @@ class CheckHost(threading.Thread):
                 uptime_val = {}
                 uptime_val['up'] = ''
                 uptime_val['load'] = ''
-            #print uptime_val
-            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[4], host[1]])
+                uptime_val['git'] = ''
+            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[4], host[1], uptime_val['git']])
             self.hosts.task_done()
 
 if __name__ == "__main__":
@@ -100,6 +103,7 @@ if __name__ == "__main__":
 
     host_file = open('hosts.txt')
     lines = host_file.readlines()
+
     ok_lines = []
     for line in lines:
         ok = True
@@ -140,6 +144,7 @@ if __name__ == "__main__":
             status_string += "0;;;"
         status_string += host[4] + ";"
         status_string += host[5] + ";"
-        status_string += host[6]
+        status_string += host[6] + ";"
+        status_string += host[7]
         status_string += "\n"
     print(status_string)
