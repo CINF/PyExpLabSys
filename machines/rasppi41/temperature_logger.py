@@ -36,7 +36,7 @@ class TemperatureLogger(object):
             7: 'pro_d2_temp',
             }
         codenames_list = [self.codenames[channel] for channel in range(1, 8)]
-        self.socket = DateDataPullSocket(name, codenames_list, timeouts = 1.0)
+        self.socket = DateDataPullSocket(name, codenames_list, timeouts = 2.0)
         self.socket.start()
 
         # Measure initial values
