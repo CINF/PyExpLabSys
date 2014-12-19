@@ -43,11 +43,12 @@ logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
 pressure_measurement = BaratronClass()
+pressure_measurement.deamon = True
 pressure_measurement.start()
 
 time.sleep(2)
 
-datasocket = DateDataPullSocket('stm312_hpc_baratron',['stm312_hpc_baratron'], timeouts=[1.0])
+datasocket = DateDataPullSocket('stm312_hpc_baratron', ['stm312_hpc_baratron'], timeouts=[1.0])
 datasocket.start()
 
 db_logger = ContinuousLogger(table='dateplots_stm312', username=credentials.user, password = credentials.passwd, measurement_codenames=['stm312_hpc_baratron'])
