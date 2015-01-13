@@ -73,14 +73,15 @@ class EmissionControl(threading.Thread):
             self.datasocket = None    
         self.measured_voltage = 0
         self.filament = {}
-        self.filament['device'] = CPX.CPX400DPDriver(1, usbchannel=0)
+        port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F952E5-if00'
+        self.filament['device'] = CPX.CPX400DPDriver(1, port)
         self.filament['voltage'] = 0
         self.filament['current'] = 0
         self.filament['idle_voltage'] = 3
         self.filament['device'].set_current_limit(5)
         self.filament['device'].output_status(True)
         self.bias = {}
-        self.bias['device'] = CPX.CPX400DPDriver(2, usbchannel=0)
+        self.bias['device'] = CPX.CPX400DPDriver(2, port)
         self.bias['grid_voltage'] = 0
         self.bias['grid_current'] = 0
         self.bias['device'].output_status(True)
