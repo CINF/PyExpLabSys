@@ -53,7 +53,7 @@ class ValueLogger(threading.Thread):
                                    < self.value
                                    < self.last['val'] * (1 + self.compare['val']))
 
-            if (time_trigged or val_trigged) and (self.value > 0):
+            if (time_trigged or val_trigged):
                 self.status['trigged'] = True
                 self.last['time'] = time.time()
                 self.last['val'] = self.value
