@@ -10,13 +10,15 @@ class InterfaceOutOfBoundsError(Exception):
 
 class CPX400DPDriver(SCPI):
 
-    def __init__(self,output, port, interface = 'serial'):
-        SCPI.__init__(self, port, interface)
+    def __init__(self, output, interface = 'serial', hostname='', device='', tcp_port=0):
+        if interface == 'lan':
+            SCPI.__init__(self, 'lan', tcp_port=tcp_port, hostname=hostname)
+        if interface == 'serial':
+            SCPI.__init__(self, 'serial', device=device)
         if not (output == 1 or output == 2):
             raise InterfaceOutOfBoundsError(output)
         else:
             self.output = str(output)
-        #print "SCPI Complete"
 
     def set_voltage(self, value):
         """Sets the voltage """
@@ -114,8 +116,10 @@ class CPX400DPDriver(SCPI):
 
 
 if __name__ == '__main__':
-    cpx = CPX400DPDriver(1)
-    print cpx.read_current_limit()
+    cpx = CPX400DPDriver(1, interface='lan',
+                         hostname='cinf-palle-heating-ps',
+                         tcp_port = 9221)
+    print(cpx.read_current_limit())
 
-    cpx = CPX400DPDriver(2)
-    print cpx.read_current_limit()
+    #cpx = CPX400DPDriver(2)
+    #print cpx.read_current_limit()

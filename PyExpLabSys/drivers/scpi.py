@@ -5,18 +5,17 @@ import telnetlib
 
 class SCPI:
 
-    def __init__(self,device,port):
+    def __init__(self, interface, device='', tcp_port=5025, hostname=''):
         self.device = device
-        self.port = port
+        self.interface = interface
         try:
-            if self.port == 'file':
+            if self.interface == 'file':
                 self.f = open(self.device, 'w')
                 self.f.close()
-            if self.port == 'serial':
-                self.f = serial.Serial(self.device, 9600, timeout=1,xonxoff=True)
-            if self.port == 'lan':
-                #self.f = telnetlib.Telnet('agilent-34972a',5025)
-                self.f = telnetlib.Telnet(device,5025)
+            if self.interface == 'serial':
+                self.f = serial.Serial(self.device, 9600, timeout=1, xonxoff=True)
+            if self.interface == 'lan':
+                self.f = telnetlib.Telnet(hostname, tcp_port)
             self.debug = False
         except Exception,e:
             self.debug = True
@@ -27,7 +26,7 @@ class SCPI:
         return_string = ""
         if self.debug:
             return str(random.random())
-        if self.port == 'file':
+        if self.interface == 'file':
             self.f = open(self.device, 'w')
             self.f.write(command)
             time.sleep(0.02)
@@ -37,11 +36,11 @@ class SCPI:
                 self.f = open(self.device, 'r')
                 return_string = self.f.readline()
                 self.f.close()
-        if self.port == 'serial':
+        if self.interface == 'serial':
             self.f.write(command + '\n')
             if command.endswith('?') or (expect_return is True):
                 return_string = self.f.readline()
-        if self.port == 'lan':
+        if self.interface == 'lan':
             self.f.write(command + '\n')
             if command.find('?') > -1:
                 return_string = self.f.read_until(chr(10),2)
