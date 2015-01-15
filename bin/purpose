@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import textwrap
+from optparse import OptionParser
+
+
+def rasppi_key(key):
+    """Returns zero padded raspberry pi numbers for sorting"""
+    if key.startswith('rasppi'):
+        return 'rasppi{:0>3}'.format(key.replace('rasppi', ''))
+    return key
+
+
+def print_machine(machine, purpose, highlight=None):
+    """Pretty prints a machine and its purpose"""
+    if highlight is not None:
+        purpose = purpose.replace(highlight, '\033[1m\033[35m{}\033[0m'.format(highlight))
+    wrapped = textwrap.wrap(purpose, 60)
+    print('{: <18}{}'.format(machine, wrapped[0]))
+    for line in wrapped[1:]:
+        print('{: <18}{}'.format('', line))
+
+
+# Parse arguments
+usage = 'usage: purpose [optional search_term]\n\nIf a search term is '\
+        'supplied, the search will be performed case insensitively, but the '\
+        'search term will only be highted in the result if it is a case '\
+        'sensitive match.'
+parser = OptionParser(usage=usage)
+options, args = parser.parse_args()
+
+
+if len(args) > 1:
+    parser.print_help()
+    sys.exit(0)
+
+
+machines_path = os.path.join(os.getenv("HOME"), 'PyExpLabSys', 'machines')
+machines = sorted(os.listdir(machines_path), key=rasppi_key)
+for machine in machines:
+    purpose = os.path.join(machines_path, machine, 'PURPOSE')
+    if os.path.isfile(purpose):
+        with open(purpose) as file_:
+            purpose = file_.read()
+        if len(args) == 0:
+            print_machine(machine, purpose)
+        else:
+            search = args[0]
+            if search.lower() in purpose.lower():
+                print_machine(machine, purpose, highlight=search)
