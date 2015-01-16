@@ -92,6 +92,7 @@ _LOG = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 _LOG.addHandler(logging.NullHandler())
 import numpy as np
+from PyExpLabSys.thirdparty.cached_property import cached_property
 
 
 UNHANDLED_XML_COMPONENTS = 'An unhandled XML component \'{}\' was found when '\
@@ -229,7 +230,7 @@ class SpecsFile(list):
                 raise ValueError(message)
             _LOG.warning(message)
 
-    def search_regions(self, search_term):
+    def search_regions_iter(self, search_term):
         """Returns an generator of search results for regions by name
 
         Args:
@@ -256,6 +257,13 @@ class SpecsFile(list):
             for line in region_group.__str__().split('\n'):
                 out += '\n    ' + line
         return out
+
+    @property
+    def unix_timestamp(self):
+        """Returns the unix timestamp of the first region"""
+        for region_group in self:
+            for region in region_group:
+                return region.unix_timestamp
 
 
 class RegionGroup(list):
@@ -333,6 +341,11 @@ class Region(object):
     The class contains attributes for the items listed in the
     'information_names' class variable.
 
+    Some useful ones are:
+    * **name**: The name of the region
+    * **region**: Contains information like, dwell_time, analysis_method,
+        scan_delta, excitation_energy etc.
+
     All auxiliary information is also available from the 'info'
     attribute.
 
@@ -343,19 +356,13 @@ class Region(object):
                          'cycles', 'compact_cycles', 'transmission',
                          'parameters']
 
-    def __init__(self, xml, cache_calculated=True):
+    def __init__(self, xml):
         """Parse the XML and initialize internal variables
 
         Args:
             xml (xml.etree.ElementTree.Element): The region XML element
-            cache_calculated (bool): Whether the calculated x and y values
-                should be cached
 
         """
-        # Internal variables
-        self.cache_calculated = cache_calculated
-        self._data = {}
-
         # Parse information items
         self.info = {}
         for name in self.information_names:
@@ -381,27 +388,19 @@ class Region(object):
             self.__class__.__name__, self.name,
             )
 
-    @property
+    @cached_property
     def x(self):  # pylint: disable=invalid-name
         """Returns the kinetic energy x-values as a Numpy array"""
-        if 'x' in self._data:
-            # Return cached values
-            data = self._data['x']
-        else:
-            # Calculate the x-values
-            start = self.region['kinetic_energy']
-            end = start + (self.region['values_per_curve'] - 1) *\
-                  self.region['scan_delta']
-            data = np.linspace(start, end, self.region['values_per_curve'])
-            _LOG.debug('Creating x values from {} to {} in {} steps'.format(
-                start, end, self.region['values_per_curve']))
-            # Possibly cache the calculated values
-            if self.cache_calculated:
-                self._data['x'] = data
-
+        # Calculate the x-values
+        start = self.region['kinetic_energy']
+        end = start + (self.region['values_per_curve'] - 1) *\
+              self.region['scan_delta']
+        data = np.linspace(start, end, self.region['values_per_curve'])
+        _LOG.debug('Creating x values from {} to {} in {} steps'.format(
+            start, end, self.region['values_per_curve']))
         return data
 
-    @property
+    @cached_property
     def x_be(self):
         """Returns the binding energy x-values as a Numpy array"""
         if self.region['analysis_method'] != 'XPS':
@@ -409,19 +408,10 @@ class Region(object):
                 self.region['analysis_method'])
             raise NotXPSException(message)
 
-        if 'x_be' in self._data:
-            # Return cached value
-            data = self._data['x_be']
-        else:
-            # Calculate the x binding energy values
-            data = self.region['excitation_energy'] - self.x
-            _LOG.debug('Creating x_be values from {} to {} in {} steps'.format(
-                data.min(), data.max(),
-                data.size))
-            # Possibly cache the result
-            if self.cache_calculated:
-                self._data['x_be'] = data
-
+        # Calculate the x binding energy values
+        data = self.region['excitation_energy'] - self.x
+        _LOG.debug('Creating x_be values from {} to {} in {} steps'.format(
+            data.min(), data.max(), data.size))
         return data
 
     @property
@@ -454,37 +444,29 @@ class Region(object):
                 for scan in scans:
                     yield scan
 
-    @property
+    @cached_property
     def y_avg_counts(self):
         """Returns the average counts as a Numpy array"""
-        if 'y_avg_counts' in self._data:
-            # Return cached result
-            data = self._data['y_avg_counts']
-        else:
-            # Calculate the average counts
-            vstack = np.vstack(scan for scan in self.iter_scans)
-            data = vstack.mean(axis=0)
-            _LOG.debug('Creating {} y_avg values from {} scans'.format(
-                data.size, vstack.shape[0]
-            ))
-            # Possibly cache the result
-            if self.cache_calculated:
-                self._data['y_avg_counts'] = data
+        vstack = np.vstack(self.iter_scans)
+        data = vstack.mean(axis=0)
+        _LOG.debug('Creating {} y_avg_counts values from {} scans'.format(
+            data.size, vstack.shape[0]
+        ))
+        return data
 
-        return self._data['y_avg_counts']
-
-    @property
+    @cached_property
     def y_avg_cps(self):
         """Returns the average counts per second as a Numpy array"""
-        if 'y_avg_cps' in self._data:
-            data = self._data['y_avg_cps']
-        else:
-            data = self.y_avg_counts / self.region['dwell_time']
-            _LOG.debug('Creating {} y_avg values'.format(data.size))
-            if self.cache_calculated:
-                self._data['y_avg_cps'] = data
-
+        data = self.y_avg_counts / self.region['dwell_time']
+        _LOG.debug('Creating {} y_avg_cps values'.format(data.size))
         return data
+
+    @property
+    def unix_timestamp(self):
+        """Returns the unix timestamp of the first cycle"""
+        for cycle in self.cycles:
+            return cycle.get('time')
+        return None
 
 
 class NotXPSException(Exception):
