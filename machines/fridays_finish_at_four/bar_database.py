@@ -65,12 +65,12 @@ class BarDatabase(object):
         raise NotImplementedError
         values = (user_id, name)
         with self.connection:
-            self.cursor.execute("INSERT INTO fridays_users VALUES(%s, %s)", values)
+            self.cursor.execute("INSERT INTO fridays_user VALUES(%s, %s)", values)
 
-    def get_user(self, user_id):
+    def get_user(self, user_id, statement = None):
         raise NotImplementedError
         with self.connection:
-            self.cursor.execute("SELECT * FROM fridays_users WHERE user_id=%s", (user_id,))
+            self.cursor.execute("SELECT * FROM fridays_user WHERE user_id=%s", (user_id,))
 
             row = self.cursor.fetchall()
             print row[0]

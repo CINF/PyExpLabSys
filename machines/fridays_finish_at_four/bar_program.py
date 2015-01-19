@@ -21,7 +21,7 @@ __version__ = 1.000
 
 def cowsay(text):
     """Display text in Cowsay manner"""
-    p = subprocess.Popen(["/usr/games/cowsay", "-ftux", "-W34", str(text)], stdout=subprocess.PIPE)
+    p = subprocess.Popen(["/usr/games/cowsay", "-W34", str(text)], stdout=subprocess.PIPE)
     out, err = p.communicate()
     return out
 
@@ -70,20 +70,22 @@ class Bar101(object):
         #testing demon connection
         attempt_number = 0
         while not test_demon_connection():
-            self.picaso.move_cursor(0, 0)
+            self.picaso.move_cursor(2, 0)
             attempt_number += 1
             status_string = "Demon connection attempt {} failed".format(attempt_number)
             self.picaso.put_string(status_string)
+            time.sleep(1)
         self.picaso.clear_screen()
+        self.picaso.move_cursor(2, 0)
         status_string = "Demon connection attempt succeeded".format(attempt_number)
         self.picaso.put_string(status_string)
 
         # Print network interface and ip address
         interface, ip_address = get_ip_address()
-        self.picaso.move_cursor(2, 0)
+        self.picaso.move_cursor(5, 0)
         interface_string = "Interface: {}".format(interface)
         self.picaso.put_string(interface_string)
-        self.picaso.move_cursor(3, 0)
+        self.picaso.move_cursor(6, 0)
         ip_address_string = "Ip address: {}".format(ip_address)
         self.picaso.put_string(ip_address_string)
 
@@ -106,6 +108,7 @@ class Bar101(object):
     def query_barcode(self):
         """Initial message"""
         self.picaso.clear_screen()
+        self.picaso.move_cursor(1,0)
         self.picaso.put_string(cowsay("Welcome to the Friday Bar. Please scan your barcode!"))
         self.picaso.move_cursor(19, 0)
         self.picaso.put_string("Friday Bar System Version {}".format(__version__))
@@ -120,34 +123,102 @@ class Bar101(object):
         print "database", time.time() - t0
         cowsay_string = cowsay("Special price for you my friend: " + beer_price + " DKK")
         print "cowsay", time.time() - t0
-        self.picaso.put_string(cowsay_string)
+        self.picaso.move_cursor(4, 4)
+        self.picaso.put_string("Special price for you my friend:")
+        self.picaso.move_cursor(7, 5)
+        self.picaso.text_factor(5)
+        self.picaso.put_string(beer_price + " DKK")
         print "put string", time.time() - t0
 
         self.timer(3)
         # INSERT Show spiffy comment
         self.picaso.clear_screen()
+        self.picaso.move_cursor(1,0)
         self.picaso.put_string(cowsay("Enjoy your delicious " + str(self.bar_database.get_item(barcode, statement='name'))))
         self.timer(4)
 
     def present_insult(self):
         """Presents insult if programme handled wrong"""
         self.picaso.clear_screen()
+        self.picaso.move_cursor(1,0)
         self.picaso.put_string(cowsay("You did it all wrong! Time to go home?"))
         self.timer(2)
 
+    def purchase_beer(self, beer_barcode, user_barcode):
+        """User purchases beer"""
+        beer_price = self.bar_database.get_item(beer_barcode, statement='price')
+        self.bar_database.insert_log(user_barcode, "purchase", beer_price)
+        user_name = self.bar_database.get_user(user_barcode)
+        beer_name = self.bar_database.get_item(beer_barcode, statement='name')
+
+        self.picaso.clear_screen()
+        self.picaso.move_cursor(1,0)
+        self.picaso.put_string(cowsay("Welcome back " + user_name + ". Enjoy your " + beer_name + ". I will draw " + beer_price + " from your account."))
+        self.timer(3)
+
+    def make_deposit(self, user_barcode, amount):
+        """User deposits money to user account"""
+        pass
+
+    def present_user(self, user_barcode):
+        """Present user info, i.e. user name and balance"""
+        user = self.bar_database.get_user(user_barcode)
+        self.picaso.clear_screen()
+        self.picaso.move_cursor(1,0)
+        self.picaso.put_string(cowsay("Welcome (back)" + str(user) + "What can I serve for you today?"))
+        self.timer(5)
+
     def run(self):
-        action, args = self.query_barcode, {}
+        """Main method"""
+        # action is a reference to the method that will be called next, kwargs
+        # is its arguments
+        action = self.query_barcode
+        kwargs = {}
         while True:
             try:
-                action(**args)
-                action, args = self.query_barcode, {}
+                # Call the pending action, if this action returns, the action
+                # it was supposed to do, timed out, without getting a new
+                # barcode and so we make the next action "query_barcode"
+                action(**kwargs)
+                old_action = action
+                old_kwargs = kwargs
+                # No new barcode recieved
+                action = self.query_barcode
+                kwargs = {}
+
+            # We received a new barcode during the previous action
             except NewBarcode as new_barcode:
+                old_action = action
+                old_kwargs = kwargs
                 barcode_type = self.bar_database.get_type(new_barcode.barcode)
+                # Default to query_barcode
+                action = self.query_barcode
+                kwargs = {}
                 if barcode_type == 'beer':
-                    action = self.present_beer
-                    args = {'barcode': new_barcode.barcode}
+                    if old_action == self.present_user:
+                        action = self.purchase_beer
+                        kwargs = {'beer_barcode': new_barcode.barcode, 'user_barcode': old_kwargs['user_barcode']}
+                    else:
+                        action = self.present_beer
+                        kwargs = {'barcode': new_barcode.barcode}
+                elif barcode_type == 'user':
+                    action = self.present_user
+                    kwargs = {'user_barcode': new_barcode.barcode}
+                    
+                    
+                    """
+                    if old_action == self.present_beer:
+                        #purchase beer
+                        action = self.purchase_beer
+                        kwargs = {}
+                    elif old_action == self.query_barcode:
+                        #present user info
+                        action = self.present_user
+                        kwargs = {}
+                        """
                 elif barcode_type == 'invalid':
-                    action, args = self.present_insult, {}
+                    action = self.present_insult
+                    kwargs = {}
 
 
 def main():
