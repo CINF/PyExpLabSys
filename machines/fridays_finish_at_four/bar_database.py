@@ -5,11 +5,11 @@ import MySQLdb
 
 class BarDatabase(object):
     """Class for comunicating with database"""
-    def __init__(self):
+    def __init__(self, host='servcinf', port=3306):
         dbpath = "Beerdb"
-        self.connection = MySQLdb.connect(host='servcinf', user='fridays',
+        self.connection = MySQLdb.connect(host=host, user='fridays',
                                           passwd='fridays', db='cinfdata',
-                                          port=3306)
+                                          port=port)
         self.cursor = self.connection.cursor()
 
     def insert_item(self, barcode, price, name, alc, volume=None, energy_content=None, beer_description=None, brewery=None):

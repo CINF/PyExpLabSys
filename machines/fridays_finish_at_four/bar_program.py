@@ -12,6 +12,7 @@ from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU, to_ascii
 from serial.serialutil import SerialException
 from PyExpLabSys.drivers.vivo_technologies import ThreadedLS689A, detect_barcode_device
 from ssh_tunnel import create_tunnel, close_tunnel, get_ip_address, test_demon_connection
+from MySQLdb import OperationalError
 
 
 __version__ = 1.000
@@ -67,7 +68,7 @@ class Bar101(object):
         """Starting up initials"""
         self.picaso.clear_screen()
 
-        #testing demon connection
+        # Testing demon connection
         attempt_number = 0
         while not test_demon_connection():
             self.picaso.move_cursor(2, 0)
@@ -75,10 +76,21 @@ class Bar101(object):
             status_string = "Demon connection attempt {} failed".format(attempt_number)
             self.picaso.put_string(status_string)
             time.sleep(1)
+
+        # Demon connection successful
         self.picaso.clear_screen()
         self.picaso.move_cursor(2, 0)
         status_string = "Demon connection attempt succeeded".format(attempt_number)
         self.picaso.put_string(status_string)
+
+        # Create ssh tunnel
+        self.picaso.move_cursor(3, 0)
+        if create_tunnel():
+            self.picaso.put_string('Created SSH tunnel')
+        else:
+            self.picaso.put_string('Unable to create SSH tunnel. Quitting!')
+            time.sleep(5)
+            raise SystemExit('Unable to create ssh tunnel')
 
         # Print network interface and ip address
         interface, ip_address = get_ip_address()
@@ -90,14 +102,22 @@ class Bar101(object):
         self.picaso.put_string(ip_address_string)
 
         # Start the database backend
-        self.bar_database = BarDatabase()
+        time.sleep(1)
+        for _ in range(10):
+            try:
+                self.bar_database = BarDatabase('127.0.0.1', 9000)
+                break
+            except OperationalError:
+                time.sleep(1)
+        self.picaso.move_cursor(7, 0)
+        self.picaso.put_string('Connection to database')
 
         #Start barcode scanner
         dev_ = detect_barcode_device()
         print dev_
         self.tbs = ThreadedLS689A(dev_)
         self.tbs.start()
-        time.sleep(2)
+        time.sleep(5)
 
     def clean_up(self):
         """Closing down"""
@@ -231,10 +251,14 @@ def main():
         except KeyboardInterrupt:
             bar101.clean_up()
             bar101.picaso.close()
+            close_tunnel()
             break
         except:
             bar101.clean_up()
+            close_tunnel()
             raise
+
+    close_tunnel()
 
 if __name__ == '__main__':
     main()
