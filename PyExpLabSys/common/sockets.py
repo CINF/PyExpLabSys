@@ -60,7 +60,7 @@ def bool_translate(string):
     """Returns boolean value from strings 'True' or 'False'"""
     if not str(string) in ['True', 'False']:
         message = 'Cannot translate the string \'{}\' to a boolean. Only the '\
-            'strings \'True\' or \'False\' are allowed'
+            'strings \'True\' or \'False\' are allowed'.format(string)
         raise ValueError(message)
     return True if str(string) == 'True' else False
 
