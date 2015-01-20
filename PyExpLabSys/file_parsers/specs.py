@@ -245,6 +245,18 @@ class SpecsFile(list):
                 if search_term in region.name:
                     yield region
 
+    def search_regions(self, search_term):
+        """Returns an list of search results for regions by name
+
+        Args:
+            search_term (str): The term to search for (case sensitively)
+
+        Returns:
+            list: A list of matching regions
+
+        """
+        return list(self.search_regions_iter(search_term))
+
     def __repr__(self):
         """Returns class representation"""
         return '<{}(filename=\'{}\')>'.format(self.__class__.__name__,
