@@ -45,7 +45,8 @@ class QcmReader(threading.Thread):
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
-qcm = inficon.InficonSQM160('/dev/ttyUSB1')
+qcm_port = '/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0'
+qcm = inficon.InficonSQM160(qcm_port)
 reader = QcmReader(qcm)
 reader.daemon = True
 reader.start()
