@@ -3,8 +3,9 @@ from scpi import SCPI
 
 class Agilent34410ADriver(SCPI):
 
-    def __init__(self, device, port='lan'):
-        SCPI.__init__(self, device, port)
+    def __init__(self, interface = 'lan', hostname=''):
+        if interface == 'lan':
+            SCPI.__init__(self, interface=interface, hostname=hostname)
 
     def config_current_measurement(self):
         """ Configures the instrument to measure current. """
