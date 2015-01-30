@@ -31,10 +31,11 @@ for i in range(0,4):
         pressure.set_control_mode() #Change to accept setpoint from rs232 interface
         counter = counter + 1
 
-    if name[i] == 'x':
-        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
+    if name[i] == 'M8203814C': #Conrad
+        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
         print("flow1:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
         bronk_present[counter] = 'flow1'
+        flow1.set_control_mode() #Change to accept setpoint from rs232 interface
         counter = counter + 1
 
     if name[i] == 'x':
