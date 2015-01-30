@@ -47,6 +47,54 @@ class Keithley2700(SCPI):
         #    value = -999999
         return(value_string)
 
+    def fast_voltage(self,):
+        command_list = [":SENSE:FUNCTION 'VOLT:DC'", 
+                        ":FORMAT:ELEMENT READ", 
+                        ":SYSTEM:AZERO:STATE OFF", 
+                        ":SENSE:VOLT:DC:AVERAGE:STATE OFF", 
+                        ":SENSE:VOLT:DC:NPLC 0.01", 
+                        ":SENSE:VOLT:DC:RANGE 10", 
+                        ":SENSE:VOLT:DC:DIGITS 4", 
+                        ":TRIGGER:COUNT 1", 
+                        ":SAMPLE:COUNT 100", 
+                        ":TRIGGER:DELAY 0.0", 
+                        ":DISPLAY:ENABLE OFF"]
+        for command in command_list:
+            value_string = self.scpi_comm(command)
+            #print(value_string)
+        value_string = self.scpi_comm(":READ?")
+        try:
+            value_split = value_string.split("#")
+            print(len(value_split))
+            print(value_split[0])
+            volts = []
+            for v in value_split:
+                volts += [float(v.split(",")[0][:-3])]
+            value = sum(volts)
+        except ValueError:
+            value = -999999
+        return(value)
+
+    def read_value(self,):
+        """Reads the actual output voltage"""
+        function_string = ':READ?'
+        value_string = self.scpi_comm(function_string)
+        data_results = value_string.replace("\r","").split("#")
+        values = []
+        times = []
+        readings = []
+        for data_result in data_results[:-1]:
+            split = data_result.split(",")
+            values += [float(split[0].replace("VDC",""))]
+            times += [float(split[1].replace("SECS",""))]
+            readings += [int(split[2].replace("RDNG",""))]
+        return(values, times, readings)
+    
+    def setup_voltage(self,):
+        self.scpi_comm(":SENSE:FUNC 'VOLT'")
+        self.scpi_comm(":FORM:ELEM READ")
+        value_string = self.scpi_comm(":READ?")
+        return(value_string)
 
 if __name__ == '__main__':
     ports = {}
@@ -57,4 +105,12 @@ if __name__ == '__main__':
 
     dmm = Keithley2700('serial', device=ports[0])
     print(dmm.read_software_version())
+    #for i in range(10):
+    #    print(dmm.read_value())
     #print(dmm.read_resistance())
+    print(dmm.read_voltage())
+    #print(dmm.fast_voltage())
+    print(dmm.setup_voltage)
+    print('output')
+    for i in range(3):
+        print(dmm.read_value())
