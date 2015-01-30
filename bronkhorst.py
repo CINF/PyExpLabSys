@@ -23,13 +23,13 @@ class Bronkhorst():
         return response
 
     def read_measure(self):
-        read_pressure = ':06800401210120\r\n' # Read pressure
-        val = self.comm(read_pressure)
         error = 0
         while error < 10:
+            read_pressure = ':06800401210120\r\n' # Read pressure
+            val = self.comm(read_pressure)
             try:
                 val = val[-6:]
-                num = int(val,16)
+                num = int(val, 16)
                 pressure = (1.0 * num / 32000) * self.max_setting
                 break
             except ValueError:

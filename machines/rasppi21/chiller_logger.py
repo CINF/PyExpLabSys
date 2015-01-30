@@ -1,4 +1,4 @@
-# pylint: disable=C0301,R0904, C0103
+# pylint: disable= R0904, C0103
 
 import threading
 import logging
@@ -55,7 +55,10 @@ class ChillerReader(threading.Thread):
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
-chiller = polyscience_4100.Polyscience_4100('/dev/ttyUSB0')
+chiller_port = '/dev/serial/by-id/'
+chiller_port += 'usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
+
+chiller = polyscience_4100.Polyscience_4100(chiller_port)
 reader = ChillerReader(chiller)
 reader.daemon = True
 reader.start()

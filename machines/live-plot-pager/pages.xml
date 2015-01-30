@@ -10,7 +10,7 @@
     </page>
     <page>
       <id>b307_gasmonitor</id>
-      <url>https://cinfdata.fysik.dtu.dk/gasmonitor307/live.php?type=live_values</url>
+      <url>https://cinfdata.fysik.dtu.dk/gasmonitor307/live.php?type=live_values_pager</url>
       <show_factor type='float'>2</show_factor>
     </page>
   </pages>

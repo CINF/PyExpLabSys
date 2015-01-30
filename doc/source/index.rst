@@ -19,6 +19,7 @@ Contents:
 
    common
    drivers
+   file-parsers
 
 
 ##################
