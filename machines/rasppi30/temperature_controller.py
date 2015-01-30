@@ -77,11 +77,11 @@ class PowerCalculatorClass(threading.Thread):
         self.pullsocket = pullsocket
         self.pushsocket = pushsocket
         self.power = 0
-        self.setpoint = 20
+        self.setpoint = -900
         self.pid = PID.PID()
         self.pid.Kp = 0.20
         self.pid.Ki = 0.05
-        self.pid.Pmax = 25
+        self.pid.Pmax = 45
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -127,7 +127,7 @@ class PowerCalculatorClass(threading.Thread):
 
 
     def run(self):
-        data_temp = 'mgw_rtd#raw'
+        data_temp = 'mgw_reactor_rtd_temperature#raw'
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
         t = 0
@@ -145,6 +145,7 @@ class PowerCalculatorClass(threading.Thread):
                 new_update = self.pushsocket.last[0]
                 self.message = str(new_update)
             except (TypeError, KeyError): #  Setpoint has never been sent
+                self.message = str(self.pushsocket.last)
                 setpoint = None
             if ((setpoint is not None) and
                 (setpoint != self.setpoint) and (sp_updatetime < new_update)):
@@ -198,7 +199,9 @@ class HeaterClass(threading.Thread):
 port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_55126216-if00'
 PS = {}
 for i in range(1, 3):
-    PS[i] = cpx.CPX400DPDriver(i, port)
+    PS[i] = cpx.CPX400DPDriver(i, interface='lan',
+                               hostname='cinf-palle-heating-ps',
+                               tcp_port = 9221)
     PS[i].set_voltage(0)
     PS[i].output_status(True)
 

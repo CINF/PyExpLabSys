@@ -7,11 +7,45 @@ import time
 import minimalmodbus
 import serial
 import PyExpLabSys.drivers.agilent_34410A as dmm
+import PyExpLabSys.drivers.omega_D6400 as D6400
 import PyExpLabSys.auxiliary.rtd_calculator as rtd_calculator
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 import credentials
+
+
+class TemperatureReader(threading.Thread):
+    """ Communicates with the Omega D6400 """
+    def __init__(self, port):
+        threading.Thread.__init__(self)
+        self.d6400 = D6400.OmegaD6400(1, port)
+        self.d6400.update_range_and_function(1, action='tc', fullrange='K')
+        self.d6400.update_range_and_function(2, action='tc', fullrange='K')
+        self.d6400.update_range_and_function(3, action='tc', fullrange='K')
+        self.d6400.update_range_and_function(4, action='tc', fullrange='K')
+        self.d6400.update_range_and_function(5, action='tc', fullrange='K')
+        self.d6400.update_range_and_function(6, action='tc', fullrange='K')
+        self.d6400.update_range_and_function(7, action='tc', fullrange='K')
+        self.temperatures = [float('NaN'),
+                             self.d6400.read_value(1),
+                             self.d6400.read_value(2),
+                             self.d6400.read_value(3),
+                             self.d6400.read_value(4),
+                             self.d6400.read_value(5),
+                             self.d6400.read_value(6),
+                             self.d6400.read_value(7)]
+        self.quit = False
+
+    def value(self, channel):
+        """ Return temperature of wanted channel """
+        return(self.temperatures[channel])
+
+    def run(self):
+        while not self.quit:
+            time.sleep(0.5)
+            for j in range(1, 8):
+                self.temperatures[j] = (self.temperatures[j] + self.d6400.read_value(j)) / 2.0
 
 
 class TcReader(threading.Thread):
@@ -37,7 +71,7 @@ class TcReader(threading.Thread):
 class RtdReader(threading.Thread):
     """ Read resistance of RTD and calculate temperature """
     def __init__(self, address, calib_temp):
-        self.rtd_reader = dmm.Agilent34410ADriver(address, port='lan')
+        self.rtd_reader = dmm.Agilent34410ADriver(interface='lan', hostname=address)
         self.rtd_reader.select_measurement_function('FRESISTANCE')
         self.calib_temp = calib_temp
         time.sleep(0.2)
@@ -64,22 +98,38 @@ if __name__ == '__main__':
     ports = {}
     ports[0] = 'usb-FTDI_USB-RS485_Cable_FTWGRMCG-if00-port0'
     ports[1] = 'mobile-gaswall-agilent-34410a'
-
-    code_names = ['mgw_reactor_tc_temperature', 'mgw_reactor_rtd_temperature']
+    ports[2] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWBEDQ3-if00-port0'
+    code_names = ['mgw_reactor_tc_temperature',
+                  'mgw_reactor_rtd_temperature',
+                  'mgw_omega_temp_ch01',
+                  'mgw_omega_temp_ch02',
+                  'mgw_omega_temp_ch03',
+                  'mgw_omega_temp_ch04',
+                  'mgw_omega_temp_ch05',
+                  'mgw_omega_temp_ch06',
+                  'mgw_omega_temp_ch07']
 
     measurements = {}
     measurements[0] = TcReader(ports[0])
     measurements[0].start()
     measurements[1] = RtdReader(ports[1], measurements[0].value())
     measurements[1].start()
+    measurements[2] = TemperatureReader(ports[2])
+    measurements[2].start()
 
     loggers = {}
     loggers[code_names[0]] = ValueLogger(measurements[0], comp_val = 0.2, comp_type = 'lin')
     loggers[code_names[0]].start()
-    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val = 0.2, comp_type = 'lin')
+    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val = 0.75, comp_type = 'lin')
     loggers[code_names[1]].start()
+    for i in range(2, 9):
+        loggers[code_names[i]] = ValueLogger(measurements[2],
+                                             comp_val = 0.2,
+                                             comp_type = 'lin',
+                                             channel = i-1)
+        loggers[code_names[i]].start()
 
-    datasocket = DateDataPullSocket('mgw_temp', code_names, timeouts=[2.0, 2.0], port=9001)
+    datasocket = DateDataPullSocket('mgw_temp', code_names, timeouts=[2.0] * 9, port=9001)
     datasocket.start()
 
     db_logger = ContinuousLogger(table='dateplots_mgw',
