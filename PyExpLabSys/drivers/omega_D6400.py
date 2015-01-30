@@ -112,8 +112,9 @@ class OmegaD6400():
         return(self.comm(95 + channel))
 
 if __name__ == '__main__':
-    omega = OmegaD6400(1)
+    omega = OmegaD6400(1, port='/dev/ttyUSB1')
 
+    """
     omega.update_range_and_function(1, action='voltage', fullrange='10')
     omega.update_range_and_function(2, action='voltage', fullrange='10')
     omega.update_range_and_function(3, action='voltage', fullrange='10')
@@ -133,17 +134,16 @@ if __name__ == '__main__':
         time.sleep(2)
     """
     omega.update_range_and_function(1, action='tc', fullrange='K')
-    omega.update_range_and_function(2, action='tc', fullrange='K')
-    omega.update_range_and_function(3, action='tc', fullrange='K')
-    omega.update_range_and_function(4, action='tc', fullrange='K')
-    omega.update_range_and_function(5, action='tc', fullrange='K')
-    omega.update_range_and_function(6, action='tc', fullrange='K')
-    omega.update_range_and_function(7, action='tc', fullrange='K')
+    #omega.update_range_and_function(2, action='tc', fullrange='K')
+    #omega.update_range_and_function(3, action='tc', fullrange='K')
+    #omega.update_range_and_function(4, action='tc', fullrange='K')
+    #omega.update_range_and_function(5, action='tc', fullrange='K')
+    #omega.update_range_and_function(6, action='tc', fullrange='K')
+    #omega.update_range_and_function(7, action='tc', fullrange='K')
     print omega.read_value(1)
-    print omega.read_value(2)
-    print omega.read_value(3)
-    print omega.read_value(4)
-    print omega.read_value(5)
-    print omega.read_value(6)
-    print omega.read_value(7)
-    """
+    #print omega.read_value(2)
+    #print omega.read_value(3)
+    #print omega.read_value(4)
+    #print omega.read_value(5)
+    #print omega.read_value(6)
+    #print omega.read_value(7)
