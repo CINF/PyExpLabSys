@@ -1,0 +1,2 @@
+user = 'omicron'
+psswd = 'omicron'
