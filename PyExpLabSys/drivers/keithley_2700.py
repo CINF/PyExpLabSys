@@ -19,6 +19,7 @@ class Keithley2700(SCPI):
             SCPI.__init__(self, 'lan', tcp_port=tcp_port, hostname=hostname)
         if interface == 'serial':
             SCPI.__init__(self, 'serial', device=device)
+        self.unit_list = ['VDC', 'VAC', 'ADC', 'AAC', 'OHM', 'OHM4W', 'HZ', 'SECS', 'C', 'F', 'K']
         #if not (output == 1 or output == 2):
         #    raise InterfaceOutOfBoundsError(output)
         #else:
@@ -29,13 +30,12 @@ class Keithley2700(SCPI):
         function_string = 'MEASURE:VOLT:DC?'
         value_string = self.scpi_comm(function_string)
         #value_string = '-2.01954693E-03VDC,+8816.272SECS,+62019RDNG#\r'
-        
         try:
             value_split = value_string.split(',')
-            value = float(value_split[0][:-3])
+            value = float(value_split[0].replace("VDC",""))
         except ValueError:
             value = -999999
-        return(value, value_string)
+        return(value)
 
     def read_resistance(self,):
         """Reads the actual output voltage"""
@@ -90,6 +90,11 @@ class Keithley2700(SCPI):
             readings += [int(split[2].replace("RDNG",""))]
         return(values, times, readings)
     
+    def read(self,):
+        function_string = ':READ?'
+        value_string = self.scpi_comm(function_string)
+        return(value_string)
+    
     def setup_voltage(self,):
         self.scpi_comm(":SENSE:FUNC 'VOLT'")
         self.scpi_comm(":FORM:ELEM READ")
@@ -108,9 +113,13 @@ if __name__ == '__main__':
     #for i in range(10):
     #    print(dmm.read_value())
     #print(dmm.read_resistance())
-    print(dmm.read_voltage())
+    #print(dmm.read_voltage())
     #print(dmm.fast_voltage())
     print(dmm.setup_voltage)
     print('output')
     for i in range(3):
         print(dmm.read_value())
+    print(dmm.scpi_comm("FORMat:ELEMents READing, UNITs, TSTamp, RNUMber, CHANnel, LIMits"))
+    print(dmm.read())
+    print(dmm.scpi_comm("MEAS:VOLT:DC? 10, 0.01, @101:110"))
+    print(dmm.read())
