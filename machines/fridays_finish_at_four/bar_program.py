@@ -7,24 +7,23 @@ import sys
 import os
 import time
 import subprocess
+import textwrap
 from bar_database import *
 from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU, to_ascii
 from serial.serialutil import SerialException
 from PyExpLabSys.drivers.vivo_technologies import ThreadedLS689A, detect_barcode_device
 from ssh_tunnel import create_tunnel, close_tunnel, get_ip_address, test_demon_connection
 from MySQLdb import OperationalError
+from cowsay import Cowsay
 
 
 __version__ = 2.300
-#bar_database = BarDatabase()
-#bar_database = None
+COWSAY = Cowsay(cow='cow', width=34)
 
 
 def cowsay(text):
     """Display text in Cowsay manner"""
-    p = subprocess.Popen(["/usr/games/cowsay", "-W34", str(text)], stdout=subprocess.PIPE)
-    out, err = p.communicate()
-    return out
+    return COWSAY.say_get_string(text)
 
 
 class NewBarcode(Exception):
@@ -132,7 +131,7 @@ class Bar101(object):
         self.picaso.move_cursor(1,0)
         self.picaso.put_string(cowsay("Welcome to the Friday Bar. Please scan your barcode!"))
         self.picaso.move_cursor(19, 0)
-        self.picaso.put_string("Friday Bar System Version {}".format(__version__))
+        self.picaso.put_string("Friday Bar System Version {:.3f}".format(__version__))
         self.timer(None)
 
     def present_beer(self, barcode):
@@ -193,9 +192,9 @@ class Bar101(object):
     def make_deposit(self, user_barcode, amount):
         """User deposits money to user account"""
         amount = int(amount)
-        user_name, user_id = self.bar_database.get_user(user_barcode)
-        balance = self.bar_database.sum_log(user_id)
+        _, user_id = self.bar_database.get_user(user_barcode)
         self.bar_database.insert_log(user_id, user_barcode, "deposit", amount)
+        balance = self.bar_database.sum_log(user_id)
 
         self.picaso.clear_screen()
         self.picaso.move_cursor(1, 10)
@@ -212,21 +211,27 @@ class Bar101(object):
         """Present user info, i.e. user name and balance"""
         user_name, user_id = self.bar_database.get_user(user_barcode)
         balance = self.bar_database.sum_log(user_id)
+        # Screen layout, username
         self.picaso.clear_screen()
-        self.picaso.move_cursor(1, 0)
-        #cowsay_string = cowsay("Welcome (back) {}. Your balance is {} DKK. What can I serve for you today?".format(user_name, balance))
-        #self.picaso.put_string(cowsay_string)
+        #self.picaso.move_cursor(1, 0)
+        self.picaso.move_origin(0, 5)
         self.picaso.put_string("User:")
-        self.picaso.text_factor(3)
+        # Wrap names to 20 characters and display two lines
+        name_lines = textwrap.wrap(user_name, 20)
+        self.picaso.text_factor(2)
         self.picaso.move_cursor(1, 0)
-        self.picaso.put_string("{}".format(user_name))
+        self.picaso.put_string(name_lines[0])
+        if len(name_lines) > 1:
+            self.picaso.move_cursor(2, 0)
+            self.picaso.put_string(name_lines[1])
+        # Balance
         self.picaso.text_factor(1)
         self.picaso.move_cursor(7, 0)
         self.picaso.put_string("Balance:")
         self.picaso.text_factor(3)
         self.picaso.move_cursor(3, 0)
         self.picaso.put_string("{}".format(balance))
-        #self.timer(10)
+        # Timeout
         for n in range(10, 0, -1):
             self.picaso.move_cursor(5, 0)
             self.picaso.put_string("Timeout: {: <2} ".format(n))
