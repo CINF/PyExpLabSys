@@ -15,7 +15,7 @@ from ssh_tunnel import create_tunnel, close_tunnel, get_ip_address, test_demon_c
 from MySQLdb import OperationalError
 
 
-__version__ = 1.000
+__version__ = 2.300
 #bar_database = BarDatabase()
 #bar_database = None
 
@@ -62,6 +62,7 @@ class Bar101(object):
                 timeout -= 0.1
             barcode = self.tbs.last_barcode_in_queue
             if barcode is not None:
+                print "Barcode: ", repr(barcode)
                 raise NewBarcode(barcode)
 
     def start_up(self):
@@ -117,7 +118,7 @@ class Bar101(object):
         print dev_
         self.tbs = ThreadedLS689A(dev_)
         self.tbs.start()
-        time.sleep(5)
+        time.sleep(1)
 
     def clean_up(self):
         """Closing down"""
@@ -138,55 +139,98 @@ class Bar101(object):
         # INSERT Show beer
         import time
         self.picaso.clear_screen()
-        t0 = time.time()
         beer_price = str(self.bar_database.get_item(barcode, statement='price'))
-        print "database", time.time() - t0
-        cowsay_string = cowsay("Special price for you my friend: " + beer_price + " DKK")
-        print "cowsay", time.time() - t0
         self.picaso.move_cursor(4, 4)
         self.picaso.put_string("Special price for you my friend:")
         self.picaso.move_cursor(7, 5)
         self.picaso.text_factor(5)
-        self.picaso.put_string(beer_price + " DKK")
-        print "put string", time.time() - t0
+        self.picaso.put_string(beer_price + " DKK") 
 
         self.timer(3)
         # INSERT Show spiffy comment
         self.picaso.clear_screen()
-        self.picaso.move_cursor(1,0)
-        self.picaso.put_string(cowsay("Enjoy your delicious " + str(self.bar_database.get_item(barcode, statement='name'))))
+        self.picaso.move_cursor(1, 0)
+        self.picaso.put_string(cowsay("Enjoy your delicious {}".format(self.bar_database.get_item(barcode, statement='name'))))
         self.timer(4)
 
     def present_insult(self):
         """Presents insult if programme handled wrong"""
         self.picaso.clear_screen()
-        self.picaso.move_cursor(1,0)
+        self.picaso.move_cursor(1, 0)
         self.picaso.put_string(cowsay("You did it all wrong! Time to go home?"))
         self.timer(2)
 
     def purchase_beer(self, beer_barcode, user_barcode):
         """User purchases beer"""
         beer_price = self.bar_database.get_item(beer_barcode, statement='price')
-        self.bar_database.insert_log(user_barcode, "purchase", beer_price)
-        user_name = self.bar_database.get_user(user_barcode)
-        beer_name = self.bar_database.get_item(beer_barcode, statement='name')
+        user_name, user_id = self.bar_database.get_user(user_barcode)
+        if beer_price < self.bar_database.sum_log(user_id):
+            self.bar_database.insert_log(user_id, user_barcode, "purchase", beer_price, item=beer_barcode)
+            beer_name = self.bar_database.get_item(beer_barcode, statement='name')
+            balance = self.bar_database.sum_log(user_id)
 
-        self.picaso.clear_screen()
-        self.picaso.move_cursor(1,0)
-        self.picaso.put_string(cowsay("Welcome back " + user_name + ". Enjoy your " + beer_name + ". I will draw " + beer_price + " from your account."))
-        self.timer(3)
+            self.picaso.clear_screen()
+            self.picaso.move_cursor(1, 0)
+            #string = "{} has bought a {} for the price of {}. You have {} left on your account.".format(user_name, beer_name, beer_price, balance)
+            #self.picaso.put_string(cowsay(string))
+            self.picaso.put_string("User: {}".format(user_name))
+            self.picaso.move_cursor(2, 0)
+            self.picaso.text_factor(2)
+            self.picaso.put_string("Beer purchased:")
+            self.picaso.move_cursor(3, 0)
+            self.picaso.put_string("{}".format(beer_name))
+            self.picaso.move_cursor(5, 0)
+            self.picaso.text_factor(1)
+            self.picaso.put_string("Account balance: {}".format(balance))
+            self.timer(3)
+        else:
+            self.picaso.clear_screen()
+            self.picaso.move_cursor(1,0)
+            string = "You do not have enough money. Get a job!"
+            self.picaso.put_string(cowsay(string))
+            self.timer(3)
 
     def make_deposit(self, user_barcode, amount):
         """User deposits money to user account"""
-        pass
+        amount = int(amount)
+        user_name, user_id = self.bar_database.get_user(user_barcode)
+        balance = self.bar_database.sum_log(user_id)
+        self.bar_database.insert_log(user_id, user_barcode, "deposit", amount)
+
+        self.picaso.clear_screen()
+        self.picaso.move_cursor(1, 10)
+        self.picaso.put_string("You have deposited:")
+        self.picaso.move_cursor(7, 5)
+        self.picaso.text_factor(5)
+        self.picaso.put_string("{} DKK".format(amount))
+        self.picaso.text_factor(1)
+        self.picaso.move_cursor(14, 8)
+        self.picaso.put_string("Balance: {} DKK".format(balance))
+        self.timer(3)
 
     def present_user(self, user_barcode):
         """Present user info, i.e. user name and balance"""
-        user = self.bar_database.get_user(user_barcode)
+        user_name, user_id = self.bar_database.get_user(user_barcode)
+        balance = self.bar_database.sum_log(user_id)
         self.picaso.clear_screen()
-        self.picaso.move_cursor(1,0)
-        self.picaso.put_string(cowsay("Welcome (back)" + str(user) + "What can I serve for you today?"))
-        self.timer(5)
+        self.picaso.move_cursor(1, 0)
+        #cowsay_string = cowsay("Welcome (back) {}. Your balance is {} DKK. What can I serve for you today?".format(user_name, balance))
+        #self.picaso.put_string(cowsay_string)
+        self.picaso.put_string("User:")
+        self.picaso.text_factor(3)
+        self.picaso.move_cursor(1, 0)
+        self.picaso.put_string("{}".format(user_name))
+        self.picaso.text_factor(1)
+        self.picaso.move_cursor(7, 0)
+        self.picaso.put_string("Balance:")
+        self.picaso.text_factor(3)
+        self.picaso.move_cursor(3, 0)
+        self.picaso.put_string("{}".format(balance))
+        #self.timer(10)
+        for n in range(10, 0, -1):
+            self.picaso.move_cursor(5, 0)
+            self.picaso.put_string("Timeout: {: <2} ".format(n))
+            self.timer(1)
 
     def run(self):
         """Main method"""
@@ -224,6 +268,10 @@ class Bar101(object):
                 elif barcode_type == 'user':
                     action = self.present_user
                     kwargs = {'user_barcode': new_barcode.barcode}
+                elif barcode_type == 'deposit_amount':
+                    if old_action == self.present_user:
+                        action = self.make_deposit
+                        kwargs = {'amount': new_barcode.barcode, 'user_barcode': old_kwargs['user_barcode']}
                     
                     
                     """
