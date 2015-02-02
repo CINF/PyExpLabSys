@@ -2,9 +2,9 @@ import serial
 import time
 
 class NGC2D_comm():
-    def __init__(self,port):
+    def __init__(self,device=port):
         self.f = serial.Serial(
-            port=port,
+            port=device,
             #port='/dev/ttyUSB1',
             baudrate=9600,
             parity=serial.PARITY_NONE,
