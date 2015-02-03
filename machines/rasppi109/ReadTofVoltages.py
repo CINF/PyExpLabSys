@@ -1,6 +1,7 @@
 import sys
-sys.path.append('../')
-import agilent_34972A as multiplexer
+#sys.path.append('../')
+import PyExpLabSys.drivers.agilent_34972A as multiplexer
+
 
 def read_voltages():
 

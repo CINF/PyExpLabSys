@@ -3,10 +3,11 @@ import SocketServer
 import threading
 import time
 
+import PyExpLabSys.drivers.agilent_34972A as multiplexer
 import sys
 import ReadTofVoltages
-sys.path.append('../')
-import agilent_34972A as multiplexer
+#sys.path.append('../')
+
 
 class SlowProcess(threading.Thread):
     def __init__(self):
@@ -85,7 +86,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = '130.225.87.210', 9696 #rasppi01
+    HOST, PORT = '10.54.7.109', 9696 #rasppi109
 
     bias     = -1
     pec = False
