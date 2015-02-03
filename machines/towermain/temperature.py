@@ -46,7 +46,7 @@ def main_measure_loop(cni, socket, db_logger):
 
 def main():
     LOGGER.info('main started')
-    cni = CNi3244_C24(0)
+    cni = CNi3244_C24(5)
     socket = DateDataPullSocket(FULL_NAME, [SHORT_NAME], timeouts=1.0)
     socket.start()
     db_logger = ContinuousLogger(
