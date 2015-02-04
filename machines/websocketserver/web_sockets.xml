@@ -1,14 +1,22 @@
 <sockets>
     <!-- thetaprobe -->
     <socket>rasppi25:8000</socket>
-    <!-- Volvo I think -->
+    <!-- Volvo -->
     <socket>rasppi04:8000</socket>
     <!-- Gas alarm 307 -->
     <socket>rasppi34:8000</socket>
     <!-- N5 argon gas line -->
-    <socket>rasppi39:8000</socket>
+    <socket>rasppi45:8000</socket>
     <!-- Cooling water pressure -->
     <socket>rasppi02:8000</socket>
     <!-- Cooling water temperature -->
     <socket>rasppi23:8000</socket>
+    <!-- Micro-reactor NG temperature -->
+    <socket>rasppi12:8000</socket>
+    <!-- Self -->
+    <socket>localhost:8000</socket>
+    <!-- old micro reactor, Ion Gauge Pressure -->
+    <socket>rasppi07:8000</socket>
+    <!-- old micro reactor, Temperature of sample measured with TC -->
+    <socket>rasppi12:8000</socket>
 </sockets>
