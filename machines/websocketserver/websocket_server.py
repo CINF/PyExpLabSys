@@ -13,6 +13,8 @@ from twisted.internet import reactor, ssl
 from autobahn.websocket import WebSocketServerFactory, \
     WebSocketServerProtocol, listenWS
 
+from PyExpLabSys.common.sockets import LiveSocket
+LIVESOCKET = None
 from PyExpLabSys.common.utilities import get_logger
 LOG = get_logger('ws-server', level='debug', file_log=True,
                  file_max_bytes=10485760)
@@ -21,6 +23,14 @@ MALFORMED_SUBSCRIPTION = 'Error: Malformed subscription line: {}'
 DATA = {}
 TIME_REPORT_ALIVE = 60  # Seconds between the thread reporting in
 WEBSOCKET_IDS = set()  # Used only to count open connections
+CURRENT_CONNECTIONS = '/home/kenni/PyExpLabSys/machines/websocketserver/'\
+                      'current_connections'
+
+
+def current_log(text):
+    """Log a message to the current file"""
+    with open(CURRENT_CONNECTIONS, 'a') as file_:
+        file_.write(text + '\n')
 
 
 class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
@@ -142,6 +152,7 @@ class UDPConnection(threading.Thread):
                 LOG.info('{}: Get data timed out, stopping!'
                          .format(self.hostname_port))
                 self._stop = True
+                current_log(self.hostname_port + ' stopped')
             else:
                 DATA[self.hostname_port]['data'] = data
                 LOG.debug('{}: Retrieved data {}'.
@@ -219,6 +230,11 @@ class UDPConnectionSteward(threading.Thread):
 
                 # Update time of last update
                 time0 = time.time()
+
+            # Update values on the live socket
+            LIVESOCKET.set_point_now('wss_clients', float(len(WEBSOCKET_IDS)))
+            LIVESOCKET.set_point_now('wss_hosts',
+                                     float(len(self.udp_connections)))
             time.sleep(self.main_interval)
         LOG.info('steward: run ended')
 
@@ -263,14 +279,19 @@ class UDPConnectionSteward(threading.Thread):
         LOG.info('steward: Scan web_sockets.xml for UDP defs')
         # The try-except is here if we mess up editing the configuration file
         # while the program is running
+        file_ = open(CURRENT_CONNECTIONS, 'w')
+        file_.write("Found in xml file\n")
         try:
             tree = XML.parse('web_sockets.xml')
             self.udp_definitions.clear()
             for socket_ in tree.getroot():
                 self.udp_definitions.add(socket_.text)
+                file_.write(socket_.text + '\n')
                 LOG.debug('steward: Found UPD def: {}'.format(socket_.text))
         except XML.ParseError:
             LOG.error('setward: Unable to parse web_sockets.xml')
+        file_.write('\n')
+        file_.close()
         LOG.debug('steward: Scan web_sockets.xml done')
 
     def _delete_dead_connections(self):
@@ -313,6 +334,11 @@ class UDPConnectionSteward(threading.Thread):
 def main():
     """ Main method for the websocket server """
     LOG.info('main: Start')
+    global LIVESOCKET  # pylint: disable=global-statement
+    names = ['wss_hosts', 'wss_clients']
+    LIVESOCKET = LiveSocket('websocketserver', names, sane_interval=1.0)
+    LIVESOCKET.start()
+
     udp_steward = UDPConnectionSteward()
     udp_steward.start()
 
@@ -338,6 +364,9 @@ def main():
         udp_steward.stop()
         time.sleep(1)
         LOG.info('main: UPD Steward stopped')
+        LIVESOCKET.stop()
+        time.sleep(1)
+        LOG.info('main: Own livesocket stoppped')
     except Exception as exception_:
         LOG.exception(exception_)
         raise exception_
