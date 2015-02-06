@@ -161,6 +161,7 @@ class UDPConnection(threading.Thread):
             time.sleep(DATA[self.hostname_port]['sane_interval'])
 
         LOG.info('{}: run ended'.format(self.hostname_port))
+        current_log('{}: run ended'.format(self.hostname_port))
 
     def stop(self):
         """Stops the UPD connection"""
@@ -233,6 +234,8 @@ class UDPConnectionSteward(threading.Thread):
 
             # Update values on the live socket
             LIVESOCKET.set_point_now('wss_clients', float(len(WEBSOCKET_IDS)))
+            LIVESOCKET.set_point_now('wss_hosts_defined',
+                                     float(len(self.udp_definitions)))
             LIVESOCKET.set_point_now('wss_hosts',
                                      float(len(self.udp_connections)))
             time.sleep(self.main_interval)
@@ -335,7 +338,7 @@ def main():
     """ Main method for the websocket server """
     LOG.info('main: Start')
     global LIVESOCKET  # pylint: disable=global-statement
-    names = ['wss_hosts', 'wss_clients']
+    names = ['wss_hosts_defined', 'wss_hosts', 'wss_clients']
     LIVESOCKET = LiveSocket('websocketserver', names, sane_interval=1.0)
     LIVESOCKET.start()
 
