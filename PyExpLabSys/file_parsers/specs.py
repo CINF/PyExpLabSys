@@ -98,7 +98,10 @@ from PyExpLabSys.thirdparty.cached_property import cached_property
 UNHANDLED_XML_COMPONENTS = 'An unhandled XML component \'{}\' was found when '\
                            'parsing a \'{}\''
 # Used in the conversion of elements with type information
-XML_TYPES = {'string': str, 'ulong': long, 'double': float, 'boolean': bool}
+XML_TYPES = {
+    'string': str, 'ulong': long, 'double': float, 'boolean': bool,
+    'long': long,
+}
 ARRAY_TYPES = {'ulong': 'uint64', 'double': 'double'}
 EXCEPTION_ON_UNHANDLED = True
 
@@ -181,7 +184,8 @@ def simple_convert(element):
         out = element.text
     # I don't know what to do
     else:
-        message = 'Unknown tag type {}'.format(element.tag)
+        message = 'Unknown tag type {} with value:\n{}'.format(
+            element.tag, element.text)
         if EXCEPTION_ON_UNHANDLED:
             raise ValueError(message)
         _LOG.warning(message)
