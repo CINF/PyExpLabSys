@@ -3,11 +3,11 @@
 from __future__ import print_function
 import os
 import re
+import time
+import errno
 import subprocess
 import MySQLdb
 from collections import Counter
-from pylint.lint import Run
-from pylint.reporters.text import TextReporter
 
 
 MATCH_RE = re.compile(r'[^:]+:[0-9]+: \[([A-Z][0-9]+)\(.*\].*')
@@ -22,21 +22,28 @@ PYLINTRC = os.path.join(
 )
 
 
-class WriteableObject(object):  # pylint: disable=too-few-public-methods
-    """Dummy writeable object"""
-
-    def __init__(self):
-        self.content = []
-
-    def write(self, string):
-        """Writes a string to content"""
-        self.content.append(string)
-
-
-def update_git(root_path):
+def update_git(root_path, week_delta):
     """Updates the PyExpLabSys archive"""
-    print("Update git ... ", root_path, end='')
-    return_value = subprocess.call(GIT_ARGS)
+    #print("Update git ... ", root_path, end='')
+    #return_value = subprocess.call(GIT_ARGS)
+    #if return_value == 0:
+    #    print(' successfully')
+    #else:
+    #    print(' failed')
+    #    raise SystemExit()
+
+    print("Checkout old ... ", root_path, end='')
+    ref_args = ['git', '-C', ARCHIVE_PATH, 'rev-list', '-n', '1',
+                '--before="{} weeks ago"'.format(week_delta), 'master']
+    process = subprocess.Popen(ref_args, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    out, _ = process.communicate()
+    process.stdout.close()
+    process.stderr.close()
+
+    return_value = subprocess.call(
+        ['git', '-C', ARCHIVE_PATH, 'checkout', out.strip()]
+    )
     if return_value == 0:
         print(' successfully')
     else:
@@ -60,54 +67,83 @@ def lint_file(filepath):
     add_lines_to_total_count(filepath)
 
     # Collect lint statistics
-    args = ['--msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}',
+    args = ['pylint',
+            '--msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}',
             '-r', 'n', '--rcfile={}'.format(PYLINTRC), filepath]
-    output = WriteableObject()
-    Run(args, reporter=TextReporter(output), exit=False)
-    for line in output.content:
+    process = subprocess.Popen(args, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    out, _ = process.communicate()
+
+    for line in out.split('\n'):
         match = MATCH_RE.match(line)
         if match:
             ERROR_COUNTER[match.group(1)] += 1
             FILE_COUNTER[filepath.replace(ARCHIVE_PATH + os.sep, '')] += 1
 
+    process.stdout.close()
+    process.stderr.close()
 
-def report_to_mysql():
+
+def report_to_mysql(week_delta):
     """Reports the error to mysql"""
+    unixtime = time.time() - week_delta * 7 * 24 * 60 * 60
+
     con = MySQLdb.connect('servcinf', 'hall', 'hall', 'cinfdata')
     cursor = con.cursor()
-    query = 'INSERT INTO dateplots_hall (type, value) VALUES (%s, %s)'
+    query = ('INSERT INTO dateplots_hall (time, type, value) VALUES '
+             '(FROM_UNIXTIME(%s), %s, %s)')
     # 164 is pylint errors
-    cursor.execute(query, (164, sum(ERROR_COUNTER.values())))
-    cursor.execute(query, (165, TOTAL_LINE_COUNT))
+    cursor.execute(query, (unixtime, 164, sum(ERROR_COUNTER.values())))
+    cursor.execute(query, (unixtime, 165, TOTAL_LINE_COUNT))
     con.commit()
     print('Total number of errors sent to mysql')
 
     con = MySQLdb.connect('servcinf', 'pylint', 'pylint', 'cinfdata')
     cursor = con.cursor()
-    query = ('INSERT INTO pylint (identifier, isfile, value) VALUES '
-             '(%s, %s, %s)')
+    query = ('INSERT INTO pylint (time, identifier, isfile, value) VALUES '
+             '(FROM_UNIXTIME(%s), %s, %s, %s)')
     for key, value in ERROR_COUNTER.items():
-        cursor.execute(query, (key, False, value))
+        cursor.execute(query, (unixtime, key, False, value))
     for key, value in FILE_COUNTER.items():
-        cursor.execute(query, (key, True, value))
+        cursor.execute(query, (unixtime, key, True, value))
     con.commit()
     print('Everything else sent to mysql')
 
 
-def main(root_path):
+def main(root_path, week_delta):
     """Runs lint on all python files and reports the result"""
-    update_git(root_path)
+    update_git(root_path, week_delta)
     for root, _, files in os.walk(root_path):
         if root.endswith('thirdparty'):
             continue
         for file_ in files:
             filepath = os.path.join(root, file_)
-            if os.path.splitext(filepath)[1].lower() == '.py':
-                lint_file(filepath)
 
-    report_to_mysql()
+            # If it is not a python file, continue
+            if os.path.splitext(filepath)[1].lower() != '.py':
+                continue
+
+            # If the path does not exist (broken link) continue
+            try:
+                os.stat(filepath)
+            except OSError as exception:
+                if exception.errno == errno.ENOENT:
+                    print('Path "{}" does not exist'.format(filepath))
+                    continue
+                else:
+                    raise exception
+
+            lint_file(filepath)
+
+    report_to_mysql(week_delta)
 
 
 if __name__ == '__main__':
     # Path of the PyExpLabSys git archive
-    main(ARCHIVE_PATH)
+    for n in range(57, 156):
+        print("########", n, "###########")
+        ERROR_COUNTER = Counter()
+        FILE_COUNTER = Counter()
+        TOTAL_LINE_COUNT = 0
+        main(ARCHIVE_PATH, n)
+        print(ERROR_COUNTER, FILE_COUNTER, TOTAL_LINE_COUNT)
