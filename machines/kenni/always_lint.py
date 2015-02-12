@@ -3,7 +3,6 @@
 from __future__ import print_function
 import os
 import re
-import time
 import errno
 import subprocess
 import MySQLdb
@@ -22,28 +21,10 @@ PYLINTRC = os.path.join(
 )
 
 
-def update_git(root_path, week_delta):
+def update_git(root_path):
     """Updates the PyExpLabSys archive"""
-    #print("Update git ... ", root_path, end='')
-    #return_value = subprocess.call(GIT_ARGS)
-    #if return_value == 0:
-    #    print(' successfully')
-    #else:
-    #    print(' failed')
-    #    raise SystemExit()
-
-    print("Checkout old ... ", root_path, end='')
-    ref_args = ['git', '-C', ARCHIVE_PATH, 'rev-list', '-n', '1',
-                '--before="{} weeks ago"'.format(week_delta), 'master']
-    process = subprocess.Popen(ref_args, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    out, _ = process.communicate()
-    process.stdout.close()
-    process.stderr.close()
-
-    return_value = subprocess.call(
-        ['git', '-C', ARCHIVE_PATH, 'checkout', out.strip()]
-    )
+    print("Update git ... ", root_path, end='')
+    return_value = subprocess.call(GIT_ARGS)
     if return_value == 0:
         print(' successfully')
     else:
@@ -74,45 +55,48 @@ def lint_file(filepath):
                                stderr=subprocess.PIPE)
     out, _ = process.communicate()
 
+    # Add to error count and file count stats
     for line in out.split('\n'):
         match = MATCH_RE.match(line)
         if match:
             ERROR_COUNTER[match.group(1)] += 1
             FILE_COUNTER[filepath.replace(ARCHIVE_PATH + os.sep, '')] += 1
 
+    # Make sure to close file descriptors
     process.stdout.close()
     process.stderr.close()
 
 
-def report_to_mysql(week_delta):
+def report_to_mysql():
     """Reports the error to mysql"""
-    unixtime = time.time() - week_delta * 7 * 24 * 60 * 60
 
     con = MySQLdb.connect('servcinf', 'hall', 'hall', 'cinfdata')
     cursor = con.cursor()
-    query = ('INSERT INTO dateplots_hall (time, type, value) VALUES '
-             '(FROM_UNIXTIME(%s), %s, %s)')
-    # 164 is pylint errors
-    cursor.execute(query, (unixtime, 164, sum(ERROR_COUNTER.values())))
-    cursor.execute(query, (unixtime, 165, TOTAL_LINE_COUNT))
+    query = ('INSERT INTO dateplots_hall (type, value) VALUES '
+             '(%s, %s)')
+    # 164 is pylint errors and 165 is number of lines
+    cursor.execute(query, (164, sum(ERROR_COUNTER.values())))
+    cursor.execute(query, (165, TOTAL_LINE_COUNT))
     con.commit()
-    print('Total number of errors sent to mysql')
+    print('Total number of errors and lines sent to mysql')
 
     con = MySQLdb.connect('servcinf', 'pylint', 'pylint', 'cinfdata')
     cursor = con.cursor()
-    query = ('INSERT INTO pylint (time, identifier, isfile, value) VALUES '
-             '(FROM_UNIXTIME(%s), %s, %s, %s)')
+    query = ('INSERT INTO pylint (identifier, isfile, value) VALUES '
+             '(%s, %s, %s)')
+    # Send error stats
     for key, value in ERROR_COUNTER.items():
-        cursor.execute(query, (unixtime, key, False, value))
+        cursor.execute(query, (key, False, value))
+    # Send file stats
     for key, value in FILE_COUNTER.items():
-        cursor.execute(query, (unixtime, key, True, value))
+        cursor.execute(query, (key, True, value))
     con.commit()
     print('Everything else sent to mysql')
 
 
-def main(root_path, week_delta):
+def main(root_path):
     """Runs lint on all python files and reports the result"""
-    update_git(root_path, week_delta)
+    update_git(root_path)
     for root, _, files in os.walk(root_path):
         if root.endswith('thirdparty'):
             continue
@@ -133,17 +117,13 @@ def main(root_path, week_delta):
                 else:
                     raise exception
 
+            # We are good to lint the file
             lint_file(filepath)
 
-    report_to_mysql(week_delta)
+    report_to_mysql()
 
 
 if __name__ == '__main__':
     # Path of the PyExpLabSys git archive
-    for n in range(57, 156):
-        print("########", n, "###########")
-        ERROR_COUNTER = Counter()
-        FILE_COUNTER = Counter()
-        TOTAL_LINE_COUNT = 0
-        main(ARCHIVE_PATH, n)
-        print(ERROR_COUNTER, FILE_COUNTER, TOTAL_LINE_COUNT)
+    main(ARCHIVE_PATH)
+    print(ERROR_COUNTER, FILE_COUNTER, TOTAL_LINE_COUNT)
