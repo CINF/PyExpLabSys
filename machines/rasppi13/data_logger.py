@@ -23,24 +23,26 @@ import credentials
 #socket = DateDataPullSocket(name, codenames)
 
 
-db_logger_stm312 = ContinuousLogger(table='dateplots_stm312',# stm312 pressure controller pressure
-                             username=credentials.user, password=credentials.passwd, # get from credentials
-                             measurement_codenames = ['stm312_hpc_pressure_controller','stm312_pirani'])
-#db_logger_ocs = ContinuousLogger(table='dateplots_oldclustersource',# oldclustersource pirani
-#                                 username='dummy', password='dummy', # get from credentials
+db_logger_stm312 = ContinuousLogger(table='dateplots_stm312',
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=['stm312_hpc_pressure_controller','stm312_pirani'])
+#db_logger_ocs = ContinuousLogger(table='dateplots_oldclustersource',
+#                                 username='dummy',
+#                                 password='dummy',
 #                                 measurement_codenames = ['pressure'])
 
 
-class ValueLogger():
+class ValueLogger(object):
     def __init__(self, maximumtime=600,
-                 comp_type = 'lin', comp_val = 1, codename = None):
+                 comp_type='lin',
+                 comp_val=1,
+                 codename=None):
         self.maximumtime = maximumtime
         self.compare = {'type':comp_type, 'val':comp_val}
         self.codename = codename
-
         self.value = 0.0
         self.last = {'time':0.0, 'val':0.0}
-
         self.status = {'trigged':False}
 
     def add_logger(self, db_logger):
@@ -50,9 +52,13 @@ class ValueLogger():
         self.value = value
         time_trigged = ((time.time() - self.last['time']) > self.maximumtime)
         if self.compare['type'] == 'lin':
-            val_trigged = not (self.last['val'] - self.compare['val'] < self.value < self.last['val'] + self.compare['val'])
+            val_trigged = not (self.last['val'] - self.compare['val'] <
+                               self.value <
+                               self.last['val'] + self.compare['val'])
         elif self.compare['type'] == 'log':
-            val_trigged = not (self.last['val'] * (1 - self.compare['val']) < self.value < self.last['val'] * (1 + self.compare['val']))
+            val_trigged = not (self.last['val'] * (1 - self.compare['val']) <
+                               self.value <
+                               self.last['val'] * (1 + self.compare['val']))
         if (time_trigged or val_trigged) and (self.value > -1):
             self.status['trigged'] = True
             self.last['time'] = time.time()
@@ -91,10 +97,6 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(3, 2, "Pressure Controller for HPC stm312, {}".format(e))# ID: {}".format(self.pc.status['ID']))
                 self.screen.addstr(4, 2, "Pirani for old cluster source, {}".format(e))
                 pass
-            """if self.pcc.status['Output']:
-                self.screen.addstr(4, 2, 'Power Output: '+str(self.pcc.status['Output']))
-                self.screen.addstr(5, 2, 'Control mode: '+str(self.pcc.status['Mode'])+'      ')
-            """
             try:
                 self.screen.addstr(6, 2, "HPC pressure, pressure control:     {0:+.1f}mbar     ".format(self.pc.pressure))
                 self.screen.addstr(7, 2, "HPC pressure, setpoint:             {0:+.1f}mbar     ".format(self.pc.setpoint))
@@ -185,7 +187,10 @@ class PcClass(threading.Thread):
 
     def add_logger(self,db_logger):
         self.db_logger = db_logger
-        self.valuelogger = ValueLogger(maximumtime=600, comp_type = 'lin', comp_val = 0.3, codename = 'stm312_hpc_pressure_controller')
+        self.valuelogger = ValueLogger(maximumtime=600,
+                                       comp_type='lin',
+                                       comp_val=0.3,
+                                       codename='stm312_hpc_pressure_controller')
         self.valuelogger.add_logger(self.db_logger)
         self.db_logger_avalible = True
     
@@ -207,18 +212,6 @@ class PcClass(threading.Thread):
         self.update_setpoint(self.setpoint - 10)
         #self.set_setpoint(self.setpoint)
         return(True)
-
-    #def update_setpoint(self):
-    #    """ Read the setpoint from external socket server """
-    """    HOST, PORT = "130.225.86.182", 9999
-        data = "read_setpoint_pressure"
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(data + "\n", (HOST, PORT))
-        received = sock.recv(1024)
-        setpoint = int(float(received))
-        self.set_setpoint(setpoint)
-        return(setpoint)
-    """
 
     def set_setpoint(self, setpoint):
         """ Set the setpoint """
@@ -293,7 +286,10 @@ class PiraniClass(threading.Thread):
 
     def add_logger(self,db_logger):
         self.db_logger = db_logger
-        self.valuelogger = ValueLogger(maximumtime=600, comp_type = 'log', comp_val = 1.5, codename = 'stm312_pirani')
+        self.valuelogger = ValueLogger(maximumtime=600,
+                                       comp_type='log',
+                                       comp_val=1.5,
+                                       codename='stm312_pirani')
         self.valuelogger.add_logger(self.db_logger)
         self.db_logger_avalible = True
 
