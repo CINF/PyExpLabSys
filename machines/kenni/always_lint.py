@@ -3,11 +3,10 @@
 from __future__ import print_function
 import os
 import re
+import errno
 import subprocess
 import MySQLdb
 from collections import Counter
-from pylint.lint import Run
-from pylint.reporters.text import TextReporter
 
 
 MATCH_RE = re.compile(r'[^:]+:[0-9]+: \[([A-Z][0-9]+)\(.*\].*')
@@ -20,17 +19,6 @@ PYLINTRC = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     'pylintrc'
 )
-
-
-class WriteableObject(object):  # pylint: disable=too-few-public-methods
-    """Dummy writeable object"""
-
-    def __init__(self):
-        self.content = []
-
-    def write(self, string):
-        """Writes a string to content"""
-        self.content.append(string)
 
 
 def update_git(root_path):
@@ -60,34 +48,46 @@ def lint_file(filepath):
     add_lines_to_total_count(filepath)
 
     # Collect lint statistics
-    args = ['--msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}',
+    args = ['pylint',
+            '--msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}',
             '-r', 'n', '--rcfile={}'.format(PYLINTRC), filepath]
-    output = WriteableObject()
-    Run(args, reporter=TextReporter(output), exit=False)
-    for line in output.content:
+    process = subprocess.Popen(args, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    out, _ = process.communicate()
+
+    # Add to error count and file count stats
+    for line in out.split('\n'):
         match = MATCH_RE.match(line)
         if match:
             ERROR_COUNTER[match.group(1)] += 1
             FILE_COUNTER[filepath.replace(ARCHIVE_PATH + os.sep, '')] += 1
 
+    # Make sure to close file descriptors
+    process.stdout.close()
+    process.stderr.close()
+
 
 def report_to_mysql():
     """Reports the error to mysql"""
+
     con = MySQLdb.connect('servcinf', 'hall', 'hall', 'cinfdata')
     cursor = con.cursor()
-    query = 'INSERT INTO dateplots_hall (type, value) VALUES (%s, %s)'
-    # 164 is pylint errors
+    query = ('INSERT INTO dateplots_hall (type, value) VALUES '
+             '(%s, %s)')
+    # 164 is pylint errors and 165 is number of lines
     cursor.execute(query, (164, sum(ERROR_COUNTER.values())))
     cursor.execute(query, (165, TOTAL_LINE_COUNT))
     con.commit()
-    print('Total number of errors sent to mysql')
+    print('Total number of errors and lines sent to mysql')
 
     con = MySQLdb.connect('servcinf', 'pylint', 'pylint', 'cinfdata')
     cursor = con.cursor()
     query = ('INSERT INTO pylint (identifier, isfile, value) VALUES '
              '(%s, %s, %s)')
+    # Send error stats
     for key, value in ERROR_COUNTER.items():
         cursor.execute(query, (key, False, value))
+    # Send file stats
     for key, value in FILE_COUNTER.items():
         cursor.execute(query, (key, True, value))
     con.commit()
@@ -102,8 +102,23 @@ def main(root_path):
             continue
         for file_ in files:
             filepath = os.path.join(root, file_)
-            if os.path.splitext(filepath)[1].lower() == '.py':
-                lint_file(filepath)
+
+            # If it is not a python file, continue
+            if os.path.splitext(filepath)[1].lower() != '.py':
+                continue
+
+            # If the path does not exist (broken link) continue
+            try:
+                os.stat(filepath)
+            except OSError as exception:
+                if exception.errno == errno.ENOENT:
+                    print('Path "{}" does not exist'.format(filepath))
+                    continue
+                else:
+                    raise exception
+
+            # We are good to lint the file
+            lint_file(filepath)
 
     report_to_mysql()
 
@@ -111,3 +126,4 @@ def main(root_path):
 if __name__ == '__main__':
     # Path of the PyExpLabSys git archive
     main(ARCHIVE_PATH)
+    print(ERROR_COUNTER, FILE_COUNTER, TOTAL_LINE_COUNT)
