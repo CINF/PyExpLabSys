@@ -1,69 +1,68 @@
-""" Pressure and temperature logger """
 # pylint: disable=C0301,R0904, C0103
 
 import threading
-import time
 import logging
+import time
+from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
-#from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.omega_D6400 as omega_D6400
 import credentials
 
-class BaratronClass(threading.Thread):
-    """ Pressure reader """
-    def __init__(self):
+class PressureReader(threading.Thread):
+    """ Read Cooling water pressure """
+    def __init__(self, omega):
         threading.Thread.__init__(self)
-        port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWE9PXJ-if00-port0'
-        self.baratron = omega_D6400.OmegaD6400(address=1, port=port)
-        self.pressure = None
+        self.omega = omega
+        self.pressure = -1
         self.quit = False
-        self.last_recorded_time = 0
-        self.last_recorded_value = 0
-        self.trigged = False
 
-    def read_pressure(self):
-        """ Read the pressure """
+    def value(self):
+        """ Return the value of the reader """
         return(self.pressure)
 
     def run(self):
         while not self.quit:
-            time.sleep(0.5)
-            self.pressure = self.baratron.read_value(1)
-            time_trigged = (time.time() - self.last_recorded_time) > 120
-            val_trigged = not (self.last_recorded_value * 0.9 < self.pressure < self.last_recorded_value * 1.1)
-            if self.pressure < 0.01:
-                val_trigged = False
-            if (time_trigged or val_trigged):
-                self.trigged = True
-                self.last_recorded_time = time.time()
-                self.last_recorded_value = self.pressure
+            time.sleep(1)
+            self.pressure = self.omega.read_value(1)
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
-pressure_measurement = BaratronClass()
-pressure_measurement.deamon = True
-pressure_measurement.start()
+port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWE9PXJ-if00-port0'
+omega_instance = omega_D6400.OmegaD6400(address=1, port=port)
+pressurereader = PressureReader(omega_instance)
+pressurereader.daemon = True
+pressurereader.start()
+
+logger = ValueLogger(pressurereader, comp_val = 0.1)
+logger.start()
+
+
+name = 'stm312_hpc_baratron'
+codenames = ['stm312_hpc_baratron']
+socket = DateDataPullSocket(name, codenames, timeouts=[1.0])
+socket.start()
+
+live_socket = LiveSocket(name, codenames, 2)
+live_socket.start()
+
+db_logger = ContinuousLogger(table='dateplots_stm312',
+                             username=credentials.user,
+                             password=credentials.passwd,
+                             measurement_codenames=codenames)
+db_logger.start()
 
 time.sleep(2)
 
-datasocket = DateDataPullSocket('stm312_hpc_baratron', ['stm312_hpc_baratron'], timeouts=[1.0])
-datasocket.start()
-
-db_logger = ContinuousLogger(table='dateplots_stm312', username=credentials.user, password = credentials.passwd, measurement_codenames=['stm312_hpc_baratron'])
-db_logger.start()
-
 while True:
-    try:
-        time.sleep(1)
-        baratron = pressure_measurement.read_pressure()
-        datasocket.set_point_now('stm312_hpc_baratron', baratron)
-        if pressure_measurement.trigged:
-            print(baratron)
-            db_logger.enqueue_point_now('stm312_hpc_baratron', baratron)
-            pressure_measurement.trigged = False
-    except KeyboardInterrupt:
-        #pressure_measurement.stop()
-        datasocket.stop()
-        db_logger.stop()
+    time.sleep(0.25)
+    p = logger.read_value()
+    socket.set_point_now('stm312_hpc_baratron', p)
+    live_socket.set_point_now('stm312_hpc_baratron', p)
+    if logger.read_trigged():
+        print p
+        db_logger.enqueue_point_now('stm312_hpc_baratron', p)
+        logger.clear_trigged()
+
