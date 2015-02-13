@@ -52,7 +52,7 @@ class PID():
             self.gain = {'Kp':0.15,'Ki':0.0025,'Kd':0.0,'Pmax':100.0, 'Pmin':0.0}
             pass
         elif case == 'stm312 hpc':
-            self.gain = {'Kp':1.5, 'Ki':0.01, 'Kd':0.0, 'Pmax':90.0, 'Pmin':0.0}
+            self.gain = {'Kp':1.7, 'Ki':0.015, 'Kd':0.0, 'Pmax':90.0, 'Pmin':0.0}
             
         """ Provid a starting setpoit to ensure that the PID does not apply any power before an actual setpoit is set."""
         self.setpoint = -9999
@@ -300,8 +300,11 @@ def sqlInsert(query):
 
 def network_comm(host, port, string):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(string + "\n", (host, port))
-    received = sock.recv(1024)
+    try:
+        sock.sendto(string + "\n", (host, port))
+        received = sock.recv(1024)
+    except:
+        received = ''
     return received
 
 def read_hp_temp():
@@ -405,8 +408,8 @@ class PowerControlClass(threading.Thread):
         self.status['Setpoint'] = self.setpoint
         
     def init_heater_class(self,):
-        port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F9545A-if00'
-        self.heater = CPX.CPX400DPDriver(1, port=port)
+        dev_port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F9545A-if00'
+        self.heater = CPX.CPX400DPDriver(1, interface = 'serial', device=dev_port)
         self.status['ID'] = self.heater.read_software_version()
         print 'ID: ' + self.status['ID']
         #print 'Type: ' + type(self.status['ID'])
