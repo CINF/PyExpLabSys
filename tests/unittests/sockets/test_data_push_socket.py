@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+# pylint: disable = no-member,star-args,protected-access,too-few-public-methods
+# pylint: disable = unused-argument,redefined-outer-name,no-self-use
+
+# NOTE: About pylint disable. Everything on the second line are
+# disables that simply makes no sense when using pytest and fixtures
+
 """Unit tests for the DataPushSocket"""
 
 import Queue
@@ -71,12 +77,12 @@ def dps(request):
     class variable, use those in init
     """
     if hasattr(request, 'cls') and hasattr(request.cls, 'dps_kwargs'):
-        dps = DataPushSocket(NAME, **request.cls.dps_kwargs)
+        dps_ = DataPushSocket(NAME, **request.cls.dps_kwargs)
     else:
-        dps = DataPushSocket(NAME)
-    dps.start()
-    yield dps
-    dps.stop()
+        dps_ = DataPushSocket(NAME)
+    dps_.start()
+    yield dps_
+    dps_.stop()
 
 
 @pytest.fixture(params=['new_name', 'same_name'])
@@ -102,10 +108,10 @@ def queue(request):
 
 
 @pytest.yield_fixture
-def callback(request):
+def callback(request):  # pylint: disable=unused-argument
     """Generate a memory callback function and reset afterwards"""
     yield memory_callback
-    global CALLBACK_MEMORY
+    global CALLBACK_MEMORY  # pylint: disable=global-statement
     CALLBACK_MEMORY = []
 
 
@@ -140,8 +146,8 @@ def echo_list_callback(argument):
     into [[1.0, 42.0], [1.5, 45.6], [2.0, 47.0]]
     """
     out = []
-    for n in range(argument['number']):
-        out.append(argument[str(n)])
+    for number in range(argument['number']):
+        out.append(argument[str(number)])
     return out
 
 
@@ -153,123 +159,123 @@ def test_bad_init():
         DataPushSocket(NAME, action='oo')
     message = 'Unknown action \'oo\'. Must be one of: [\'store_last\', '\
         '\'enqueue\', \'callback_async\', \'callback_direct\']'
-    assert(str(excinfo.value) == message)
+    assert str(excinfo.value) == message
 
     # Action 'callback' but supplied callback not call_able
     with pytest.raises(ValueError) as excinfo:
         DataPushSocket(NAME, action='callback_async',
                        callback='not callable str')
     message = 'Value for callback: \'not callable str\' is not callable'
-    assert(str(excinfo.value) == message)
+    assert str(excinfo.value) == message
 
     # Action 'callback' but no supplied callback
     with pytest.raises(ValueError) as excinfo:
         DataPushSocket(NAME, action='callback_async')
     message = 'Value for callback: \'None\' is not callable'
-    assert(str(excinfo.value) == message)
+    assert str(excinfo.value) == message
 
     # queue given but action not enqueue (deault action is store_last)
     with pytest.raises(ValueError) as excinfo:
         DataPushSocket(NAME, queue=Queue.Queue())
     message = 'The \'queue\' argument can only be used when the action is '\
         '\'enqueue\''
-    assert(str(excinfo.value) == message)
+    assert str(excinfo.value) == message
 
     # callback given but action not callback (deault action is store_last)
     with pytest.raises(ValueError) as excinfo:
         DataPushSocket(NAME, callback=dir)
     message = 'The \'callback\' argument can only be used when the action is '\
         '\'callback_async\' or \'callback_direct\''
-    assert(str(excinfo.value) == message)
+    assert str(excinfo.value) == message
 
     # Unknown return_format given
     with pytest.raises(ValueError) as excinfo:
         DataPushSocket(NAME, return_format='blah')
     message = 'The \'return_format\' argument may only be one of the '\
         '\'json\', \'raw\' or \'string\' values'
-    assert(str(excinfo.value) == message)
+    assert str(excinfo.value) == message
 
 
 class TestInit(object):
     """Class that wraps test of successful initialization"""
 
-    def init_common_tests(self, dps, action):
+    @staticmethod
+    def init_common_tests(dps, action):
         """Common init tests (called by other tests, not by pytest)"""
         # action
-        assert(dps.action == action)
-        assert(DATA[PORT]['action'] == dps.action)
+        assert dps.action == action
+        assert DATA[PORT]['action'] == dps.action
         # port
-        assert(dps.port == PORT)
-        assert(isinstance(DATA.get(PORT), dict))
+        assert dps.port == PORT
+        assert isinstance(DATA.get(PORT), dict)
         # last
-        assert(dps.last == (None, None))
+        assert dps.last == (None, None)
         assert((DATA[PORT]['last_time'],
                 DATA[PORT]['last']) == dps.last)
         # updated
-        assert(dps.updated == (None, {}))
+        assert dps.updated == (None, {})
         assert((DATA[PORT]['updated_time'],
                 DATA[PORT]['updated']) == dps.updated)
         # name
-        assert(DATA[PORT]['name'] == NAME)
-   
+        assert DATA[PORT]['name'] == NAME
+
     def test_init_default(self, dps):
         """Test initialization with default patameters"""
         self.init_common_tests(dps, 'store_last')
-        assert(dps.queue is None)
-        assert(hasattr(DATA, 'queue') is False)
+        assert dps.queue is None
+        assert hasattr(DATA, 'queue') is False
 
     def test_init_enqueue(self):
         """Test initialization with when action is enqueue"""
-        dps = DataPushSocket(NAME, action='enqueue')
-        dps.start()
-        self.init_common_tests(dps, 'enqueue')
-        assert(isinstance(dps.queue, Queue.Queue))
-        assert(DATA[PORT]['queue'] is dps.queue)
-        dps.stop()
+        dps_ = DataPushSocket(NAME, action='enqueue')
+        dps_.start()
+        self.init_common_tests(dps_, 'enqueue')
+        assert isinstance(dps_.queue, Queue.Queue)
+        assert DATA[PORT]['queue'] is dps_.queue
+        dps_.stop()
 
     def test_init_custom_queue(self):
         """Test initialization when action is enqueue and use custom queue"""
-        queue = Queue.Queue()
-        dps = DataPushSocket(NAME, action='enqueue', queue=queue)
-        dps.start()
-        self.init_common_tests(dps, 'enqueue')
-        assert(dps.queue is queue)
-        assert(DATA[PORT]['queue'] is queue)
-        dps.stop()
+        queue_ = Queue.Queue()
+        dps_ = DataPushSocket(NAME, action='enqueue', queue=queue_)
+        dps_.start()
+        self.init_common_tests(dps_, 'enqueue')
+        assert dps_.queue is queue_
+        assert DATA[PORT]['queue'] is queue_
+        dps_.stop()
 
     def test_init_callback_async(self):
         """Test initialization when action is callback_async"""
         # Test init of callback
-        dps = DataPushSocket(NAME, action='callback_async', callback=dir)
-        dps.start()
-        self.init_common_tests(dps, 'callback_async')
-        assert(isinstance(dps.queue, Queue.Queue))
-        assert(DATA[PORT]['queue'] is dps.queue)  
-        assert(isinstance(dps._callback_thread, CallBackThread))
-        assert(dps._callback_thread.callback is dir)
-        dps.stop()
+        dps_ = DataPushSocket(NAME, action='callback_async', callback=dir)
+        dps_.start()
+        self.init_common_tests(dps_, 'callback_async')
+        assert isinstance(dps_.queue, Queue.Queue)
+        assert DATA[PORT]['queue'] is dps_.queue
+        assert isinstance(dps_._callback_thread, CallBackThread)
+        assert dps_._callback_thread.callback is dir
+        dps_.stop()
 
-    def test_init_callback_direct_default(self):
+    def test_init_cb_direct_default(self):
         """Test initialization when action is callback_direct"""
         # Test init of callback
-        dps = DataPushSocket(NAME, action='callback_direct', callback=dir)
-        dps.start()
-        self.init_common_tests(dps, 'callback_direct')
-        assert(DATA[PORT]['callback'] is dir)
-        assert(DATA[PORT]['return_format'] == 'json')
-        dps.stop()
-
+        dps_ = DataPushSocket(NAME, action='callback_direct', callback=dir)
+        dps_.start()
+        self.init_common_tests(dps_, 'callback_direct')
+        assert DATA[PORT]['callback'] is dir
+        assert DATA[PORT]['return_format'] == 'json'
+        dps_.stop()
 
     def test_init_callback_direct_raw(self):
         """Test initialization when action is callback_direct"""
         # Test init of callback
-        dps = DataPushSocket(NAME, action='callback_direct', callback=dir,
+        dps_ = DataPushSocket(NAME, action='callback_direct', callback=dir,
                              return_format='raw')
-        dps.start()
-        self.init_common_tests(dps, 'callback_direct')
-        assert(DATA[PORT]['callback'] is dir)
-        assert(DATA[PORT]['return_format'] == 'raw')
-        dps.stop()
+        dps_.start()
+        self.init_common_tests(dps_, 'callback_direct')
+        assert DATA[PORT]['callback'] is dir
+        assert DATA[PORT]['return_format'] == 'raw'
+        dps_.stop()
 
 
 def test_unknown_command(dps, sock):
@@ -279,12 +285,12 @@ def test_unknown_command(dps, sock):
     # Nonsense command
     sock.sendto('bad bad command', (HOST, PORT))
     received = sock.recv(1024)
-    assert(received == expected)
+    assert received == expected
 
     # Bad command name
     sock.sendto('bad#nonsense', (HOST, PORT))
     received = sock.recv(1024)
-    assert(received == expected)
+    assert received == expected
 
 
 def test_json_wn_bad_data(dps, sock):
@@ -294,14 +300,14 @@ def test_json_wn_bad_data(dps, sock):
     received = sock.recv(1024)
     message = '{}#The string \'nonsense\' could not be decoded as JSON'\
         .format(PyExpLabSys.common.sockets.PUSH_ERROR)
-    assert(received == message)
+    assert received == message
 
     # Send string that can be parsed as JSON, but not into a dict
     sock.sendto('json_wn#"nonsense"', (HOST, PORT))
     received = sock.recv(1024)
     message = '{}#The object \'nonsense\' returned after decoding the JSON '\
         'string is not a dict'.format(PyExpLabSys.common.sockets.PUSH_ERROR)
-    assert(received == message)
+    assert received == message
 
 
 def test_raw_wn_bad_data(dps, sock):
@@ -311,10 +317,10 @@ def test_raw_wn_bad_data(dps, sock):
         command = 'raw_wn#{}'.format(string)
         sock.sendto(command, (HOST, PORT))
         received = sock.recv(1024)
-        message = '{}#The data part \'{}\' did not match the expected format of '\
-            '3 parts divided by \':\''.format(
+        message = '{}#The data part \'{}\' did not match the expected '\
+                  'format of 3 parts divided by \':\''.format(
                 PyExpLabSys.common.sockets.PUSH_ERROR, string)
-        assert(received == message)
+        assert received == message
 
     # Test unknown data type
     command = 'raw_wn#codename1:nondatatype:1'
@@ -323,7 +329,7 @@ def test_raw_wn_bad_data(dps, sock):
     message = '{}#The data type \'{}\' is unknown. Only {} are '\
         'allowed'.format(PyExpLabSys.common.sockets.PUSH_ERROR, 'nondatatype',
                          PyExpLabSys.common.sockets.TYPE_FROM_STRING.keys())
-    assert(received == message)
+    assert received == message
 
     # Test conversion error
     command = 'raw_wn#codename1:int:hh'
@@ -332,7 +338,7 @@ def test_raw_wn_bad_data(dps, sock):
     message = '{}#Unable to convert values to \'int\'. Error is: invalid '\
         'literal for int() with base 10: \'hh\''.format(
             PyExpLabSys.common.sockets.PUSH_ERROR)
-    assert(received == message)
+    assert received == message
 
 
 def test_name(dps, sock):
@@ -347,24 +353,27 @@ def test_name(dps, sock):
 class TestDataTransfer(object):
     """Test the data transfer functionality"""
 
-    def reply_test(self, reply, data):
+    @staticmethod
+    def reply_test(reply, data):
         """Perform test and comparisons on the reply"""
         response, data_back = reply.split('#')
         data_back = ast.literal_eval(data_back)
-        assert(response == PyExpLabSys.common.sockets.PUSH_ACK)
-        assert(data == data_back)    
-    
-    def last_test(self, data_push_socket, data, sent_time):
+        assert response == PyExpLabSys.common.sockets.PUSH_ACK
+        assert data == data_back
+
+    @staticmethod
+    def last_test(data_push_socket, data, sent_time):
         """Test the last value"""
         received_time, received_data = data_push_socket.last
-        assert(received_time - sent_time < 0.010)
-        assert(data == received_data)    
-    
-    def updated_test(self, data_push_socket, data, sent_time):
+        assert received_time - sent_time < 0.010
+        assert data == received_data
+
+    @staticmethod
+    def updated_test(data_push_socket, data, sent_time):
         """Test the updated value"""
         received_time, received_data = data_push_socket.updated
-        assert(received_time - sent_time < 0.010)
-        assert(data == received_data)
+        assert received_time - sent_time < 0.010
+        assert data == received_data
 
     def test_json_wn(self, dps, sock, json_data):
         """Test sending data with the json_wn command"""
@@ -381,7 +390,6 @@ class TestDataTransfer(object):
             self.last_test(dps, data, time_sent)
             self.updated_test(dps, data_updated, time_sent)
 
-    
     def test_raw_wn(self, dps, sock, raw_data):
         """Test sending data with the raw_wn (with names) command"""
         data_updated = {}
@@ -410,7 +418,7 @@ class TestCallBack(object):
     def test_callback(self, dps, sock, data_sample, callback):
         """Test the call back functionality. """
         # Init the sent and received list of time stamps and data
-        self.received = []
+        self.received = []  # pylint: disable=attribute-defined-outside-init
         local_data = []
 
         # Add 10 data points
@@ -421,22 +429,22 @@ class TestCallBack(object):
             local_data.append((time.time(), data))
             reply = sock.recv(1024)
             # Check that the command was successful
-            assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK))
+            assert reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK)
 
         # Give the dps time to clear the queue by calling the callback
         time.sleep(0.1)
         # Check that the correct data is there and received in less than 10 ms
         for sent, received in zip(local_data, CALLBACK_MEMORY):
-            assert(abs(received[0] - sent[0])  < 0.010)
-            assert(sent[1] == received[1])
+            assert abs(received[0] - sent[0]) < 0.010
+            assert sent[1] == received[1]
 
         # Check that queue has been emptied and that last and updated makes
         # sense
-        assert(dps.queue.qsize() == 0)
-        assert(dps.last[1] == data_sample['last'])
-        assert(dps.last[0] - local_data[-1][0] < 0.010)
-        assert(dps.updated[1] == data_sample['updated'])
-        assert(dps.updated[0] - local_data[-1][0] < 0.010)
+        assert dps.queue.qsize() == 0
+        assert dps.last[1] == data_sample['last']
+        assert dps.last[0] - local_data[-1][0] < 0.010
+        assert dps.updated[1] == data_sample['updated']
+        assert dps.updated[0] - local_data[-1][0] < 0.010
 
 
 class TestCallBackReturnJson(object):
@@ -450,17 +458,17 @@ class TestCallBackReturnJson(object):
         for data in data_sample['data']:
             command = 'json_wn#{}'.format(json.dumps(data))
             reply = send_and_resc(sock, command)
-            assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+            assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
             data_back = json.loads(reply.split('#')[1])
-            assert(data == data_back)
+            assert data == data_back
 
     def test_none_return(self, dps, sock):
         """Test the return of a None value"""
         command = 'json_wn#{}'.format(json.dumps(DATA_SETS['NONE']))
         reply = send_and_resc(sock, command)
-        assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+        assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = json.loads(reply.split('#')[1])
-        assert(data_back is None)
+        assert data_back is None
 
 
 class TestCallBackReturnRaw(object):
@@ -474,28 +482,28 @@ class TestCallBackReturnRaw(object):
         for data in data_sample['data']:
             command = 'json_wn#{}'.format(json.dumps(data))
             reply = send_and_resc(sock, command)
-            assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+            assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
             data_back = reply.split('#')[1]
             expected = '{}:float:{}'.format(*data.items()[0])
-            assert(data_back == expected)
+            assert data_back == expected
 
     def test_callback_multiple_values(self, dps, sock):
         """Test the callback and test raw return values with multiple values"""
         data = {'myints': [42, 47]}
         command = 'json_wn#{}'.format(json.dumps(data))
         reply = send_and_resc(sock, command)
-        assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+        assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
         expected = '{}:int:{},{}'.format(data.keys()[0], *data.values()[0])
-        assert(data_back == expected)
+        assert data_back == expected
 
     def test_none_return(self, dps, sock):
         """Test the return of a None value"""
         command = 'raw_wn#action:str:None'
         reply = send_and_resc(sock, command)
-        assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+        assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
-        assert(data_back == 'None')
+        assert data_back == 'None'
 
 
 class TestCallBackReturnRawList(object):
@@ -510,10 +518,10 @@ class TestCallBackReturnRawList(object):
                 '2': [2.0, 47.0]}
         command = 'json_wn#{}'.format(json.dumps(data))
         reply = send_and_resc(sock, command)
-        assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+        assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
         expected = 'float:1.0,42.0&1.5,45.6&2.0,47.0'
-        assert(data_back == expected)
+        assert data_back == expected
 
 
 class TestCallBackReturnStr(object):
@@ -527,18 +535,18 @@ class TestCallBackReturnStr(object):
         for data in data_sample['data']:
             command = 'json_wn#{}'.format(json.dumps(data))
             reply = send_and_resc(sock, command)
-            assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+            assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
             data_back = reply.split('#')[1]
             expected = '{{u\'{}\': {}}}'.format(*data.items()[0])
-            assert(data_back == expected)
+            assert data_back == expected
 
     def test_none_return(self, dps, sock):
         """Test the return of a None value"""
         command = 'json_wn#{}'.format(json.dumps(DATA_SETS['NONE']))
         reply = send_and_resc(sock, command)
-        assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#'))
+        assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
-        assert(data_back == 'None')
+        assert data_back == 'None'
 
 
 class TestEnqueue(object):
@@ -547,8 +555,9 @@ class TestEnqueue(object):
     dps_kwargs = {'action': 'enqueue'}
 
     def test_enqueue(self, sock, data_sample, dps):
-        """Test that data is enqueued (queue fixture returns both custom queue and
-        None)
+        """Test that data is enqueued (queue fixture returns both custom queue
+        and None)
+
         """
         # Send data
         for data in data_sample['data']:
@@ -556,21 +565,24 @@ class TestEnqueue(object):
             sock.sendto(command, (HOST, PORT))
             reply = sock.recv(1024)
             # Check that the command was successful
-            assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK))
+            assert reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK)
         # Check that it was received
         for data in data_sample['data']:
             data_received = dps.queue.get()
-            assert(data == data_received)
+            assert data == data_received
         # Check that queue has been emptied and that last and updated makes
         # sense
-        assert(dps.queue.qsize() == 0)
-        assert(dps.last[1] == data_sample['last'])
-        assert(dps.updated[1] == data_sample['updated'])
+        assert dps.queue.qsize() == 0
+        assert dps.last[1] == data_sample['last']
+        assert dps.updated[1] == data_sample['updated']
 
     def test_own_dequeuer(self, sock, data_sample, dps):
-        """Test manual dequeuer (queue fixture returns both custom queue and None)
+        """Test manual dequeuer (queue fixture returns both custom queue and
+        None)
+
         """
         dequeuer = Dequeuer(dps.queue)
+        dequeuer.start()
         # Send data
         local_data = []
         for data in data_sample['data']:
@@ -579,15 +591,15 @@ class TestEnqueue(object):
             local_data.append((time.time(), data))
             reply = sock.recv(1024)
             # Check that the command was successful
-            assert(reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK))
+            assert reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK)
         # Give the dps time to clear the queue
         time.sleep(0.1)
         dequeuer.stop = True
         time.sleep(0.1)
         # Check that the correct data is there and received in less than 10 ms
         for sent, received in zip(local_data, dequeuer.received):
-            assert(abs(received[0] - sent[0])  < 0.010)
-            assert(sent[1] == received[1])
+            assert abs(received[0] - sent[0]) < 0.010
+            assert sent[1] == received[1]
 
 
 class TestEnqueueCustomQueue(TestEnqueue):
@@ -605,6 +617,7 @@ class Dequeuer(threading.Thread):
         super(Dequeuer, self).__init__()
         self.received = []
         self.stop = False
+        self.queue = queue
 
     def run(self):
         """Pull item from the queue"""
