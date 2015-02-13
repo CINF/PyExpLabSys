@@ -1,24 +1,12 @@
 # -*- coding: utf-8 -*-
-"""
-Spyder Editor
-
-Author:
-Anders Nierhoff
-
-changed:
-2014-10-01
-"""
-
-
 import time
 import threading
 import curses
 import socket
-import serial 
 from datetime import datetime
 import PyExpLabSys.drivers.cpx400dp as CPX
-from PyExpLabSys.common.sockets import DateDataPullSocket
-from PyExpLabSys.common.sockets import DataPushSocket
+#from PyExpLabSys.common.sockets import DateDataPullSocket
+#from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.loggers import ContinuousLogger
 import credentials
 
@@ -31,34 +19,29 @@ log = open('error_log.txt', 'w')
 db_logger = ContinuousLogger(table='dateplots_stm312',
                              username=credentials.user,
                              password=credentials.passwd,
-                             measurement_codenames = ['stm312_hpc_psu_voltage', 'stm312_hpc_psu_current']) 
+                             measurement_codenames = ['stm312_hpc_psu_voltage', 'stm312_hpc_psu_current'])
 
 class PID(object):
     """Implementation of a PID routine
-
-    Iterates over all devices in /dev/input/event?? and looks for one that has
-    'Barcode Reader' in its description.
-
-    Returns:
-        str: The Barcode Scanner device path
     """
     
     def __init__(self, case=None):
-        """The input parameter case is used to simplify that several system is sharing the software, each with it own parametors."""
+        """The input parameter case is used to simplify that several
+        system is sharing the software, each with it own parametors."""
         if case == None:
             self.gain = {'Kp':0.15,
                          'Ki':0.0025,
                          'Kd':0.0,
                          'Pmax':100.0,
                          'Pmin':0.0}
-            pass
         elif case == 'stm312 hpc':
             self.gain = {'Kp':1.7,
                          'Ki':0.015,
                          'Kd':0.0,
                          'Pmax':90.0,
                          'Pmin':0.0}
-        """ Provid a starting setpoit to ensure that the PID does not apply any power before an actual setpoit is set."""
+        """ Provid a starting setpoit to ensure that the PID does not
+        apply any power before an actual setpoit is set."""
         self.setpoint = -9999
         self.Kp = self.gain['Kp']
         self.Ki = self.gain['Ki']
@@ -89,7 +72,7 @@ class PID(object):
         return setpoint
 
     def get_new_Power(self,T):
-        """ Get new power for system, P_i+1 
+        """ Get new power for system, P_i+1
         :param T: Actual temperature
         :type T: float
         :returns: best guess of need power
@@ -99,10 +82,10 @@ class PID(object):
         self.currtm = time.time()
         dt = self.currtm - self.prevtm
         de = error - self.prev_err
-        """ Calculate proportional gain. """
+        # Calculate proportional gain.
         self.Cp = error
         
-        """ Calculate integral gain, including limits """
+        # Calculate integral gain, including limits
         if self.prev_P > self.Pmax and error > 0:
             pass
         elif self.prev_P < self.Pmin and error < 0:
@@ -110,13 +93,13 @@ class PID(object):
         else:
             self.Ci += error * dt
         
-        """ Calculate derivative gain. """
+        # Calculate derivative gain.
         if dt > 0:
             self.Cd = de/dt 
         else:
             self.Cd = 0
             
-        """ Adjust times, and error for next iteration. """
+        # Adjust times, and error for next iteration.
         self.prevtm = self.currtm
         self.prev_err = error
         
@@ -130,7 +113,7 @@ class PID(object):
         if P > self.Pmax:
             P = self.Pmax
         if P < 0:
-            P = 0 
+            P = 0
         return P
 
 class ValueLogger(object):
@@ -192,67 +175,94 @@ class CursesTui(threading.Thread):
     def run(self,):
         while self.running:
             try:
-                self.screen.addstr(3, 2, "Power Supply for HPC " \
-                                       "stm312, ID: {}".format(self.pcc.status['ID']))
+                self.screen.addstr(3, 2,
+                                   "Power Supply for HPC " \
+                                   "stm312, ID: {}".format(
+                                    self.pcc.status['ID']))
             except Exception, e:
-                self.screen.addstr(3, 2, 'Power Supply for HPC stm312, ID: {}'.format(e))
-                pass
+                self.screen.addstr(3, 2,
+                                   "Power Supply for HPC stm312," \
+                                   " ID: {}".format(e))
             if self.pcc.status['Output']:
-                self.screen.addstr(4, 2, "Power Output: {}    ".format(
-                        self.pcc.status['Output']))
-                self.screen.addstr(5, 2, "Control mode: {}    ".format(
-                        self.pcc.status['Mode']))
+                self.screen.addstr(4, 2,
+                                   "Power Output: {}    ".format(
+                                       self.pcc.status['Output']))
+                self.screen.addstr(5, 2,
+                                   "Control mode: {}    ".format(
+                                       self.pcc.status['Mode']))
             try:
-                self.screen.addstr(6, 2, 
+                self.screen.addstr(6, 2,
                                    "Current:    {0:+.2f} A  -  " \
                                    "{1:+.2f} A     ".format(
-                                           self.pcc.status['Current'],
-                                           self.pcc.status['Wanted Current']))
-                self.screen.addstr(7, 2, "Voltage:    {0:+.2f} V  -  " \
-                                       "{1:+.2f} V     ".format(
-                        self.pcc.status['Voltage'],
-                        self.pcc.status['Wanted Voltage']))
-                self.screen.addstr(8, 2, "Power:      {0:+.2f} W  -  " \
-                                       "{1:+.2f} W     ".format(
-                        self.pcc.status['Actual Power'],
-                        self.pcc.status['Wanted Power']))
+                                       self.pcc.status['Current'],
+                                       self.pcc.status['Wanted Current']))
+                self.screen.addstr(7, 2,
+                                   "Voltage:    {0:+.2f} V  -  " \
+                                   "{1:+.2f} V     ".format(
+                                       self.pcc.status['Voltage'],
+                                       self.pcc.status['Wanted Voltage']))
+                self.screen.addstr(8, 2,
+                                   "Power:      {0:+.2f} W  -  " \
+                                   "{1:+.2f} W     ".format(
+                                       self.pcc.status['Actual Power'],
+                                       self.pcc.status['Wanted Power']))
                 self.screen.addstr(9, 2, "Resistance: {0:+.3f} Ohm     ".format(
                         self.pcc.status['Resistance']))
-                self.screen.addstr(11, 2, "Temperature: {0:+.2f}C" \
-                                       "     ".format(self.pcc.status['Temperature']))
+                self.screen.addstr(11, 2,
+                                   "Temperature: {0:+.2f}C" \
+                                   "     ".format(
+                                       self.pcc.status['Temperature']))
                 try:
-                    self.screen.addstr(12, 2, "Setpoint: {0:+.2f} {}" \
-                                           "        ".format(
-                            self.pcc.status['Setpoint'],
-                            self.pcc.status['Setpoint unit']))
+                    self.screen.addstr(12, 2,
+                                       "Setpoint: {0:+.2f} {}" \
+                                       "        ".format(
+                                           self.pcc.status['Setpoint'],
+                                           self.pcc.status['Setpoint unit']))
                 except:
                     self.screen.addstr(12, 2, "Setpoint: {0:+.2f}".format(
                             self.pcc.status['Setpoint']))
             except Exception as exception:
                 global EXCEPTION
                 EXCEPTION = exception
-                pass
             if self.pcc.status['error'] != None:
-                self.screen.addstr(17,2, 'Latest error message: ' + str(self.pcc.status['error']) + ' at time: ' + str(self.pcc.status['error time']-self.time))
+                self.screen.addstr(17, 2,
+                                   "Latest error message: {}" \
+                                   ", at time: {}".format(
+                                       self.pcc.status['error'],
+                                       self.pcc.status['error time']-self.time))
             #if self.pcc.status['error'] != None:
-            #    self.screen.addstr(17,2, 'Latest error message: ' + str(self.pcc.status['error']) + ' at time: ' + str(self.pcc.status['error time']))
-            self.screen.addstr(16,2,"Runtime: {0:.0f}s     ".format(time.time() - self.time))
+            self.screen.addstr(16, 2,
+                               "Runtime: {0:.0f}s     ".format(
+                                   time.time() - self.time))
             if self.countdown:
-                self.screen.addstr(17, 2, "Time until shutdown: {0:.0f} s ( {1:.1f} h )              ".format(
-                        (self.countdown_end_time - time.time()),
-                        (self.countdown_end_time - time.time())/3600.0 )
-                                   )
+                self.screen.addstr(17, 2,
+                                   "Time until shutdown: {0:.0f} s " \
+                                   "( {1:.1f} h )              ".format(
+                                       (self.countdown_end_time - time.time()),
+                                       (self.countdown_end_time - time.time())/3600.0 ))
                 if time.time() > self.countdown_end_time:
                     self.pcc.change_mode('Voltage Control')
                     #self.pcc.OutputOff()
                     self.countdown = False
             else:
-                self.screen.addstr(17, 2, "Time until shutdown: -                ")
+                self.screen.addstr(17, 2,
+                                   "Time until shutdown: -                ")
             if self.last_key != None:
-                self.screen.addstr(24,2, ' Latest key: ' + str(self.last_key))
-            self.screen.addstr(21,2,"q: quit program, z: increas setpoint, x: decrease setpoint     ")
-            self.screen.addstr(22,2,"t: PID temperature control, i, fixed current, v: fixed voltage, p: fixed power     ")
-            self.screen.addstr(23, 2, "3: shutdown in 3h, 8: shutdown -900s, 9: shutdown +900s")
+                self.screen.addstr(24, 2,
+                                   " Latest key: ".format(self.last_key))
+            self.screen.addstr(21, 2,
+                               "q: quit program, " \
+                               "z: increas setpoint, " \
+                               "x: decrease setpoint     ")
+            self.screen.addstr(22, 2,
+                               "t: PID temperature control, " \
+                               "i, fixed current, " \
+                               "v: fixed voltage, " \
+                               "p: fixed power     ")
+            self.screen.addstr(23, 2,
+                               "3: shutdown in 3h, " \
+                               "8: shutdown -900s, " \
+                               "9: shutdown +900s")
             
             n = self.screen.getch()
             if n == ord("q"):
@@ -277,7 +287,7 @@ class CursesTui(threading.Thread):
             elif n == ord('x'):
                 self.pcc.decrease_setpoint()
                 self.last_key = chr(n)
-            elif n  == ord('3'):
+            elif n == ord('3'):
                 self.countdown = True
                 self.countdown_end_time = time.time() + 3*3600.0 # sencond
                 self.last_key = chr(n)
@@ -309,7 +319,11 @@ def sqlTime():
 
 def sqlInsert(query):
     try:
-        cnxn = MySQLdb.connect(host="servcinf",user="stm312",passwd="stm312",db="cinfdata")
+        cnxn = MySQLdb.connect(
+            host="servcinf",
+            user="stm312",
+            passwd="stm312",
+            db="cinfdata")
         cursor = cnxn.cursor()
     except:
 	print "Unable to connect to database"
@@ -339,11 +353,11 @@ def read_hp_temp():
     sock.settimeout(0.2)
     sock.sendto(data, (host, port))
     received = sock.recv(1024)
-    temp =float(received[received.find(',')+1:])
+    temp = float(received[received.find(',')+1:])
     return(temp)
 
 def read_setpoint():
-    received = network_comm('rasppi19',9990, 'read_setpoint')
+    received = network_comm('rasppi19', 9990, 'read_setpoint')
     temp = float(received)
     return(temp)
 
@@ -502,8 +516,13 @@ class PowerControlClass(threading.Thread):
         self.change_setpoint(setpoint)
         
     def change_mode(self, new_mode):
-        if new_mode in ['Temperature Control', 'Power Control', 'Current Control', 'Voltage Control']:
-            if new_mode in ['Power Control', 'Current Control', 'Voltage Control']:
+        if new_mode in ['Temperature Control',
+                        'Power Control',
+                        'Current Control',
+                        'Voltage Control']:
+            if new_mode in ['Power Control',
+                            'Current Control',
+                            'Voltage Control']:
                 self.change_setpoint(0.0)
             elif new_mode in  ['Temperature Control']:
                 self.change_setpoint(23.0)
@@ -568,8 +587,7 @@ class PowerControlClass(threading.Thread):
 
 if __name__ == '__main__':
     print('Program start')
-
-    #classes: 
+    #classes:
     TempClass = TemperatureClass()
     TempClass.start()
     time.sleep(2)
