@@ -273,7 +273,7 @@ class XRC1000(threading.Thread):
         :rtype float
         """
         try:
-            self.sock.sendto('water_flow#json', self.address_port)
+            self.sock.sendto('stm312_xray_waterflow#json', self.address_port)
             answer = self.sock.recvfrom(1024)
             water_flow_time, water_flow = json.loads(answer[0])
         except:
