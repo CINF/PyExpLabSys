@@ -12,14 +12,10 @@ changed:
 
 import time
 import threading
-#import subprocess
 import curses
 import socket
 import serial 
 from datetime import datetime
-#import MySQLdb
-#import sys
-#sys.path.append('../../')
 import PyExpLabSys.drivers.cpx400dp as CPX
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
@@ -27,16 +23,17 @@ from PyExpLabSys.common.loggers import ContinuousLogger
 import credentials
 
 EXCCEPTION = None
-log = open('eroor_log.txt', 'w')
+log = open('error_log.txt', 'w')
 
 #output = 'print'
 #output = 'curses'
 
 db_logger = ContinuousLogger(table='dateplots_stm312',
-                             username=credentials.user, password=credentials.passwd,
+                             username=credentials.user,
+                             password=credentials.passwd,
                              measurement_codenames = ['stm312_hpc_psu_voltage', 'stm312_hpc_psu_current']) 
 
-class PID():
+class PID(object):
     """Implementation of a PID routine
 
     Iterates over all devices in /dev/input/event?? and looks for one that has
@@ -49,11 +46,18 @@ class PID():
     def __init__(self, case=None):
         """The input parameter case is used to simplify that several system is sharing the software, each with it own parametors."""
         if case == None:
-            self.gain = {'Kp':0.15,'Ki':0.0025,'Kd':0.0,'Pmax':100.0, 'Pmin':0.0}
+            self.gain = {'Kp':0.15,
+                         'Ki':0.0025,
+                         'Kd':0.0,
+                         'Pmax':100.0,
+                         'Pmin':0.0}
             pass
         elif case == 'stm312 hpc':
-            self.gain = {'Kp':1.7, 'Ki':0.015, 'Kd':0.0, 'Pmax':90.0, 'Pmin':0.0}
-            
+            self.gain = {'Kp':1.7,
+                         'Ki':0.015,
+                         'Kd':0.0,
+                         'Pmax':90.0,
+                         'Pmin':0.0}
         """ Provid a starting setpoit to ensure that the PID does not apply any power before an actual setpoit is set."""
         self.setpoint = -9999
         self.Kp = self.gain['Kp']
@@ -62,18 +66,13 @@ class PID():
         self.Pmax = self.gain['Pmax']
         self.Pmin = self.gain['Pmin']
         self.initialize()
-        """datasocket = DateDataPullSocket('furnaceroom_reader',
-                                    ['T1', 'T2', 'S1', 'S2'],
-                                    timeouts=[3.0, 3.0, 9999999, 99999999], port=9001)
-        """
+
     def initialize(self,):
         """ Initialize delta t variables. """
         self.currtm = time.time()
         self.prevtm = self.currtm
-
         self.prev_err = 0
         self.prev_P = 0
-
         # term result variables
         self.Cp = 0
         self.Ci = 0
@@ -91,17 +90,15 @@ class PID():
 
     def get_new_Power(self,T):
         """ Get new power for system, P_i+1 
-
         :param T: Actual temperature
         :type T: float
         :returns: best guess of need power
         :rtype: float
         """
         error = self.setpoint - T
-        self.currtm = time.time()               # get t
-        dt = self.currtm - self.prevtm          # get delta t
-        de = error - self.prev_err  
-        
+        self.currtm = time.time()
+        dt = self.currtm - self.prevtm
+        de = error - self.prev_err
         """ Calculate proportional gain. """
         self.Cp = error
         
@@ -114,17 +111,19 @@ class PID():
             self.Ci += error * dt
         
         """ Calculate derivative gain. """
-        if dt > 0:                              # no div by zero
+        if dt > 0:
             self.Cd = de/dt 
         else:
             self.Cd = 0
             
         """ Adjust times, and error for next iteration. """
-        self.prevtm = self.currtm               # save t for next pass
-        self.prev_err = error                   # save t-1 error
+        self.prevtm = self.currtm
+        self.prev_err = error
         
         """ Calculate Output. """
-        P = self.Kp * self.Cp + self.Ki * self.Ci + self.Kd * self.Cd
+        P = self.Kp * self.Cp + \
+            self.Ki * self.Ci + \
+            self.Kd * self.Cd
         self.prev_P = P
         
         """ Check if output is valid. """
@@ -134,11 +133,13 @@ class PID():
             P = 0 
         return P
 
-class ValueLogger():
+class ValueLogger(object):
     """ Read a continuously updated values and decides
     whether it is time to log a new point """
     def __init__(self, maximumtime=600,
-                 comp_type = 'lin', comp_val = 1, codename = None):
+                 comp_type='lin',
+                 comp_val=1,
+                 codename=None):
         self.maximumtime = maximumtime
         self.compare = {'type':comp_type, 'val':comp_val}
         self.codename = codename
@@ -155,9 +156,13 @@ class ValueLogger():
         self.value = value
         time_trigged = ((time.time() - self.last['time']) > self.maximumtime)
         if self.compare['type'] == 'lin':
-            val_trigged = not (self.last['val'] - self.compare['val'] < self.value < self.last['val'] + self.compare['val'])
+            val_trigged = not (self.last['val'] - self.compare['val'] <
+                               self.value <
+                               self.last['val'] + self.compare['val'])
         elif self.compare['type'] == 'log':
-            val_trigged = not (self.last['val'] * (1 - self.compare['val']) < self.value < self.last['val'] * (1 + self.compare['val']))
+            val_trigged = not (self.last['val'] * (1 - self.compare['val']) <
+                               self.value <
+                               self.last['val'] * (1 + self.compare['val']))
         if (time_trigged or val_trigged) and (self.value > 0):
             self.status['trigged'] = True
             self.last['time'] = time.time()
@@ -170,7 +175,7 @@ class ValueLogger():
             self.status['trigged'] = False
 
 class CursesTui(threading.Thread):
-    def __init__(self,powercontrolclass):
+    def __init__(self, powercontrolclass):
         threading.Thread.__init__(self)
         self.pcc = powercontrolclass
         self.screen = curses.initscr()
@@ -187,23 +192,42 @@ class CursesTui(threading.Thread):
     def run(self,):
         while self.running:
             try:
-                self.screen.addstr(3, 2, "Power Supply for HPC stm312, ID: {}".format(self.pcc.status['ID']))
+                self.screen.addstr(3, 2, "Power Supply for HPC " \
+                                       "stm312, ID: {}".format(self.pcc.status['ID']))
             except Exception, e:
                 self.screen.addstr(3, 2, 'Power Supply for HPC stm312, ID: {}'.format(e))
                 pass
             if self.pcc.status['Output']:
-                self.screen.addstr(4, 2, 'Power Output: '+str(self.pcc.status['Output']))
-                self.screen.addstr(5, 2, 'Control mode: '+str(self.pcc.status['Mode'])+'      ')
+                self.screen.addstr(4, 2, "Power Output: {}    ".format(
+                        self.pcc.status['Output']))
+                self.screen.addstr(5, 2, "Control mode: {}    ".format(
+                        self.pcc.status['Mode']))
             try:
-                self.screen.addstr(6, 2, "Current:    {0:+.2f} A  -  {1:+.2f} A     ".format(self.pcc.status['Current'], self.pcc.status['Wanted Current']))
-                self.screen.addstr(7, 2, "Voltage:    {0:+.2f} V  -  {1:+.2f} V     ".format(self.pcc.status['Voltage'], self.pcc.status['Wanted Voltage']))
-                self.screen.addstr(8, 2, "Power:      {0:+.2f} W  -  {1:+.2f} W     ".format(self.pcc.status['Actual Power'],self.pcc.status['Wanted Power']))
-                self.screen.addstr(9, 2, "Resistance: {0:+.3f} Ohm     ".format(self.pcc.status['Resistance']))
-                self.screen.addstr(11, 2, "Temperature: {0:+.2f}C     ".format(self.pcc.status['Temperature']))
+                self.screen.addstr(6, 2, 
+                                   "Current:    {0:+.2f} A  -  " \
+                                   "{1:+.2f} A     ".format(
+                                           self.pcc.status['Current'],
+                                           self.pcc.status['Wanted Current']))
+                self.screen.addstr(7, 2, "Voltage:    {0:+.2f} V  -  " \
+                                       "{1:+.2f} V     ".format(
+                        self.pcc.status['Voltage'],
+                        self.pcc.status['Wanted Voltage']))
+                self.screen.addstr(8, 2, "Power:      {0:+.2f} W  -  " \
+                                       "{1:+.2f} W     ".format(
+                        self.pcc.status['Actual Power'],
+                        self.pcc.status['Wanted Power']))
+                self.screen.addstr(9, 2, "Resistance: {0:+.3f} Ohm     ".format(
+                        self.pcc.status['Resistance']))
+                self.screen.addstr(11, 2, "Temperature: {0:+.2f}C" \
+                                       "     ".format(self.pcc.status['Temperature']))
                 try:
-                    self.screen.addstr(12, 2, "Setpoint: {0:+.2f} {}        ".format(self.pcc.status['Setpoint'],self.pcc.status['Setpoint unit']))
+                    self.screen.addstr(12, 2, "Setpoint: {0:+.2f} {}" \
+                                           "        ".format(
+                            self.pcc.status['Setpoint'],
+                            self.pcc.status['Setpoint unit']))
                 except:
-                    self.screen.addstr(12, 2, "Setpoint: {0:+.2f}".format(self.pcc.status['Setpoint']))
+                    self.screen.addstr(12, 2, "Setpoint: {0:+.2f}".format(
+                            self.pcc.status['Setpoint']))
             except Exception as exception:
                 global EXCEPTION
                 EXCEPTION = exception
@@ -325,7 +349,7 @@ def read_setpoint():
 
 def write_setpoint(setpoint):
     #print "write_setpoint {}".format(setpoint)
-    received = network_comm('rasppi19',9990, 'set_setpoint '+str(setpoint))
+    received = network_comm('rasppi19', 9990, 'set_setpoint '+str(setpoint))
     #temp = float(received)
     #return(temp)
 
@@ -392,7 +416,7 @@ class PowerControlClass(threading.Thread):
         
         self.status['ID'] = '0'
     
-    def init_temp_class(self,temp_class):
+    def init_temp_class(self, temp_class):
         self.temp_class = temp_class
         
     def init_PID_class(self,):
@@ -409,16 +433,22 @@ class PowerControlClass(threading.Thread):
         
     def init_heater_class(self,):
         dev_port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F9545A-if00'
-        self.heater = CPX.CPX400DPDriver(1, interface = 'serial', device=dev_port)
+        self.heater = CPX.CPX400DPDriver(1, interface='serial', device=dev_port)
         self.status['ID'] = self.heater.read_software_version()
         print 'ID: ' + self.status['ID']
         #print 'Type: ' + type(self.status['ID'])
 
-    def init_logger(self,db_logger):
+    def init_logger(self, db_logger):
         self.db_logger = db_logger
         self.valuelogger = {}
-        self.valuelogger['Current'] = ValueLogger(maximumtime=600, comp_type = 'lin', comp_val = 0.2, codename = 'stm312_hpc_psu_current')
-        self.valuelogger['Voltage'] = ValueLogger(maximumtime=600, comp_type = 'lin', comp_val = 0.2, codename = 'stm312_hpc_psu_voltage')
+        self.valuelogger['Current'] = ValueLogger(maximumtime=600,
+                                                  comp_type='lin',
+                                                  comp_val=0.2,
+                                                  codename='stm312_hpc_psu_current')
+        self.valuelogger['Voltage'] = ValueLogger(maximumtime=600,
+                                                  comp_type='lin',
+                                                  comp_val=0.2,
+                                                  codename='stm312_hpc_psu_voltage')
         self.valuelogger['Current'].add_logger(self.db_logger)
         self.valuelogger['Voltage'].add_logger(self.db_logger)
         self.logger = True
@@ -442,38 +472,38 @@ class PowerControlClass(threading.Thread):
     def update_output(self,):
         self.status['Current'] = self.heater.read_actual_current()
         self.status['Voltage'] = self.heater.read_actual_voltage()
-        self.status['Actual Power'] = self.status['Current']* self.status['Voltage']
+        self.status['Actual Power'] = self.status['Current'] * self.status['Voltage']
         self.status['Resistance'] = self.status['Voltage'] / self.status['Current']
         if not 0.4 < self.status['Resistance'] < 2.5:
             self.status['Resistance'] = 1.0
         
-    def change_setpoint(self,setpoint):
+    def change_setpoint(self, setpoint):
         try:
             write_setpoint(setpoint)
         except:
             self.status['error'] = 'COM error with socket server'
             self.status['error time'] = time.time()
         self.status['Setpoint'] = read_setpoint()
-            
+
     def increase_setpoint(self,):
         setpoint = read_setpoint()
         if self.status['Mode'] == 'Temperature Control':
             setpoint += 1
-        elif self.status['Mode'] in ['Power Control','Current Control','Voltage Control']:
+        elif self.status['Mode'] in ['Power Control', 'Current Control', 'Voltage Control']:
             setpoint += 0.1
         self.change_setpoint(setpoint)
-        
+
     def decrease_setpoint(self,):
         setpoint = read_setpoint()
         if self.status['Mode'] == 'Temperature Control':
             setpoint -= 1
-        elif self.status['Mode'] in ['Power Control','Current Control','Voltage Control']:
+        elif self.status['Mode'] in ['Power Control', 'Current Control', 'Voltage Control']:
             setpoint -= 0.1
         self.change_setpoint(setpoint)
         
-    def change_mode(self,new_mode):
-        if new_mode in ['Temperature Control','Power Control','Current Control','Voltage Control']:
-            if new_mode in ['Power Control','Current Control','Voltage Control']:
+    def change_mode(self, new_mode):
+        if new_mode in ['Temperature Control', 'Power Control', 'Current Control', 'Voltage Control']:
+            if new_mode in ['Power Control', 'Current Control', 'Voltage Control']:
                 self.change_setpoint(0.0)
             elif new_mode in  ['Temperature Control']:
                 self.change_setpoint(23.0)
@@ -501,15 +531,15 @@ class PowerControlClass(threading.Thread):
             if self.status['Mode'] == 'Temperature Control':
                 self.pid.update_setpoint(self.status['Setpoint'])
                 self.status['Wanted Power'] = self.pid.get_new_Power(self.status['Temperature'])
-                self.status['Wanted Voltage'] = ( self.status['Wanted Power']* self.status['Resistance'] )**0.5
+                self.status['Wanted Voltage'] = ( self.status['Wanted Power'] * self.status['Resistance'] )**0.5
             elif self.status['Mode'] == 'Power Control':
                 if self.status['Setpoint'] > 0 or self.status['Setpoint'] < 100:
                     self.status['Wanted Power'] = self.status['Setpoint']
-                    self.status['Wanted Voltage'] = ( self.status['Wanted Power']* self.status['Resistance'] )**0.5
+                    self.status['Wanted Voltage'] = ( self.status['Wanted Power'] * self.status['Resistance'] )**0.5
             elif self.status['Mode'] == 'Current Control':
                 if self.status['Setpoint'] > 0 or self.status['Setpoint'] < 10:
                     self.status['Wanted Current'] = self.status['Setpoint']
-                    self.status['Wanted Voltage'] = self.status['Resistance']* self.status['Wanted Current']
+                    self.status['Wanted Voltage'] = self.status['Resistance'] * self.status['Wanted Current']
             elif self.status['Mode'] == 'Voltage Control':
                 if self.status['Setpoint'] > 0 or self.status['Setpoint'] < 10:
                     self.status['Wanted Voltage'] = self.status['Setpoint']
@@ -538,21 +568,7 @@ class PowerControlClass(threading.Thread):
 
 if __name__ == '__main__':
     print('Program start')
-    
-    #db_logger = ContinuousLogger(table='',username='',password='',measurement_codenames=['',])
-    db_logger.start()
-        
-    """datasocket = DateDataPullSocket('stm312_hpc_temperature_control',
-                                    ['global_temperature', 'global_pressure', 'hp_temp', 'setpoint'],
-                                    timeouts=[3.0, 3.0, 9999999, 99999999], port=9001)
-    datasocket.start()
-    
-    pushsocket = DataPushSocket('stm312_hpc_temperature_control_push', action='store_last')
-    pushsocket.start()
-    """
-    
-    #read_hp_temp()
-    
+
     #classes: 
     TempClass = TemperatureClass()
     TempClass.start()
@@ -567,4 +583,3 @@ if __name__ == '__main__':
     tui = CursesTui(pcc)
     tui.daemon = True
     tui.start()
-
