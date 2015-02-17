@@ -1,3 +1,5 @@
+""" Tui for controling the temperature of the high pressure
+cell of stm312"""
 # -*- coding: utf-8 -*-
 import time
 import threading
@@ -19,7 +21,8 @@ log = open('error_log.txt', 'w')
 db_logger = ContinuousLogger(table='dateplots_stm312',
                              username=credentials.user,
                              password=credentials.passwd,
-                             measurement_codenames = ['stm312_hpc_psu_voltage', 'stm312_hpc_psu_current'])
+                             measurement_codenames=['stm312_hpc_psu_voltage',
+                                                    'stm312_hpc_psu_current'])
 
 class PID(object):
     """Implementation of a PID routine
@@ -40,81 +43,105 @@ class PID(object):
                          'Kd':0.0,
                          'Pmax':90.0,
                          'Pmin':0.0}
-        """ Provid a starting setpoit to ensure that the PID does not
-        apply any power before an actual setpoit is set."""
+        #Provid a starting setpoit to ensure that the PID does not
+        #apply any power before an actual setpoit is set.
         self.setpoint = -9999
-        self.Kp = self.gain['Kp']
-        self.Ki = self.gain['Ki']
-        self.Kd = self.gain['Kd']
-        self.Pmax = self.gain['Pmax']
-        self.Pmin = self.gain['Pmin']
-        self.initialize()
+        #self.Kp = self.gain['Kp']
+        #self.Ki = self.gain['Ki']
+        #self.Kd = self.gain['Kd']
+        self.pid_coef = {'p': self.gain['Kp'],
+                         'i': self.gain['Ki'],
+                         'd': self.gain['Kd']}
+        #self.Pmax = self.gain['Pmax']
+        #self.Pmin = self.gain['Pmin']
+        # stating power values
+        self.power = {'current': 0.0,
+                      'prev': 0.0,
+                      'max': self.gain['Pmax'],
+                      'min': self.gain['Pmin']}
+        #self.initialize()
+        self.time = {'current': time.time(),
+                     'prev': time.time()}
+        self.error = {'current': 0.0, 'prev': 0.0}
+        self.prev_err = 0.0
+        #self.prev_power = 0.0
 
-    def initialize(self,):
-        """ Initialize delta t variables. """
-        self.currtm = time.time()
-        self.prevtm = self.currtm
-        self.prev_err = 0
-        self.prev_P = 0
-        # term result variables
-        self.Cp = 0
-        self.Ci = 0
-        self.Cd = 0
-        self.P = 0
+        self.cumulated = {'p': 0.0,
+                          'i': 0.0,
+                          'd': 0.0}
+        
+    #def initialize(self,):
+    #    """ Initialize delta t variables. """
+    #    self.currtm = time.time()
+    #    self.prevtm = self.currtm
+    #    self.prev_err = 0
+    #    self.prev_P = 0
+    #    # term result variables
+    #    self.Cp = 0
+    #    self.Ci = 0
+    #    self.Cd = 0
+    #    self.P = 0
 
     def reset_integrated_error(self):
         """ Reset the I value, integrated error. """
-        self.Ci = 0
+        #self.Ci = 0
+        self.cumulated['i'] = 0.0
 
     def update_setpoint(self, setpoint):
         """ Update the setpoint."""
         self.setpoint = setpoint
         return setpoint
 
-    def get_new_Power(self,T):
+    def get_new_Power(self, T):
         """ Get new power for system, P_i+1
         :param T: Actual temperature
         :type T: float
         :returns: best guess of need power
         :rtype: float
         """
-        error = self.setpoint - T
-        self.currtm = time.time()
-        dt = self.currtm - self.prevtm
-        de = error - self.prev_err
+        self.error['current'] = self.setpoint - T
+        #self.currtm = time.time()
+        self.time['current'] = time.time()
+        #dt = self.currtm - self.prevtm
+        dt = self.time['current'] - self.time['prev']
+        de = self.error['currrent'] - self.error['prev']
         # Calculate proportional gain.
-        self.Cp = error
+        self.cumulated['p'] = self.error['current']
         
         # Calculate integral gain, including limits
-        if self.prev_P > self.Pmax and error > 0:
+        if self.power['prev'] > self.power['max'] and self.error['current'] > 0:
             pass
-        elif self.prev_P < self.Pmin and error < 0:
+        elif self.power['prev'] < self.power['min'] and self.error['current'] < 0:
             pass
         else:
-            self.Ci += error * dt
+            self.cumulated['i'] += self.error['current'] * dt
         
         # Calculate derivative gain.
         if dt > 0:
-            self.Cd = de/dt 
+            self.cumulated['d'] = de/dt
         else:
-            self.Cd = 0
+            self.cumulated['d'] = 0
             
         # Adjust times, and error for next iteration.
-        self.prevtm = self.currtm
-        self.prev_err = error
+        #self.prevtm = self.currtm
+        self.time['prev'] = self.time['current']
+        self.error['prev'] = self.error['current']
         
-        """ Calculate Output. """
-        P = self.Kp * self.Cp + \
-            self.Ki * self.Ci + \
-            self.Kd * self.Cd
-        self.prev_P = P
+        #Calculate Output.
+        self.power['current'] = 0
+        for key, value in self.pid_coef.iteritems():
+            self.power['current'] += value*self.cumulated[key]
+        #P = self.Kp * self.Cp + \
+        #    self.Ki * self.Ci + \
+        #    self.Kd * self.Cd
+        self.power['prev'] = self.power['current']
         
-        """ Check if output is valid. """
-        if P > self.Pmax:
-            P = self.Pmax
-        if P < 0:
-            P = 0
-        return P
+        #Check if output is valid.
+        if self.power['current'] > self.power['max']:
+            self.power['current'] = self.power['max']
+        if self.power['current'] < 0:
+            self.power['current'] = 0
+        return self.power['current']
 
 class ValueLogger(object):
     """ Read a continuously updated values and decides
@@ -158,6 +185,8 @@ class ValueLogger(object):
             self.status['trigged'] = False
 
 class CursesTui(threading.Thread):
+    """ the display TUI for changing and chowing the temperature of the high
+    pressure cell"""
     def __init__(self, powercontrolclass):
         threading.Thread.__init__(self)
         self.pcc = powercontrolclass
@@ -314,7 +343,7 @@ class CursesTui(threading.Thread):
 
 def sqlTime():
     sqltime = datetime.now().isoformat(' ')[0:19]
-    return(sqltime)
+    return sqltime
 
 
 def sqlInsert(query):

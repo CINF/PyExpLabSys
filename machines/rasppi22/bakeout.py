@@ -1,3 +1,5 @@
+"""Program for showing and controling the bakeout box rasppi22
+conencted to stm312"""
 # -*- coding: utf-8 -*-
 import time
 import sys
@@ -34,7 +36,7 @@ class CursesTui(threading.Thread):
                     time.time() - self.watchdog.timer))
             self.screen.addstr(6, 2,
                                "Watchdog safe: {}    ".format(
-                    self.watchdog.watchdog_safe)) 
+                    self.watchdog.watchdog_safe))
 
             self.screen.addstr(8, 2,
                                'Current channel status:')
@@ -61,7 +63,7 @@ class CursesTui(threading.Thread):
             n = self.screen.getch()
 
             self.screen.addstr(20, 2,
-                               "Last key stroke: {}     ".fomrat(n))
+                               "Last key stroke: {}     ".format(n))
 
             if n == ord('1'):
                 self.baker.modify_dutycycle(1, 0.1)
@@ -97,20 +99,22 @@ class CursesTui(threading.Thread):
             time.sleep(0.2)
 
     def stop(self):
+        """An attempt of a clean exit"""
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
-        curses.endwin()    
+        curses.endwin()
 
 
 
 class Watchdog(threading.Thread):
-    """ timer for ensuring that 100% power is not posible even if the program fails"""
+    """ timer for ensuring that 100% power
+    is not posible even if the program fails"""
     def __init__(self):
-	threading.Thread.__init__(self)
+        threading.Thread.__init__(self)
         wp.pinMode(0, 1)
-	self.timer = time.time()
-	self.cycle_time = 120
+        self.timer = time.time()
+        self.cycle_time = 120
         self.safety_margin = 3
         self.watchdog_safe = True
         self.quit = False
@@ -123,9 +127,11 @@ class Watchdog(threading.Thread):
         self.time_to_live = 100
 
     def decrease_ttl(self):
+        """ decrease the time to live with one"""
         self.time_to_live = self.time_to_live - 1
 
     def reactivate(self):
+        """ Reactiviating """
         wp.digitalWrite(0, 1)
         time.sleep(0.1)
         wp.digitalWrite(0, 0)
@@ -151,6 +157,7 @@ class Watchdog(threading.Thread):
 
 
 class Bakeout(threading.Thread):
+    """ Class for controling the 6 port of the bakeout box"""
     def __init__(self, watchdog, datasocket):
         threading.Thread.__init__(self)
         self.watchdog = watchdog
@@ -162,15 +169,18 @@ class Bakeout(threading.Thread):
         self.run_ramp = False
 
     def activate(self, pin):
+        """ set pin/port to On"""
         if self.watchdog.watchdog_safe:
             wp.digitalWrite(pin, 1)
         else:
             wp.digitalWrite(pin, 0)
 
     def deactivate(self, pin):
+        """Set pin/port to Off"""
         wp.digitalWrite(pin, 0)
 
     def modify_dutycycle(self, channel, amount):
+        """ change the power on time with amount on channel"""
         self.dutycycles[channel-1] =  self.dutycycles[channel-1] + amount
         if  self.dutycycles[channel-1] > 1:
             self.dutycycles[channel-1] = 1.0
@@ -182,7 +192,7 @@ class Bakeout(threading.Thread):
         """Set a single dutycycle
         input channel number fx 5
         input new value fx 0.2"""
-        self.dutycycles[channel-1] =  value
+        self.dutycycles[channel-1] = value
         if  self.dutycycles[channel-1] > 1:
             self.dutycycles[channel-1] = 1.0
         if self.dutycycles[channel-1] < 0.01:
@@ -190,7 +200,7 @@ class Bakeout(threading.Thread):
         return  self.dutycycles[channel-1]
 
 
-    def set_all_dutycycles(self,value_list):
+    def set_all_dutycycles(self, value_list):
         """ set new values in dutycyles"""
         if len(value_list) == 6:
             for index, value in enumerate(value_list):
@@ -249,7 +259,8 @@ def main():
     baker = Bakeout(watchdog, datasocket)
     baker.start()
     tui = CursesTui(baker)
-    #tui.daemon = True                                                                                                                                                                                                                                                            tui.start()
+    #tui.daemon = True
+    tui.start()
     while not baker.quit:
         time.sleep(1)
     watchdog.quit = True
