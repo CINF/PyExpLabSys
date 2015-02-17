@@ -1,4 +1,4 @@
-# pylint: disable=C0301,R0904, C0103
+# pylint: disable=C0301, R0904, C0103
 
 import sys
 sys.path.insert(1, '/home/pi/PyExpLabSys')
@@ -26,24 +26,27 @@ class FlowReader(threading.Thread):
 
     def value(self):
         """ Return the value of the reader """
-        return(self.waterflow)
+        return self.waterflow
+
+    def measure_bit_changes(self, maxtime=1.0):
+        """Counts the bit flips corisponding to half sycle of the
+        water wheel"""
+        now = wp.digitalRead(0)
+        counter = 0
+        t0 = time.time()
+        while maxtime > time.time()-t0:
+            new = wp.digitalRead(0)
+            if now != new:
+                counter += 1
+                now = new
+            time.sleep(0.0001)
+        freq = 0.5 * counter / (time.time() - t0)
+        return freq
 
     def run(self):
         while not self.quit:
-            time.sleep(1)
-            now = wp.digitalRead(0)
-            counter = 0
-            counter_same = 0
-            t0 = time.time()
-            for i in range(0, 5000):
-                new = wp.digitalRead(0)
-                if now != new:
-                    counter += 1
-                    now = new
-                else:
-                    counter_same += 1
-                time.sleep(0.0001)
-            freq = 0.5 * counter / (time.time() - t0)
+            time.sleep(0.2)
+            freq = self.measure_bit_changes(0.7)
             self.waterflow = freq*60./6900
 
 
@@ -55,7 +58,7 @@ flowreader = FlowReader()
 flowreader.daemon = True
 flowreader.start()
 
-logger = ValueLogger(flowreader, comp_val = 0.1)
+logger = ValueLogger(flowreader, comp_val=0.1)
 logger.start()
 
 name = 'stm312_xray_waterflow'
