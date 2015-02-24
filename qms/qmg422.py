@@ -325,12 +325,12 @@ class qmg_422():
         number_of_samples = int(header[3])
         return(number_of_samples)
 
-    def mass_scan(self, first_mass, scan_width):
+    def mass_scan(self, first_mass, scan_width, amp_range=None):
         self.comm('CYM, 0') #0, single. 1, multi
         self.comm('SMC, 0') #Channel 0
         self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST ,2') #Steps
-        self.comm('MSD ,10') #Speed
+        self.comm('MST, 2') #Steps
+        self.comm('MSD, 13') #Speed
         self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width

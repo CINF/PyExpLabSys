@@ -1,3 +1,0 @@
-INFO:root:Program started. Log level: 40
-INFO:root:Autorange: True
-ERROR:root:{0: '2014-02-11 09:47:21', 1: 14921L, 2: 14922L}
