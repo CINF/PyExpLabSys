@@ -1,0 +1,17 @@
+<pager>
+  <settings>
+    <standard_showtime type='float'>10.0</standard_showtime>
+  </settings>
+  <pages>
+    <page>
+      <id>water_and_n5_312</id>
+      <url>https://cinfdata.fysik.dtu.dk/hall/live.php?type=live_values</url>
+      <show_factor type='float'>2</show_factor>
+    </page>
+    <page>
+      <id>b307_gasmonitor</id>
+      <url>https://cinfdata.fysik.dtu.dk/gasmonitor307/live.php?type=live_values_pager</url>
+      <show_factor type='float'>2</show_factor>
+    </page>
+  </pages>
+</pager>

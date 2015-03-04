@@ -4,6 +4,8 @@
 This project contains various python code useful in experimental labs, such as
 drivers, plotting tools and data-logging.
 
+The project is [documented](http://pyexplabsys.readthedocs.org/en/latest/) with [Sphinx](http://sphinx-doc.org/) on the [read the docs webpage](https://readthedocs.org/), but the documentation is still in its early stages.
+
 The project is in a very early state of development and much functionality and
 configurations options are still not implemented, however, much of the code are
 already now rather useful. Code documentation is unfortunately not very

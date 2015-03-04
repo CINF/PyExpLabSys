@@ -1,0 +1,2 @@
+user='mgw'
+passwd='mgw'

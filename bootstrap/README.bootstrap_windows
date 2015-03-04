@@ -1,0 +1,32 @@
+The bootstrap script expects:
+
+ * That Python 2.7 and all the extra packages that PyExpLabSys requires has been installed. This is most easily accomplished with Python(x, y), see below.
+ * That Git for Windows has already been installed. Get the installer from: http://git-scm.com/
+ * That the PyExpLabSys git archive has been cloned into C:\git\PyExpLabSys
+ * That the script is run with admin right. See below.
+
+No parts of the script will cause problems if run more than once.
+
+
+About Python(x, y)
+==================
+
+Python(x, y) is Python for scientific environments. It is a collection of packages that includes almost all of the packages that PyExpLabSys depend on and it is therefore by far the easiest way to get set up in a hurry.
+
+Download Python(x, y) from this page: https://code.google.com/p/pythonxy/wiki/Downloads
+
+When installing Python(x, y), leave all the default packages selected and make sure that the following extra packages are also selected:
+
+ * pip
+ * pyserial
+ * minimalmodbus
+ * pyodbc
+
+Running cmd with admin rights
+=============================
+
+To open a cmd shell with admin right, which is required to run the bootstrap script:
+
+ * Search for cmd in the Windows menu search field
+ * Press ctrl-shift-enter
+ * Confirm to run with admin rights
