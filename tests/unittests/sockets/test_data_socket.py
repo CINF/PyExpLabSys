@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=no-member, redefined-outer-name
 """Unittests for the sockets code
 
 NOTE: The sock fixture used in this module is defined in the conftest.py
@@ -30,10 +31,19 @@ DEFAULT_PORTS = {
 }
 DEFAULT_CODENAMES = ['Laser1', 'Laser2']
 
+
 # Test fixtures
 @pytest.fixture(
-    params=[(DataPullSocket, False), (DataPullSocket, True), (DateDataPullSocket, False)],
-    ids=['DataPullSocket', 'DataPullSocket_use_timestamp', 'DateDataPullSocket']
+    params=[
+        (DataPullSocket, False),
+        (DataPullSocket, True),
+        (DateDataPullSocket, False),
+    ],
+    ids=[
+        'DataPullSocket',
+        'DataPullSocket_use_timestamp',
+        'DateDataPullSocket',
+    ]
 )
 def socket_and_use_timestamp(request):
     """(Socket type, use_time_stamp) fixture"""
