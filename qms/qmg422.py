@@ -1,3 +1,5 @@
+# pylint: disable=C0103
+
 """ This module contains the driver code for the QMG422 control box
 for a pfeiffer mass-spectrometer. The code should in principle work
 for multiple type of electronics. It has so far been tested with a
@@ -23,7 +25,7 @@ class qmg_422():
         """ Initialize the module
         """
         # TODO: Take communication parameters as argument
-        self.f = serial.Serial('/dev/ttyUSB0', 19200, timeout=1.0)
+        self.serial = serial.Serial('/dev/ttyUSB0', 19200, timeout=1.0)
         self.type = '422'
 
     def comm(self, command):
@@ -42,55 +44,60 @@ class qmg_422():
         iterations = 0
         while not done:
             iterations += 1
-            t = time.time()
             logging.debug("Command in progress: " + command)
 
-            n = self.f.inWaiting()
+            n = self.serial.inWaiting()
 
-            if n>0: #Skip characters that are currently waiting in line
-                debug_info = self.f.read(n)
-                logging.debug("Elements not read: " + str(n) + ": Contains: " + debug_info)
+            if n > 0: #Skip characters that are currently waiting in line
+                debug_info = self.serial.read(n)
+                logging.debug("Elements not read: " + str(n) +
+                              ": Contains: " + debug_info)
             
             ret = " "
-
             error_counter = 0
             while not ret[0] == chr(6):
                 error_counter += 1
-                self.f.write(command + '\r')
-                ret = self.f.readline()
+                self.serial.write(command + '\r')
+                ret = self.serial.readline()
                 logging.debug("Debug: Error counter: " + str(error_counter))
                 logging.debug("Debug! In waiting: " + str(n))
 
                 if error_counter == 3:
-                    logging.warning("Communication error: " + str(error_counter))
+                    error = "Communication error: " + str(error_counter)
+                    logging.warning(error)
                 if error_counter == 10:
                     logging.error("Communication error: " + str(error_counter))
                 if error_counter > 50:
                     logging.error("Communication error! Quit program!")
                     quit()
 
-            #We are now quite sure the instrument is ready to give back data        
-            self.f.write(chr(5))
-            ret = self.f.readline()
+            #We are now quite sure the instrument is ready to give back data
+            self.serial.write(chr(5))
+            ret = self.serial.readline()
 
             logging.debug("Number in waiting after enq: " + str(n))
             logging.debug("Return value after enq:" + ret)
-            logging.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
+            logging.debug("Ascii value of last char in ret: "
+                          + str(ord(ret[-1])))
             if (iterations > 1) and (iterations < 1000):
                 logging.info(iterations)
             if (ret[-1] == chr(10)) or (ret[-1] == chr(13)):
                 ret_string = ret.strip()
                 done = True
             else:
-                logging.basicConfig(filename="qms_debug.txt", level=logging.DEBUG,format='%(asctime)s %(message)s')
+                logging.basicConfig(filename="qms_debug.txt",
+                                    level=logging.DEBUG,
+                                    format='%(asctime)s %(message)s')
                 logging.info("Wrong line termination")
-                logging.info("Ascii value of last char in ret: " + str(ord(ret[-1])))
+                logging.info("Ascii value of last char in ret: "
+                             + str(ord(ret[-1])))
                 logging.info('Value of string: ' + ret)
                 time.sleep(0.5)
-                self.f.write(chr(5))
-                ret = self.f.readline()
+                self.serial.write(chr(5))
+                ret = self.serial.readline()
                 ret_string = ret.strip()
-                logging.info("Ascii value of last char in ret: " + str(ord(ret[-1])))
+                logging.info("Ascii value of last char in ret: " +
+                             str(ord(ret[-1])))
                 logging.info('Value of string: ' + ret)
                 logging.info('Returning: ' + ret_string)
                 done = True
@@ -142,7 +149,7 @@ class qmg_422():
         :param channel: The channel number
         :type channel: integer
         """
-        self.comm('SPC ,' + str(channel)) #Select the relevant channel       
+        self.comm('SPC ,' + str(channel)) #Select the relevant channel
 
     def read_sem_voltage(self):
         """ Read the SEM Voltage
@@ -160,10 +167,10 @@ class qmg_422():
         """
         preamp_range = self.comm('AMO')
         if preamp_range == '2':
-           preamp_range = '0' #Idicates auto-range in mysql-table
+            preamp_range = '0' #Idicates auto-range in mysql-table
         else:
-           preamp_range = "-1" #TODO: Here we should read the actual range
-        return(preamp_range)
+            preamp_range = "-1" #TODO: Here we should read the actual range
+        return preamp_range
 
     def read_timestep(self):
         """ Reads the integration period of a measurement
@@ -171,21 +178,21 @@ class qmg_422():
         :rtype: str
         """
         # TODO: Make a look-up table to make the number physical
-        timestep = self.comm('MSD') 
+        timestep = self.comm('MSD')
         return timestep
 
     def sem_status(self, voltage=-1, turn_off=False, turn_on=False):
         """ Get or set the SEM status
         :param voltage: The wanted SEM-voltage
         :type voltage: integer
-        :param turn_off: If True the SEM will be turned on (unless turn_of is also True)
+        :param turn_off: If True SEM will be turned on (unless turn_of==True)
         :type turn_off: boolean
-        :param turn_on: If True the SEM will be turned off (unless turn_on is also True)
-        :type turn_on: boolean        
+        :param turn_on: If True SEM will be turned off (unless turn_on==True)
+        :type turn_on: boolean
         :return: The SEM voltage, The SEM status, True means voltage on
         :rtype: integer, boolan
         """
-        if voltage>-1:
+        if voltage > -1:
             ret_string = self.comm('SHV ,' + str(voltage))
         else:
             ret_string = self.comm('SHV')
@@ -197,21 +204,21 @@ class qmg_422():
             if turn_on:
                 self.comm('SEM ,1')
         ret_string = self.comm('SEM')
-        sem_on = ret_string == "1"        
+        sem_on = ret_string == "1"
         return sem_voltage, sem_on
 
     def emission_status(self, current=-1, turn_off=False, turn_on=False):
         """ Get or set the emission status.
         :param current: The wanted emission status. Only works for QME???
         :type current: integer
-        :param turn_off: If True the emission will be turned on (unless turn_of is also True)
+        :param turn_off: If True emission will be turned on (unless turn_of==True)
         :type turn_off: boolean
-        :param turn_on: If True the emission will be turned off (unless turn_on is also True)
-        :type turn_on: boolean        
+        :param turn_on: If True emission will be turned off (unless turn_on==True)
+        :type turn_on: boolean
         :return: The emission value (for QME???), The emission status, True means filament on
         :rtype: integer, boolan
         """
-        if current>-1:
+        if current > -1:
             ret_string = self.comm('EMI ,' + str(current))
             emission_current = float(ret_string.strip())
         else:
@@ -226,7 +233,7 @@ class qmg_422():
         ret_string = self.comm('FIE')
 
         filament_on = ret_string == '1'
-        return emission_current,filament_on
+        return emission_current, filament_on
 
 
     def detector_status(self, SEM=False, faraday_cup=False):
@@ -248,6 +255,7 @@ class qmg_422():
 
 
     def read_voltages(self):
+        """ Read the qme-voltages """
         print "V01: " + self.comm('VO1') #0..150,   1V steps
         print "V02: " + self.comm('VO2') #0..125,   0.5V steps
         print "V03: " + self.comm('VO3') #-30..30,  0.25V steps
@@ -255,15 +263,16 @@ class qmg_422():
         print "V05: " + self.comm('VO5') #0..450,   2V steps
         print "V06: " + self.comm('VO6') #0..450,   2V steps
         print "V07: " + self.comm('VO7') #0..250,   1V steps
-        print "V08: " + self.comm('VO8') #-125..125,1V steps 
+        print "V08: " + self.comm('VO8') #-125..125,1V steps
         print "V09: " + self.comm('VO9') #0..60    ,0.25V steps
 
     def start_measurement(self):
-        self.comm('CRU ,2') 
+        """ Start the measurement """
+        self.comm('CRU ,2')
 
     def get_single_sample(self):
+        """ Read a single sample from the device """
         samples = 0
-        n = 0
         while samples == 0:
             status = self.comm('MBH')
             logging.info(status)
@@ -272,8 +281,8 @@ class qmg_422():
                 samples = int(status[3])
             except:
                 logging.warn('Could not read status, continuing measurement')
-            #time.sleep(0.05)
-            time.sleep(0.2) # CHANGE BACK!!!!!!!!!
+            time.sleep(0.05)
+            #time.sleep(0.2) # An old attempt to correct comm problems
         try:
             value = self.comm('MDB')
         except:
@@ -282,22 +291,21 @@ class qmg_422():
         return value
 
     def get_multiple_samples(self, number):
+        """ Read multiple samples from the device """
         values = [0] * number
         for i in range(0, number):
             values[i] = self.comm('MDB')
         return values
 
 
-    def config_channel(self, channel, mass=-1, speed=-1, enable="", amp_range=""):
+    def config_channel(self, channel, mass=-1, speed=-1,
+                       enable="", amp_range=""):
         """ Config a MS channel for measurement """
         self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
-        
-        if mass>-1:
+        if mass > -1:
             self.comm('MFM ,' + str(mass))
-            
-        if speed>-1:
+        if speed > -1:
             self.comm('MSD ,' + str(speed))
-            
         if enable == "yes":
             self.comm('AST ,0')
         if enable == "no":
@@ -309,23 +317,27 @@ class qmg_422():
         self.comm('SDT ,1')  #Use SEM for ion detection
         #self.comm('DTY ,0')  #Use Faraday cup for ion detection
         #self.comm('SDT ,0')  #Use Faraday cup for ion detection
-        self.comm('AMO ,2')  #Auto-range #RANGE SELECTION NOT IMPLEMENTED!!!!!!!!!!
+        self.comm('AMO ,2')  #Auto-range #RANGE SELECTION NOT IMPLEMENTED!!!!!!!
         self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
         self.comm('MRE ,15') #Peak resolution
 
     def measurement_running(self):
+        """ Check if a measurement is running """
         status = self.comm('MBH')
         status = status.split(',')
         running = int(status[0])
-        return(running == 0)
+        return_val = running == 0
+        return return_val
         
     def waiting_samples(self):
+        """ Return number of waiting samples """
         header = self.comm('MBH')
         header = header.split(',')
         number_of_samples = int(header[3])
-        return(number_of_samples)
+        return number_of_samples
 
     def mass_scan(self, first_mass, scan_width, amp_range=None):
+        """ Setup the mass spec for a mass scan """
         speed_list = {
             0: 0.0005,
             1: 0.001,
@@ -348,6 +360,7 @@ class qmg_422():
             total_time = scan_width * spped_list[speed]
         except:
             total_time = -1
+
         self.comm('CYM, 0') #0, single. 1, multi
         self.comm('SMC, 0') #Channel 0
         self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
@@ -359,6 +372,7 @@ class qmg_422():
         return total_time
 
     def mass_time(self, ns):
+        """ Setup the mass spec for a mass-time measurement """
         self.comm('CYM ,1') #0, single. 1, multi
         self.comm('CTR ,0') #Trigger mode, 0=auto trigger
         self.comm('CYS ,1') #Number of repetitions
@@ -366,8 +380,8 @@ class qmg_422():
         self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
 
 if __name__ == '__main__':
-   qmg = qmg_422()
-   print qmg.communication_mode(computer_control=True)
-   print qmg.read_voltages()
-   print qmg.detector_status()
-   print qmg.comm('SMR')
+    qmg = qmg_422()
+    print qmg.communication_mode(computer_control=True)
+    print qmg.read_voltages()
+    print qmg.detector_status()
+    print qmg.comm('SMR')
