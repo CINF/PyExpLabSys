@@ -326,14 +326,37 @@ class qmg_422():
         return(number_of_samples)
 
     def mass_scan(self, first_mass, scan_width, amp_range=None):
+        speed_list = {
+            0: 0.0005,
+            1: 0.001,
+            2: 0.002,
+            3: 0.005,
+            4: 0.010,
+            5: 0.020,
+            6: 0.050,
+            7: 0.1,
+            8: 0.2,
+            9: 0.5,
+            10: 1,
+            11: 2,
+            12: 5,
+            13: 10,
+            14: 20,
+            15: 60} # unit: [s/amu]
+        speed = 11
+        try:
+            total_time = scan_width * spped_list[speed]
+        except:
+            total_time = -1
         self.comm('CYM, 0') #0, single. 1, multi
         self.comm('SMC, 0') #Channel 0
         self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST, 2') #Steps
-        self.comm('MSD, 13') #Speed
+        self.comm('MST, 2') #Steps 0: 1: 2: 64/amu
+        self.comm('MSD, ' + str(speed)) #Speed
         self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
+        return total_time
 
     def mass_time(self, ns):
         self.comm('CYM ,1') #0, single. 1, multi
