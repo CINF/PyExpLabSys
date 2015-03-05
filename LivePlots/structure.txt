@@ -1,9 +1,0 @@
-This document describes the structure of the live plots
-
-Structure:
-LivePlots (module)
- \-RunningPlots (module)
- | \-NPointRunning (class)
- \-LivePlotsCommon (class)
- \-LivePlotsExceptions (module)
-
