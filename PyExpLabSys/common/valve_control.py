@@ -28,7 +28,7 @@ class ValveControl(threading.Thread):
 
     def run(self):
         while self.running:
-            time.sleep(0.5)
+            time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
             print qsize
             while qsize > 0:
