@@ -13,7 +13,10 @@ def sqlTime():
 
 def OCSsqlInsert(query):
     try:
-        cnxn = MySQLdb.connect(host="servcinf",user="oldclustersource",passwd="oldclustersource",db="cinfdata")
+        cnxn = MySQLdb.connect(host="servcinf",
+                               user="oldclustersource",
+                               passwd="oldclustersource",
+                               db="cinfdata")
 	cursor = cnxn.cursor()
     except:
 	print "Unable to connect to database"
@@ -46,7 +49,7 @@ class Reader(threading.Thread):
                 self.hp_temp = hp_temp
             if self.hp_temp > -998:
                 try:
-                    self.pullsocket.set_point_now('stm312_hp_temperature', self.hp_temp)
+                    self.pullsocket.set_point_now('stm312_hpc_temperature', self.hp_temp)
                 except:
                     print 'Timeout'
 
@@ -71,7 +74,7 @@ class HighPressureTemperatureSaver(threading.Thread):
                 print '!!!!!!!!!!!!!'
                 self.last_recorded_value = temp
                 self.last_recorded_time = time.time()
-                self.db_logger.enqueue_point_now('stm312_hp_temperature', temp)
+                self.db_logger.enqueue_point_now('stm312_hpc_temperature', temp)
                 print(temp)
 
 
@@ -102,13 +105,13 @@ if __name__ == '__main__':
 
     quit = False
 
-    pullsocket = DateDataPullSocket('stm312 hptemp', ['stm312_hp_temperature'], timeouts=[1.0])
+    pullsocket = DateDataPullSocket('stm312 hptemp', ['stm312_hp_temperature'], timeouts=[4.0])
     pullsocket.start()
 
     db_logger = ContinuousLogger(table='dateplots_stm312',
                                  username=credentials.user,
                                  password=credentials.passwd,
-                                 measurement_codenames=['stm312_hp_temperature'])
+                                 measurement_codenames=['stm312_hpc_temperature'])
     db_logger.start()
     tc_reader = omega.ISeries('/dev/ttyUSB0', 9600, comm_stnd='rs485')
     temperature_reader = Reader(tc_reader, pullsocket)
