@@ -43,7 +43,7 @@ class AK_comm():
     def ReadConcentration(self):
         command = 'AKON K1'
 	signal = self.comm(command)
-        print "Signal: " + signal
+        #print "Signal: " + signal
         if signal[0] == "#":
             signal = signal[1:]
         signal = signal.strip()
@@ -67,7 +67,7 @@ class AK_comm():
         sensor_output = sensor_output.strip(chr(3))
 
         #print "Sensor output: " + sensor_output
-	return(int(sensor_output))
+	return(int(float(sensor_output)))
 
     def ReadOperationalHours(self):
         command = 'ABST K1'

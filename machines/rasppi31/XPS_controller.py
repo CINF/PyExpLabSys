@@ -2,18 +2,18 @@
 
 """
 Self contained module to run a SPECS sputter gun including fall-back text gui
+the driver is a mess, both should be cleaned up
 """
 
-import serial
+#import serial
 import time
 import threading
 import curses
 import socket
-import json
+#import json
 
 from PyExpLabSys.drivers.specs_XRC1000 import XRC1000
-
-from PyExpLabSys.common.loggers import ContinuousLogger
+#from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 #from PyExpLabSys.common.sockets import DataPushSocket
 
@@ -23,7 +23,13 @@ EXCEPTION = None
 log = open('error_log.txt', 'w')
 
 name = 'stm312 XPS'
-codenames = ['filament bias', 'filemant current', 'filament power', 'emission current', 'anode voltage', 'anode power', 'water flow']
+codenames = ['filament bias',
+             'filemant current',
+             'filament power',
+             'emission current',
+             'anode voltage',
+             'anode power',
+             'water flow']
 socket = DateDataPullSocket(name, codenames)
 
 """db_logger = ContinuousLogger(table='dateplots_stm312',# stm312 pressure controller pressure
@@ -169,18 +175,25 @@ class CursesTui(threading.Thread):
         curses.endwin()
 
 class SourceControl(threading.Thread):
+    """calss foor controlling the XPS source """
     def __init__(self, driver):
         self.driver = driver
         self.has_socket = False
         self.has_logger = False
+
     def add_db_logger(self, db_logger):
+        """ adding a logger"""
         self.logger_name_conversion = {'water flow': 'stm312_xray_waterflow'}
         self.has_logger = True
         self.db_logger = db_logger
+
     def add_socket(self, socket):
+        """ adding the comm socket"""
         self.has_socket = True
         self.socket = socket
+
     def update_socket_logger(self,):
+        """ update values"""
         if self.has_logger == True:
             pass
         if self.has_socket == True:

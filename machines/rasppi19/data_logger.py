@@ -1,3 +1,7 @@
+""" Logging and measuring of temperatures with omega
+the script is working with stm312 and the oldcluster source
+making it unnesesary complicated as the two chambers have very
+different mysql stryctures"""
 import threading
 import time
 from datetime import datetime
@@ -12,6 +16,8 @@ def sqlTime():
     return(sqltime)
 
 def OCSsqlInsert(query):
+    """sql function for old cluster source
+    until it is moved to the new DB structure"""
     try:
         cnxn = MySQLdb.connect(host="servcinf",
                                user="oldclustersource",
@@ -19,14 +25,14 @@ def OCSsqlInsert(query):
                                db="cinfdata")
 	cursor = cnxn.cursor()
     except:
-	print "Unable to connect to database"
-	return()
+        print "Unable to connect to database"
+        return()
     try:
-	cursor.execute(query)
-	cnxn.commit()
+        cursor.execute(query)
+        cnxn.commit()
     except:
-	print "SQL-error, query written below:"
-	print query
+        print "SQL-error, query written below:"
+        print query
     cnxn.close()
 
 
@@ -102,31 +108,22 @@ class OCSTemperatureSaver(threading.Thread):
 
 
 if __name__ == '__main__':
-
     quit = False
-
-    pullsocket = DateDataPullSocket('stm312 hptemp', ['stm312_hp_temperature'], timeouts=[4.0])
+    pullsocket = DateDataPullSocket('stm312 hptemp',
+                                    ['stm312_hp_temperature'],
+                                    timeouts=[4.0])
     pullsocket.start()
-
     db_logger = ContinuousLogger(table='dateplots_stm312',
                                  username=credentials.user,
                                  password=credentials.passwd,
                                  measurement_codenames=['stm312_hpc_temperature'])
     db_logger.start()
-    tc_reader = omega.ISeries('/dev/ttyUSB0', 9600, comm_stnd='rs485')
+    tc_reader = omega.ISeries('/dev/ttyUSB0',
+                              9600,
+                              comm_stnd='rs485')
     temperature_reader = Reader(tc_reader, pullsocket)
     temperature_reader.start()
 
-    """
-    hp = tc_read
-    ocs = tc_read
-
-    hp_reader = HPReader(hp)
-    hp_reader.start()
-
-    ocs_reader = OCSReader(ocs)
-    ocs_reader.start()
-    """
     time.sleep(5)
 
     hp_saver = HighPressureTemperatureSaver(temperature_reader, db_logger)

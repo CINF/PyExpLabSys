@@ -1,3 +1,6 @@
+""" measure and logging of the pressure in the
+stm312 high pressure cell, range 0-10mbar
+"""
 # pylint: disable=C0301,R0904, C0103
 
 import threading
@@ -36,7 +39,7 @@ pressurereader = PressureReader(omega_instance)
 pressurereader.daemon = True
 pressurereader.start()
 
-logger = ValueLogger(pressurereader, comp_val = 0.1)
+logger = ValueLogger(pressurereader, comp_val=0.1)
 logger.start()
 
 

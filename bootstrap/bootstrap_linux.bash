@@ -129,6 +129,8 @@ if [ $1 == "git" ] || [ $1 == "all" ];then
     echoblue "---> Setting up git aliases"
     echoblue "----> ci='commit -v'"
     git config --global alias.ci 'commit -v'
+    echoblue "----> pr='pull --rebase'"
+    git config --global alias.pr 'pull --rebase'
     echoblue "----> lol='log --graph --decorate --pretty=oneline --abbrev-commit'"
     git config --global alias.lol 'log --graph --decorate --pretty=oneline --abbrev-commit'
     echoblue "----> ba='branch -a'"
