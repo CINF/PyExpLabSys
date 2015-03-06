@@ -42,30 +42,27 @@ class Reader(threading.Thread):
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
-name = {}
-mks = mks_925_pirani.mks_comm('/dev/ttyUSB0')
-name[0] = mks.read_serial()
-name[0] = name[0].strip()
-print name[0]
-
-mks = mks_925_pirani.mks_comm('/dev/ttyUSB1')
-name[1] = mks.read_serial()
-name[1] = name[1].strip()
-print name[1]
+ports = ['/dev/serial/by-id/usb-FTDI_USB-RS232_Cable_FTWRZWVS-if00-port0',
+         '/dev/serial/by-id/usb-FTDI_USB-RS232_Cable_FTWXB4EW-if00-port0']
 
 mks_list = {}
 for i in range(0, 2):
-    if name[i] == '1107638964':
-        mks_list['old'] = mks_925_pirani.mks_comm('/dev/ttyUSB' + str(i))
+    _mks = mks_925_pirani.mks_comm(ports[i])
+    _name = _mks.read_serial()
+    #_name = _name.strip()
+    if _name == '1107638964':
+        mks_list['old'] = mks_925_pirani.mks_comm(ports[i])
         mks_list['old'].change_unit('MBAR')
-
-        print('Pirani, buffer:/dev/ttyUSB' + str(i) + ', serial:' + name[i])
-
-    if name[i] == '1027033634':
-        mks_list['ng'] = mks_925_pirani.mks_comm('/dev/ttyUSB' + str(i))
+        print('Pirani, buffer:' + ports[i] + ', serial:' + _name)
+    elif _name == '1027033634':
+        mks_list['ng'] = mks_925_pirani.mks_comm(ports[i])
         mks_list['ng'].change_unit('MBAR')
-        print('Pirani, old buffer:/dev/ttyUSB' + str(i) + ', serial:' + name[i])
+        print('Pirani, old buffer:'+ ports[i] + ', serial:' + _name)
+    else:
+        print('Pirani, Unknown:'+ ports[i] + ', serial:' + _name)
+        print(_mks.read_serial())
 
+"""
 measurement = Reader(mks_list)
 measurement.start()
 
@@ -113,3 +110,4 @@ while measurement.isAlive():
             print '---'
             db_logger[name].enqueue_point_now(name, v)
             loggers[name].clear_trigged()
+"""

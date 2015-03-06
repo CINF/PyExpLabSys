@@ -1,0 +1,9 @@
+olefile.py is a (short lived) fork from this project.
+
+http://www.decalage.info/python/olefileio
+
+PyExpLabSys needed more changes to the core library, than it was
+realistic to have upstreamed quickly, hence the fork. It is the goal
+to upstream the changes in time. All credits for the olefile project
+goes the original developers as described in the start of the
+olefile.py file and on the project homepage.

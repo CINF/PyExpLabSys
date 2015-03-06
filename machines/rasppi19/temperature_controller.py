@@ -203,6 +203,7 @@ class CursesTui(threading.Thread):
         
     def run(self,):
         while self.running:
+            time.sleep(1)
             try:
                 self.screen.addstr(3, 2,
                                    "Power Supply for HPC " \
@@ -591,7 +592,7 @@ class PowerControlClass(threading.Thread):
             elif self.status['Mode'] == 'Voltage Control':
                 if self.status['Setpoint'] > 0 or self.status['Setpoint'] < 10:
                     self.status['Wanted Voltage'] = self.status['Setpoint']
-            time.sleep(0.25)            
+            time.sleep(1)
             try:
                 self.heater.set_voltage(self.status['Wanted Voltage'])
                 if self.heater.debug:

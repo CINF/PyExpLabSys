@@ -23,7 +23,7 @@ def OCSsqlInsert(query):
                                user="oldclustersource",
                                passwd="oldclustersource",
                                db="cinfdata")
-        cursor = cnxn.cursor()
+	cursor = cnxn.cursor()
     except:
         print "Unable to connect to database"
         return()

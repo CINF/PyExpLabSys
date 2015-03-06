@@ -37,10 +37,11 @@ if False:
     meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
     meta_udp.daemon = True
     meta_udp.start()
+    print qms.mass_time(channel_list['ms'], timestamp)
+
 if True:
     # for choosing between mass time and mass scan
-    qms.mass_scan(0, 100, comment='Test')#Chamber background,P=9.7E-11torr')
-#print qms.mass_time(channel_list['ms'], timestamp)
+    qms.mass_scan(0, 20, comment='TEST')
 
 time.sleep(1)
 printer.stop()
@@ -49,4 +50,6 @@ printer.stop()
 if False:
     print qmg.sem_status(voltage=2200, turn_on=True)
     print qmg.emission_status(current=0.1, turn_on=True)
-
+elif False:
+    print qmg.sem_status(voltage=2200, turn_off=True)
+    print qmg.emission_status(current=0.1, turn_off=True)

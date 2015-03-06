@@ -5,9 +5,10 @@ class Agilent34972ADriver(SCPI):
 
     def __init__(self, name='microreactor-agilent-34972a'):
         #SCPI.__init__(self,'/dev/usbtmc1','file')
-        SCPI.__init__(self, name, 'lan')
+        SCPI.__init__(self, interface='lan', hostname=name)
 
     def read_single_scan(self):
+        """ Read a single scan-line """
         self.scpi_comm("TRIG:SOURCE TIMER")
         self.scpi_comm("TRIG:COUNT 1")
         self.scpi_comm("INIT")
@@ -26,9 +27,11 @@ class Agilent34972ADriver(SCPI):
         return(return_values)
 
     def abort_scan(self):
+        """ Abort the scan """
         self.scpi_comm("ABOR")
 
     def read_configuration(self):
+        """ Read device configuration """
         scan_list = self.read_scan_list()
 
         response = self.scpi_comm("CONFIGURE?")
@@ -43,9 +46,12 @@ class Agilent34972ADriver(SCPI):
         i = 0
         conf_string = ""
         for channel in scan_list:
-            conf_string += str(channel) + "\n" + "Measurement type: " + conf[3*i] + "\nRange: " + conf[3*i+1] + "\nResolution: " + conf[3*i + 2] + "\nNPLC: " + str(float(nplc_conf[i])) + "\n \n"
+            conf_string += str(channel) + "\n" + "Measurement type: "
+            conf_string += conf[3*i] + "\nRange: " + conf[3*i+1]
+            conf_string += "\nResolution: " + conf[3*i + 2] + "\nNPLC: "
+            conf_string += str(float(nplc_conf[i])) + "\n \n"
             i += 1
-        return(conf_string)
+        return conf_string
 
     def set_scan_interval(self,interval):
         self.scpi_comm("TRIG:TIMER  " + str(interval))
@@ -59,13 +65,15 @@ class Agilent34972ADriver(SCPI):
         print response
 
     def read_scan_list(self):
+        """ Return the scan list """
         response = self.scpi_comm("ROUT:SCAN?")
         response = response.strip()
         start = response.find('@')
         response =  response[start+1:-1]
-        return(response.split(','))
+        return response.split(',')
 
     def set_scan_list(self,channels):
+        """ Set the scan list """
         comm = "ROUT:SCAN (@"
         for chn in channels:
             comm += str(chn) + ','
@@ -77,8 +85,6 @@ class Agilent34972ADriver(SCPI):
 
 
 if __name__ == "__main__":
-
-    scan_list = [101,102,103,104,105,106]
 
     driver = Agilent34972ADriver()
     #driver = driver.ResetDevice()

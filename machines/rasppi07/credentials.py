@@ -1,2 +1,0 @@
-user = 'microreactor'
-passwd = 'microreactor'
