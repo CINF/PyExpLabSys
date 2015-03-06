@@ -7,6 +7,8 @@ import logging
 import socket
 import curses
 
+import json
+
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
@@ -72,11 +74,12 @@ class ValueLogger(object):
 
 
 class CursesTui(threading.Thread):
-    def __init__(self, pressure_control, pirani, pullsocket):
+    def __init__(self, pressure_control, pirani, baratron, pullsocket):
         threading.Thread.__init__(self)
         self.pullsocket = pullsocket
         self.pc = pressure_control
         self.pirani = pirani
+        self.baratron = baratron
         self.screen = curses.initscr()
         curses.noecho()
         curses.cbreak()
@@ -90,6 +93,7 @@ class CursesTui(threading.Thread):
         
     def run(self,):
         while self.running:
+            time.sleep(1)
             try:
                 self.screen.addstr(3, 2, "Pressure Controller for HPC stm312,")# ID: {}".format(self.pc.status['ID']))
                 self.screen.addstr(4, 2, "Pirani for old cluster source")
@@ -107,6 +111,10 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(10, 2, "Old cluster source pirani:         {0:+.5f}mbar     ".format(self.pirani.pressure))
             except Exception, e:
                 self.screen.addstr(10, 2, "Old cluster source pirani:         {}               ".format(e))
+            try:
+                self.screen.addstr(11, 2, "HPC pressure, baratron:            {0:+.5f}mbar     ".format(self.baratron.pressure))
+            except Exception, e:
+                self.screen.addstr(11, 2, "HPC pressure, baratron:            {}               ".format(e))
             if self.pc.ERROR != None:
                 self.screen.addstr(12, 2, 'Latest error message: ' + str(self.pc.ERROR) + ' at time: ')# + str(self.pcc.status['error time']-self.time))
             if self.pirani.ERROR != None:
@@ -189,7 +197,7 @@ class PcClass(threading.Thread):
         self.db_logger = db_logger
         self.valuelogger = ValueLogger(maximumtime=600,
                                        comp_type='lin',
-                                       comp_val=0.3,
+                                       comp_val=1.0,
                                        codename='stm312_hpc_pressure_controller')
         self.valuelogger.add_logger(self.db_logger)
         self.db_logger_avalible = True
@@ -318,8 +326,23 @@ class PiraniClass(threading.Thread):
 
 class Baratron(threading.Thread):
     def __init__(self,):
+        threading.Thread.__init__(self)
+        self.running = True
+        self.pressure = -1.0
+        self.address_port = ('rasppi56', 9000)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         pass
-
+    def read_pressure(self,):
+        self.sock.sendto('stm312_hpc_baratron#json', self.address_port)
+        answer = self.sock.recvfrom(1024)
+        print answer
+        pressure_time, pressure = json.loads(answer[0])
+        self.pressure = pressure
+        return self.pressure
+    def run(self,):
+        while self.running:
+            time.sleep(1)
+            self.read_pressure()
 #logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 #logging.basicConfig(level=logging.ERROR)
 
@@ -378,6 +401,10 @@ if __name__ == '__main__':
     pc.add_logger(db_logger_stm312)
     pirani = PiraniClass()
     pirani.add_logger(db_logger_stm312)
+
+    baratron = Baratron()
+    #baratron.deamon = True
+    baratron.start
     time.sleep(2)
     
     pc.start()
@@ -385,8 +412,10 @@ if __name__ == '__main__':
     pirani.start()
     time.sleep(2)
     #print(pirani.pressure)
-    
-    tui = CursesTui(pc, pirani, Pullsocket)
+    #for i in range(10):
+    #    time.sleep(1)
+    #    print(baratron.read_pressure())
+    tui = CursesTui(pc, pirani, baratron, Pullsocket)
     tui.deamon = True
     tui.start()
     
