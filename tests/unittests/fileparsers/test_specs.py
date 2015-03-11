@@ -23,20 +23,20 @@ def capital_to_underscore(string):
     return ALL_CAP_RE.sub(r'\1_\2', string).lower()
 
 
-def get_specs_region():
+def get_specs_region(filepath, region):
     """Get the specs region"""
-    specs_file = SpecsFile('specs_xps_sample.xml')
-    return specs_file.search_regions('CrO overview Mg anode')[0]
+    specs_file = SpecsFile(filepath)
+    return specs_file.search_regions(region)[0]
 
 
-def get_xy_data():
+def get_xy_data(filepath):
     """Get the xy region"""
-    with open('specs_xps_sample.xy') as file_:
+    with open(filepath) as file_:
         data = np.genfromtxt(file_, delimiter='  ')
     return data
 
 
-def get_xy_metadata():
+def get_xy_metadata(filepath):
     """Get the xy metadata"""
     metanames = (
         ('Region', str),
@@ -52,7 +52,7 @@ def get_xy_metadata():
         ('Kinetic Energy', float),
     )
     meta = {}
-    with open('specs_xps_sample.xy') as file_:
+    with open(filepath) as file_:
         for line in file_:
             for metas in metanames:
                 try:
@@ -72,18 +72,42 @@ def get_xy_metadata():
     return meta
 
 
-def test_data():
-    """Test XPS kinetic energy and xps"""
-    specs = get_specs_region()
-    xy_region = get_xy_data()
+def test_xps_data():
+    """Test XPS kinetic energy and average counts per second"""
+    specs = get_specs_region('specs_xps_sample.xml', 'CrO overview Mg anode')
+    xy_region = get_xy_data('specs_xps_sample.xy')
     assert np.allclose(xy_region[:, 0], specs.x)
     assert np.allclose(xy_region[:, 1], specs.y_avg_cps)
 
 
-def test_metadata():
+def test_xps_metadata():
     """Test the metadata extraction"""
-    xy_meta = get_xy_metadata()
-    region = get_specs_region()
+    xy_meta = get_xy_metadata('specs_xps_sample.xy')
+    region = get_specs_region('specs_xps_sample.xml', 'CrO overview Mg anode')
+    # Special asserts
+    assert xy_meta.pop('region') == region.name
+    assert xy_meta.pop('analyzer') == region.analyzer_info['name']
+
+    for key, value in xy_meta.items():
+        if isinstance(value, float):
+            assert np.isclose(value, region.region[key])
+        else:
+            assert value == region.region[key]
+        print(region.region[key])
+
+
+def test_iss_data():
+    """Test ISS kinetic energy and average xps"""
+    specs = get_specs_region('specs_iss_sample.xml', '1:3 Cu:Ru')
+    xy_region = get_xy_data('specs_iss_sample.xy')
+    assert np.allclose(xy_region[:, 0], specs.x)
+    assert np.allclose(xy_region[:, 1], specs.y_avg_cps)
+
+
+def test_iss_metadata():
+    """Test the ISS metadata extraction"""
+    xy_meta = get_xy_metadata('specs_iss_sample.xy')
+    region = get_specs_region('specs_iss_sample.xml', '1:3 Cu:Ru')
     # Special asserts
     assert xy_meta.pop('region') == region.name
     assert xy_meta.pop('analyzer') == region.analyzer_info['name']
@@ -97,5 +121,4 @@ def test_metadata():
 
 
 if __name__ == '__main__':
-    #test_data()
-    test_metadata()
+    print("Execute with: py.test -v")
