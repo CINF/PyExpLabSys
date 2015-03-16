@@ -22,7 +22,8 @@ class Bronkhorst():
         response = (response / 32000.0) * self.max_setting
         return response
 
-    def read_measure(self):
+    def read_flow(self):
+        """ Read the actual flow """
         error = 0
         while error < 10:
             read_pressure = ':06800401210120\r\n' # Read pressure
@@ -37,7 +38,8 @@ class Bronkhorst():
                 error = error + 1
         return pressure
 
-    def set_setpoint(self,setpoint):
+    def set_flow(self,setpoint):
+        """ Set the desired setpoint, which could be a pressure """
         if setpoint > 0:
             setpoint = (1.0 * setpoint / self.max_setting) * 32000
             setpoint = hex(int(setpoint))
