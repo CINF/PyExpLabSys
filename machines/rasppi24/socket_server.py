@@ -5,15 +5,17 @@ import time
 import PyExpLabSys.drivers.bronkhorst as bronkhorst
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.sockets import LiveSocket
 
 class FlowControl(threading.Thread):
     """ Keep updated values of the current flow """
-    def __init__(self, mfcs, pullsocket, pushsocket):
+    def __init__(self, mfcs, pullsocket, pushsocket, livesocket):
         threading.Thread.__init__(self)
         self.mfcs = mfcs
         print mfcs
         self.pullsocket = pullsocket
         self.pushsocket = pushsocket
+        self.livesocket = livesocket
         self.running = True
 
     def run(self):
@@ -31,7 +33,7 @@ class FlowControl(threading.Thread):
                 flow =  self.mfcs[mfc].read_flow()
                 print(mfc + ': ' + str(flow))
                 self.pullsocket.set_point_now(mfc, flow)
-
+                self.livesocket.set_point_now(mfc, flow)
 
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRR44-if00-port0'
 devices = ['M13201551A', 'M8203814C', 'M11200362F',
@@ -61,68 +63,6 @@ for i in range(0, 8):
         MFCs[name[i]].set_control_mode() #Accept setpoint from rs232
         print name[i]
 
-"""
-for device in devices:
-    MFCs[device] = bronkhorst.Bronkhorst(device, port=port)
-    print MFCs[device].read_flow()
-
-# Array containing the controllers actually connected
-bronk_present = {}
-counter = 0
-for i in range(0, 8):
-    if name[i] == 'M13201551A':
-        mfc = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
-        print("pressure:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        MFCs['M13201551A'] = mfc
-        mfc.set_control_mode() #Accept setpoint from rs232
-
-    if name[i] == 'M8203814C': #Conrad
-        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
-        print("flow1:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow1'
-        flow1.set_control_mode() #Change to accept setpoint from rs232 interface
-        counter = counter + 1
-
-    if name[i] == 'M11200362F':
-        flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
-        print("flow2:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow2'
-        flow2.set_control_mode() #Change to accept setpoint from rs232 interface
-        counter = counter + 1
-
-    if name[i] == 'M8203814A':
-        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 9999)
-        print("flow3:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow3'
-        counter = counter + 1
-
-    if name[i] == 'M8203814B':
-        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
-        print("flow4:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow4'
-        counter = counter + 1
-
-    if name[i] == 'M11200362B':
-        flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 3)
-        print("flow5:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow5'
-        flow5.set_control_mode() #Change to accept setpoint from rs232 interface
-        counter = counter + 1
-
-    if name[i] == 'M11200362H':
-        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
-        print("flow6:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow6'
-        flow6.set_control_mode() #Change to accept setpoint from rs232 interface
-        counter = counter + 1
-"""
-
-
-
-
-
-
-
 Datasocket = DateDataPullSocket('microreactor_mfc_control',
                                 devices,
                                 timeouts=[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
@@ -131,14 +71,13 @@ Datasocket.start()
 
 Pushsocket = DataPushSocket('microreactor_mfc_control', action='enqueue')
 Pushsocket.start()
-
+Livesocket = LiveSocket('muffle_furnace', devices, 1)
+Livesocket.start()
 i = 0
 
-fc = FlowControl(MFCs, Datasocket, Pushsocket)
+fc = FlowControl(MFCs, Datasocket, Pushsocket, Livesocket)
 fc.start()
 
 while True:
     time.sleep(1)
-
-
 
