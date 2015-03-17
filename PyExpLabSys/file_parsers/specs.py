@@ -87,6 +87,7 @@ Module Documentation
 from __future__ import print_function
 
 from xml.etree import ElementTree as ET
+import codecs
 import logging
 _LOG = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -99,7 +100,7 @@ UNHANDLED_XML_COMPONENTS = 'An unhandled XML component \'{}\' was found when '\
                            'parsing a \'{}\''
 # Used in the conversion of elements with type information
 XML_TYPES = {
-    'string': str, 'ulong': long, 'double': float, 'boolean': bool,
+    'string': unicode, 'ulong': long, 'double': float, 'boolean': bool,
     'long': long,
 }
 ARRAY_TYPES = {'ulong': 'uint64', 'double': 'double'}
@@ -201,11 +202,22 @@ class SpecsFile(list):
 
     """
 
-    def __init__(self, filepath):
+    def __init__(self, filepath, encoding=None):
         """Parse the XML and initialize the internal variables"""
         super(SpecsFile, self).__init__()
         self.filepath = filepath
-        root = ET.parse(filepath).getroot()
+        if encoding:
+            file_ = codecs.open(filepath, mode='r', encoding=encoding)
+            content = file_.read()
+            root = ET.fromstring(content.encode('utf-8'))
+        else:
+            try:
+                root = ET.parse(filepath).getroot()
+            except ET.ParseError as exception:
+                print('#####\nParsing of the XML file failed. Possibly the '
+                      'XML is mal-formed or you need to supply the encoding '
+                      'of the XML file.\n\n###Traceback:')
+                raise
 
         _reg_group_seq = root.find('sequence[@type_name=\'RegionGroupSeq\']')
         for element in _reg_group_seq.findall(
@@ -234,6 +246,13 @@ class SpecsFile(list):
                 raise ValueError(message)
             _LOG.warning(message)
 
+    @property
+    def regions_iter(self):
+        """Returns a iteration over the regions"""
+        for region_group in self:
+            for region in region_group:
+                yield region
+
     def search_regions_iter(self, search_term):
         """Returns an generator of search results for regions by name
 
@@ -244,10 +263,9 @@ class SpecsFile(list):
             generator: An iterator of maching regions
 
         """
-        for region_group in self:
-            for region in region_group:
-                if search_term in region.name:
-                    yield region
+        for region in self.regions_iter:
+            if search_term in region.name:
+                yield region
 
     def search_regions(self, search_term):
         """Returns an list of search results for regions by name
@@ -279,7 +297,24 @@ class SpecsFile(list):
         """Returns the unix timestamp of the first region"""
         for region_group in self:
             for region in region_group:
-                return region.unix_timestamp
+                if region.unix_timestamp is not None:
+                    return region.unix_timestamp
+
+    def get_analysis_method(self):
+        """Returns the analysis method of the file
+
+        Raises:
+            ValueError: If more than one analysis method is used
+        """
+        methods = set()
+        for region in self.regions_iter:
+            methods.add(region.region['analysis_method'])
+
+        if len(methods) > 1:
+            message = 'More than one analysis methods is used inside this file'
+            raise ValueError(message)
+
+        return methods.pop()
 
 
 class RegionGroup(list):
@@ -473,8 +508,11 @@ class Region(object):
     @cached_property
     def y_avg_cps(self):
         """Returns the average counts per second as a Numpy array"""
-        data = self.y_avg_counts / self.region['dwell_time']
-        _LOG.debug('Creating {} y_avg_cps values'.format(data.size))
+        try:
+            data = self.y_avg_counts / self.region['dwell_time']
+            _LOG.debug('Creating {} y_avg_cps values'.format(data.size))
+        except TypeError:
+            data = None
         return data
 
     @property
