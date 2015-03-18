@@ -6,14 +6,17 @@ import time
 from collections import namedtuple
 import json
 import MySQLdb
-import credentials
+import credentials  # pylint: disable=import-error
 from PyExpLabSys.file_parsers.specs import SpecsFile
 
-DATAPATH = 'C:\\Users\\cinf\\Documents\\shared with vm\\XPS and ISS\\Dati XPS - ISS'
+DATAPATH = 'C:\\Users\\cinf\\Documents\\shared with vm\\XPS and ISS\\'\
+           'Dati XPS - ISS'
+# Database setup
 CONNECTION = MySQLdb.connect('servcinf', credentials.USERNAME,
                              credentials.PASSWORD, 'cinfdata')
 CURSOR = CONNECTION.cursor()
-DATA_FILE = namedtuple('data_file', ('fullpath', 'db_path'))
+# Named tuple for data file paths
+DataFile = namedtuple('data_file', ('fullpath', 'db_path'))
 # List of metadata fields names, [in_file, as_in_db]
 METADATAFIELDS = [
     ['dwell_time', 'dwell_time'],
@@ -24,21 +27,22 @@ METADATAFIELDS = [
     ['effective_workfunction', 'workfunction'],
     ['analyzer_lens', 'analyzer_lens'],
 ]
+# Table names
 MEASUREMENTS_TABLE = 'measurements_dummy'
 XY_TABLE = 'xy_values_dummy'
 
 
-def json_default(obj):
+def json_default(_):
     """Returns the default string when an item cannot be JSON serailizable"""
     return 'NON JSON SERIALIZABLE'
 
 
 def get_list_of_datafiles():
-    """Returns a list of datafiles as DATA_FILE named tuples"""
+    """Returns a list of datafiles as DataFile named tuples"""
     data_files = []
 
     # Walk the path that contains the data files
-    for root, dirs, filenames in os.walk(DATAPATH):
+    for root, _, filenames in os.walk(DATAPATH):
         for filename in filenames:
             # Check the extension
             _, ext = os.path.splitext(filename)
@@ -51,7 +55,7 @@ def get_list_of_datafiles():
                 message = 'Cannot strip DATAPATH from full filepath'
                 raise Exception(message)
             db_filepath = filepath.split(DATAPATH)[1].lstrip(os.sep)
-            data_files.append(DATA_FILE(filepath, db_filepath))
+            data_files.append(DataFile(filepath, db_filepath))
 
     return data_files
 
@@ -82,23 +86,24 @@ def send_region_to_db(specsfile, region_group, region, db_path):
     # Check for good data
     print('Sending in region:', region.name)
     if region.region['analysis_method'] == 'XPS':
-        x = region.x_be
+        xdata = region.x_be
     else:
-        x = region.x
-    y = region.y_avg_cps
+        xdata = region.x
+    ydata = region.y_avg_cps
 
-    if x is None:
+    if xdata is None:
         print('x data is None, skipping this region')
         return
-    if y is None:
+    if ydata is None:
         print('y data is None, skipping this region')
         return
-    if x is not None and y is not None and len(x) != len(y):
-        print('x anc y data has different lengths, skipping this region')
+    if xdata is not None and ydata is not None and len(xdata) != len(ydata):
+        print('x and y data has different lengths, skipping this region')
         return
 
     db_id = send_region_metadata(specsfile, region_group, region, db_path)
-    send_region_data(x, y, db_id)
+    send_region_data(xdata, ydata, db_id)
+
 
 def send_region_metadata(specsfile, region_group, region, db_path):
     """Send the metadata for a region"""
@@ -141,7 +146,6 @@ def send_region_metadata(specsfile, region_group, region, db_path):
     CURSOR.execute(query, values)
     CONNECTION.commit()
 
-
     # Get the id
     query = 'select id from {} where time=FROM_UNIXTIME(%s) and type=%s '\
             'order by id desc limit 1'.format(MEASUREMENTS_TABLE)
@@ -150,16 +154,18 @@ def send_region_metadata(specsfile, region_group, region, db_path):
     return CURSOR.fetchall()[0][0]
 
 
-def send_region_data(x, y, db_id):
+def send_region_data(xdata, ydata, db_id):
     """Send the region data to the db"""
     query = 'INSERT INTO {} (measurement, x, y) VALUES (%s, %s, %s)'.format(
         XY_TABLE)
-    ids = [db_id] * len(x)
-    print('Sening in {} points'.format(len(x)))
-    CURSOR.executemany(query, zip(ids, x, y))
+    ids = [db_id] * len(xdata)
+    print('Sending in {} points'.format(len(xdata)))
+    CURSOR.executemany(query, zip(ids, xdata, ydata))
     CONNECTION.commit()
 
+
 def main():
+    """Gets the list of files on harddrive and in db and uploads new ones"""
     data_files = get_list_of_datafiles()
     print('Found {} files on harddrive'.format(len(data_files)))
     db_files = get_files_in_db()
@@ -170,15 +176,14 @@ def main():
             new_files.append(data_file)
     print('Found {} new files'.format(len(new_files)))
 
-    for n, data_file in enumerate(new_files):
-        if n % 50 == 0:
-            print(n)
+    for index, data_file in enumerate(new_files):
+        if index % 50 == 0:
+            print(index)
             time.sleep(1)
 
-        sf = SpecsFile(data_file.fullpath, encoding='iso-8859-1')
-        send_file_to_db(sf, data_file.db_path)
+        specsfile = SpecsFile(data_file.fullpath, encoding='iso-8859-1')
+        send_file_to_db(specsfile, data_file.db_path)
 
 
 if __name__ == '__main__':
     main()
-    
