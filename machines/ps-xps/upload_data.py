@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 import os
-import time
 from collections import namedtuple
 import json
 import MySQLdb
@@ -12,7 +11,7 @@ from PyExpLabSys.file_parsers.specs import SpecsFile
 DATAPATH = 'C:\\Users\\cinf\\Documents\\shared with vm\\XPS and ISS\\'\
            'Dati XPS - ISS'
 # Database setup
-CONNECTION = MySQLdb.connect('servcinf', credentials.USERNAME,
+CONNECTION = MySQLdb.connect('servcinf-sql', credentials.USERNAME,
                              credentials.PASSWORD, 'cinfdata')
 CURSOR = CONNECTION.cursor()
 # Named tuple for data file paths
@@ -28,8 +27,8 @@ METADATAFIELDS = [
     ['analyzer_lens', 'analyzer_lens'],
 ]
 # Table names
-MEASUREMENTS_TABLE = 'measurements_dummy'
-XY_TABLE = 'xy_values_dummy'
+MEASUREMENTS_TABLE = 'measurements_ps'
+XY_TABLE = 'xy_values_ps'
 
 
 def json_default(_):
@@ -177,12 +176,11 @@ def main():
     print('Found {} new files'.format(len(new_files)))
 
     for index, data_file in enumerate(new_files):
-        if index % 50 == 0:
-            print(index)
-            time.sleep(1)
-
         specsfile = SpecsFile(data_file.fullpath, encoding='iso-8859-1')
         send_file_to_db(specsfile, data_file.db_path)
+
+    print('\nPress enter to exit')
+    raw_input()
 
 
 if __name__ == '__main__':
