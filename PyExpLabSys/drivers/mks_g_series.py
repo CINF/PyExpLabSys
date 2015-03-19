@@ -26,15 +26,18 @@ class Mks_G_Series():
         self.ser.write(com_string)
         time.sleep(0.5)
         reply = self.ser.read(self.ser.inWaiting())
-        if reply[-2:] == self.checksum(reply[1:-2]):
-            reply = reply[6:-3] # Cut away master address and checksum
+        if len(reply) == 0:
+            logging.warn('No such device')
         else:
-            logging.error('Checksum error in reply')
-            reply = ''
-        if reply[0:3] == 'ACK':
-            reply = reply[3:]
-        else:
-            logging.warn('Error in command')
+            if reply[-2:] == self.checksum(reply[1:-2]):
+                reply = reply[6:-3] # Cut away master address and checksum
+            else:
+                logging.error('Checksum error in reply')
+                reply = ''
+            if reply[0:3] == 'ACK':
+                reply = reply[3:]
+            else:
+                logging.warn('Error in command')
         return reply
 
     def read_full_scale_range(self, addr):
@@ -60,64 +63,45 @@ class Mks_G_Series():
         return reply
 
     def read_run_hours(self, addr):
+        """ Return number of running hours of mfc """
         command = 'RH?'
         return self.comm(command, addr)
 
     def read_setpoint(self, addr):
+        """ Read the flow setpoint """
         command = 'SX?'
         value = float(self.comm(command, addr))
         return value
 
-    def set_setpoint(self, value, addr):
-        command = 'SX!' + str(round(value,1))
+    def set_flow(self, value, addr):
+        """ Set the flow setpoint """
+        command = 'SX!' + str(round(value, 1))
         self.comm(command, addr)
         return(True)
 
     def read_flow(self, addr):
+        """ Read the flow """
         command = 'FX?'
         return float(self.comm(command, addr))
 
     def read_serial_number(self, addr):
+        """ Read the serial number of the device """
         command = 'SN?'
         return self.comm(command, addr)
 
-mks = Mks_G_Series()
-#print mks.read_serial_number(1)
-#print mks.set_setpoint(2.2, 1)
-#print mks.read_setpoint(1)
-#print mks.read_flow(1)
-#print mks.read_current_gas_type(1)
-#print mks.read_device_address(2)
-print mks.read_full_scale_range(2)
+if __name__ == '__main__':
+    mks = Mks_G_Series()
+    print mks.read_serial_number(0)
+    print mks.set_setpoint(1, 0)
+    #print mks.read_setpoint(2)
+    #while True:
+    #    print mks.read_flow(2)
+    #    time.sleep(0.5)
+    #print mks.read_flow(2)
+    #print mks.read_current_gas_type(1)
+    #print mks.read_device_address(2)
+    #print mks.read_full_scale_range(2)
 
 
-#print mks.read_run_hours(254)
-#print mks.set_device_address(254,2)
-
-
-
-
-"""
-f = serial.Serial('/dev/ttyUSB0', 9600)
-
-f.write('@@@@254WK!ON;FF')
-time.sleep(0.5)
-print f.inWaiting()
-s = f.read(f.inWaiting())
-print s
-print '------'
-
-f.write('@@@@254CA?;D9')
-time.sleep(0.5)
-print f.inWaiting()
-s = f.read(f.inWaiting())
-print s
-print '-------'
-f.write('@@@@254CA?;FF')
-time.sleep(0.5)
-print f.inWaiting()
-s = f.read(f.inWaiting())
-print s
-print '-----'
-
-"""
+    #print mks.read_run_hours(254)
+    #print mks.set_device_address(254,2)
