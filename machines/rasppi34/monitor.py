@@ -16,8 +16,7 @@ from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 # Set log filesize to 10 MB
-LOGGER = get_logger('b307gasalarm', file_log=True, level='debug',
-                    file_max_bytes=10*2**20)
+LOGGER = get_logger('b307gasalarm', level='debug')
 import MySQLdb
 
 
