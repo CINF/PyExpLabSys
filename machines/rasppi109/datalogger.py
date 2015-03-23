@@ -29,26 +29,27 @@ class PressureReader(threading.Thread):
             self.flight_tube = None
         else:
             if channel == 0:
-                return self.flight_tube
+                return_val = self.flight_tube
             if channel == 1:
-                return self.main_chamber
-        return(self.pressure)
+                return_val = self.main_chamber
+        return return_val
 
     def run(self):
         while not self.quit:
-            self.ttl = 20
-            time.sleep(0.5)
             press = self.xgs.read_all_pressures()
             try:
                 self.flight_tube = press[0]
                 self.main_chamber = press[1]
+                self.ttl = 20
             except IndexError:
                 print "av"
+            time.sleep(5)
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
-
-xgs_instance = xgs600.XGS600Driver('/dev/ttyUSB0')
+ports = '/dev/serial/by-id/'
+ports += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+xgs_instance = xgs600.XGS600Driver(ports)
 print xgs_instance.read_all_pressures()
 
 pressure = PressureReader(xgs_instance)
