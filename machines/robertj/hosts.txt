@@ -1,12 +1,12 @@
- rasppi00,  Raspberry Pi, ssh,    STM312, X-ray cooling water flow
- rasppi01,  Raspberry Pi, ssh,    TOF, Pressure
+ rasppi00,  Raspberry Pi, socket, STM312, X-ray cooling water flow
  rasppi02,  Raspberry Pi, socket, Hall, Cooling water pressure
  rasppi04,  Raspberry Pi, socket, Volvo, pressure readout
- rasppi05,  Raspberry Pi, ssh,    Microreactors, temperature control
- rasppi08,  Raspberry Pi, ssh,    Old CS, TC and pressure readout
+ rasppi05,  Raspberry Pi, socket, Microreactors, temperature control
+ rasppi07,  Raspberry Pi, socket, Old Microreactor, Ion gauge readout
+ rasppi08,  Raspberry Pi, socket, Old CS, TC and pressure readout
  rasppi09,  Raspberry Pi, ssh,    NH3, Pressure readout
- rasppi12,  Raspberry Pi, ssh,    Microreactors, TC-readout
- rasppi13,  Raspberry Pi, ssh,    STM312, Flow controllers
+ rasppi12,  Raspberry Pi, socket, Microreactors, TC-readout
+ rasppi13,  Raspberry Pi, socket, STM312, Pressure controller
  rasppi14,  Raspberry Pi, ssh,    NH3, concentration + temperature
  rasppi15,  Raspberry Pi, ssh,    Hall, Gasmonitor
  rasppi16,  Raspberry Pi, ssh,    Microreactors, NG Flows
@@ -14,34 +14,38 @@
  rasppi18,  Raspberry Pi, ssh,    STM312, Mass Spectrometer
  rasppi19,  Raspberry Pi, socket, STM312, Temperature control
  rasppi20,  Raspberry Pi, ssh,    STM312, chillers
- rasppi21,  Raspberry Pi, ssh,    Sputterchamber, -
- rasppi22,  Raspberry Pi, ssh,    STM312, Bakeout control box
- rasppi24,  Raspberry Pi, ssh,    Microreactors, Old Flow controllers
- rasppi25,  Raspberry Pi, ssh,    Thetaprobe, Datalogger
+ rasppi21,  Raspberry Pi, socket, Sputterchamber, QCM and Chiller
+ rasppi22,  Raspberry Pi, socket, STM312, Bakeout control box
+ rasppi23,  Raspberry Pi, socket, Hall, Cooling water temperature
+ rasppi24,  Raspberry Pi, socket, Microreactors, Old Flow controllers
+ rasppi25,  Raspberry Pi, ls,     Thetaprobe, Datalogger
  rasppi27,  Raspberry Pi, ssh,    Microreactors, Old massspec
- rasppi28,  Raspberry Pi, ssh,    PS, Pressure readout
- rasppi29,  Raspberry Pi, ssh,    MGW, Valve control
- rasppi30,  Raspberry Pi, ssh,    MGW, Temperature control
- rasppi31,  Raspberry Pi, ssh,    STM312, Sputter gun
- rasppi33,  Raspberry Pi, ssh,    VHP-setup, Valve-control
- rasppi34,  Raspberry Pi, ssh,    b307, Gas Alarm
- rasppi35,  Raspberry Pi, ssh,    VHP Setup, Flow controllers
- rasppi37,  Raspberry Pi, ssh,    Coupled Reactor, MKS MFCs
+ rasppi28,  Raspberry Pi, ssh,    PS, Pressure readout + turbo control
+ rasppi29,  Raspberry Pi, socket, Palle, Valve control
+ rasppi30,  Raspberry Pi, socket, Palle, Temperature control
+ rasppi31,  Raspberry Pi, socket, STM312, X-ray gun
+ rasppi33,  Raspberry Pi, ssh,    VHP-setup, Valve control
+ rasppi34,  Raspberry Pi, ls,     b307, Gas Alarm
+ rasppi35,  Raspberry Pi, socket, VHP Setup, Flow controllers
+ rasppi36,  Raspberry Pi, socket, Microreactors, Pressure readout
+ rasppi37,  Raspberry Pi, socket, Microreactors, MKS MFCs
  rasppi40,  Raspberry Pi, ssh,    Coupled Reactor, Valve Control box
  rasppi41,  Raspberry Pi, ssh,    Coupled reactor, Temperature measurement
  rasppi43,  Raspberry Pi, ssh,    VHP-setup, Pressure and temperature
  rasppi44,  Raspberry Pi, ssh,    Unknown setu, Valve Control boxp
+ rasppi45,  Raspberry Pi, socket, Hall, N5 argon pressure
  rasppi46,  Raspberry Pi, ssh,    Coupled Reactor, Brooks MFCs
  rasppi47,  Raspberry Pi, socket, Furnace Room, Temperature Control
- rasppi48,  Raspberry Pi, socket, MGW, Backeout Control
+ rasppi48,  Raspberry Pi, ssh,    Palle, Backeout Control
  rasppi49,  Raspberry Pi, socket, TOF, emission control
  rasppi50,  Raspberry Pi, socket, XRD, Valve control
  rasppi51,  Raspberry Pi, socket, b309, CVD chamber
- rasppi53,  Raspberry Pi, socket, MGW, multi purpose
+ rasppi52,  Raspberry Pi, ssh,    VHP, bakeout controll
+ rasppi53,  Raspberry Pi, socket, Palle, multi purpose
  rasppi54,  Raspberry Pi, socket, b307, Muffle furnace
+ rasppi56,  Raspberry Pi, socket, STM312, Temperature and Pressure
+ rasppi57,  Raspberry Pi, ls,     Theta Probe, Chiller
  rasppi100, Raspberry Pi, socket, Microreactors, Turbo controller
- rasppi102, Raspberry Pi, ssh,    Microreactors, Pressure readout
-#hosts.put(['microreactorng','Windows','None','Main PC, Microreactor NG'])
-#hosts.put(['tofms','Windows','rdp','TOF-MS'])
-#hosts.put(['sputterchamber','Windows','rdp','Sputterchamber'])
-#hosts.put(['robertj','Fedora','http','Robert, office'])
+ rasppi104, Raspberry Pi, socket, Chemlab b312, Sample storage
+ rasppi105, Raspberry Pi, socket, Omicron, RTD reader
+ rasppi109, Raspberry Pi, ls,     TOF, Pressure

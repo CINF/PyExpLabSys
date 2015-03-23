@@ -47,25 +47,32 @@ def uptime(host, method, username='pi', password='cinf123'):
         return_value['up'] = up
         return_value['load'] = load
 
-    if method == 'socket':
+    if method in ['socket', 'ls']:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(0.1)
+        port = 0
+        port = 9000 if method == 'socket' else port
+        port = 8000 if method == 'ls' else port
         try:
-            sock.sendto('status', (host, 9000))
+            sock.sendto('status', (host, port))
             received = sock.recv(1024)
             status = json.loads(received)
             system_status = status['system_status']
             up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
             load = str(system_status['load_average']['15m'])
-            gittime = system_status['last_git_fetch_unixtime']
-            git = datetime.datetime.fromtimestamp(gittime).strftime('%Y-%m-%d')
             return_value['up'] = up
             return_value['load'] = load
-            return_value['git'] = git
         except:
             return_value['up'] = 'Down'
             return_value['load'] = 'Down'
-
+        try:
+            gittime = system_status['last_git_fetch_unixtime']
+            git = datetime.datetime.fromtimestamp(gittime).strftime('%Y-%m-%d')
+        except TypeError:
+            git = 'None'
+        except  UnboundLocalError:
+            git = ''
+        return_value['git'] = git
     """
     Will need to modify uptime script on these hosts...
     if method== 'http':
