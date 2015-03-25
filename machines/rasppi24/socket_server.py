@@ -30,7 +30,7 @@ class FlowControl(threading.Thread):
         while self.running:
             time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
-            print qsize
+            print "Qsize: " + str(qsize)
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 mfc = element.keys()[0]
@@ -43,6 +43,7 @@ class FlowControl(threading.Thread):
                 self.pullsocket.set_point_now(mfc, flow)
                 self.livesocket.set_point_now(mfc, flow)
                 if mfc == 'M13201551A':
+                    print "Pressure: " + str(flow)
                     self.reactor_pressure = flow
 
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRR44-if00-port0'
@@ -52,24 +53,28 @@ ranges = {}
 ranges['M13201551A'] = 5 # Microreactor, pressure controller
 ranges['M8203814C'] = 2.5 #Conrad
 ranges['M11200362F'] = 1 # Microreactor, flow 2
-ranges['M8203814A'] = 99999 # flow 5
-ranges['M8203814B'] = 5 # Microreactor, flow 1
+ranges['M8203814A'] = 10 # flow 5 (argon calibrated)
+ranges['M8203814B'] = 3 # Microreactor, flow 1 (argon calibrated)
 ranges['M11200362B'] = 10 # Palle Flow
 ranges['M11200362H'] = 2.5 # Palle pressure
 name = {}
 
 MFCs = {}
-
+print '!'
 for i in range(0, 8):
     error = 0
     name[i] = ''
     while (error < 3) and (name[i]==''):
-        bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i))
+        # Pro forma-range will be update in a few lines
+        bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1) 
         name[i] = bronk.read_serial()
         name[i] = name[i].strip()
         error = error + 1
+        print error
+        print name[i]
     if name[i] in devices:
-        MFCs[name[i]] = bronk
+        MFCs[name[i]] = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i),
+                                              ranges[name[i]])
         MFCs[name[i]].set_control_mode() #Accept setpoint from rs232
         print name[i]
 
@@ -81,7 +86,7 @@ Datasocket.start()
 
 Pushsocket = DataPushSocket('microreactor_mfc_control', action='enqueue')
 Pushsocket.start()
-Livesocket = LiveSocket('muffle_furnace', devices, 1)
+Livesocket = LiveSocket('microreactor_mfc_control', devices, 1)
 Livesocket.start()
 
 fc = FlowControl(MFCs, Datasocket, Pushsocket, Livesocket)

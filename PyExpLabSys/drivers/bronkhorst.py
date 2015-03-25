@@ -4,8 +4,8 @@ import threading
 
 class Bronkhorst():
     
-    def __init__(self,port,max_flow = 10):
-        self.ser = serial.Serial(port,38400)
+    def __init__(self, port, max_flow):
+        self.ser = serial.Serial(port, 38400)
         self.max_setting = max_flow
         time.sleep(0.1)
 
@@ -38,7 +38,7 @@ class Bronkhorst():
                 error = error + 1
         return pressure
 
-    def set_flow(self,setpoint):
+    def set_flow(self, setpoint):
         """ Set the desired setpoint, which could be a pressure """
         if setpoint > 0:
             setpoint = (1.0 * setpoint / self.max_setting) * 32000
@@ -100,7 +100,7 @@ class Bronkhorst():
 
         
 if __name__ == '__main__':
-    bh = Bronkhorst('/dev/ttyUSB0',2.5)
+    bh = Bronkhorst('/dev/ttyUSB0', 5)
     #print bh.set_setpoint(1.0)
     #time.sleep(1)
     print bh.read_serial()
@@ -108,4 +108,4 @@ if __name__ == '__main__':
     #print bh.read_capacity()
     #print bh.read_counter_value()
     #print bh.read_setpoint()
-    print bh.read_measure()
+    print bh.read_flow()
