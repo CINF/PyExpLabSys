@@ -284,6 +284,7 @@ class UDPConnectionSteward(threading.Thread):
         # while the program is running
         file_ = open(CURRENT_CONNECTIONS, 'w')
         file_.write("Found in xml file\n")
+        file_.write(time.strftime("%Y-%m-%d %H:%M:%S") + "\n")
         try:
             tree = XML.parse('web_sockets.xml')
             self.udp_definitions.clear()

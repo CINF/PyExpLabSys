@@ -33,9 +33,24 @@
 
     <!-- Old micro-reactor pressure in buffer volume (mr_buffer_pressure) AND micro-reactor NG pressure in buffer volume microreactorng_pressure_buffer -->
     <!-- mr_buffer_pressure, microreactorng_pressure_buffer -->
-    <socket>rasppi102:8000</socket>
+    <socket>rasppi36:8000</socket>
 
     <!-- Pressure in TOF flight tube and TOF main chamber -->
     <!-- tof_iongauge_ft, tof_iongauge_main -->
     <socket>rasppi109:8000</socket>
+
+    <!-- Flow and pressure controllers, old microreactor, Palle and PS -->
+    <!-- M13201551A, M8203814C, M11200362F, M8203814A, M8203814B, M11200362B
+         M11200362H -->
+    <socket>rasppi24:8000</socket>
+
+    <!-- Flow and pressure controllers, old microreactor and sniffer setup -->
+    <!-- 21984839, 21984838 -->
+    <socket>rasppi37:8000</socket>
+
+    <!-- sniffer_qms_ion_gauge - Sniffer, Ion Gauge pressure at mass spec
+	 sniffer_qms_roughing - Sniffer, roughing for qms turbo
+	 sniffer_buffer_roughing  - Sniffer, roughing for buffer turbo
+	 sniffer_buffer_pressure  - Sniffer, buffer pirani pressure -->
+    <socket>rasppi107:8000</socket>
 </sockets>
