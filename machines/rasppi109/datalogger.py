@@ -25,8 +25,7 @@ class PressureReader(threading.Thread):
         self.ttl = self.ttl - 1
         if self.ttl < 0:
             self.quit = True
-            self.main_chamber = None
-            self.flight_tube = None
+            return_val = None
         else:
             if channel == 0:
                 return_val = self.flight_tube
@@ -38,9 +37,10 @@ class PressureReader(threading.Thread):
         while not self.quit:
             press = self.xgs.read_all_pressures()
             try:
-                self.flight_tube = press[0]
-                self.main_chamber = press[1]
-                self.ttl = 20
+                if not self.quit:
+                    self.flight_tube = press[0]
+                    self.main_chamber = press[1]
+                    self.ttl = 50
             except IndexError:
                 print "av"
             time.sleep(5)
@@ -76,7 +76,7 @@ db_logger = ContinuousLogger(table='dateplots_tof',
 db_logger.start()
 
 while pressure.isAlive():
-    time.sleep(0.25)
+    time.sleep(0.5)
     for name in codenames:
         v = loggers[name].read_value()
         livesocket.set_point_now(name, v)
