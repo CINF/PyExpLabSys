@@ -1,225 +1,112 @@
-import sys
-import SocketServer
-sys.path.append('../')
-import bronkhorst
+# pylint: disable=R0913, C0103
 
-# Code for assigning the controllers to proper /dev/tty*
+import threading
+import time
+import PyExpLabSys.drivers.bronkhorst as bronkhorst
+from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.value_logger import ValueLogger
+from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.sockets import LiveSocket
+import credentials
+
+class FlowControl(threading.Thread):
+    """ Keep updated values of the current flow """
+    def __init__(self, mfcs, pullsocket, pushsocket, livesocket):
+        threading.Thread.__init__(self)
+        self.mfcs = mfcs
+        print mfcs
+        self.pullsocket = pullsocket
+        self.pushsocket = pushsocket
+        self.livesocket = livesocket
+        self.running = True
+        self.reactor_pressure = float('NaN')
+
+    def value(self):
+        """ Helper function for the reactor logger functionality """
+        return self.reactor_pressure
+
+    def run(self):
+        while self.running:
+            time.sleep(0.1)
+            qsize = self.pushsocket.queue.qsize()
+            print "Qsize: " + str(qsize)
+            while qsize > 0:
+                element = self.pushsocket.queue.get()
+                mfc = element.keys()[0]
+                self.mfcs[mfc].set_flow(element[mfc])
+                qsize = self.pushsocket.queue.qsize()
+
+            for mfc in self.mfcs:
+                flow =  self.mfcs[mfc].read_flow()
+                #print(mfc + ': ' + str(flow))
+                self.pullsocket.set_point_now(mfc, flow)
+                self.livesocket.set_point_now(mfc, flow)
+                if mfc == 'M11213502A':
+                    print "Pressure: " + str(flow)
+                    self.reactor_pressure = flow
+
+devices = ['M11213502A', 'M11200362C', 'M11200362A',
+           'M11200362E', 'M11200362D', 'M11210022B', 'M11200362G']
+ranges = {}
+ranges['M11213502A'] = 2.5 # Pressure controller
+ranges['M11200362C'] = 10 # Flow1
+ranges['M11200362A'] = 10 # Flow2
+ranges['M11200362E'] = 5 # Flow3
+ranges['M11200362D'] = 5 # Flow4
+ranges['M11210022B'] = 10 # Flow5 (NH3 compatible)
+ranges['M11200362G'] = 1 # Flow6
 name = {}
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB0')
-name[0] = bronk.read_serial()
-name[0] = name[0].strip()
+MFCs = {}
+print '!'
+for i in range(0, 8):
+    error = 0
+    name[i] = ''
+    while (error < 3) and (name[i]==''):
+        # Pro forma-range will be update in a few lines
+        bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1) 
+        name[i] = bronk.read_serial()
+        name[i] = name[i].strip()
+        error = error + 1
+        print error
+        print name[i]
+    if name[i] in devices:
+        MFCs[name[i]] = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i),
+                                              ranges[name[i]])
+        MFCs[name[i]].set_control_mode() #Accept setpoint from rs232
+        print name[i]
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB1')
-name[1] = bronk.read_serial()
-name[1] = name[1].strip()
+Datasocket = DateDataPullSocket(unichr(0x03BC) + '-reactor_mfc_control',
+                                devices,
+                                timeouts=[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                                port=9000)
+Datasocket.start()
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB2')
-name[2] = bronk.read_serial()
-name[2] = name[2].strip()
+Pushsocket = DataPushSocket(unichr(0x03BC) + '-reactor_mfc_control',
+                            action='enqueue')
+Pushsocket.start()
+Livesocket = LiveSocket(unichr(0x03BC) + '-reactor_mfc_control', devices, 1)
+Livesocket.start()
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB3')
-name[3] = bronk.read_serial()
-name[3] = name[3].strip()
+fc = FlowControl(MFCs, Datasocket, Pushsocket, Livesocket)
+fc.start()
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB4')
-name[4] = bronk.read_serial()
-name[4] = name[4].strip()
+Logger = ValueLogger(fc, comp_val=1, comp_type='log', low_comp=0.0001)
+Logger.start()
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB5')
-name[5] = bronk.read_serial()
-name[5] = name[5].strip()
+codename = 'microreactorng_pressure_reactor'
+db_logger = ContinuousLogger(table='dateplots_microreactorNG',
+                             username=credentials.user,
+                             password=credentials.passwd,
+                             measurement_codenames=[codename])
+db_logger.start()
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB6')
-name[6] = bronk.read_serial()
-name[6] = name[6].strip()
+while True:
+    time.sleep(0.25)
+    v = Logger.read_value()
+    if Logger.read_trigged():
+        print v
+        db_logger.enqueue_point_now(codenam, v)
+        Logger.clear_trigged()
 
-bronk = bronkhorst.Bronkhorst('/dev/ttyUSB7')
-name[7] = bronk.read_serial()
-name[7] = name[7].strip()
-
-# Array containing the controllers actually connected
-bronk_present = {}
-
-counter = 0
-for i in range(0,8):
-
-    if name[i] == 'M11213502A':
-        pressure = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 2.5)
-        print("pressure:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'pressure'
-        pressure.set_control_mode() #Change to accept setpoint from rs232 interface
-        counter = counter + 1
-
-    if name[i] == 'M11200362C':
-        flow1 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow1:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow1'
-        counter = counter + 1
-
-    if name[i] == 'x':
-        flow2 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow2:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow2'
-        counter = counter + 1
-
-    if name[i] == 'M11200362E':
-        flow3 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
-        print("flow3:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow3'
-        counter = counter + 1
-
-    if name[i] == 'M11200362D':
-        flow4 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 5)
-        print("flow4:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow4'
-        counter = counter + 1
-
-    if name[i] == 'M11210022B':
-        flow5 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 10)
-        print("flow5:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow5'
-        counter = counter + 1
-
-    if name[i] == 'M11200362G':
-        flow6 = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
-        print("flow6:/dev/ttyUSB" + str(i) + ', serial:' + name[i])
-        bronk_present[counter] = 'flow6'
-        counter = counter + 1
-
-#This specific raspberry pi communication with mass flow and pressure controllers
-class MyUDPHandler(SocketServer.BaseRequestHandler):
-
-    def handle(self):
-        received_data = self.request[0].strip()
-        data = "test"
-        socket = self.request[1]
-
-        if received_data == "read_flow_1":
-            print "read_flow_1"
-            data = str(flow1.read_measure())
-        if received_data == "read_flow_2":
-            print "read_flow_2"
-            data = str(flow2.read_measure())
-        if received_data == "read_flow_3":
-            print "read_flow_3"
-            data = str(flow3.read_measure())
-        if received_data == "read_flow_4":
-            print "read_flow_4"
-            data = str(flow4.read_measure())
-        if received_data == "read_flow_5":
-            print "read_flow_5"
-            data = str(flow5.read_measure())
-        if received_data == "read_flow_6":
-            print "read_flow_6"
-            data = str(flow6.read_measure())
-        if received_data == "read_pressure":
-            print "read_pressure"
-            data = str(pressure.read_measure())
-        if received_data == "read_all":
-            print "read_all"
-            data = ''
-            for i in range(0, len(bronk_present)):
-                if bronk_present[i] == 'flow1':
-                    data = data + '1:' + str(flow1.read_measure()) + ','
-                if bronk_present[i] == 'flow2':
-                    data = data + '2:' +str(flow2.read_measure()) + ','
-                if bronk_present[i] == 'flow3':
-                    data = data + '3:' + str(flow3.read_measure()) + ','
-                if bronk_present[i] == 'flow4':
-                    data = data + '4:' + str(flow4.read_measure()) + ','
-                if bronk_present[i] == 'flow5':
-                    data = data + '5:' + str(flow5.read_measure()) + ','
-                if bronk_present[i] == 'flow6':
-                    data = data + '6:' + str(flow6.read_measure()) + ','
-                if bronk_present[i] == 'pressure':
-                    data = data + '0:' + str(pressure.read_measure()) + ','
-            #Remove trailing comma
-            data = data[:-1]
-
-        if received_data == "read_setpoint_1":
-            print "read_setpoint_1"
-            data = str(flow1.read_setpoint())
-        if received_data == "read_setpoint_2":
-            print "read_setpoint_2"
-            data = str(flow2.read_setpoint())
-        if received_data == "read_setpoint_3":
-            print "read_setpoint_2"
-            data = str(flow3.read_setpoint())
-        if received_data == "read_setpoint_4":
-            print "read_setpoint_2"
-            data = str(flow4.read_setpoint())
-        if received_data == "read_setpoint_5":
-            print "read_setpoint_2"
-            data = str(flow5.read_setpoint())
-        if received_data == "read_setpoint_6":
-            print "read_setpoint_2"
-            data = str(flow6.read_setpoint())
-        if received_data == "read_setpoint_pressure":
-            print "read_setpoint_pressure"
-            data = str(pressure.read_setpoint())
-
-        if received_data[0:10] == "write_all:":
-            print "write_all"
-            val = received_data[10:].split(',')
-            data = ''
-            for i in range(0,len(bronk_present)):
-                if bronk_present[i] == 'flow1':
-                    flow1.set_setpoint(float(val[0]))
-                    data = data + 'flow1,'
-                if bronk_present[i] == 'flow2':
-                    flow2.set_setpoint(val[1])
-                    data = data + 'flow2,'
-                if bronk_present[i] == 'flow3':
-                    flow3.set_setpoint(float(val[2]))
-                    data = data + 'flow3,'
-                if bronk_present[i] == 'flow4':
-                    flow4.set_setpoint(float(val[3]))
-                    data = data + 'flow4,'
-                if bronk_present[i] == 'flow5':
-                    flow5.set_setpoint(float(val[4]))
-                    data = data + 'flow5,'
-                if bronk_present[i] == 'flow6':
-                    flow6.set_setpoint(float(val[5]))
-                    data = data + 'flow6,'
-                if bronk_present[i] == 'pressure':
-                    pressure.set_setpoint(float(val[6]))
-                    data = data + 'pressure,'
-            data = data[:-1]
-
-        if received_data[0:11] == "set_flow_1:":
-            val = float(received_data[11:].strip())
-            flow1.set_setpoint(val)
-            data = "ok"
-        if received_data[0:11] == "set_flow_2:":
-            val = float(received_data[11:].strip())
-            flow2.set_setpoint(val)
-            data = "ok"
-        if received_data[0:11] == "set_flow_3:":
-            val = float(received_data[11:].strip())
-            flow3.set_setpoint(val)
-            data = "ok"
-        if received_data[0:11] == "set_flow_4:":
-            val = float(received_data[11:].strip())
-            flow4.set_setpoint(val)
-            data = "ok"
-        if received_data[0:11] == "set_flow_5:":
-            val = float(received_data[11:].strip())
-            flow5.set_setpoint(val)
-            data = "ok"
-        if received_data[0:11] == "set_flow_6:":
-            val = float(received_data[11:].strip())
-            flow6.set_setpoint(val)
-            data = "ok"
-        if received_data[0:13] == "set_pressure:":
-            val = float(received_data[13:].strip())
-            pressure.set_setpoint(val)
-            data = "ok"
-
-        socket.sendto(data, self.client_address)
-
-if __name__ == "__main__":
-    HOST, PORT = "130.225.86.185", 9998 #Rasppi16
-
-    server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
-    server.serve_forever()
