@@ -95,7 +95,10 @@ class CheckHost(threading.Thread):
             host = hosts.get_nowait()
             up = host_status(host[0],host[2])
             if up:
-                uptime_val = uptime(host[0],host[2])
+                if host[1] == 'Raspberry Pi':
+                    uptime_val = uptime(host[0],host[2])
+                else:
+                    uptime_val = uptime(host[0],host[2], username='cinf')
             else:
                 uptime_val = {}
                 uptime_val['up'] = ''

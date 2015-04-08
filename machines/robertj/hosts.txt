@@ -2,15 +2,14 @@
  rasppi02,  Raspberry Pi, socket, Hall, Cooling water pressure
  rasppi04,  Raspberry Pi, socket, Volvo, pressure readout
  rasppi05,  Raspberry Pi, socket, Microreactors, temperature control
- rasppi07,  Raspberry Pi, socket, Old Microreactor, Ion gauge readout
+ rasppi07,  Raspberry Pi, socket, Microreactors, Analog Ion gauge readout
  rasppi08,  Raspberry Pi, socket, Old CS, TC and pressure readout
  rasppi09,  Raspberry Pi, ssh,    NH3, Pressure readout
  rasppi12,  Raspberry Pi, socket, Microreactors, TC-readout
  rasppi13,  Raspberry Pi, socket, STM312, Pressure controller
  rasppi14,  Raspberry Pi, ssh,    NH3, concentration + temperature
  rasppi15,  Raspberry Pi, ssh,    Hall, Gasmonitor
- rasppi16,  Raspberry Pi, ssh,    Microreactors, NG Flows
- rasppi17,  Raspberry Pi, ssh,    Microreactors, NG Mass Spectrometer
+ rasppi16,  Raspberry Pi, socket, Microreactors, NG Flows
  rasppi18,  Raspberry Pi, ssh,    STM312, Mass Spectrometer
  rasppi19,  Raspberry Pi, socket, STM312, Temperature control
  rasppi20,  Raspberry Pi, ssh,    STM312, chillers
@@ -19,6 +18,7 @@
  rasppi23,  Raspberry Pi, socket, Hall, Cooling water temperature
  rasppi24,  Raspberry Pi, socket, Microreactors, Old Flow controllers
  rasppi25,  Raspberry Pi, ls,     Thetaprobe, Datalogger
+ rasppi26,  Raspberry Pi, socket, Microreactors, analog flow controller
  rasppi27,  Raspberry Pi, ssh,    Microreactors, Old massspec
  rasppi28,  Raspberry Pi, ssh,    PS, Pressure readout + turbo control
  rasppi29,  Raspberry Pi, socket, Palle, Valve control
@@ -31,8 +31,8 @@
  rasppi37,  Raspberry Pi, socket, Microreactors, MKS MFCs
  rasppi40,  Raspberry Pi, ssh,    Coupled Reactor, Valve Control box
  rasppi41,  Raspberry Pi, ssh,    Coupled reactor, Temperature measurement
- rasppi43,  Raspberry Pi, ssh,    VHP-setup, Pressure and temperature
- rasppi44,  Raspberry Pi, ssh,    Unknown setu, Valve Control boxp
+ rasppi43,  Raspberry Pi, socket, VHP-setup, Pressure and temperature
+ rasppi44,  Raspberry Pi, socket, MicroreactorNG, Valve Control boxp
  rasppi45,  Raspberry Pi, socket, Hall, N5 argon pressure
  rasppi46,  Raspberry Pi, ssh,    Coupled Reactor, Brooks MFCs
  rasppi47,  Raspberry Pi, socket, Furnace Room, Temperature Control
@@ -48,4 +48,8 @@
  rasppi100, Raspberry Pi, socket, Microreactors, Turbo controller
  rasppi104, Raspberry Pi, socket, Chemlab b312, Sample storage
  rasppi105, Raspberry Pi, socket, Omicron, RTD reader
+ rasppi107, Raspberry Pi, socket, Sniffer, Pressure readout
  rasppi109, Raspberry Pi, ls,     TOF, Pressure
+ rasppi110, Raspberry Pi, ssh,    TOF, Mass spec
+ rasppi111, Raspberry Pi, ssh,    Sniffer, Mass spec
+ cinf-microreactorng-ms,  Ubuntu, ssh,    Microreactors, NG Mass Spectrometer
