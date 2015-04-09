@@ -1,18 +1,14 @@
-import threading
 import Queue
 import time
 #import matplotlib.pyplot as plt
 import MySQLdb
-import curses
 import logging
-import socket
-
 import sys
 sys.path.append('../')
 import SQL_saver
 
 import qmg_status_output
-import qmg_meta_channels
+#import qmg_meta_channels
 #import read_ms_channel_list
 
 import qmg420
@@ -34,6 +30,7 @@ class qms():
         self.measurement_runtime = 0
         self.stop = False
         self.chamber = 'dummy'
+        self.credentials = 'dummy'
         self.channel_list = {}
         
         #Clear log file
@@ -58,8 +55,8 @@ class qms():
         """ Return the status of SEM """
         return self.qmg.sem_status(voltage, turn_off, turn_on)
 
-    def detector_status(self, SEM=False, faraday_cup=False):
-        return self.qmg.detector_status(SEM, faraday_cup)
+    def detector_status(self, sem=False, faraday_cup=False):
+        return self.qmg.detector_status(sem, faraday_cup)
 
     def read_voltages(self):
         """ Read the voltage of the lens system """
@@ -83,8 +80,8 @@ class qms():
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user=self.chamber, 
-                               passwd=self.chamber, db="cinfdata")
+        cnxn = MySQLdb.connect(host="servcinf", user=self.sql_credentials, 
+                               passwd=self.sql_credentials, db="cinfdata")
 
         cursor = cnxn.cursor()
         
@@ -194,7 +191,7 @@ class qms():
                                 amp_range=ch['amp_range'],
                                 enable="yes")
             self.channel_list[i] = {'masslabel':ch['masslabel'], 'value':'-'}
-            
+
             if no_save == False:
                 ids[i] = self.create_mysql_measurement(i, timestamp,
                                                        ch['masslabel'], comment)
@@ -208,25 +205,26 @@ class qms():
         """ Perfom a mass-time scan """
         self.operating_mode = "Mass Time"
         self.stop = False
-        ns = len(ms_channel_list) - 1
-        self.qmg.mass_time(ns)
+        number_of_channels = len(ms_channel_list) - 1
+        self.qmg.mass_time(number_of_channels)
 
         start_time = time.time()
-        ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=False)
+        ids = self.create_ms_channellist(ms_channel_list,
+                                         timestamp, no_save=False)
         self.current_timestamp = ids[0]
         
         while self.stop == False:
-            if not self.autorange:
-                for i in range(1, ns+1):
+            if self.autorange:
+                for i in range(1, number_of_channels + 1):
                     #TODO: Decrease measurement time during autorange
-                    self.config_channel(channel=i, amp_range=4)
+                    self.config_channel(channel=i, amp_range=-5)
                 self.qmg.set_channel(1)
                 self.qmg.start_measurement()
                 time.sleep(0.1)
                 ranges = {}
                 autorange_complete = False
                 while not autorange_complete:
-                    for i in range(1, ns+1):
+                    for i in range(1, number_of_channels + 1):
                         value = self.qmg.get_single_sample()
                         #logging.info(value)
                         try:
@@ -247,14 +245,14 @@ class qms():
                             ranges[i] = 7
                         autorange_complete = True
                 if autorange_complete:
-                    for i in range(1, ns+1):
+                    for i in range(1, number_of_samples + 1):
                         self.config_channel(channel=i, amp_range=ranges[i])
                         ms_channel_list[i]['amp_range'] = ranges[i]
 
             self.qmg.set_channel(1)
             self.qmg.start_measurement()
             time.sleep(0.1)
-            for channel in range(1, ns+1):
+            for channel in range(1, number_of_channels + 1):
                 self.measurement_runtime = time.time()-start_time
                 value = self.qmg.get_single_sample()
                 self.channel_list[channel]['value'] = value
@@ -268,7 +266,11 @@ class qms():
                         value = -1
                         logging.error('Value error, could not convert to float')
                     if self.qmg.type == '420':
-                        value = value / 10**(ms_channel_list[channel]['amp_range'] + 5)
+                        logging.error('Value: ' + str(value))
+                        logging.error(ms_channel_list[channel]['amp_range'])
+                        range_val = 10**ms_channel_list[channel]['amp_range']
+                        value = value * range_val
+                        logging.error('Range-value: ' + str(value))
                     query  = 'insert into '
                     query += 'xy_values_' + self.chamber + ' '
                     query += 'set measurement="' + str(ids[channel])
@@ -278,7 +280,8 @@ class qms():
             time.sleep(0.1)
         self.operating_mode = "Idling"
 
-    def mass_scan(self, first_mass=0, scan_width=50, comment='Mass-scan', amp_range=-7):
+    def mass_scan(self, first_mass=0, scan_width=50,
+                  comment='Mass-scan', amp_range=-7):
         """ Perform a mass scan """
         start_time = time.time()
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -300,7 +303,6 @@ class qms():
             self.measurement_runtime = time.time()-start_time
             time.sleep(1)
 
-        start = time.time()
         number_of_samples = self.qmg.waiting_samples()
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
 
@@ -316,7 +318,8 @@ class qms():
                 j += 1
                 new_query = query + str(first_mass + j / samples_pr_unit)
                 if self.qmg.type == '420':
-                    new_query += ', y = ' + str(float(samples[i])*(10**amp_range))
+                    new_query += ', y = ' + str(float(samples[i]) *
+                                                (10**amp_range))
                 else:
                     new_query += ', y = ' + str(samples[i])
                 self.sqlqueue.put(new_query)
@@ -336,58 +339,3 @@ class qms():
             self.measurement_runtime = time.time()-start_time
             time.sleep(0.1)
         time.sleep(0.5)
- 
-if __name__ == "__main__":
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-
-    sql_queue = Queue.Queue()
-    sql_saver = SQL_saver.sql_saver(sql_queue,'microreactor')
-    sql_saver.daemon = True
-    sql_saver.start()
-
-    qmg = qmg422.qmg_422()
-
-    qms = qms(qmg, sql_queue)
-    qms.communication_mode(computer_control=True)
-
-    #printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
-    #printer.daemon = True
-    #printer.start()
-    #qms.mass_scan(0,50,comment = 'Optimizing H2-peak')
-    
-    time.sleep(1)
-
-    channel_list = qms.read_ms_channel_list('channel_list.txt')
-    printer = qmg_status_output.qms_status_output(qms,sql_saver_instance=sql_saver)
-    printer.daemon = True
-    printer.start()
-
-    #meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list[0]['comment'], 5)
-    #meta_udp.create_channel('Temp, TC', 'rasppi12', 9999, 'tempNG')
-    #meta_udp.create_channel('Pirani buffer volume', 'rasppi07', 9997, 'read_buffer')
-    #meta_udp.create_channel('Pirani containment', 'rasppi07', 9997, 'read_containment')
-    #meta_udp.create_channel('RTD Temperature', 'rasppi05', 9992, 'read_rtdval')
-    #meta_udp.daemon = True
-    #meta_udp.start()
-
-    #meta_flow = qmg_meta_channels.compound_udp_meta_channel(qms, timestamp, channel_list[0]['comment'],5,'rasppi16',9998, 'read_all')
-    #meta_flow.create_channel('Sample Pressure',0)
-    #meta_flow.create_channel('Flow, O2',1)
-    #meta_flow.create_channel('Flow, H2',4)
-    #meta_flow.create_channel('Flow, D2',6)
-    #meta_flow.daemon = True
-    #meta_flow.start()
-     
-    print qms.mass_time(channel_list, timestamp)
-    
-    #print channel_list
-    #qms.mass_scan(0, 50, comment = 'Test scan - qgm422')
-    qms.mass_time(channel_list['ms'], timestamp)
-
-    time.sleep(1)
-    printer.stop()
-
-    #print qmg.read_voltages()
-    #print qmg.sem_status(voltage=2200, turn_on=True)
-    #print qmg.emission_status(current=0.1,turn_on=True)
-    #print qmg.qms_status()

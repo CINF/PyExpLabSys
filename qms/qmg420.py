@@ -61,12 +61,11 @@ class qmg_420():
         """
         logging.debug("Command in progress: " + command)
 
-        n = self.f.inWaiting()
-        if n > 0: #Skip characters that are currently waiting in line
-            debug_info = self.f.read(n)
-            logging.debug("Elements not read: " + str(n) + 
+        waiting = self.f.inWaiting()
+        if waiting > 0: #Skip characters that are currently waiting in line
+            debug_info = self.f.read(waiting)
+            logging.debug("Elements not read: " + str(waiting) + 
                           ": Contains: " + debug_info)            
-        ret = " "
 
         commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA',
                                   'CHM', 'SPE', 'FIR', 'WID','RUN',
@@ -136,6 +135,7 @@ class qmg_420():
         filament_on = ret_string == '1'
         return emission_current, filament_on
 
+
     def detector_status(self, SEM=False, faraday_cup=False):
        return 'Not possible on this model'
 
@@ -145,10 +145,12 @@ class qmg_420():
         print 'Not possible on this QMG model'
 
     def set_channel(self, channel):
-        self.comm('CHA ' + str(channel)) #Select the relevant channel       
+        """ Set the active measurement channel """
+        self.comm('CHA ' + str(channel))
 
 
     def read_sem_voltage(self):
+        """ Read the selected SEM voltage """
         sem_voltage = self.status('RDE', 4)
         return sem_voltage
 
@@ -163,10 +165,12 @@ class qmg_420():
         return timestep
 
     def measurement_running(self):
+        """ Return true if measurement is running """
         running = self.comm('STW')[6] == '0'
         return running
 
     def mass_time(self, ns):
+        """ Configure instrument for mass time """
         self.comm('OPM 1') #0, single. 1, multi
         #self.comm('CTR ,0') #Trigger mode, 0=auto trigger
         self.comm('CYC 1') #Number of repetitions
@@ -219,6 +223,8 @@ class qmg_420():
         """ Config a MS channel for measurement """
         self.set_channel(channel)
         self.comm('OPM 1')
+        logging.error('Wanted range, channel ' + str(channel) +
+                      ': ' + str(amp_range))
 
         if mass > -1:
             self.first_mass(mass)
@@ -226,8 +232,10 @@ class qmg_420():
         if speed > -1:
             self.speed(speed)
 
-        if amp_range > -1:
+        if amp_range < -2:
             range_index = self.ranges(amp_range, reverse=True)
+            logging.error('Range, channel ' + str(channel) +
+                          str(range_index))
             self.comm('RAN ' + str(range_index))
 
         if enable == "yes":
