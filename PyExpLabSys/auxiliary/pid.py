@@ -1,28 +1,44 @@
 class PID():
     
-    def __init__(self, Kp=0.15, Ki=0.0025, Kd=0, Pmax=54):
+    def __init__(self, pid_p=0.15, pid_i=0.0025, pid_d=0, p_max=54):
         self.setpoint = -9999
-        self.Kp = Kp
-        self.Ki = Ki
-        self.Kd = Kd
-        self.Pmax = Pmax
-        self.IntErr = 0
+        self.pid_p = pid_p
+        self.pid_i = pid_i
+        self.pid_d = pid_d
+        self.p_max = p_max
+        self.error = 0
+        self.int_err = 0
+        
+    def integration_contribution(self):
+        """ Return the contribution from the i-term """
+        return self.pid_i * self.int_err
 
-    def ResetIntError(self):
-        self.IntErr = 0
+    def proportional_contribution(self):
+        """ Return the contribution from the p-term """
+        return self.pid_p * self.error
 
-    def UpdateSetpoint(self, setpoint):
+    def integrated_error(self):
+        """ Return the currently integrated error """
+        return self.int_err
+
+    def reset_int_error(self):
+        """ Reset the integration error """
+        self.int_err = 0
+
+    def update_setpoint(self, setpoint):
+        """ Update the setpoint """
         self.setpoint = setpoint
         return setpoint
 
-    def WantedPower(self,T):
-        error = self.setpoint - T
-        P = self.Kp * error
-        P = P + self.Ki * self.IntErr
-        if (P<self.Pmax) and (P>0):
-            self.IntErr += error
-        if P>self.Pmax:
-            P = self.Pmax
-        if P<0:
-            P = 0 
-        return P
+    def wanted_power(self, value):
+        """ Return the best estimate for wanted power """
+        self.error = self.setpoint - value
+        power = self.pid_p * self.error
+        power = power + self.pid_i * self.int_err
+        if (power < self.p_max) and (power > 0):
+            self.int_err += self.error
+        if power > self.p_max:
+            power = self.p_max
+        if power < 0:
+            power = 0 
+        return power
