@@ -68,13 +68,15 @@ class CursesTui(threading.Thread):
             self.screen.addstr(10, 2, "Actual Dutycycle: {0:.2f} ".format(val))
             val = self.hc.pc.pid.setpoint
             self.screen.addstr(11, 2, "PID-setpint: {0:.2f}C  ".format(val))
-            val = self.hc.pc.pid.IntErr
-            self.screen.addstr(12, 2, "PID-error: {0:.3f} ".format(val))
+            val = self.hc.pc.pid.integrated_error()
+            self.screen.addstr(12, 2, "PID-error: {0:.3f}   ".format(val))
+            val = self.hc.pc.pid.proportional_contribution()
+            self.screen.addstr(13, 2, "P-term: {0:.3f}   ".format(val))
+            val = self.hc.pc.pid.integration_contribution()
+            self.screen.addstr(14, 2, "i-term: {0:.3f}   ".format(val))
             val = time.time() - self.start_time
-            self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
-
-            self.screen.addstr(17, 2, "Message:" + self.hc.pc.message)
-
+            self.screen.addstr(18, 2, "Run time: {0:.0f}s".format(val))
+            self.screen.addstr(19, 2, "Message:" + self.hc.pc.message)
             self.screen.addstr(20, 2, "Message:" + self.hc.pc.message2)
 
             n = self.screen.getch()
@@ -108,9 +110,9 @@ class PowerCalculatorClass(threading.Thread):
         self.power = 0
         self.setpoint = 50
         self.pid = PID.PID()
-        self.pid.Kp = 0.005
-        self.pid.Ki = 0.00025
-        self.pid.Pmax = 0.5
+        self.pid.pid_p = 0.003
+        self.pid.pid_i = 0.0000037
+        self.pid.p_max = 0.5
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -125,7 +127,7 @@ class PowerCalculatorClass(threading.Thread):
     def update_setpoint(self, setpoint=None):
         """ Update the setpoint """
         self.setpoint = setpoint
-        self.pid.UpdateSetpoint(setpoint)
+        self.pid.update_setpoint(setpoint)
         self.pullsocket.set_point_now('setpoint', setpoint)
         return setpoint
 
@@ -134,10 +136,14 @@ class PowerCalculatorClass(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
         while not self.quit:
+            self.pullsocket.set_point_now('pid_p', self.pid.proportional_contribution())
+            self.pullsocket.set_point_now('pid_i', self.pid.integration_contribution())
+            self.pullsocket.set_point_now('pid_e', self.pid.integrated_error())
+
             sock.sendto(data_temp, ('localhost', 9000))
             received = sock.recv(1024)
             self.temperature = float(received[received.find(',') + 1:])
-            self.power = self.pid.WantedPower(self.temperature)
+            self.power = self.pid.wanted_power(self.temperature)
 
             #  Handle the setpoint from the network
             try:
@@ -174,8 +180,8 @@ PH = PulseHeater()
 PH.start()
 
 Pullsocket = DateDataPullSocket('vhp_temp_control',
-                                ['setpoint', 'dutycycle'], 
-                                timeouts=[999999, 3.0],
+                                ['setpoint', 'dutycycle','pid_p', 'pid_i', 'pid_e'], 
+                                timeouts=[999999, 3.0, 3.0, 3.0, 3.0],
                                 port=9001)
 Pullsocket.start()
 
