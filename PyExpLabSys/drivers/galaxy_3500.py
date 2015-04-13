@@ -9,6 +9,7 @@ import telnetlib
 class Galaxy3500(object):
     """ Interface driver for a Galaxy3500 UPS. """
     def __init__(self, hostname):
+        self.status = {}
         self.ups_handle = telnetlib.Telnet(hostname)
         self.ups_handle.expect([': '])
         self.ups_handle.write('apc' + '\r')
@@ -45,13 +46,33 @@ class Galaxy3500(object):
         """ Return list of active alarms """
         warnings = self.comm('alarmcount -p warning', ['WarningAlarmCount'])
         criticals = self.comm('alarmcount -p critical', ['CriticalAlarmCount'])
-        return (int(warnings['WarningAlarmCount']),
-                int(criticals['CriticalAlarmCount']))
+        warnings_value = int(warnings['WarningAlarmCount'])
+        criticals_value = int(criticals['CriticalAlarmCount'])
+        self.status['WarningAlarmCount'] = warnings_value
+        self.status['CriticalAlarmCount'] = criticals_value
+        return (warnings_value, criticals_value)
 
     def battery_charge(self):
         """ Return the battery charge state """
-        charge = self.comm('detstatus -soc', ['Battery State Of Charge'])
-        return charge['Battery State Of Charge']
+        keyword = 'Battery State Of Charge'
+        charge = self.comm('detstatus -soc', [keyword])
+        self.status[keyword] = charge[keyword]
+        return charge[keyword]
+
+    def temperature(self):
+        """ Return the temperature of the UPS """
+        keyword = 'Internal Temperature'
+        temp = self.comm('detstatus -tmp', [keyword])
+        self.status[keyword] = temp[keyword]
+        return temp[keyword]
+
+    def battery_status(self):
+        """ Return the battery voltage """
+        params = ['Battery Voltage', 'Battery Current']
+        output = self.comm('detstatus -bat', params)
+        for param in params:
+            self.status[param] = output[param]
+        return output
 
     def output_measurements(self):
         """ Return status of the device's output """
@@ -63,6 +84,8 @@ class Galaxy3500(object):
                   'Output kVA L2', 'Output kVA L3', 'Output Current L1',
                   'Output Current L2', 'Output Current L3']
         output = self.comm('detstatus -om', params)
+        for param in params:
+            self.status[param] = output[param]
         return output
 
     def input_measurements(self):
@@ -72,6 +95,8 @@ class Galaxy3500(object):
                   'Bypass Input Voltage L2', 'Bypass Input Voltage L3',
                   'Input Current L1', 'Input Current L2', 'Input Current L3']
         output = self.comm('detstatus -im', params)
+        for param in params:
+            self.status[param] = output[param]
         return output
 
 if __name__ == '__main__':
@@ -80,4 +105,7 @@ if __name__ == '__main__':
     print UPS.battery_charge()
     print UPS.output_measurements()
     print UPS.input_measurements()
-
+    print UPS.battery_status()
+    print UPS.temperature()
+    print '---'
+    print UPS.status
