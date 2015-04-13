@@ -1,7 +1,12 @@
 # pylint: disable=C0325
+
+""" Python interface for Galaxy 3500 UPS. The driver uses the
+telnet interface of the device.
+"""
+
 import telnetlib
 
-class Galaxy3500():
+class Galaxy3500(object):
     """ Interface driver for a Galaxy3500 UPS. """
     def __init__(self, hostname):
         self.ups_handle = telnetlib.Telnet(hostname)
@@ -11,39 +16,68 @@ class Galaxy3500():
         self.ups_handle.write('apc' + '\r')
         self.ups_handle.expect(['apc>'])
 
-    def comm(self, command, keyword = ''):
+    def comm(self, command, keywords=None):
         """ Send a command to the ups """
         self.ups_handle.write(command + '\r')
         echo = self.ups_handle.expect(['\r'])[2]
         assert(echo == command + '\r')
         code = self.ups_handle.expect(['\r'])[2]
         assert('E000' in code)
-        return_string = self.ups_handle.expect(['apc>'])[2]
+        output = self.ups_handle.expect(['apc>'])[2]
 
-        if keyword is not None:
-            pos = return_string.find(keyword)
-            length = len(keyword + ':')
-            return_string = return_string[pos + length:-5]
+        if keywords is not None:
+            return_val = {}
+            for param in keywords:
+                pos = output.find(param)
+                line = output[pos + len(param) + 1:pos + len(param) + 8].strip()
+                for i in range(0, 3):
+                    try:
+                        value = float(line[:-1 * i])
+                        break
+                    except ValueError:
+                        pass
+                return_val[param] = value
         else:
-            return_string = return_string[1:-5]
-        return return_string
+            return_val = output[1:-5]
+        return return_val
 
     def alarms(self):
         """ Return list of active alarms """
-        warnings = self.comm('alarmcount -p warning', 'WarningAlarmCount')
-        nr_warnings = int(warnings)
-        critical = self.comm('alarmcount -p critical', 'CriticalAlarmCount')
-        nr_criticals = int(critical)
-        return nr_warnings, nr_criticals
+        warnings = self.comm('alarmcount -p warning', ['WarningAlarmCount'])
+        criticals = self.comm('alarmcount -p critical', ['CriticalAlarmCount'])
+        return (int(warnings['WarningAlarmCount']),
+                int(criticals['CriticalAlarmCount']))
 
     def battery_charge(self):
         """ Return the battery charge state """
-        charge_string = self.comm('detstatus -soc', 'Battery State Of Charge')
-        charge_value = float(charge_string.strip()[:-2]) # Remove % sign
-        return charge_value
+        charge = self.comm('detstatus -soc', ['Battery State Of Charge'])
+        return charge['Battery State Of Charge']
 
+    def output_measurements(self):
+        """ Return status of the device's output """
+        params = ['Output Voltage L1', 'Output Voltage L2', 'Output Voltage L3',
+                  'Output Frequency', 'Output Watts Percent L1',
+                  'Output Watts Percent L2', 'Output Watts Percent L3',
+                  'Output VA Percent L1', 'Output VA Percent L2',
+                  'Output VA Percent L3', 'Output kVA L1',
+                  'Output kVA L2', 'Output kVA L3', 'Output Current L1',
+                  'Output Current L2', 'Output Current L3']
+        output = self.comm('detstatus -om', params)
+        return output
+
+    def input_measurements(self):
+        """ Return status of the device's output """
+        params = ['Input Voltage L1', 'Input Voltage L2', 'Input Voltage L3',
+                  'Input Frequency', 'Bypass Input Voltage L1',
+                  'Bypass Input Voltage L2', 'Bypass Input Voltage L3',
+                  'Input Current L1', 'Input Current L2', 'Input Current L3']
+        output = self.comm('detstatus -im', params)
+        return output
 
 if __name__ == '__main__':
     UPS = Galaxy3500('ups-b312')
     print UPS.alarms()
     print UPS.battery_charge()
+    print UPS.output_measurements()
+    print UPS.input_measurements()
+
