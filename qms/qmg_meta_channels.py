@@ -52,13 +52,28 @@ class udp_meta_channel(threading.Thread):
             for channel in self.channel_list:
                 PORT = channel['port']
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.sendto(channel['cmd'] + "\n", (channel['host'], PORT))
+                logging.error(channel['cmd'])
+                if channel['cmd'][-4:] == '#raw':
+                    sock.sendto(channel['cmd'], (channel['host'], PORT))
+                    received = sock.recv(1024)
+                    logging.error(received)
+                    received = received[received.find(',')+1:]
+                elif channel['cmd'].find('#labview') > -1:
+                    sock.sendto(channel['cmd'], (channel['host'], PORT))
+                    received = sock.recv(1024)
+                    logging.error(received)
+                    #received = received[received.find(',')+1:]
+                else:
+                    sock.sendto(channel['cmd'] + "\n", (channel['host'], PORT))
+                    received = sock.recv(1024)
                 #try:
-                received = sock.recv(1024)
+                #received = sock.recv(1024)
+                logging.error(received)
                 #sock.shutdown(socket.SHUT_RDWR)
-                sock.close
+                sock.close()
                 try:
                     value = float(received)
+                    logging.error(str(value))
                     sqltime = str((time.time() - start_time) * 1000)
                 except ValueError:
                     logging.warn('Meta-channel, could not convert to float: ' + received)
@@ -121,6 +136,7 @@ class compound_udp_meta_channel(threading.Thread):
             #try:
             sock.sendto(self.udp_string + "\n", (self.hostname, self.port))
             received = sock.recv(1024)
+            
             #except:
             #    time.sleep(0.1)
             #    logging.warn('udp read time-out')
