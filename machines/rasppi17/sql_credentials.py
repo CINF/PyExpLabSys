@@ -1,2 +1,0 @@
-username = 'microreactorNG'
-password = 'microreactorNG'
