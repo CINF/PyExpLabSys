@@ -59,4 +59,7 @@
 
     <!-- Parrallel screening pressure read out -->
     <socket>rasppi28:8000</socket>
+
+    <!-- Microreactor Analogue flow controller -->
+    <socket>rasppi26:8000</socket>
 </sockets>
