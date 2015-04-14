@@ -10,10 +10,7 @@ import time
 import curses
 import threading
 import logging
-
 import sys
-sys.path.append('/home/pi/PyExpLabSys/')
-import FindSerialPorts
 
 class CursesTui(threading.Thread):
     """ Text gui for controlling the pump """
@@ -464,22 +461,4 @@ class TurboDriver(threading.Thread):
 
 
 if __name__ == '__main__':
-    ports = FindSerialPorts.find_ports()
-    for port in ports:
-        print port
-        mainpump = TurboDriver(adress=2,port='/dev/' + port)
-        try:
-            mainpump.read_rotation_speed()
-            break
-        except:
-            pass
-    print 'Serial port: ' + port
-    mainpump.start()
-
-    tui = CursesTui(mainpump)
-    tui.daemon = True
-    tui.start()
-
-    #logger = DataLogger(mainpump)
-    #logger.daemon = True
-    #logger.start()
+    pass
