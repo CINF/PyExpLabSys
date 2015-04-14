@@ -73,6 +73,7 @@ db_logger.start()
 time.sleep(5)
 
 while mainpump.running:
+    time.sleep(0.2)
     ts = rotation_logger.read_value()
     power = power_logger.read_value()
     current = current_logger.read_value()

@@ -74,6 +74,7 @@ livesocket.start()
 
 socket = DateDataPullSocket('PS pressure logger',
                             codenames, timeouts=2 * [1.0])
+socket.start()
 
 
 db_logger = ContinuousLogger(table='dateplots_ps',
