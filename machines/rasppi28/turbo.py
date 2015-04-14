@@ -1,23 +1,15 @@
-# pylint: disable=C0103,R0904,C0301
+# pylint: disable=C0103,R0904
 
-import logging
 import time
-
-import FindSerialPorts
 from PyExpLabSys.common.loggers import ContinuousLogger
-from PyExpLabSys.common.sockets import DateDataSocket
-from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
+#from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.pfeiffer_turbo_pump as tp
 import credentials
 
-ports = FindSerialPorts.find_ports()
-for port in ports:
-    mainpump = tp.TurboDriver(adress=1,port='/dev/' + port)
-    try:
-        mainpump.read_rotation_speed()
-        break
-    except IOError:
-        pass
+port = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A400XQ1F-if00-port0'
+mainpump = tp.TurboDriver(adress=1, port=port)
+
 print 'Serial port: ' + port
 mainpump.start()
 
@@ -43,7 +35,8 @@ current_logger = tp.TurboLogger(reader, 'drive_current', maximumtime=600)
 current_logger.daemon = True
 current_logger.start()
 
-temp_electronics_logger = tp.TurboLogger(reader, 'temp_electronics', maximumtime=600)
+temp_electronics_logger = tp.TurboLogger(reader, 'temp_electronics',
+                                         maximumtime=600)
 temp_electronics_logger.daemon = True
 temp_electronics_logger.start()
 
@@ -62,10 +55,20 @@ temp_motor_logger.start()
 #livesocket = LiveSocket([chamber_turbo_speed', 'chamber_turbo_power'], 2)
 #livesocket.start()
 
-socket = DateDataSocket(['current', 'speed'], timeouts=[1.0, 1.0], port=9001)
+socket = DateDataPullSocket('Turbo', ['current', 'speed'],
+                            timeouts=[1.0, 1.0], port=9001)
 socket.start()
 
-db_logger = ContinuousLogger(table='dateplots_ps', username=credentials.user, password=credentials.passwd, measurement_codenames=['ps_main_chamber_turbo_speed', 'ps_main_chamber_turbo_power', 'ps_main_chamber_turbo_temp_motor', 'ps_main_chamber_turbo_temp_bottom', 'ps_main_chamber_turbo_temp_bearings', 'ps_main_chamber_turbo_temp_electronics', 'ps_main_chamber_turbo_current'])
+codenames = ['ps_main_chamber_turbo_speed',
+             'ps_main_chamber_turbo_power',
+             'ps_main_chamber_turbo_temp_motor',
+             'ps_main_chamber_turbo_temp_bottom',
+             'ps_main_chamber_turbo_temp_bearings',
+             'ps_main_chamber_turbo_temp_electronics',
+             'ps_main_chamber_turbo_current']
+db_logger = ContinuousLogger(table='dateplots_ps', username=credentials.user,
+                             password=credentials.passwd,
+                             measurement_codenames=codenames)
 db_logger.start()
 time.sleep(5)
 
@@ -80,8 +83,10 @@ while mainpump.running:
     #livesocket.set_point_now('chamber_turbo_speed', ts)
     #socket.set_point_now('current', current)
     #socket.set_point_now('speed', ts)
-    socket.set_point_now('current', rotation_logger.turboreader.turbo.status['drive_current'])
-    socket.set_point_now('speed', rotation_logger.turboreader.turbo.status['rotation_speed'])
+    drive_current = rotation_logger.turboreader.turbo.status['drive_current']
+    speed = rotation_logger.turboreader.turbo.status['rotation_speed']
+    socket.set_point_now('current', drive_current)
+    socket.set_point_now('speed', speed)
 
     if rotation_logger.trigged:
         db_logger.enqueue_point_now('ps_main_chamber_turbo_speed', ts)
@@ -96,17 +101,21 @@ while mainpump.running:
         current_logger.trigged = False
 
     if temp_electronics_logger.trigged:
-        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_electronics', temp_elec)
+        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_electronics',
+                                    temp_elec)
         temp_electronics_logger.trigged = False
 
     if temp_bottom_logger.trigged:
-        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_bottom', temp_bottom)
+        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_bottom',
+                                    temp_bottom)
         temp_bottom_logger.trigged = False
 
     if temp_bearings_logger.trigged:
-        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_bearings', temp_bearings)
+        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_bearings',
+                                    temp_bearings)
         temp_bearings_logger.trigged = False
 
     if temp_motor_logger.trigged:
-        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_motor', temp_motor)
+        db_logger.enqueue_point_now('ps_main_chamber_turbo_temp_motor',
+                                    temp_motor)
         temp_motor_logger.trigged = False

@@ -4,66 +4,91 @@
 import threading
 import time
 import logging
-
 from PyExpLabSys.common.loggers import ContinuousLogger
-from PyExpLabSys.common.sockets import DateDataSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.xgs600 as xgs600
+import credentials
 
-class XGSClass(threading.Thread):
+class PressureReader(threading.Thread):
     """ Pressure reader """
-    def __init__(self):
+    def __init__(self, xgs):
         threading.Thread.__init__(self)
-        self.xgs = xgs600.XGS600Driver()
-        self.pressure = None
+        self.xgs = xgs
+        self.main = None
+        self.qms = None
         self.quit = False
-        self.last_recorded_time = 0
-        self.last_recorded_value = 0
-        self.trigged = False
+        self.ttl = 20
 
-    def read_pressure(self):
+    def value(self, channel):
         """ Read the pressure """
-        return(self.pressure)
+        self.ttl = self.ttl - 1
+        if self.ttl < 0:
+            self.quit = True
+            return_val = None
+        else:
+            if channel == 0:
+                return_val = self.qms
+            if channel == 1:
+                return_val = self.main
+        return return_val
 
     def run(self):
         while not self.quit:
-            time.sleep(2.5)
             press = self.xgs.read_all_pressures()
             try:
-                self.pressure = press[1]
+                if not self.quit:
+                    self.qms = press[0]
+                    self.main = press[1]
+                    self.ttl = 50
             except IndexError:
                 print "av"
-                self.pressure = 0
-            time_trigged = (time.time() - self.last_recorded_time) > 600
-            val_trigged = not (self.last_recorded_value * 0.9 < self.pressure < self.last_recorded_value * 1.1)
-            if (time_trigged or val_trigged) and (self.pressure > 0):
-                self.trigged = True
-                self.last_recorded_time = time.time()
-                self.last_recorded_value = self.pressure
+            time.sleep(5)
+
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
-pressure_measurement = XGSClass()
-pressure_measurement.start()
+ports = '/dev/serial/by-id/'
+ports += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+xgs_instance = xgs600.XGS600Driver(ports)
+print xgs_instance.read_all_pressures()
+
+pressure = PressureReader(xgs_instance)
+pressure.start()
 
 time.sleep(2.5)
 
-socket = DateDataSocket(['pressure'], timeouts=[1.0])
-socket.start()
+codenames = ['ps_qms_pressure', 'ps_chamber_pressure']
+loggers = {}
+loggers[codenames[0]] = ValueLogger(pressure, comp_val = 0.1,
+                                    comp_type = 'log', channel = 0)
+loggers[codenames[0]].start()
+loggers[codenames[1]] = ValueLogger(pressure, comp_val = 0.1,
+                                    comp_type = 'log', channel = 1)
+loggers[codenames[1]].start()
 
-#livesocket = LiveSocket(['pressure'], 2)
-#livesocket.start()
+livesocket = LiveSocket('PS', codenames, 2)
+livesocket.start()
 
-db_logger = ContinuousLogger(table='dateplots_ps', username='PS', password='PS', measurement_codenames=['ps_chamber_pressure'])
+socket = DateDataPullSocket('PS pressure logger',
+                            codenames, timeouts=2 * [1.0])
+
+
+db_logger = ContinuousLogger(table='dateplots_ps',
+                             username=credentials.user,
+                             password=credentials.passwd,
+                             measurement_codenames=codenames)
 db_logger.start()
 
-while True:
-    time.sleep(0.25)
-    p = pressure_measurement.read_pressure()
-    socket.set_point_now('pressure', p)
-    #livesocket.set_point_now('pressure', p)
-    if pressure_measurement.trigged:
-        print(p)
-        db_logger.enqueue_point_now('ps_chamber_pressure', p)
-        pressure_measurement.trigged = False
+while pressure.isAlive():
+    time.sleep(0.5)
+    for name in codenames:
+        v = loggers[name].read_value()
+        livesocket.set_point_now(name, v)
+        socket.set_point_now(name, v)
+        if loggers[name].read_trigged():
+            print v
+            db_logger.enqueue_point_now(name, v)
+            loggers[name].clear_trigged()
