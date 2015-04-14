@@ -53,4 +53,10 @@
 	 sniffer_buffer_roughing  - Sniffer, roughing for buffer turbo
 	 sniffer_buffer_pressure  - Sniffer, buffer pirani pressure -->
     <socket>rasppi107:8000</socket>
+
+    <!-- MicroreactorNG flow controllers -->
+    <socket>rasppi16:8000</socket>
+
+    <!-- Parrallel screening pressure read out -->
+    <socket>rasppi28:8000</socket>
 </sockets>
