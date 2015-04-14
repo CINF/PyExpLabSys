@@ -4,18 +4,8 @@ import time
 import MySQLdb
 import logging
 import sys
-sys.path.append('../')
-import SQL_saver
 
-import qmg_status_output
-#import qmg_meta_channels
-#import read_ms_channel_list
-
-import qmg420
-#import  qmg422
-
-class qms():
-
+class qms(object):
     def __init__(self, qmg, sqlqueue=None, loglevel=logging.ERROR):
         self.qmg = qmg
         if not sqlqueue == None:
@@ -56,6 +46,7 @@ class qms():
         return self.qmg.sem_status(voltage, turn_off, turn_on)
 
     def detector_status(self, sem=False, faraday_cup=False):
+        """ Report detector status """
         return self.qmg.detector_status(sem, faraday_cup)
 
     def read_voltages(self):
@@ -66,7 +57,8 @@ class qms():
         """ Chekcs wheter the instruments returns real or simulated data """
         self.qmg.simulation()
 
-    def config_channel(self, channel, mass=-1, speed=-1, amp_range=0, enable=""):
+    def config_channel(self, channel, mass=-1, speed=-1,
+                       amp_range=0, enable=""):
         self.qmg.config_channel(channel, mass=mass, speed=speed,
                                 amp_range=amp_range, enable=enable)
 
@@ -80,7 +72,7 @@ class qms():
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user=self.sql_credentials, 
+        cnxn = MySQLdb.connect(host="servcinf", user=self.sql_credentials,
                                passwd=self.sql_credentials, db="cinfdata")
 
         cursor = cnxn.cursor()
@@ -97,7 +89,7 @@ class qms():
             timestep = "-1"
                 
         query = ""
-        query += 'insert into measurements_' + self.chamber 
+        query += 'insert into measurements_' + self.chamber
         query += ' set mass_label="'  + masslabel + '"'
         query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
         query += preamp_range + '", time="' + timestamp + '", type="'
@@ -112,7 +104,7 @@ class qms():
         id_number = cursor.fetchone()
         id_number = id_number[0]
         cnxn.close()
-        return(id_number)
+        return id_number
 
 
     def read_ms_channel_list(self, filename='channel_list.txt'):
@@ -148,7 +140,8 @@ class qms():
                 speed = int(params[params.index('speed') + 1])
                 mass = params[params.index('mass') + 1]
                 amp_range = int(params[params.index('amp_range') + 1])
-                channel_list['ms'][ms] = {'masslabel':label, 'speed':speed,'mass':mass,'amp_range':amp_range}
+                channel_list['ms'][ms] = {'masslabel':label, 'speed':speed,
+                                          'mass':mass, 'amp_range':amp_range}
                 ms += 1
 
             if key == 'meta_channel':
@@ -159,7 +152,8 @@ class qms():
                 port = int(params[params.index('port')+1])
                 label = params[params.index('label')+1]
                 command = params[params.index('command')+1]
-                channel_list['meta'][meta] = {'host':host, 'port':port,'label':label,'command':command}
+                channel_list['meta'][meta] = {'host':host, 'port':port,
+                                              'label':label, 'command':command}
                 meta += 1
 
         #TODO: The channel list format should be changed so that the general
@@ -214,7 +208,7 @@ class qms():
         self.current_timestamp = ids[0]
         
         while self.stop == False:
-            if self.autorange:
+            if self.autorange and not (self.qmg.type == '422'):
                 for i in range(1, number_of_channels + 1):
                     #TODO: Decrease measurement time during autorange
                     self.config_channel(channel=i, amp_range=-5)
@@ -271,7 +265,7 @@ class qms():
                         range_val = 10**ms_channel_list[channel]['amp_range']
                         value = value * range_val
                         logging.error('Range-value: ' + str(value))
-                    query  = 'insert into '
+                    query = 'insert into '
                     query += 'xy_values_' + self.chamber + ' '
                     query += 'set measurement="' + str(ids[channel])
                     query += '", x="' + sqltime + '", y="' + str(value) + '"'
@@ -306,8 +300,8 @@ class qms():
         number_of_samples = self.qmg.waiting_samples()
         samples_pr_unit = 1.0 / (scan_width/float(number_of_samples))
 
-        query  = '' 
-        query += 'insert into xy_values_' + self.chamber 
+        query = '' 
+        query += 'insert into xy_values_' + self.chamber
         query += ' set measurement = ' + str(id) + ', x = '
         self.current_action = 'Downloading samples from device'
         j = 0
