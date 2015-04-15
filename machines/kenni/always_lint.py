@@ -143,8 +143,14 @@ def main(root_path):
         print("There is a new commit. Proceed to linting.")
 
     for root, _, files in os.walk(root_path):
+        # Skip thirdpart
         if root.endswith('thirdparty'):
             continue
+
+        # Skip relpath
+        if os.path.relpath(root, root_path).startswith('archive'):
+            continue
+
         for file_ in files:
             filepath = os.path.join(root, file_)
 
