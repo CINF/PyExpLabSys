@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# pylint: disable=invalid-name,star-args
+
+"""Setup file for PyExpLabSys"""
 
 import sys
 import os
@@ -21,7 +24,6 @@ MODULES = (
         'PyExpLabSys.common.loggers',
         'PyExpLabSys.common.utilities',
         'PyExpLabSys.drivers.pfeiffer',
-        
 )
 
 REQUIREMENTS = list(open('requirements.txt'))
