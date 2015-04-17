@@ -187,7 +187,7 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
             self.logout()
         self.lcd_timeout.display(int(round(self.timeout - delta, 0)))
 
-    def report_active(self, *args, **kwargs):
+    def report_active(self, _=None):
         """Reset the logintime on activity"""
         self.login_time = time.time()
 
