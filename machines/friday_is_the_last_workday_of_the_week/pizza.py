@@ -73,6 +73,7 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
         self.pizza_core.logout()
         self.text_history.setPlainText(self.greeting)
         self.label_balance.setText('Balance: 0 DKK')
+        self.spinbox_amount.setValue(0)
         self.set_enabled(False)
 
     def transaction(self, transaction_type):
@@ -102,9 +103,13 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
             success = False
 
         if success:
+            self.spinbox_amount.setValue(0)
             self.update_balance_and_history()
-            self.show_dialog('Transaction succesfull',
-                             'You have succesfully paid for your pizza')
+            if transaction_type == 'deposite':
+                body = 'You have successfully deposited money'
+            else:
+                body = 'You have successfully paid for your pizza'
+            self.show_dialog('Transaction successful', body)
         else:
             self.show_dialog('Transaction NOT completed',
                              'Something went wrong with your payment, '\
