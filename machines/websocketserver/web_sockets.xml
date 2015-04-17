@@ -62,4 +62,7 @@
 
     <!-- Microreactor Analogue flow controller -->
     <socket>rasppi26:8000</socket>
+
+    <!-- UPS logging -->
+    <socket>rasppi14:8000</socket>
 </sockets>
