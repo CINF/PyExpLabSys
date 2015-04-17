@@ -29,7 +29,7 @@
       <item>
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>NOTE. The money boxes of the pizza club and the friday bar ARE COMPLETELY SEPARATE even though you use the same username.</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:24pt;&quot;&gt;NOTE: The money boxes of the pizza club and the friday bar &lt;/span&gt;&lt;span style=&quot; font-size:24pt; color:#ff0000;&quot;&gt;ARE COMPLETELY SEPARATE&lt;/span&gt;&lt;span style=&quot; font-size:24pt;&quot;&gt; even though you use the same username!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -42,7 +42,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="QLabel" name="label_2">
+         <widget class="QLabel" name="label_enter_username">
           <property name="text">
            <string>Enter username:</string>
           </property>
@@ -73,14 +73,18 @@
          </widget>
         </item>
         <item>
-         <widget class="QLCDNumber" name="lcdNumber"/>
+         <widget class="QLCDNumber" name="lcd_timeout">
+          <property name="numDigits">
+           <number>4</number>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
       <item>
        <widget class="QLabel" name="label_balance">
         <property name="text">
-         <string>Balance: 0 DKK</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:20pt;&quot;&gt;Balance: 0 DKK&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>

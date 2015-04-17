@@ -2,13 +2,14 @@
 
 from __future__ import print_function
 import sys
+import time
 from functools import partial
 from datetime import datetime
 import MySQLdb
-from PyQt4 import QtGui, uic  # QtCore
+from PyQt4 import QtGui, QtCore, uic
 import credentials
 
-
+__version__ = '0.1'
 PizzaApp = uic.loadUiType("pizza.ui")[0]  # pylint: disable=invalid-name
 
 
@@ -22,6 +23,7 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
         # Init GUI
         QtGui.QMainWindow.__init__(self, parent)
         self.setupUi(self)
+        self.setWindowTitle('Pizza Payment System version ' + __version__)
         self.text_history.setReadOnly(True)
 
         # Bind buttons
@@ -34,20 +36,39 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
             partial(self.transaction, 'withdraw')
         )
 
+        # widgets that are supposed to be active of inactive when logged in
+        self.active_on_logged_in = (
+            'btn_deposite', 'btn_withdraw', 'btn_logout',
+            'label_amount', 'label_history', 'label_balance',
+            'text_history', 'spinbox_amount',
+        )
+        self.inactive_on_logged_in = (
+            'label_enter_username', 'lineedit_username', 'btn_login',
+        )
+
         # First time setup
-        self.set_enabled(False)
+        self.set_logged_in(False)
         self.greeting = 'Please log in'
         self.text_history.setPlainText(self.greeting)
 
-    def set_enabled(self, enabled):
-        """Set the user part of the GUI inactive"""
-        self.text_history.setEnabled(enabled)
-        self.spinbox_amount.setEnabled(enabled)
-        self.label_amount.setEnabled(enabled)
-        self.btn_deposite.setEnabled(enabled)
-        self.btn_withdraw.setEnabled(enabled)
-        self.label_history.setEnabled(enabled)
-        self.label_balance.setEnabled(enabled)
+        # Setup timeout updater
+        self.timeout = 20
+        self.login_time = None
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.monitor_timeout)
+        self.spinbox_amount.valueChanged.connect(self.report_active)
+
+    def set_logged_in(self, logged_in):
+        """Set the GUI active or inactive depending on logged in status
+
+        Args:
+            logged_in (bool): Inidcates whether a user is logged is
+        """
+        for widget in self.active_on_logged_in:
+            getattr(self, widget).setEnabled(logged_in)
+
+        for widget in self.inactive_on_logged_in:
+            getattr(self, widget).setEnabled(not logged_in)
 
     def login(self):
         """Login"""
@@ -64,21 +85,27 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
                 type_='warning')
             return
 
-        self.set_enabled(True)
+        self.set_logged_in(True)
         self.lineedit_username.setText('')
         self.update_balance_and_history()
+        self.login_time = time.time()
+        self.timer.start(100)
 
     def logout(self):
         """Logout"""
+        self.timer.stop()
+        self.login_time = None
+        self.lcd_timeout.display(0)
         self.pizza_core.logout()
         self.text_history.setPlainText(self.greeting)
-        self.label_balance.setText('Balance: 0 DKK')
+        self.set_balance(0)
         self.spinbox_amount.setValue(0)
-        self.set_enabled(False)
+        self.set_logged_in(False)
 
     def transaction(self, transaction_type):
         """Deposite"""
         print('Transaction of type', transaction_type)
+        self.report_active()
         amount = self.spinbox_amount.value()
         if amount <= 0:
             self.show_dialog(
@@ -115,12 +142,11 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
                              'Something went wrong with your payment, '\
                              'too bad!',
                              type_='warning')
+        self.report_active()
 
     def update_balance_and_history(self):
         """Updates the history window"""
-        self.label_balance.setText(
-            'Balance: {:.0f} DKK'.format(self.pizza_core.get_balance())
-        )
+        self.set_balance(self.pizza_core.get_balance())
 
         text = ['Welcome {}\n\nPlease make a deposite or withdrawal!\n\n'\
                 'Transaction history:'.format(self.pizza_core.real_name)]
@@ -146,6 +172,24 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
     def show_dialog(self, title, string, type_='information'):
         """Show a dialog"""
         getattr(QtGui.QMessageBox, type_)(self, title, string)
+
+    def set_balance(self, amount=0):
+        """Sets the balance label text"""
+        self.label_balance.setText(
+            '<html><head/><body><p><span style=" font-size:20pt;">'\
+            'Balance: {} DKK</span></p></body></html>'.format(amount)
+        )
+
+    def monitor_timeout(self):
+        """Monitor the timeout and update the timeout indicator"""
+        delta = time.time() - self.login_time
+        if delta > self.timeout:
+            self.logout()
+        self.lcd_timeout.display(int(round(self.timeout - delta, 0)))
+
+    def report_active(self, *args, **kwargs):
+        """Reset the logintime on activity"""
+        self.login_time = time.time()
 
 
 class PizzaCore(object):
