@@ -61,7 +61,8 @@ class TcReader(threading.Thread):
 
     def value(self):
         """ Return current value of reader """
-        return(self.temperature)
+        if self.temperature < 1500:
+            return(self.temperature)
 
     def run(self):
         while not self.quit:
@@ -118,9 +119,9 @@ if __name__ == '__main__':
     measurements[2].start()
 
     loggers = {}
-    loggers[code_names[0]] = ValueLogger(measurements[0], comp_val = 0.2, comp_type = 'lin')
+    loggers[code_names[0]] = ValueLogger(measurements[0], comp_val = 1.5, comp_type = 'lin')
     loggers[code_names[0]].start()
-    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val = 0.75, comp_type = 'lin')
+    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val = 1.5, comp_type = 'lin')
     loggers[code_names[1]].start()
     for i in range(2, 9):
         loggers[code_names[i]] = ValueLogger(measurements[2],
