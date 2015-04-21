@@ -206,7 +206,9 @@ class SocketTester(object):
         print(WELCOME)
 
         while True:
-            if line in ['quit', 'exit']:
+            if line == None or line == '':
+                pass
+            elif line in ['quit', 'exit']:
                 break
             elif line == 'help':
                 self.help_()
@@ -216,10 +218,19 @@ class SocketTester(object):
                 self.set_(line.split('set_noauto ')[1], True)
             elif line == 'unset':
                 self.unset()
-            elif line == None or line == '':
-                pass
             else:
-                self.forward_socket_command(line)
+                try:
+                    self.forward_socket_command(line)
+                except SocketTimeout:
+                    message = 'Got timeout on command. Most likely there is '\
+                              'no socket on {}:{}'.format(*self.ip_port)
+                    message = '\n'.join(textwrap.wrap(message, 80))
+                    print(ansi_color(message, ['bright', 'red']))
+                    self.unset()
+                except socket.gaierror:
+                    message = 'Found no host at: {}'.format(self.ip_port[0])
+                    print(ansi_color(message, ['bright', 'red']))
+                    self.unset()
 
             # Get new line
             try:
