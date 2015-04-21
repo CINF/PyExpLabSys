@@ -1,5 +1,6 @@
+""" Small module to handle sql inserts """
+
 import threading
-import Queue
 import MySQLdb
 import time
 
@@ -7,7 +8,10 @@ class sql_saver(threading.Thread):
     def __init__(self, queue, username):
         threading.Thread.__init__(self)
         self.queue = queue
-        self.cnxn = MySQLdb.connect(host="servcinf", user=username, passwd=username, db="cinfdata")
+        self.cnxn = MySQLdb.connect(host="servcinf",
+                                    user=username,
+                                    passwd=username,
+                                    db="cinfdata")
         self.cursor = self.cnxn.cursor()
         self.commits = 0
         self.commit_time = 0
