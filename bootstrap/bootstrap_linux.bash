@@ -15,7 +15,7 @@ apt1="openssh-server emacs python-pip graphviz screen ntp"
 apt2="python-mysqldb python-serial"
 
 # apt install packages line 3, code checkers
-apt3="pyflakes pylint"
+apt3="pylint"
 
 # remove selcted packages
 apt_remove="wolfram-engine oracle-java7-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde*"
@@ -40,6 +40,7 @@ alias sagup=\"sudo apt-get upgrade\"
 alias sagdu=\"sudo apt-get dist-upgrade\"
 alias ll=\"ls -lh\"
 alias df=\"df -h\"
+alias emacs-nolint=\"emacs -q --load ~/PyExpLabSys/bootstrap/.emacs-simple\"
 "
 
 # Usage string, edit if adding another section to the script
@@ -196,6 +197,8 @@ if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
     cp ~/PyExpLabSys/bootstrap/flymake-cursor.el ~/.emacs.d/lisp/
     echoblue "---> Copy .emacs to ~/.emacs.d/lisp dir"
     cp ~/PyExpLabSys/bootstrap/.emacs ~/
+    echoblue "---> Copy .pylintrc to ~/ dir"
+    cp ~/PyExpLabSys/bootstrap/.pylintrc ~/
     # Hook geany up with pychecker, but only if geany is already installed
     if [ -d  ~/.config/geany/filedefs ]; then
 	echoblue "---> Copy geany filedefs (actions for files) to ~/.config/geany/filedefs"
