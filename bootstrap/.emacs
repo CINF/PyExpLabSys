@@ -21,6 +21,7 @@
 
 ;; enable visual feedback on selections
 (setq transient-mark-mode t)
+(setq column-number-mode t)
 
 ;; default to better frame titles
 (setq frame-title-format
