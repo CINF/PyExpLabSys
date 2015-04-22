@@ -27,6 +27,7 @@ class qmg_422():
         # TODO: Take communication parameters as argument
         self.serial = serial.Serial('/dev/ttyUSB0', 19200, timeout=1.0)
         self.type = '422'
+        self.communication_mode(computer_control=True)
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer

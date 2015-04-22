@@ -50,6 +50,7 @@ class qmg_420():
         self.f = serial.Serial('/dev/ttyUSB0', 9600)
         self.switch_9_and_11 = switch_range
         self.type = '420'
+        self.communication_mode(computer_control=True)
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer

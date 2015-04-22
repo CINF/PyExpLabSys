@@ -4,9 +4,11 @@ import threading
 import MySQLdb
 import time
 
-class sql_saver(threading.Thread):
+class SqlSaver(threading.Thread):
+    """ Common class for putting stuff in databases """
     def __init__(self, queue, username):
         threading.Thread.__init__(self)
+        self.daemon = True
         self.queue = queue
         self.cnxn = MySQLdb.connect(host="servcinf",
                                     user=username,
@@ -18,7 +20,6 @@ class sql_saver(threading.Thread):
         
     def run(self):
         while True:
-            self.queue
             start = time.time()
             query = self.queue.get()
             self.cursor.execute(query)

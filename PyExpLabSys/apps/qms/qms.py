@@ -3,10 +3,11 @@ import time
 #import matplotlib.pyplot as plt
 import MySQLdb
 import logging
-import sys
 
 class qms(object):
-    def __init__(self, qmg, sqlqueue=None, loglevel=logging.ERROR):
+    """ Complete mass spectrometer """
+    def __init__(self, qmg, sqlqueue=None, chamber='dummy',
+                 credentials='dummy', loglevel=logging.ERROR):
         self.qmg = qmg
         if not sqlqueue == None:
             self.sqlqueue = sqlqueue
@@ -19,8 +20,8 @@ class qms(object):
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
-        self.chamber = 'dummy'
-        self.credentials = 'dummy'
+        self.chamber = chamber
+        self.credentials = credentials
         self.channel_list = {}
         
         #Clear log file
@@ -72,8 +73,8 @@ class qms(object):
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user=self.sql_credentials,
-                               passwd=self.sql_credentials, db="cinfdata")
+        cnxn = MySQLdb.connect(host="servcinf", user=self.credentials,
+                               passwd=self.credentials, db="cinfdata")
 
         cursor = cnxn.cursor()
         
