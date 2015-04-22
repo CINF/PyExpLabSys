@@ -2,20 +2,27 @@
 
 from __future__ import print_function
 import os
-#import logging
 LOGFILE = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'always_lint.log'
 )
-#logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, filemode='w')
 import re
 import errno
 import subprocess
 import MySQLdb
 from collections import Counter
-from PyExpLabSys.common.utilities import get_logger
-# 10 MB file logs
-LOG = get_logger(name='always_lint', terminal_log=True, level='debug',
-                 file_log=True, file_name=LOGFILE, file_max_bytes=10485760)
+# Configure logging
+import logging
+import logging.handlers
+LOG = logging.getLogger('always_lint')
+LOG.setLevel(logging.DEBUG)
+ROTATING_FILE_HANDLER = logging.handlers.RotatingFileHandler(
+              LOGFILE, maxBytes=10485760, backupCount=10
+)
+FORMATTER = logging.Formatter(
+    '%(asctime)s:%(name)s: %(levelname)s: %(message)s'
+)
+ROTATING_FILE_HANDLER.setFormatter(FORMATTER)
+LOG.addHandler(ROTATING_FILE_HANDLER)
 
 MATCH_RE = re.compile(r'[^:]+:[0-9]+: \[([A-Z][0-9]+)\(.*\].*')
 ARCHIVE_PATH = '/home/kenni/pylint_pyexplabsys/PyExpLabSys'
@@ -167,7 +174,7 @@ def main(root_path):
 
     if last_commit_hash == last_commit_hash_in_db:
         LOG.debug("No new commits to log. We are done!")
-        #return
+        return
     else:
         LOG.debug("There is a new commit. Proceed to linting.")
 
@@ -203,7 +210,7 @@ def main(root_path):
             # We are good to lint the file
             lint_file(filepath)
 
-    #report_to_mysql(commit_time, last_commit_hash)
+    report_to_mysql(commit_time, last_commit_hash)
 
 
 if __name__ == '__main__':
