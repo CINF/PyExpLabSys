@@ -11,11 +11,14 @@ from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.omega_D6400 as omega_D6400
+import PyExpLabSys.drivers.mks_pi_pc as mks_pi_pc
+import PyExpLabSys.drivers.mks_925_pirani as mks_925_pirani
+
 import credentials
 
-class PressureReader(threading.Thread):
+class PressurePiraniReader(threading.Thread):
     """ Read Cooling water pressure """
-    def __init__(self, omega):
+    def __init__(self, omega, channel):
         threading.Thread.__init__(self)
         self.omega = omega
         self.pressure = -1
@@ -30,11 +33,12 @@ class PressureReader(threading.Thread):
             time.sleep(1)
             self.pressure = self.omega.read_value(1)
 
-logging.basicConfig(filename="logger.txt", level=logging.ERROR)
-logging.basicConfig(level=logging.ERROR)
+#logging.basicConfig(filename="logger.txt", level=logging.ERROR)
+#logging.basicConfig(level=logging.ERROR)
 
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWE9PXJ-if00-port0'
 omega_instance = omega_D6400.OmegaD6400(address=1, port=port)
+piranis = []
 pressurereader = PressureReader(omega_instance)
 pressurereader.daemon = True
 pressurereader.start()
@@ -43,8 +47,16 @@ logger = ValueLogger(pressurereader, comp_val=0.1)
 logger.start()
 
 
-name = 'stm312_hpc_baratron'
-codenames = ['stm312_hpc_baratron']
+name = 'stm312_pressure'
+codenames = ['stm312_hpc_baratron',
+             'stm312_prepump_bigturbo',
+             'stm312_prepump_gashandling',
+             'stm312_prepump_diff',
+             'stm312_prepump_loadlock',
+             'oldclustersource_prepump_aggregation',
+             'oldclustersource_prepump_quadrupole',
+             'oldclustersource_iongauge',
+             'oldclustersource_pirani']
 socket = DateDataPullSocket(name, codenames, timeouts=[1.0])
 socket.start()
 
