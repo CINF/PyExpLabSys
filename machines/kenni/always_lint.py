@@ -16,8 +16,8 @@ ERROR_COUNTER = Counter()
 FILE_COUNTER = Counter()
 TOTAL_LINE_COUNT = 0
 PYLINTRC = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    'pylintrc'
+    os.path.dirname(os.path.realpath(__file__)), '..', '..', 'bootstrap',
+    '.pylintrc'
 )
 
 
