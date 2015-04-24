@@ -3,12 +3,16 @@
 
 import Queue
 import time
+import logging
 import PyExpLabSys.common.sql_saver as sql_saver
 import PyExpLabSys.drivers.pfeiffer_qmg422 as qmg422
 import PyExpLabSys.apps.qms.qms as ms
 import PyExpLabSys.apps.qms.qmg_status_output as qmg_status_output
 import PyExpLabSys.apps.qms.qmg_meta_channels as qmg_meta_channels
 import sql_credentials
+
+logging.basicConfig(filename="qms.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.DEBUG)
 
 timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 sql_queue = Queue.Queue()
@@ -23,14 +27,14 @@ qms = ms.qms(qmg, sql_queue, chamber=chamber, credentials=sql_credentials.userna
 printer = qmg_status_output.qms_status_output(qms, sql_saver_instance=sql_saver)
 printer.start()
 
-if False:
+if True:
     channel_list = qms.read_ms_channel_list('channel_list.txt')
     meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
     meta_udp.daemon = True
     meta_udp.start()
     print qms.mass_time(channel_list['ms'], timestamp)
 
-if True:
+if False:
     # for choosing between mass time and mass scan
     qms.mass_scan(0, 20, comment='TEST')
 

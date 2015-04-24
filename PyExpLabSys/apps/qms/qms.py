@@ -58,14 +58,13 @@ class qms(object):
         """ Chekcs wheter the instruments returns real or simulated data """
         self.qmg.simulation()
 
-    def config_channel(self, channel, mass=-1, speed=-1,
-                       amp_range=0, enable=""):
-        self.qmg.config_channel(channel, mass=mass, speed=speed,
-                                amp_range=amp_range, enable=enable)
-
+    def config_channel(self, channel, params, enable=""):
+        """ Setup a channel for measurement """
+        self.qmg.config_channel(channel, mass=params['mass'], speed=params['speed'],
+                                amp_range=params['amp_range'], enable=enable)
 
     def create_mysql_measurement(self, channel, timestamp, masslabel, comment,
-                                 metachannel=False, type=5):
+                                mass=0,  metachannel=False, measurement_type=5):
         """ Creates a MySQL row for a channel.
         
         Create a row in the measurements table and populates it with the
@@ -94,8 +93,9 @@ class qms(object):
         query += ' set mass_label="'  + masslabel + '"'
         query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
         query += preamp_range + '", time="' + timestamp + '", type="'
-        query += str(type) + '"' + ', comment="' + comment + '"'
-
+        query += str(measurement_type) + '"' + ', comment="' + comment + '"'
+        query += ', timestep=' + str(timestep) + ', actual_mass=' + str(mass)
+        logging.error(query)
         cursor.execute(query)
         cnxn.commit()
         
@@ -107,8 +107,8 @@ class qms(object):
         cnxn.close()
         return id_number
 
-
     def read_ms_channel_list(self, filename='channel_list.txt'):
+        """ Read and parse channel list """
         channel_list = {}
         channel_list['ms'] = {}
         channel_list['meta'] = {}
@@ -135,7 +135,7 @@ class qms(object):
 
             if key == 'ms_channel':
                 params = items[1].split(',')
-                for j in range(0,len(params)):
+                for j in range(0, len(params)):
                     params[j] = params[j].strip()
                 label = params[params.index('masslabel') + 1]
                 speed = int(params[params.index('speed') + 1])
@@ -168,11 +168,13 @@ class qms(object):
         """ This function creates the channel-list and the
         associated mysql-entries """
         #TODO: Implement various ways of creating the channel-list
-        #TODO: Implement version 2.0 of autorange with deeper autorange
+        #TODO: Implement working autorange
         ids = {}
         
+        params = {'mass':99, 'speed':1, 'amp_range':-1}
         for i in range(0, 16):
-            self.config_channel(i, mass=99, speed=1, amp_range=-1, enable='no')
+            self.config_channel(i, params, enable='no')
+            #self.config_channel(i, mass=99, speed=1, amp_range=-1, enable='no')
 
         comment = channel_list[0]['comment']
         self.autorange = channel_list[0]['autorange']
@@ -180,16 +182,14 @@ class qms(object):
         #Check for qmg-version 422 will do hardware autorange!
 
         for i in range(1, len(channel_list)):
-            ch = channel_list[i]
-            self.config_channel(channel=i, mass=ch['mass'],
-                                speed=ch['speed'],
-                                amp_range=ch['amp_range'],
-                                enable="yes")
-            self.channel_list[i] = {'masslabel':ch['masslabel'], 'value':'-'}
+            channel = channel_list[i]
+            self.config_channel(channel=i, params=channel, enable="yes")
+            self.channel_list[i] = {'masslabel':channel['masslabel'], 'value':'-'}
 
             if no_save == False:
-                ids[i] = self.create_mysql_measurement(i, timestamp,
-                                                       ch['masslabel'], comment)
+                ids[i] = self.create_mysql_measurement(i, timestamp, mass=channel['mass'],
+                                                       masslabel=channel['masslabel'],
+                                                       comment=comment)
             else:
                 ids[i] = i
         ids[0] = timestamp
@@ -210,6 +210,8 @@ class qms(object):
         
         while self.stop == False:
             if self.autorange and not (self.qmg.type == '422'):
+                pass
+                """
                 for i in range(1, number_of_channels + 1):
                     #TODO: Decrease measurement time during autorange
                     self.config_channel(channel=i, amp_range=-5)
@@ -243,7 +245,7 @@ class qms(object):
                     for i in range(1, number_of_samples + 1):
                         self.config_channel(channel=i, amp_range=ranges[i])
                         ms_channel_list[i]['amp_range'] = ranges[i]
-
+                """
             self.qmg.set_channel(1)
             self.qmg.start_measurement()
             time.sleep(0.1)
