@@ -51,7 +51,8 @@ import logging
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
-from .utilities import call_spec_string, SystemStatus
+from .utilities import call_spec_string
+from .system_status import SystemStatus
 # Instantiate a global system status object
 SYSTEM_STATUS = SystemStatus()
 
@@ -304,7 +305,7 @@ class CommonDataPullSocket(threading.Thread):
                  check_activity, activity_timeout, init_timeouts=True,
                  handler_class=PullUDPHandler,
                  ):
-        """Initializes internal variables and data structure in the 
+        """Initializes internal variables and data structure in the
         :data:`.DATA` module variable
 
         Args:
