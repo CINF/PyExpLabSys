@@ -1,8 +1,52 @@
-"""This module contains the SystemStatus class"""
+"""This module contains the SystemStatus class
 
+This module is Python 2 and 3 compatible.
+"""
+
+from __future__ import unicode_literals
 import os
+import re
 import sys
+import socket
+import fcntl
+import struct
 import threading
+import subprocess
+try:
+    import resource
+except ImportError:
+    resource = None  # pylint: disable=C0103
+
+# Source: http://www.raspberrypi-spy.co.uk/2012/09/checking-your-raspberry-pi-board-version/
+RPI_REVISIONS = {
+    '0002': 'Model B Revision 1.0',
+    '0003': 'Model B Revision 1.0 + ECN0001 (no fuses, D14 removed)',
+    '0004': 'Model B Revision 2.0 Mounting holes',
+    '0005': 'Model B Revision 2.0 Mounting holes',
+    '0006': 'Model B Revision 2.0 Mounting holes',
+    '0007': 'Model A Mounting holes',
+    '0008': 'Model A Mounting holes',
+    '0009': 'Model A Mounting holes',
+    '000d': 'Model B Revision 2.0 Mounting holes',
+    '000e': 'Model B Revision 2.0 Mounting holes',
+    '000f': 'Model B Revision 2.0 Mounting holes',
+    '0010': 'Model B+',
+    '0011': 'Compute Module',
+    '0012': 'Model A+',
+    'a01041': 'Pi 2 Model B',
+    'a21041': 'Pi 2 Model B',
+}
+# Temperature regular expression
+RPI_TEMP_RE = re.compile("temp=([0-9\.]*)'C")
+
+
+def works_on(platform):
+    """Return a decorator that attaches a _works_on (platform) attribute to methods"""
+    def decorator(function):
+        """Decorate a method with a _works_on attribute"""
+        function._works_on = platform
+        return function
+    return decorator
 
 
 class SystemStatus(object):
@@ -10,25 +54,25 @@ class SystemStatus(object):
 
     def __init__(self):
         # Form the list of which items to measure on different platforms
-        self.platform = sys.platform
-        self.all_list = ['last_git_fetch_unixtime',
-                         'number_of_python_threads']
-        if self.platform == 'linux2':
-            import resource
-            self.resource = resource
-            self.all_list += ['uptime', 'last_apt_cache_change_unixtime',
-                              'load_average', 'filesystem_usage',
-                              'max_python_mem_usage_bytes']
+        platforms = {'all', sys.platform}
+
+        # Form the list methods that work in this platform, using the _works_on attribute
+        # that is appended with a decorator
+        self.methods_on_this_platform = []
+        for attribute_name in dir(self):
+            method = getattr(self, attribute_name)
+            # pylint: disable=W0212
+            if hasattr(method, '_works_on') and method._works_on in platforms:
+                self.methods_on_this_platform.append(method)
 
     def complete_status(self):
         """Returns all system status information items as a dictionary"""
-        all_items = {}
-        for item in self.all_list:
-            all_items[item] = getattr(self, item)()
-        return all_items
+        return {method.__name__: method() for method in self.methods_on_this_platform}
 
     # All platforms
-    def last_git_fetch_unixtime(self):
+    @staticmethod
+    @works_on('all')
+    def last_git_fetch_unixtime():
         """Returns the unix timestamp and author time zone offset in seconds of
         the last git commit
         """
@@ -46,12 +90,14 @@ class SystemStatus(object):
             return None
 
     @staticmethod
+    @works_on('all')
     def number_of_python_threads():
         """Returns the number of threads in Python"""
         return threading.activeCount()
 
     # Linux only
     @staticmethod
+    @works_on('linux2')
     def uptime():
         """Returns the system uptime"""
         sysfile = '/proc/uptime'
@@ -66,6 +112,7 @@ class SystemStatus(object):
             return None
 
     @staticmethod
+    @works_on('linux2')
     def last_apt_cache_change_unixtime():
         """Returns the unix timestamp of the last apt-get upgrade"""
         apt_cache_dir = '/var/cache/apt'
@@ -75,6 +122,7 @@ class SystemStatus(object):
             return None
 
     @staticmethod
+    @works_on('linux2')
     def load_average():
         """Returns the system load average"""
         sysfile = '/proc/loadavg'
@@ -89,6 +137,7 @@ class SystemStatus(object):
             return None
 
     @staticmethod
+    @works_on('linux2')
     def filesystem_usage():
         """Return the total and free number of bytes in the current filesystem
         """
@@ -99,11 +148,76 @@ class SystemStatus(object):
         }
         return status
 
-    def max_python_mem_usage_bytes(self):
+    @staticmethod
+    @works_on('linux2')
+    def max_python_mem_usage_bytes():
         """Returns the python memory usage"""
-        pagesize = self.resource.getpagesize()
-        this_process = self.resource.getrusage(
-            self.resource.RUSAGE_SELF).ru_maxrss
-        children = self.resource.getrusage(
-            self.resource.RUSAGE_CHILDREN).ru_maxrss
+        pagesize = resource.getpagesize()
+        this_process = resource.getrusage(
+            resource.RUSAGE_SELF).ru_maxrss
+        children = resource.getrusage(
+            resource.RUSAGE_CHILDREN).ru_maxrss
         return (this_process + children) * pagesize
+
+    @staticmethod
+    @works_on('linux2')
+    def mac_address():
+        """Return the mac address of eth0"""
+        ifname = b'eth0'
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        info = fcntl.ioctl(sock.fileno(), 0x8927,  struct.pack(b'256s', ifname[:15]))
+        if sys.version < '3':
+            return ':'.join(['%02x' % ord(char) for char in info[18:24]])
+        else:
+            return ':'.join(['%02x' % char for char in info[18:24]])
+
+    @staticmethod
+    @works_on('linux2')
+    def rpi_model():
+        """Return the Raspberry Pi"""
+        with open('/proc/cpuinfo') as file_:
+            for line in file_:
+                if line.startswith('Revision'):
+                    # The line looks like this:
+                    #Revision         : 0002
+                    revision = line.strip().split(': ')[1]
+                    break
+            else:
+                return None
+
+        return RPI_REVISIONS.get(revision, 'Undefined revision')
+
+    @staticmethod
+    @works_on('linux2')
+    def rpi_temperatur():
+        """Return the temperature of a Raspberry Pi"""
+        # Get temperature string
+        try:
+            temp_str = subprocess.check_output(['/opt/vc/bin/vcgencmd', 'measure_temp'])
+        except OSError:
+            return None
+
+        # Temperature string is on the form "temp=46.5'C" match with an RE
+        # pylint: disable=E1103
+        match = RPI_TEMP_RE.match(temp_str.decode('ascii'))
+        if match:
+            return float(match.group(1))
+        else:
+            return None
+
+    @staticmethod
+    @works_on('linux2')
+    def sd_card_serial():
+        """Return the SD card serial number"""
+        try:
+            with open('/sys/block/mmcblk0/device/cid') as file_:
+                serial = file_.read().strip()
+            return serial
+        except IOError:
+            return None
+
+
+if __name__ == '__main__':
+    from pprint import pprint
+    SYSTEM_STATUS = SystemStatus()
+    pprint(SYSTEM_STATUS.complete_status())
