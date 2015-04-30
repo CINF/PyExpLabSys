@@ -58,6 +58,11 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
         self.timer.timeout.connect(self.monitor_timeout)
         self.spinbox_amount.valueChanged.connect(self.report_active)
 
+    def keyPressEvent(self, event):  # pylint: disable=invalid-name
+        """Keypress callback method"""
+        if event.key() == QtCore.Qt.Key_Return and self.lineedit_username.hasFocus():
+            self.login()
+
     def set_logged_in(self, logged_in):
         """Set the GUI active or inactive depending on logged in status
 
