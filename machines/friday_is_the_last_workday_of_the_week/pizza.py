@@ -106,6 +106,7 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
         self.set_balance(0)
         self.spinbox_amount.setValue(0)
         self.set_logged_in(False)
+        self.lineedit_username.setFocus(True)
 
     def transaction(self, transaction_type):
         """Deposite"""
