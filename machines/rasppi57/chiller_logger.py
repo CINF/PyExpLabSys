@@ -29,9 +29,9 @@ def main():
                  'thetaprobe_chiller_temperature_setpoint']
     LOG.debug('Using codenames %s', codenames)
     loggers = {}
-    for index, codename in enumerate(codenames):
-        loggers[codename] = ValueLogger(reader, comp_val=0.1, channel=index)
-        loggers[codename].start()
+    for i in range(0, len(codenames)):
+        loggers[codenames[i]] = ValueLogger(reader, comp_val = 0.1, channel = i)
+        loggers[codenames[i]].start()
 
     live_socket_name = 'Thetaprobe chiller'
     live_socket = LiveSocket(live_socket_name, codenames, 2)
@@ -52,11 +52,12 @@ def main():
         time.sleep(0.25)
         for name in codenames:
             value = loggers[name].read_value()
-            live_socket.set_point_now(name, value)
-            if loggers[name].read_trigged():
-                LOG.debug('Log value %s for codename "%s"', value, name)
-                db_logger.enqueue_point_now(name, value)
-                loggers[name].clear_trigged()
+            if not value == float('nan'):
+                live_socket.set_point_now(name, value)
+                if loggers[name].read_trigged():
+                    LOG.debug('Log value %s for codename "%s"', value, name)
+                    db_logger.enqueue_point_now(name, value)
+                    loggers[name].clear_trigged()
 
 
 if __name__ == '__main__':

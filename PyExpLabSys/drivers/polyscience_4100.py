@@ -112,16 +112,8 @@ class Polyscience_4100():
         return status
 
 if __name__ == '__main__':
-    ports = FindSerialPorts.find_ports()
-
-    #chiller = Polyscience_4100('/dev/ttyUSB0')
-    #print chiller.read_status()
-
-    for port in ports:
-        chiller = Polyscience_4100('/dev/' + port)
-        if not (chiller.read_status() == 'error'):
-            print port
-            break
+    chiller = Polyscience_4100('/dev/ttyUSB0')
+    print chiller.read_status()
         
     print 'Setpoint: {0:.1f}'.format(chiller.read_setpoint())
     print 'Temperature: {0:.1f}'.format(chiller.read_temperature())
