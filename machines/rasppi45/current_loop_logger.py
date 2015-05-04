@@ -7,6 +7,7 @@ from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
+from ABE_helpers import ABEHelpers
 from ABE_ADCPi import ADCPi
 import credentials
 
@@ -25,13 +26,15 @@ class PressureReader(threading.Thread):
     def run(self):
         while not self.quit:
             time.sleep(1)
-            current = (self.adc.readVoltage(1) / 148) * 1000
+            current = (self.adc.read_voltage(1) / 148) * 1000
             self.waterpressure = (current - 4) * (500 / 16) * 0.068947
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
-adc_instance = ADCPi(0x68, 0x69, 18)
+i2c_helper = ABEHelpers()
+bus = i2c_helper.get_smbus()
+adc_instance = ADCPi(bus, 0x68, 0x69, 18)
 pressurereader = PressureReader(adc_instance)
 pressurereader.daemon = True
 pressurereader.start()
