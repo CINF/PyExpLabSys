@@ -12,7 +12,7 @@
 apt1="openssh-server emacs python-pip graphviz screen ntp"
 
 # apt install packages line 2, python extensions
-apt2="python-mysqldb python-serial"
+apt2="python-mysqldb python-serial python-colorama"
 
 # apt install packages line 3, code checkers
 apt3="pylint"
