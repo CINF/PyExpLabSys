@@ -7,7 +7,7 @@ from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
-from ABElectronics_ADCPi import ADCPi
+from ABE_ADCPi import ADCPi
 import credentials
 
 class PressureReader(threading.Thread):
