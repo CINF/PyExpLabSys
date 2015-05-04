@@ -189,7 +189,7 @@ class SystemStatus(object):
 
     @staticmethod
     @works_on('linux2')
-    def rpi_temperatur():
+    def rpi_temperature():
         """Return the temperature of a Raspberry Pi"""
         # Get temperature string
         try:
