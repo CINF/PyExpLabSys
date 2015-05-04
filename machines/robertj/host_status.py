@@ -31,6 +31,8 @@ def uptime(host, method, username='pi', password='cinf123'):
     return_value['up'] = ''
     return_value['load'] = ''
     return_value['git'] = ''
+    return_value['host_temperature'] = ''
+    return_value['model'] = ''
     if method == 'ssh':
         uptime_string = subprocess.check_output(["sshpass", 
                                                  "-p", 
@@ -65,6 +67,14 @@ def uptime(host, method, username='pi', password='cinf123'):
         except:
             return_value['up'] = 'Down'
             return_value['load'] = 'Down'
+        try:
+            model = system_status['rpi_model']
+            host_temperature = system_status['rpi_temperatur']
+        except (KeyError, UnboundLocalError) as e:
+            model = ''
+            host_temperature = ''
+        return_value['model'] = model
+        return_value['host_temperature'] = host_temperature
         try:
             gittime = system_status['last_git_fetch_unixtime']
             git = datetime.datetime.fromtimestamp(gittime).strftime('%Y-%m-%d')
@@ -104,7 +114,14 @@ class CheckHost(threading.Thread):
                 uptime_val['up'] = ''
                 uptime_val['load'] = ''
                 uptime_val['git'] = ''
-            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[4], host[1], uptime_val['git']])
+                uptime_val['host_temperature'] = ''
+                uptime_val['model'] = ''
+            self.results.put([host[0], up, uptime_val['up'],
+                              uptime_val['load'], host[3],
+                              host[4], host[1],
+                              uptime_val['git'],
+                              uptime_val['host_temperature'],
+                              uptime_val['model']])
             self.hosts.task_done()
 
 if __name__ == "__main__":
@@ -145,16 +162,18 @@ if __name__ == "__main__":
 
     status_string = ""
     for host in sorted_results.values():
-        status_string += host[0] + ";"
+        status_string += host[0] + "|"
         if host[1]:
-            status_string += "1;"
-            status_string += host[2] + ";"
-            status_string += host[3] + ";"
+            status_string += "1|"
+            status_string += host[2] + "|"
+            status_string += host[3] + "|"
         else:
-            status_string += "0;;;"
-        status_string += host[4] + ";"
-        status_string += host[5] + ";"
-        status_string += host[6] + ";"
-        status_string += host[7]
+            status_string += "0|||"
+        status_string += host[4] + "|"
+        status_string += host[5] + "|"
+        status_string += host[6] + "|"
+        status_string += host[7] + "|"
+        status_string += str(host[8]) + "|"
+        status_string += host[9]
         status_string += "\n"
     print(status_string)
