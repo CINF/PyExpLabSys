@@ -250,8 +250,19 @@ class SocketTester(object):
 
     def set_(self, ip_port, noauto=False):
         """Set ip address and port"""
+        if not ':' in ip_port:
+            message = 'The argument to set should be formatted as hostname:port'
+            print(ansi_color(message, ['bright', 'red']))
+            self.unset()
+            return
         self.ip_port = ip_port.split(':')
-        self.ip_port[1] = int(self.ip_port[1])
+        try:
+            self.ip_port[1] = int(self.ip_port[1])
+        except ValueError:
+            message = 'The port argument "{}" is not cannot be converted to int'
+            print(ansi_color(message.format(self.ip_port[1]), ['bright', 'red']))
+            self.unset()
+            return
         self.ip_port = tuple(self.ip_port)
         self.noauto = noauto
         print('Connected to: {}\n'.format(
