@@ -3,6 +3,7 @@
 
 
 import time
+import math
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.chiller_reader import ChillerReader
 from PyExpLabSys.common.loggers import ContinuousLogger
@@ -52,7 +53,7 @@ def main():
         time.sleep(0.25)
         for name in codenames:
             value = loggers[name].read_value()
-            if not value == float('nan'):
+            if not math.isnan(value):
                 live_socket.set_point_now(name, value)
                 if loggers[name].read_trigged():
                     LOG.debug('Log value %s for codename "%s"', value, name)
@@ -64,5 +65,5 @@ if __name__ == '__main__':
     try:
         main()
     except Exception:
-        #LOG.exception()
+        LOG.exception()
         raise
