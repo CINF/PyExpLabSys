@@ -26,6 +26,7 @@ class qmg_422():
         """
         # TODO: Take communication parameters as argument
         self.serial = serial.Serial('/dev/ttyUSB0', 19200, timeout=1.0)
+        self.reverse_range = False
         self.type = '422'
         self.communication_mode(computer_control=True)
 
@@ -166,11 +167,11 @@ class qmg_422():
         :return: The preamp range
         :rtype: str
         """
-        preamp_range = self.comm('AMO')
-        if preamp_range == '2':
+        auto_range = self.comm('AMO')
+        if auto_range in ('1', '2'):
             preamp_range = '0' #Idicates auto-range in mysql-table
         else:
-            preamp_range = "-1" #TODO: Here we should read the actual range
+            preamp_range = self.comm('ARA')
         return preamp_range
 
     def read_timestep(self):
@@ -271,6 +272,20 @@ class qmg_422():
         """ Start the measurement """
         self.comm('CRU ,2')
 
+    def actual_range(self, amp_range):
+        """ Returns the range that should be send to achieve the desired range """
+        real_range = amp_range
+        if self.reverse_range is True:
+            if amp_range == -9:
+                real_range = -11
+            if amp_range == -10:
+                real_range = -12
+            if amp_range  == -11:
+                real_range = -9
+            if amp_range == -12:
+                real_range = -10
+            return real_range
+
     def get_single_sample(self):
         """ Read a single sample from the device """
         samples = 0
@@ -300,7 +315,7 @@ class qmg_422():
 
 
     def config_channel(self, channel, mass=-1, speed=-1,
-                       enable="", amp_range=""):
+                       enable="", amp_range=0):
         """ Config a MS channel for measurement """
         self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
         if mass > -1:
@@ -312,13 +327,20 @@ class qmg_422():
         if enable == "no":
             self.comm('AST ,1')
 
+        if amp_range == 0:
+            self.comm('AMO, 1')  #Auto range with lower limit
+            # TODO: Lower limit should be read from config file
+            self.comm('ARL, -8') # Lower auto range level
+        else:
+            self.comm('AMO, 0')  #Fix range
+            self.comm('ARA, ' + str(self.actual_range(amp_range)))
+
         #Default values, not currently choosable from function parameters
         self.comm('DSE ,0')  #Use default SEM voltage
         self.comm('DTY ,1')  #Use SEM for ion detection
         self.comm('SDT ,1')  #Use SEM for ion detection
         #self.comm('DTY ,0')  #Use Faraday cup for ion detection
         #self.comm('SDT ,0')  #Use Faraday cup for ion detection
-        self.comm('AMO ,2')  #Auto-range #RANGE SELECTION NOT IMPLEMENTED!!!!!!!
         self.comm('MMO ,3')  #Single mass measurement (opposed to mass-scan)
         self.comm('MRE ,15') #Peak resolution
 
@@ -337,7 +359,7 @@ class qmg_422():
         number_of_samples = int(header[3])
         return number_of_samples
 
-    def mass_scan(self, first_mass, scan_width, amp_range=None):
+    def mass_scan(self, first_mass, scan_width, amp_range=0):
         """ Setup the mass spec for a mass scan """
         speed_list = {
             0: 0.0005,
@@ -356,18 +378,29 @@ class qmg_422():
             13: 10,
             14: 20,
             15: 60} # unit: [s/amu]
-        speed = 11
+        speed = 9
         try:
             total_time = scan_width * spped_list[speed]
         except:
             total_time = -1
 
+        if amp_range == 0:
+            self.comm('AMO, 1')  #Auto range with lower limit
+            # TODO: Lower limit should be read from config file
+            self.comm('ARL, -8') # Lower auto range level
+        else:
+            self.comm('AMO, 0')  #Fix range
+            self.comm('ARA, ' + str(self.actual_range(amp_range)))
+
         self.comm('CYM, 0') #0, single. 1, multi
         self.comm('SMC, 0') #Channel 0
+        self.comm('DSE ,0')  #Use default SEM voltage
+        self.comm('DTY ,1')  #Use SEM for ion detection
+        self.comm('SDT ,1')  #Use SEM for ion detection 
+        self.comm('MRE ,1') #Resolve peak
         self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST, 2') #Steps 0: 1: 2: 64/amu
+        self.comm('MST, 1') #Steps 0: 1: 2: 64/amu
         self.comm('MSD, ' + str(speed)) #Speed
-        self.comm('AMO, 2')  #Auto range electromter
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
         return total_time

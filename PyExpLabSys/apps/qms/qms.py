@@ -63,8 +63,9 @@ class qms(object):
         self.qmg.config_channel(channel, mass=params['mass'], speed=params['speed'],
                                 amp_range=params['amp_range'], enable=enable)
 
-    def create_mysql_measurement(self, channel, timestamp, masslabel, comment,
-                                mass=0,  metachannel=False, measurement_type=5):
+    def create_mysql_measurement(self, channel, timestamp, masslabel, amp_range,
+                                 comment, mass=0, metachannel=False,
+                                 measurement_type=5):
         """ Creates a MySQL row for a channel.
         
         Create a row in the measurements table and populates it with the
@@ -80,7 +81,7 @@ class qms(object):
         if not metachannel:
             self.qmg.set_channel(channel)
             sem_voltage = self.qmg.read_sem_voltage()
-            preamp_range = str(self.qmg.read_preamp_range())
+            preamp_range = str(amp_range)
             timestep = self.qmg.read_timestep()
             #TODO: We need a look-up table, this number is not physical
         else:
@@ -171,10 +172,9 @@ class qms(object):
         #TODO: Implement working autorange
         ids = {}
         
-        params = {'mass':99, 'speed':1, 'amp_range':-1}
+        params = {'mass':99, 'speed':1, 'amp_range':-5}
         for i in range(0, 16):
             self.config_channel(i, params, enable='no')
-            #self.config_channel(i, mass=99, speed=1, amp_range=-1, enable='no')
 
         comment = channel_list[0]['comment']
         self.autorange = channel_list[0]['autorange']
@@ -189,6 +189,7 @@ class qms(object):
             if no_save == False:
                 ids[i] = self.create_mysql_measurement(i, timestamp, mass=channel['mass'],
                                                        masslabel=channel['masslabel'],
+                                                       amp_range=channel['amp_range'],
                                                        comment=comment)
             else:
                 ids[i] = i
@@ -209,50 +210,13 @@ class qms(object):
         self.current_timestamp = ids[0]
         
         while self.stop == False:
-            if self.autorange and not (self.qmg.type == '422'):
-                pass
-                """
-                for i in range(1, number_of_channels + 1):
-                    #TODO: Decrease measurement time during autorange
-                    self.config_channel(channel=i, amp_range=-5)
-                self.qmg.set_channel(1)
-                self.qmg.start_measurement()
-                time.sleep(0.1)
-                ranges = {}
-                autorange_complete = False
-                while not autorange_complete:
-                    for i in range(1, number_of_channels + 1):
-                        value = self.qmg.get_single_sample()
-                        #logging.info(value)
-                        try:
-                            value = float(value)
-                        except:
-                            logging.warn('Missing value during auto-range')
-                            autorange_complete = False
-                            break
-                        if value > 0.9:
-                            ranges[i] = 2
-                        if (value<0.9) and (value>0.09):
-                            ranges[i] = 4
-                        if (value<0.09) and (value>0.009):
-                            ranges[i] = 5
-                        if (value<0.009) and (value>0.0009):
-                            ranges[i] = 6
-                        if value < 0.0009:
-                            ranges[i] = 7
-                        autorange_complete = True
-                if autorange_complete:
-                    for i in range(1, number_of_samples + 1):
-                        self.config_channel(channel=i, amp_range=ranges[i])
-                        ms_channel_list[i]['amp_range'] = ranges[i]
-                """
             self.qmg.set_channel(1)
             self.qmg.start_measurement()
             time.sleep(0.1)
             for channel in range(1, number_of_channels + 1):
                 self.measurement_runtime = time.time()-start_time
                 value = self.qmg.get_single_sample()
-                self.channel_list[channel]['value'] = value
+                #self.channel_list[channel]['value'] = value
                 sqltime = str((time.time() - start_time) * 1000)
                 if value == "":
                     break
@@ -262,6 +226,12 @@ class qms(object):
                     except ValueError:
                         value = -1
                         logging.error('Value error, could not convert to float')
+                    if self.qmg.type == '422' and self.qmg.reverse_range is True:
+                        amp_range = ms_channel_list[channel]['amp_range']
+                        if amp_range in (-9, -10):
+                            value = value * 100.0
+                        if amp_range in (-11, -12):
+                            value = value / 100.0
                     if self.qmg.type == '420':
                         logging.error('Value: ' + str(value))
                         logging.error(ms_channel_list[channel]['amp_range'])
@@ -272,6 +242,7 @@ class qms(object):
                     query += 'xy_values_' + self.chamber + ' '
                     query += 'set measurement="' + str(ids[channel])
                     query += '", x="' + sqltime + '", y="' + str(value) + '"'
+                self.channel_list[channel]['value'] = str(value)
                 self.sqlqueue.put(query)
                 time.sleep(0.25)
             time.sleep(0.1)
@@ -283,9 +254,10 @@ class qms(object):
         start_time = time.time()
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         self.operating_mode = 'Mass-scan'
-        id = self.create_mysql_measurement(0, timestamp, 'Mass Scan',
-                                           comment, type=4)
-        self.message = 'ID number: ' + str(id) + '. Scanning from '
+        sql_id = self.create_mysql_measurement(0, timestamp, 'Mass Scan',
+                                               comment = comment, amp_range=amp_range,
+                                               measurement_type=4)
+        self.message = 'ID number: ' + str(sql_id) + '. Scanning from '
         self.message += str(first_mass) + ' to '
         self.message += str(first_mass+scan_width) + 'amu'
         self.current_timestamp = timestamp
@@ -305,7 +277,7 @@ class qms(object):
 
         query = '' 
         query += 'insert into xy_values_' + self.chamber
-        query += ' set measurement = ' + str(id) + ', x = '
+        query += ' set measurement = ' + str(sql_id) + ', x = '
         self.current_action = 'Downloading samples from device'
         j = 0
         for i in range(0, number_of_samples / 100):
@@ -317,8 +289,13 @@ class qms(object):
                 if self.qmg.type == '420':
                     new_query += ', y = ' + str(float(samples[i]) *
                                                 (10**amp_range))
-                else:
-                    new_query += ', y = ' + str(samples[i])
+                if self.qmg.type == '422':
+                    if amp_range == 0:
+                        new_query += ', y = ' + samples[i]
+                    else:
+                        new_query += ', y = ' + str((int(samples[i])/10000.0) *
+                                                    (10**amp_range))
+
                 self.sqlqueue.put(new_query)
         samples = self.qmg.get_multiple_samples(number_of_samples%100)
         for i in range(0, len(samples)):
@@ -326,11 +303,14 @@ class qms(object):
             new_query = query + str(first_mass + j / samples_pr_unit)
             if self.qmg.type == '420':
                 new_query += ', y = ' + str(float(samples[i])*(10**amp_range))
-            else:
-                new_query += ', y = ' + str(samples[i])
+            if self.qmg.type == '422':
+                if amp_range == 0:
+                    new_query += ', y = ' + samples[i]
+                else:
+                    new_query += ', y = ' + str((int(samples[i])/10000.0) * 
+                                                (10**amp_range))
 
             self.sqlqueue.put(new_query)
-
         self.current_action = 'Emptying Queue'
         while not self.sqlqueue.empty():
             self.measurement_runtime = time.time()-start_time

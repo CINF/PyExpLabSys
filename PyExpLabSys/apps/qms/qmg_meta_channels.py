@@ -40,7 +40,8 @@ class udp_meta_channel(threading.Thread):
         """
 
         sql_id = self.qms.create_mysql_measurement(0, self.time, masslabel=masslabel,
-                                                   comment=self.comment, metachannel=True)
+                                                   amp_range=-1, comment=self.comment,
+                                                   metachannel=True)
         channel = {}
         channel['id']   = sql_id
         channel['host'] = host
