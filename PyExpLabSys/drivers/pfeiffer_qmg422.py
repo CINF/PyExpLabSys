@@ -21,11 +21,10 @@ import logging
 class qmg_422():
     """ The actual driver class.
     """ 
-    def __init__(self):
+    def __init__(self, port='/dev/ttyS0', speed=19200):
         """ Initialize the module
         """
-        # TODO: Take communication parameters as argument
-        self.serial = serial.Serial('/dev/ttyUSB0', 19200, timeout=1.0)
+        self.serial = serial.Serial(port, speed, timeout=1.0)
         self.reverse_range = False
         self.type = '422'
         self.communication_mode(computer_control=True)
@@ -280,11 +279,11 @@ class qmg_422():
                 real_range = -11
             if amp_range == -10:
                 real_range = -12
-            if amp_range  == -11:
+            if amp_range == -11:
                 real_range = -9
             if amp_range == -12:
                 real_range = -10
-            return real_range
+        return real_range
 
     def get_single_sample(self):
         """ Read a single sample from the device """
@@ -396,10 +395,10 @@ class qmg_422():
         self.comm('SMC, 0') #Channel 0
         self.comm('DSE ,0')  #Use default SEM voltage
         self.comm('DTY ,1')  #Use SEM for ion detection
-        self.comm('SDT ,1')  #Use SEM for ion detection 
+        self.comm('SDT ,1')  #Use SEM for ion detection
         self.comm('MRE ,1') #Resolve peak
         self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST, 1') #Steps 0: 1: 2: 64/amu
+        self.comm('MST, 0') #Steps 0: 1: 2: 64/amu
         self.comm('MSD, ' + str(speed)) #Speed
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
