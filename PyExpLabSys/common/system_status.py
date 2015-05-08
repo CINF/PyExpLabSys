@@ -37,14 +37,14 @@ RPI_REVISIONS = {
     'a21041': 'Pi 2 Model B',
 }
 # Temperature regular expression
-RPI_TEMP_RE = re.compile("temp=([0-9\.]*)'C")
+RPI_TEMP_RE = re.compile(r"temp=([0-9\.]*)'C")
 
 
 def works_on(platform):
     """Return a decorator that attaches a _works_on (platform) attribute to methods"""
     def decorator(function):
         """Decorate a method with a _works_on attribute"""
-        function._works_on = platform
+        function._works_on = platform  # pylint: disable=protected-access
         return function
     return decorator
 
@@ -54,7 +54,10 @@ class SystemStatus(object):
 
     def __init__(self):
         # Form the list of which items to measure on different platforms
-        platforms = {'all', sys.platform}
+        if 'linux' in sys.platform:
+            platforms = {'all', 'linux', 'linux2'}
+        else:
+            platforms = {'all', sys.platform}
 
         # Form the list methods that work in this platform, using the _works_on attribute
         # that is appended with a decorator
@@ -94,6 +97,12 @@ class SystemStatus(object):
     def number_of_python_threads():
         """Returns the number of threads in Python"""
         return threading.activeCount()
+
+    @staticmethod
+    @works_on('all')
+    def python_version():
+        """Returns the Python version"""
+        return '{}.{}.{}'.format(*sys.version_info)
 
     # Linux only
     @staticmethod
@@ -165,7 +174,7 @@ class SystemStatus(object):
         """Return the mac address of eth0"""
         ifname = b'eth0'
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        info = fcntl.ioctl(sock.fileno(), 0x8927,  struct.pack(b'256s', ifname[:15]))
+        info = fcntl.ioctl(sock.fileno(), 0x8927, struct.pack(b'256s', ifname[:15]))
         if sys.version < '3':
             return ':'.join(['%02x' % ord(char) for char in info[18:24]])
         else:
