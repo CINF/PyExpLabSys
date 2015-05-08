@@ -1,6 +1,5 @@
 import serial
 import time
-import FindSerialPorts
 
 class Polyscience_4100():
 
