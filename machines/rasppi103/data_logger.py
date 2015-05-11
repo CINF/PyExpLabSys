@@ -100,6 +100,7 @@ if __name__ == '__main__':
     ports[0] = 'usb-FTDI_USB-RS485_Cable_FTWGRMCG-if00-port0'
     ports[1] = 'mobile-gaswall-agilent-34410a'
     ports[2] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWBEDQ3-if00-port0'
+    ports[3] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGUBYN-if00-port0'
     code_names = ['mgw_reactor_tc_temperature',
                   'mgw_reactor_rtd_temperature',
                   'mgw_omega_temp_ch01',
@@ -108,15 +109,27 @@ if __name__ == '__main__':
                   'mgw_omega_temp_ch04',
                   'mgw_omega_temp_ch05',
                   'mgw_omega_temp_ch06',
-                  'mgw_omega_temp_ch07']
+                  'mgw_omega_temp_ch07',
+                  'mgw_omega_temp_ch08',
+                  'mgw_omega_temp_ch09',
+                  'mgw_omega_temp_ch10',
+                  'mgw_omega_temp_ch11',
+                  'mgw_omega_temp_ch12',
+                  'mgw_omega_temp_ch13',
+                  'mgw_omega_temp_ch14']
 
     measurements = {}
+    print '--'
     measurements[0] = TcReader(ports[0])
     measurements[0].start()
+    print '--'
     measurements[1] = RtdReader(ports[1], measurements[0].value())
     measurements[1].start()
+    print '--'
     measurements[2] = TemperatureReader(ports[2])
     measurements[2].start()
+    measurements[3] = TemperatureReader(ports[3])
+    measurements[3].start()
 
     loggers = {}
     loggers[code_names[0]] = ValueLogger(measurements[0], comp_val = 1.5, comp_type = 'lin')
@@ -129,8 +142,14 @@ if __name__ == '__main__':
                                              comp_type = 'lin',
                                              channel = i-1)
         loggers[code_names[i]].start()
+    for i in range(9, 16):
+        loggers[code_names[i]] = ValueLogger(measurements[3],
+                                             comp_val = 0.2,
+                                             comp_type = 'lin',
+                                             channel = i-8)
+        loggers[code_names[i]].start()
 
-    datasocket = DateDataPullSocket('mgw_temp', code_names, timeouts=[2.0] * 9, port=9001)
+    datasocket = DateDataPullSocket('mgw_temp', code_names, timeouts=[2.0] * 16, port=9001)
     datasocket.start()
 
     db_logger = ContinuousLogger(table='dateplots_mgw',
@@ -148,5 +167,5 @@ if __name__ == '__main__':
             datasocket.set_point_now(name, value)
             if loggers[name].read_trigged():
                 print(name + ': ' + str(value))
-                db_logger.enqueue_point_now(name, value)
+                #db_logger.enqueue_point_now(name, value)
                 loggers[name].clear_trigged()
