@@ -32,6 +32,7 @@ def uptime(host, method, username='pi', password='cinf123'):
     return_value['load'] = ''
     return_value['git'] = ''
     return_value['host_temperature'] = ''
+    return_value['python_version'] = ''
     return_value['model'] = ''
     if method == 'ssh':
         uptime_string = subprocess.check_output(["sshpass", 
@@ -51,7 +52,7 @@ def uptime(host, method, username='pi', password='cinf123'):
 
     if method in ['socket', 'ls']:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(0.1)
+        sock.settimeout(0.5)
         port = 0
         port = 9000 if method == 'socket' else port
         port = 8000 if method == 'ls' else port
@@ -69,12 +70,17 @@ def uptime(host, method, username='pi', password='cinf123'):
             return_value['load'] = 'Down'
         try:
             model = system_status['rpi_model']
-            host_temperature = system_status['rpi_temperatur']
+            host_temperature = system_status['rpi_temperature']
         except (KeyError, UnboundLocalError) as e:
             model = ''
             host_temperature = ''
+        try:
+            python_version = system_status['python_version']
+        except (KeyError, UnboundLocalError) as e:
+            python_version = ''
         return_value['model'] = model
         return_value['host_temperature'] = host_temperature
+        return_value['python_version'] = python_version
         try:
             gittime = system_status['last_git_fetch_unixtime']
             git = datetime.datetime.fromtimestamp(gittime).strftime('%Y-%m-%d')
@@ -116,12 +122,14 @@ class CheckHost(threading.Thread):
                 uptime_val['git'] = ''
                 uptime_val['host_temperature'] = ''
                 uptime_val['model'] = ''
+                uptime_val['python_version'] = ''
             self.results.put([host[0], up, uptime_val['up'],
                               uptime_val['load'], host[3],
                               host[4], host[1],
                               uptime_val['git'],
                               uptime_val['host_temperature'],
-                              uptime_val['model']])
+                              uptime_val['model'],
+                              uptime_val['python_version']])
             self.hosts.task_done()
 
 if __name__ == "__main__":
@@ -174,6 +182,7 @@ if __name__ == "__main__":
         status_string += host[6] + "|"
         status_string += host[7] + "|"
         status_string += str(host[8]) + "|"
-        status_string += host[9]
+        status_string += host[9] + "|"
+        status_string += host[10]
         status_string += "\n"
     print(status_string)
