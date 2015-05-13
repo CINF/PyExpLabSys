@@ -1,14 +1,13 @@
-# pylint: disable=C0301,R0904, R0902, C0103
-
 import time
 import threading
 import curses
 import PyExpLabSys.drivers.cpx400dp as CPX
-import PyExpLabSys.aux.pid as pid
+import PyExpLabSys.auxiliary.pid as pid
 from PyExpLabSys.common.sockets import DateDataPullSocket
 #from PyExpLabSys.common.loggers import ContinuousLogger
 #from PyExpLabSys.common.sockets import LiveSocket
-from ABElectronics_DeltaSigmaPi import DeltaSigma
+from ABE_helpers import ABEHelpers
+from ABE_DeltaSigmaPi import DeltaSigma
 
 
 class CursesTui(threading.Thread):
@@ -26,21 +25,34 @@ class CursesTui(threading.Thread):
     def run(self):
         while True:
             self.screen.addstr(3, 2, 'Running')
-            self.screen.addstr(4, 2, "Calculated voltage: {0:.2f}V      ".format(self.eci.wanted_voltage))
-            self.screen.addstr(5, 2, "Filament voltage: {0:.2f}V     ".format(self.eci.filament['voltage']))
-            self.screen.addstr(6, 2, "Filament current: {0:.2f}A    ".format(self.eci.filament['current']))
+            string = "Calculated voltage: {0:.2f}V      "
+            self.screen.addstr(4, 2, string.format(self.eci.wanted_voltage))
+            string = "Filament voltage: {0:.2f}V     "
+            self.screen.addstr(5, 2, string.format(self.eci.filament['voltage']))
+            string = "Filament current: {0:.2f}A    "
+            self.screen.addstr(6, 2, string.format(self.eci.filament['current']))
             if self.eci.filament['current'] > 0.01:
-                self.screen.addstr(5, 40, "Filament resisance: {0:.2f}Ohm      ".format(self.eci.filament['voltage'] / self.eci.filament['current']))
+                string = "Filament resisance: {0:.2f}Ohm      "
+                self.screen.addstr(5, 40, string.format(self.eci.filament['voltage'] /
+                                                        self.eci.filament['current']))
             else:
                 self.screen.addstr(5, 40, "Filament resisance: -                   ")
-            self.screen.addstr(6, 40, "Filament power: {0:.2f}W      ".format(self.eci.filament['voltage'] * self.eci.filament['current']))
-            self.screen.addstr(8, 2, "Grid Voltage: {0:.2f}V       ".format(self.eci.bias['grid_voltage']))
-            self.screen.addstr(8, 40, "Grid Current: {0:.3f}A       ".format(self.eci.bias['grid_current']))
-            self.screen.addstr(12, 2, "Emission current: {0:.4f}mA    ".format(self.eci.emission_current))
-            self.screen.addstr(12, 40, "Setpoint: {0:.2f}mA".format(self.eci.setpoint))
-            self.screen.addstr(13, 2, "Measured voltage: {0:.4f}mV    ".format(self.eci.measured_voltage * 1000))
+            string = "Filament power: {0:.2f}W      "
+            self.screen.addstr(6, 40, string.format(self.eci.filament['voltage'] *
+                                                    self.eci.filament['current']))
+            string = "Grid Voltage: {0:.2f}V       "
+            self.screen.addstr(8, 2, string.format(self.eci.bias['grid_voltage']))
+            string = "Grid Current: {0:.3f}A       "
+            self.screen.addstr(8, 40, string.format(self.eci.bias['grid_current']))
+            string = "Emission current: {0:.4f}mA    "
+            self.screen.addstr(12, 2, string.format(self.eci.emission_current))
+            string = "Setpoint: {0:.2f}mA"
+            self.screen.addstr(12, 40, string.format(self.eci.setpoint))
+            string = "Measured voltage: {0:.4f}mV    "
+            self.screen.addstr(13, 2, string.format(self.eci.measured_voltage * 1000))
             try:
-                self.screen.addstr(14, 2, "Update rate: {0:.1f}Hz    ".format(1 / self.eci.looptime))
+                string = "Update rate: {0:.1f}Hz    "
+                self.screen.addstr(14, 2, string.format(1 / self.eci.looptime))
             except ZeroDivisionError:
                 pass
 
@@ -48,9 +60,11 @@ class CursesTui(threading.Thread):
             if n == ord('q'):
                 self.eci.running = False
             if n == ord('i'):
+                #self.eci.setpoint = self.eci.update_setpoint(self.eci.setpoint + 0.1)
                 self.eci.setpoint = self.eci.update_setpoint(self.eci.setpoint + 0.1)
             if n == ord('d'):
-                self.eci.setpoint = self.eci.update_setpoint(self.eci.setpoint - 0.1)
+                #self.eci.setpoint = self.eci.update_setpoint(self.eci.setpoint - 0.1)
+                self.eci.update_setpoint(self.eci.setpoint - 0.1)
 
             self.screen.refresh()
             time.sleep(0.2)
@@ -74,26 +88,28 @@ class EmissionControl(threading.Thread):
         self.measured_voltage = 0
         self.filament = {}
         port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F952E5-if00'
-        self.filament['device'] = CPX.CPX400DPDriver(1, port)
+        self.filament['device'] = CPX.CPX400DPDriver(1, device=port)
         self.filament['voltage'] = 0
         self.filament['current'] = 0
         self.filament['idle_voltage'] = 3
-        self.filament['device'].set_current_limit(5)
+        self.filament['device'].set_current_limit(4)
         self.filament['device'].output_status(True)
         self.bias = {}
-        self.bias['device'] = CPX.CPX400DPDriver(2, port)
+        self.bias['device'] = CPX.CPX400DPDriver(2, device=port)
         self.bias['grid_voltage'] = 0
         self.bias['grid_current'] = 0
         self.bias['device'].output_status(True)
         self.looptime = 0
-        self.update_setpoint(0.7)
-        self.adc = DeltaSigma(0x68, 0x69, 18)
-        self.adc.setPGA(8)  # Adjust this if resistor value is changed
+        self.update_setpoint(0.1)
+        i2c_helper = ABEHelpers()
+        bus = i2c_helper.get_smbus()
+        self.adc = DeltaSigma(bus, 0x68, 0x69, 18)
+        self.adc.set_pga(1)  # This shold be 8, but amplifier seems broken on the available device
         self.running = True
         self.wanted_voltage = 0
         self.emission_current = 999
         self.pid = pid.PID(2, 0.03, 0, 9)
-        self.pid.UpdateSetpoint(self.setpoint)
+        self.pid.update_setpoint(self.setpoint)
 
     def set_bias(self, bias):
         """ Set the bias-voltage """
@@ -132,7 +148,7 @@ class EmissionControl(threading.Thread):
 
     def read_emission_current(self):
         """ Read the actual emission current """
-        value = self.adc.readVoltage(1)
+        value = self.adc.read_voltage(5)
         self.measured_voltage = value
         current = 1000.0 * value / 3.4  # Resistance value read off component label
         return(current)
@@ -142,8 +158,8 @@ class EmissionControl(threading.Thread):
             #time.sleep(0.1)
             t = time.time()
             self.emission_current = self.read_emission_current()
-            self.wanted_voltage = self.pid.WantedPower(self.emission_current) + self.filament['idle_voltage']
-            self.pid.UpdateSetpoint(self.setpoint)
+            self.wanted_voltage = self.pid.wanted_power(self.emission_current) + self.filament['idle_voltage']
+            self.pid.update_setpoint(self.setpoint)
             self.set_filament_voltage(self.wanted_voltage)
             self.filament['voltage'] = self.read_filament_voltage()
             self.filament['current'] = self.read_filament_current()
@@ -163,9 +179,10 @@ if __name__ == '__main__':
     datasocket.start()
 
     ec = EmissionControl(datasocket)
-    ec.set_bias(40)
+    ec.set_bias(35)
     ec.start()
 
     tui = CursesTui(ec)
     tui.daemon = True
     tui.start()
+
