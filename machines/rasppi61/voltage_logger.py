@@ -30,6 +30,7 @@ class TemperatureReader(threading.Thread):
         return value
 
     def run(self):
+        time.sleep(0.1)
         while not self.quit:
             temp_hot = 0
             temp_cold = 0
@@ -78,6 +79,6 @@ while True:
         live_socket.set_point_now(name, v)
         if loggers[name].read_trigged():
             print v
-            #db_logger.enqueue_point_now(name, v)
+            db_logger.enqueue_point_now(name, v)
             loggers[name].clear_trigged()
 
