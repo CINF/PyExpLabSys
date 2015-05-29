@@ -59,7 +59,7 @@
       </rect>
      </property>
      <property name="smallDecimalPoint">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
     </widget>
     <widget class="QLineEdit" name="description0">
@@ -255,7 +255,7 @@
       </rect>
      </property>
      <property name="smallDecimalPoint">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
     </widget>
     <widget class="QDoubleSpinBox" name="setpoint3">
@@ -290,7 +290,7 @@
       </rect>
      </property>
      <property name="smallDecimalPoint">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
     </widget>
     <widget class="QLabel" name="label_8">
@@ -371,7 +371,7 @@
       </rect>
      </property>
      <property name="smallDecimalPoint">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
     </widget>
     <widget class="QLabel" name="label_5">
@@ -397,7 +397,7 @@
       </rect>
      </property>
      <property name="smallDecimalPoint">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
     </widget>
     <widget class="QLCDNumber" name="value0">
@@ -506,7 +506,7 @@
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>25</height>
+     <height>27</height>
     </rect>
    </property>
   </widget>
