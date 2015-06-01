@@ -5,11 +5,6 @@ import threading
 import curses
 import wiringpi2 as wp
 
-#6: Ion pumps
-#5: Diverse rør
-#4: Main chamber + turbo
-#2: Flight tube
-
 class CursesTui(threading.Thread):
     def __init__(self, baker_instance):
         threading.Thread.__init__(self)
@@ -26,46 +21,48 @@ class CursesTui(threading.Thread):
         while not self.baker.quit:
             self.screen.addstr(2, 2, 'Running')
 
-            self.screen.addstr(4, 2, "Watchdog TTL: {0:.0f}  ".format(self.watchdog.time_to_live))
-            self.screen.addstr(5, 2, "Watchdog Timer: {0:.1f}".format(time.time() - self.watchdog.timer))
+            tui_string = "Watchdog TTL: {0:.0f}   "
+            self.screen.addstr(4, 2, tui_string.format(self.watchdog.time_to_live))
+            tui_string = "Watchdog Timer: {0:.1f}"
+            self.screen.addstr(5, 2, tui_string.format(time.time() - self.watchdog.timer))
             self.screen.addstr(6, 2, "Watchdog safe: " + str(self.watchdog.watchdog_safe)) 
 
-            self.screen.addstr(8,2, 'Current channel status:')
-            for i in range(1,7):
-                self.screen.addstr(9,6*i, str(wp.digitalRead(i)))
+            self.screen.addstr(8, 2, 'Current channel status:')
+            for i in range(1, 7):
+                self.screen.addstr(9, 6 * i, str(wp.digitalRead(i)))
 
-            self.screen.addstr(12,2, 'Channel duty cycles')
-            for i in range(1,7):
-                self.screen.addstr(13,6*i, str(self.baker.dutycycles[i-1]))
+            self.screen.addstr(12, 2, 'Channel duty cycles')
+            for i in range(1, 7):
+                self.screen.addstr(13, 7 * i, str(self.baker.dutycycles[i - 1]) + '    ')
 
             n = self.screen.getch()
 
-            self.screen.addstr(20,2, str(n) + '     ')
+            self.screen.addstr(20, 2, str(n) + '     ')
 
             if n == ord('1'):
-                self.baker.modify_dutycycle(1,0.1)
+                self.baker.modify_dutycycle(1, 0.025)
             if n == ord('!'):
-                self.baker.modify_dutycycle(1,-0.1)
+                self.baker.modify_dutycycle(1,-0.025)
             if n == ord('2'):
-                self.baker.modify_dutycycle(2,0.1)
+                self.baker.modify_dutycycle(2, 0.025)
             if n == ord('"'):
-                self.baker.modify_dutycycle(2,-0.1)
+                self.baker.modify_dutycycle(2, -0.025)
             if n == ord('3'):
-                self.baker.modify_dutycycle(3,0.1)
+                self.baker.modify_dutycycle(3, 0.025)
             if n == ord('#'):
-                self.baker.modify_dutycycle(3,-0.1)
+                self.baker.modify_dutycycle(3, -0.025)
             if n == ord('4'):
-                self.baker.modify_dutycycle(4,0.1)
+                self.baker.modify_dutycycle(4, 0.025)
             if n == 194: #... '¤':
-                self.baker.modify_dutycycle(4,-0.1)
+                self.baker.modify_dutycycle(4, -0.025)
             if n == ord('5'):
-                self.baker.modify_dutycycle(5,0.1)
+                self.baker.modify_dutycycle(5, 0.025)
             if n == ord('%'):
-                self.baker.modify_dutycycle(5,-0.1)
+                self.baker.modify_dutycycle(5, -0.025)
             if n == ord('6'):
-                self.baker.modify_dutycycle(6,0.1)
+                self.baker.modify_dutycycle(6, 0.025)
             if n == ord('&'):
-                self.baker.modify_dutycycle(6,-0.1)
+                self.baker.modify_dutycycle(6, -0.025)
 
             if n == ord('q'):
                 self.baker.quit = True
@@ -86,8 +83,8 @@ class Watchdog(threading.Thread):
     def __init__(self):
 	threading.Thread.__init__(self)
         wp.pinMode(0, 1)
-	self.timer = time.time()
-	self.cycle_time = 120
+        self.timer = time.time()
+        self.cycle_time = 120
         self.safety_margin = 3
         self.watchdog_safe = True
         self.quit = False
@@ -96,12 +93,15 @@ class Watchdog(threading.Thread):
         self.reset_ttl()
 
     def reset_ttl(self):
+        """ Reset ttl """
         self.time_to_live = 100
 
     def decrease_ttl(self):
+        """ Decrease ttl """
         self.time_to_live = self.time_to_live - 1
 
     def reactivate(self):
+        """ Reactivate safety timer """
         wp.digitalWrite(0, 1)
         time.sleep(0.1)
         wp.digitalWrite(0, 0)
@@ -112,14 +112,14 @@ class Watchdog(threading.Thread):
             self.decrease_ttl()
             if self.time_to_live < 0:
                 self.quit = True
-            dt = time.time() - self.timer
+            delta_t = time.time() - self.timer
             allowed_time = self.cycle_time - self.safety_margin
             reactivate_time = self.cycle_time + self.safety_margin
-            if dt < allowed_time:
+            if delta_t < allowed_time:
                 self.watchdog_safe = True
             else:
                 self.watchdog_safe = False
-            if dt > reactivate_time:
+            if delta_t > reactivate_time:
                 self.reactivate()
                 self.timer = time.time()
             time.sleep(0.2)
@@ -128,12 +128,12 @@ class Watchdog(threading.Thread):
 
 class Bakeout(threading.Thread):
     def __init__(self, watchdog):
-	threading.Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.watchdog = watchdog
         self.quit = False
         for i in range(0, 7): #Set GPIO pins to output
             wp.pinMode(i, 1)
-        self.dutycycles = [0,0,0,0,0,0]
+        self.dutycycles = [0, 0, 0, 0, 0, 0]
 
     def activate(self, pin):
         if self.watchdog.watchdog_safe:
