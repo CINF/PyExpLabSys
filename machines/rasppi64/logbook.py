@@ -1,8 +1,9 @@
-# pylint: disable=E1103
+""" Module to run a graphical logbook of a specific area """
 import cv
 import MySQLdb
 from PyExpLabSys.common.utilities import get_logger
-#from PyExpLabSys.drivers.vivo_technologies import BlockingBarcodeReader
+from PyExpLabSys.drivers.vivo_technologies import *
+import settings
 
 LOGGER = get_logger('Picture_Logbook')
 
@@ -11,7 +12,15 @@ class PictureLogbook(object):
 
     def __init__(self):
         LOGGER.info('Started Picture Logbook')
+
+        dev_ = detect_barcode_device()
+        LOGGER.info('Barcode device: ' +  dev_)
+        self.tbs = ThreadedBarcodeReader(dev_)
+        self.tbs.start()
+
         self.logged_in_user = None
+        self.setup = settings.setup
+        #TODO: The logged in state should be read from sql on init
         self.camera = cv.CaptureFromCAM(0)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_WIDTH, 320)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
@@ -25,7 +34,6 @@ class PictureLogbook(object):
         """
         frame = cv.QueryFrame(self.camera)
         picture = cv.EncodeImage(".jpg", frame).tostring()
-        #open("encode_image.jpg", "w").write(picture) 
         return picture
 
     def save_image(self, image):
@@ -50,15 +58,21 @@ class PictureLogbook(object):
         """ Perfom a login on the lab station.
         If the user is already logged in, the user will be logged out.
         If another user is logged in, the login attempt will fail
-        return: True if login or logut is succesfull, otherwise false
-        rtype: bool
+        return: 'login' if login, 'logout' of logout, 'failed' if login failed
+        rtype: string
         """
+        LOGGER.info('User: ' + user + ',  loged in user: ' + str(self.logged_in_user))
+        action = None
         if self.logged_in_user is None:
             self.logged_in_user = user
-            print('login')
+            action = 'login'
         elif user == self.logged_in_user:
             self.logged_in_user = None
-            print('logout')
+            action = 'logout'
+        elif user is not self.logged_in_user:
+            action = 'failed'
+        assert action is not None
+        return action
         
     def login(self, user):
         """ Perform a login or logout
@@ -66,11 +80,34 @@ class PictureLogbook(object):
         On logout, clear logged in user, update database
         """
         # Here we should take a picture and update databases
-        pass
+        action = self.update_logged_in_user(user)
+        if not action in ('login', 'logout'): # Login failed
+            return None
+
+        image = self.acquire_image()
+        id_number = self.save_image(image)
+        query = 'insert into picture_logbooks set setup = "' + self.setup + '", '
+        query += 'user = "' + user + '", pictureid=' + str(id_number) + ', '
+        login = action is 'login'       
+        query += 'login = ' + str(login)
+        LOGGER.info(query)
+        cursor = self.database.cursor()
+        cursor.execute(query)
+        self.database.commit()
+
+    def main(self):
+        """ Main loop """
+        while True:
+            username = self.tbs.last_barcode_in_queue
+            if username is not None:
+                username = str(username)
+                LOGGER.info('Attempt to login: ' + username)
+                print self.login(username)
+            else:
+                print '-'
+            time.sleep(2)
 
 if __name__ == '__main__':
-    logbook = PictureLogbook()
-    logbook.update_logged_in_user('roje')
-    logbook.update_logged_in_user('roje')
-    logbook.update_logged_in_user('roje')
 
+    LOGBOOK = PictureLogbook()
+    LOGBOOK.main()
