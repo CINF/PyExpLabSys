@@ -153,7 +153,7 @@ class Bakeout(threading.Thread):
         return  self.dutycycles[channel-1]
 
     def run(self):
-        totalcycles = 10
+        totalcycles = 100
 
         self.quit = False
         cycle = 0
@@ -167,7 +167,7 @@ class Bakeout(threading.Thread):
                         baker.deactivate(i)
                 cycle = cycle + 1
                 cycle = cycle % totalcycles
-                time.sleep(1)
+                time.sleep(0.1)
             except:
                 self.quit = True
                 print "Program terminated by user"
