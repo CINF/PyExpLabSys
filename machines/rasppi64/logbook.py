@@ -18,14 +18,26 @@ class PictureLogbook(object):
         self.tbs = ThreadedBarcodeReader(dev_)
         self.tbs.start()
 
-        self.logged_in_user = None
         self.setup = settings.setup
-        #TODO: The logged in state should be read from sql on init
+        self.force_logout_user = settings.force_logut_user
         self.camera = cv.CaptureFromCAM(0)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_WIDTH, 320)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
         self.database = MySQLdb.connect(host='servcinf', user='picturelogbook',
                                         passwd='picturelogbook', db='cinfdata')
+
+        query = 'select user, login from picture_logbooks where setup = "'
+        query += self.setup + '" order by time desc limit 1'
+        cursor = self.database.cursor()
+        cursor.execute(query)
+        current_state = cursor.fetchone()
+        current_login = current_state[1]
+        if current_login == 0:
+            self.logged_in_user = None
+        else:
+            self.logged_in_user = current_state[0]
+        LOGGER.info('Initially logged in user:' + str(self.logged_in_user))
+
 
     def acquire_image(self):
         """ Take an image and return it as a string
@@ -47,14 +59,14 @@ class PictureLogbook(object):
         cursor = self.database.cursor()
         cursor.execute(query, (image,))
         self.database.commit()
-        print '-'
+
         query = 'select id from binary_data order by id desc limit 1'
         cursor.execute(query)
         id_number = cursor.fetchone()
         id_number = id_number[0]
         return id_number
 
-    def update_logged_in_user(self, user):
+    def update_logged_in_user(self, user, force_logout=False):
         """ Perfom a login on the lab station.
         If the user is already logged in, the user will be logged out.
         If another user is logged in, the login attempt will fail
@@ -66,21 +78,21 @@ class PictureLogbook(object):
         if self.logged_in_user is None:
             self.logged_in_user = user
             action = 'login'
-        elif user == self.logged_in_user:
+        elif (user == self.logged_in_user) or (force_logout is True):
             self.logged_in_user = None
             action = 'logout'
         elif user is not self.logged_in_user:
             action = 'failed'
         assert action is not None
         return action
-        
-    def login(self, user):
+
+    def login(self, user, force_logout=False):
         """ Perform a login or logout
         On login, take a picture, update database
         On logout, clear logged in user, update database
         """
         # Here we should take a picture and update databases
-        action = self.update_logged_in_user(user)
+        action = self.update_logged_in_user(user, force_logout)
         if not action in ('login', 'logout'): # Login failed
             return None
 
@@ -102,7 +114,8 @@ class PictureLogbook(object):
             if username is not None:
                 username = str(username)
                 LOGGER.info('Attempt to login: ' + username)
-                print self.login(username)
+                force = (username == self.force_logout_user)
+                print self.login(username, force_logout=force)
             else:
                 print '-'
             time.sleep(2)
