@@ -17,7 +17,7 @@ from MySQLdb import OperationalError
 from cowsay import Cowsay
 
 
-__version__ = 2.300
+__version__ = 2.310
 COWSAY = Cowsay(cow='cow', width=34)
 
 
@@ -51,7 +51,6 @@ class Bar101(object):
                     break
             except SerialException:
                 pass
-
 
     def timer(self, timeout=3):
         """Set timeout to None to run forever"""
@@ -135,15 +134,14 @@ class Bar101(object):
         self.timer(None)
 
     def present_beer(self, barcode):
-        # INSERT Show beer
-        import time
+        """INSERT Show beer"""
         self.picaso.clear_screen()
         beer_price = str(self.bar_database.get_item(barcode, statement='price'))
         self.picaso.move_cursor(4, 4)
         self.picaso.put_string("Special price for you my friend:")
         self.picaso.move_cursor(7, 5)
         self.picaso.text_factor(5)
-        self.picaso.put_string(beer_price + " DKK") 
+        self.picaso.put_string("{} DKK".format(beer_price)) 
 
         self.timer(3)
         # INSERT Show spiffy comment
@@ -163,20 +161,18 @@ class Bar101(object):
         """User purchases beer"""
         beer_price = self.bar_database.get_item(beer_barcode, statement='price')
         user_name, user_id = self.bar_database.get_user(user_barcode)
-        if beer_price < self.bar_database.sum_log(user_id):
+        if beer_price <= self.bar_database.sum_log(user_id):
             self.bar_database.insert_log(user_id, user_barcode, "purchase", beer_price, item=beer_barcode)
             beer_name = self.bar_database.get_item(beer_barcode, statement='name')
             balance = self.bar_database.sum_log(user_id)
 
             self.picaso.clear_screen()
             self.picaso.move_cursor(1, 0)
-            #string = "{} has bought a {} for the price of {}. You have {} left on your account.".format(user_name, beer_name, beer_price, balance)
-            #self.picaso.put_string(cowsay(string))
             self.picaso.put_string("User: {}".format(user_name))
-            self.picaso.move_cursor(2, 0)
-            self.picaso.text_factor(2)
-            self.picaso.put_string("Beer purchased:")
             self.picaso.move_cursor(3, 0)
+            self.picaso.put_string("Beer purchased:")
+            self.picaso.move_cursor(4, 0)
+            self.picaso.text_factor(2)
             self.picaso.put_string("{}".format(beer_name))
             self.picaso.move_cursor(5, 0)
             self.picaso.text_factor(1)
@@ -184,10 +180,22 @@ class Bar101(object):
             self.timer(3)
         else:
             self.picaso.clear_screen()
-            self.picaso.move_cursor(1,0)
-            string = "You do not have enough money. Get a job!"
-            self.picaso.put_string(cowsay(string))
-            self.timer(3)
+            x_screen_resolution = self.picaso.get_graphics_parameters('x_max')
+            y_screen_resolution = self.picaso.get_graphics_parameters('y_max')
+            self.picaso.draw_filled_rectangle((0, 0), (x_screen_resolution, y_screen_resolution), (1, 0, 0))
+            self.picaso.move_cursor(1, 0)
+            self.picaso.text_factor(3)
+            self.picaso.text_foreground_color((0, 0, 0))
+            self.picaso.text_background_color((1, 0, 0))
+            self.picaso.put_string("Insufficient")
+            self.picaso.move_cursor(2, 0)
+            self.picaso.put_string("Funds!")
+            self.picaso.move_cursor(4, 0)
+            self.picaso.text_factor(2)
+            self.picaso.put_string("Get a job")
+            self.picaso.text_foreground_color((0, 1, 0))
+            self.picaso.text_background_color((0, 0, 0))
+            self.timer(5)
 
     def make_deposit(self, user_barcode, amount):
         """User deposits money to user account"""
@@ -277,18 +285,6 @@ class Bar101(object):
                     if old_action == self.present_user:
                         action = self.make_deposit
                         kwargs = {'amount': new_barcode.barcode, 'user_barcode': old_kwargs['user_barcode']}
-                    
-                    
-                    """
-                    if old_action == self.present_beer:
-                        #purchase beer
-                        action = self.purchase_beer
-                        kwargs = {}
-                    elif old_action == self.query_barcode:
-                        #present user info
-                        action = self.present_user
-                        kwargs = {}
-                        """
                 elif barcode_type == 'invalid':
                     action = self.present_insult
                     kwargs = {}
