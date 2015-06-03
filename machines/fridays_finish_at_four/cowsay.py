@@ -91,5 +91,5 @@ class Cowsay(object):
 
 if __name__ == '__main__':
     COW = Cowsay(cow='tux')
-    hh = COW.say_get_string("Live long and prosper")
-    print(hh)
+    TESTCOW = COW.say_get_string("Live long and prosper")
+    print(TESTCOW)

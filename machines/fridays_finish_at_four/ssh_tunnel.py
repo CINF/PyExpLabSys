@@ -1,5 +1,8 @@
+# pylint: disable=global-statement
+
+"""Module that runs an ssh tunnel the background"""
+
 import subprocess
-import time
 import socket
 import fcntl
 import struct
@@ -30,7 +33,7 @@ def close_tunnel():
         TUNNEL.poll()
         TUNNEL.terminate()
         TUNNEL.wait()
-    except:
+    except:  # pylint: disable=bare-except
         pass
     TUNNEL = None
 
@@ -60,10 +63,10 @@ def get_ip_address_of_interface(ifname):
 
     Interface can be e.g. 'eth0' or 'wlan0'
     """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         return socket.inet_ntoa(fcntl.ioctl(
-            s.fileno(),
+            sock.fileno(),
             0x8915,  # SIOCGIFADDR
             struct.pack('256s', ifname[:15])
         )[20:24])

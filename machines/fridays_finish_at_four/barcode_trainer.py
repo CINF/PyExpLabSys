@@ -2,19 +2,18 @@
 
 """Barcode scanner module"""
 
-import sys
-from bar_database import *
-from PyExpLabSys.drivers.vivo_technologies import BlockingLS689A, detect_barcode_device
+from bar_database import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from PyExpLabSys.drivers.vivo_technologies import BlockingBarcodeReader, detect_barcode_device
 
 
-bar_database = BarDatabase()
+BAR_DATABASE = BarDatabase()
 
 
 def read_barcode():
     """Read the barcode and return the number or None on error"""
     print 'Scan barcode now!'
     dev_ = detect_barcode_device()
-    bbr = BlockingLS689A(dev_)
+    bbr = BlockingBarcodeReader(dev_)
     #bbr.start()
     line = bbr.read_barcode()
 
@@ -45,10 +44,10 @@ def new():
     except ValueError:
         print 'Wrong input!... are you drunk?'
         return
-    
+
     print data
     #bc.insert_item(data['barcode'], data['price'], data['name'], data['alc'], data['volume'])
-    bar_database.insert_item(**data)
+    BAR_DATABASE.insert_item(**data)
 
 
 def update():
@@ -60,21 +59,21 @@ def update():
     data = {}
     try:
         data['barcode'] = read_barcode()
-        bar_database.get_item(data['barcode'])
+        BAR_DATABASE.get_item(data['barcode'])
         message = 'state the field to update: '
         data['field'] = input_with_type(message, str)
         message_new = 'state the new value: '
-        data['value'] = raw_input('state the new value: ')
-        bar_database.replace_item(data['barcode'], data['field'], data['value'])
+        data['value'] = raw_input(message_new)
+        BAR_DATABASE.replace_item(data['barcode'], data['field'], data['value'])
     except ValueError:
         print 'Wrong input!... are you drunk?'
         return
-    
+
 def input_with_type(prompt, type_function):
     '''Read input from raw input and type convert'''
     out = raw_input(prompt)
     out = type_function(out)
-    
+
     return out
 
 def run():

@@ -3,15 +3,13 @@
 
 """Barcode scanner module"""
 
-import sys
-import os
 import time
-import subprocess
 import textwrap
-from bar_database import *
-from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU, to_ascii
+from bar_database import *  # pylint: disable=wildcard-import,unused-wildcard-import
+# to_ascii is not currently used, but maybe it should be to present user real name
+from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU  # to_ascii
 from serial.serialutil import SerialException
-from PyExpLabSys.drivers.vivo_technologies import ThreadedLS689A, detect_barcode_device
+from PyExpLabSys.drivers.vivo_technologies import ThreadedBarcodeReader, detect_barcode_device
 from ssh_tunnel import create_tunnel, close_tunnel, get_ip_address, test_demon_connection
 from MySQLdb import OperationalError
 from cowsay import Cowsay
@@ -36,10 +34,10 @@ class NewBarcode(Exception):
 class Bar101(object):
     """Barcodescanner programme class """
     def __init__(self):
-        #Initialize internal variables
+        # Initialize internal variables
         self.tbs = None
         self.bar_database = None
-        #Setup of display
+        # Setup of display
         for port in range(8):
             try:
                 device = '/dev/ttyUSB{}'.format(port)
@@ -111,10 +109,10 @@ class Bar101(object):
         self.picaso.move_cursor(7, 0)
         self.picaso.put_string('Connection to database')
 
-        #Start barcode scanner
+        # Start barcode scanner
         dev_ = detect_barcode_device()
         print dev_
-        self.tbs = ThreadedLS689A(dev_)
+        self.tbs = ThreadedBarcodeReader(dev_)
         self.tbs.start()
         time.sleep(1)
 
@@ -127,7 +125,7 @@ class Bar101(object):
     def query_barcode(self):
         """Initial message"""
         self.picaso.clear_screen()
-        self.picaso.move_cursor(1,0)
+        self.picaso.move_cursor(1, 0)
         self.picaso.put_string(cowsay("Welcome to the Friday Bar. Please scan your barcode!"))
         self.picaso.move_cursor(19, 0)
         self.picaso.put_string("Friday Bar System Version {:.3f}".format(__version__))
@@ -141,13 +139,15 @@ class Bar101(object):
         self.picaso.put_string("Special price for you my friend:")
         self.picaso.move_cursor(7, 5)
         self.picaso.text_factor(5)
-        self.picaso.put_string("{} DKK".format(beer_price)) 
+        self.picaso.put_string("{} DKK".format(beer_price))
 
         self.timer(3)
         # INSERT Show spiffy comment
         self.picaso.clear_screen()
         self.picaso.move_cursor(1, 0)
-        self.picaso.put_string(cowsay("Enjoy your delicious {}".format(self.bar_database.get_item(barcode, statement='name'))))
+        self.picaso.put_string(cowsay("Enjoy your delicious {}".format(
+            self.bar_database.get_item(barcode, statement='name')
+        )))
         self.timer(4)
 
     def present_insult(self):
@@ -162,7 +162,8 @@ class Bar101(object):
         beer_price = self.bar_database.get_item(beer_barcode, statement='price')
         user_name, user_id = self.bar_database.get_user(user_barcode)
         if beer_price <= self.bar_database.sum_log(user_id):
-            self.bar_database.insert_log(user_id, user_barcode, "purchase", beer_price, item=beer_barcode)
+            self.bar_database.insert_log(user_id, user_barcode, "purchase", beer_price,
+                                         item=beer_barcode)
             beer_name = self.bar_database.get_item(beer_barcode, statement='name')
             balance = self.bar_database.sum_log(user_id)
 
@@ -182,7 +183,9 @@ class Bar101(object):
             self.picaso.clear_screen()
             x_screen_resolution = self.picaso.get_graphics_parameters('x_max')
             y_screen_resolution = self.picaso.get_graphics_parameters('y_max')
-            self.picaso.draw_filled_rectangle((0, 0), (x_screen_resolution, y_screen_resolution), (1, 0, 0))
+            self.picaso.draw_filled_rectangle(
+                (0, 0), (x_screen_resolution, y_screen_resolution), (1, 0, 0)
+            )
             self.picaso.move_cursor(1, 0)
             self.picaso.text_factor(3)
             self.picaso.text_foreground_color((0, 0, 0))
@@ -240,22 +243,22 @@ class Bar101(object):
         self.picaso.move_cursor(3, 0)
         self.picaso.put_string("{}".format(balance))
         # Timeout
-        for n in range(10, 0, -1):
+        for number in range(10, 0, -1):
             self.picaso.move_cursor(5, 0)
-            self.picaso.put_string("Timeout: {: <2} ".format(n))
+            self.picaso.put_string("Timeout: {: <2} ".format(number))
             self.timer(1)
 
     def run(self):
         """Main method"""
-        # action is a reference to the method that will be called next, kwargs
-        # is its arguments
+        # action is a reference to the method that will be called next, kwargs is its
+        # arguments
         action = self.query_barcode
         kwargs = {}
         while True:
             try:
-                # Call the pending action, if this action returns, the action
-                # it was supposed to do, timed out, without getting a new
-                # barcode and so we make the next action "query_barcode"
+                # Call the pending action, if this action returns, the action it was
+                # supposed to do, timed out, without getting a new barcode and so we make
+                # the next action "query_barcode"
                 action(**kwargs)
                 old_action = action
                 old_kwargs = kwargs
@@ -274,7 +277,10 @@ class Bar101(object):
                 if barcode_type == 'beer':
                     if old_action == self.present_user:
                         action = self.purchase_beer
-                        kwargs = {'beer_barcode': new_barcode.barcode, 'user_barcode': old_kwargs['user_barcode']}
+                        kwargs = {
+                            'beer_barcode': new_barcode.barcode,
+                            'user_barcode': old_kwargs['user_barcode'],
+                        }
                     else:
                         action = self.present_beer
                         kwargs = {'barcode': new_barcode.barcode}
@@ -284,7 +290,10 @@ class Bar101(object):
                 elif barcode_type == 'deposit_amount':
                     if old_action == self.present_user:
                         action = self.make_deposit
-                        kwargs = {'amount': new_barcode.barcode, 'user_barcode': old_kwargs['user_barcode']}
+                        kwargs = {
+                            'amount': new_barcode.barcode,
+                            'user_barcode': old_kwargs['user_barcode'],
+                        }
                 elif barcode_type == 'invalid':
                     action = self.present_insult
                     kwargs = {}
