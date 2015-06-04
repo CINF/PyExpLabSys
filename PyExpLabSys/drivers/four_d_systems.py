@@ -73,12 +73,20 @@ LATIN_DICT = {
 
 
 def to_ascii(string):
-    """Convert non-ascii character in string to ascii"""
+    """Convert non-ascii character in a unicode string to ascii"""
     for char in string:
         if char in LATIN_DICT:
             string = string.replace(char, LATIN_DICT[char])
     return string
 
+
+def to_ascii_utf8(string):
+    """Convert non-ascii character in a utf-8 encoded string to ascii"""
+    string = string.decode('utf-8')
+    for char in string:
+        if char in LATIN_DICT:
+            string = string.replace(char, LATIN_DICT[char])
+    return string.encode('utf-8')
 
 
 # pylint: disable=too-many-public-methods
