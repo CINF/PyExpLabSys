@@ -1,9 +1,14 @@
 """ Module to run a graphical logbook of a specific area """
 import cv
+import time
 import MySQLdb
 from PyExpLabSys.common.utilities import get_logger
-from PyExpLabSys.drivers.vivo_technologies import *
-import settings
+from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.drivers.vivo_technologies import ThreadedBarcodeReader, detect_barcode_device
+import sys
+
+sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
+import settings # pylint: disable=F0401
 
 LOGGER = get_logger('Picture_Logbook')
 
@@ -19,6 +24,10 @@ class PictureLogbook(object):
         self.tbs.start()
 
         self.setup = settings.setup
+
+        self.livesocket = LiveSocket(self.setup + '-Picture Logbook', ['logged_in_user'], 1)
+        self.livesocket.start()
+
         self.force_logout_user = settings.force_logut_user
         self.camera = cv.CaptureFromCAM(0)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_WIDTH, 320)
@@ -121,6 +130,5 @@ class PictureLogbook(object):
             time.sleep(2)
 
 if __name__ == '__main__':
-
     LOGBOOK = PictureLogbook()
     LOGBOOK.main()
