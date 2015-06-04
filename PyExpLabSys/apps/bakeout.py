@@ -40,29 +40,29 @@ class CursesTui(threading.Thread):
             self.screen.addstr(20, 2, str(n) + '     ')
 
             if n == ord('1'):
-                self.baker.modify_dutycycle(1, 0.025)
+                self.baker.modify_dutycycle(1, 0.01)
             if n == ord('!'):
-                self.baker.modify_dutycycle(1,-0.025)
+                self.baker.modify_dutycycle(1,-0.01)
             if n == ord('2'):
-                self.baker.modify_dutycycle(2, 0.025)
+                self.baker.modify_dutycycle(2, 0.01)
             if n == ord('"'):
-                self.baker.modify_dutycycle(2, -0.025)
+                self.baker.modify_dutycycle(2, -0.01)
             if n == ord('3'):
-                self.baker.modify_dutycycle(3, 0.025)
+                self.baker.modify_dutycycle(3, 0.01)
             if n == ord('#'):
-                self.baker.modify_dutycycle(3, -0.025)
+                self.baker.modify_dutycycle(3, -0.01)
             if n == ord('4'):
-                self.baker.modify_dutycycle(4, 0.025)
+                self.baker.modify_dutycycle(4, 0.01)
             if n == 194: #... '¤':
-                self.baker.modify_dutycycle(4, -0.025)
+                self.baker.modify_dutycycle(4, -0.01)
             if n == ord('5'):
-                self.baker.modify_dutycycle(5, 0.025)
+                self.baker.modify_dutycycle(5, 0.01)
             if n == ord('%'):
-                self.baker.modify_dutycycle(5, -0.025)
+                self.baker.modify_dutycycle(5, -0.01)
             if n == ord('6'):
-                self.baker.modify_dutycycle(6, 0.025)
+                self.baker.modify_dutycycle(6, 0.01)
             if n == ord('&'):
-                self.baker.modify_dutycycle(6, -0.025)
+                self.baker.modify_dutycycle(6, -0.01)
 
             if n == ord('q'):
                 self.baker.quit = True
@@ -80,6 +80,7 @@ class CursesTui(threading.Thread):
 
 
 class Watchdog(threading.Thread):
+    """ Make sure heating stops if control loop fails """
     def __init__(self):
 	threading.Thread.__init__(self)
         wp.pinMode(0, 1)
@@ -127,6 +128,7 @@ class Watchdog(threading.Thread):
 
 
 class Bakeout(threading.Thread):
+    """ The actual heater """
     def __init__(self, watchdog):
         threading.Thread.__init__(self)
         self.watchdog = watchdog
@@ -136,12 +138,14 @@ class Bakeout(threading.Thread):
         self.dutycycles = [0, 0, 0, 0, 0, 0]
 
     def activate(self, pin):
+        """ Activate a pin """
         if self.watchdog.watchdog_safe:
             wp.digitalWrite(pin, 1)
         else:
             wp.digitalWrite(pin, 0)
 
     def deactivate(self, pin):
+        """ De-activate a pin """
         wp.digitalWrite(pin, 0)
 
     def modify_dutycycle(self, channel, amount):
@@ -160,7 +164,7 @@ class Bakeout(threading.Thread):
         while not self.quit:
             self.watchdog.reset_ttl()
             try:
-                for i in range(1,7):
+                for i in range(1, 7):
                     if (1.0*cycle/totalcycles) < self.dutycycles[i-1]:
                         baker.activate(i)
                     else:
