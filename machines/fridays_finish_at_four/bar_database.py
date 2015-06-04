@@ -58,13 +58,18 @@ class BarDatabase(object):
         with self.connection:
             if statement is None:
                 self.cursor.execute(
-                    "SELECT * FROM fridays_items WHERE barcode=%s", (barcode,))
+                    "SELECT * FROM fridays_items WHERE barcode=%s OR alternative_barcode=%s",
+                    (barcode, barcode)
+                )
                 row = self.cursor.fetchall()
                 out = row[0]
-            elif statement in ("price", "name", "alc", "volume",
-                               "energy_content", "beer_description", "brewery"):
-                self.cursor.execute("SELECT {} FROM fridays_items WHERE "
-                                    "barcode=%s".format(statement), (barcode,))
+            elif statement in ("price", "name", "alc", "volume", "energy_content",
+                               "beer_description", "brewery", "barcode"):
+                self.cursor.execute(
+                    "SELECT {} FROM fridays_items WHERE "
+                    "barcode=%s OR alternative_barcode=%s".format(statement),
+                    (barcode, barcode)
+                )
                 row = self.cursor.fetchall()
                 out = row[0][0]
             else:
@@ -147,7 +152,7 @@ class BarDatabase(object):
         if barcode in ("50", "100", "200", "500", "1000"):
             return "deposit_amount"
         self.cursor.execute("SELECT count(*) FROM fridays_items WHERE "
-                            "barcode=%s", (barcode,))
+                            "barcode=%s OR alternative_barcode=%s", (barcode, barcode))
         if self.cursor.fetchall()[0][0] == 1:
             return "beer"
         self.cursor.execute("SELECT count(*) FROM fridays_user WHERE user_barcode=%s",

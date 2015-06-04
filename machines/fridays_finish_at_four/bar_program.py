@@ -162,8 +162,11 @@ class Bar101(object):
         beer_price = self.bar_database.get_item(beer_barcode, statement='price')
         user_name, user_id = self.bar_database.get_user(user_barcode)
         if beer_price <= self.bar_database.sum_log(user_id):
+            # Since the beer_barcode may be both the real barcode or the alternative
+            # barcode we need to get the real barcode from the db for the transactions log
+            real_beer_barcode = int(self.bar_database.get_item(beer_barcode, statement='barcode'))
             self.bar_database.insert_log(user_id, user_barcode, "purchase", beer_price,
-                                         item=beer_barcode)
+                                         item=real_beer_barcode)
             beer_name = self.bar_database.get_item(beer_barcode, statement='name')
             balance = self.bar_database.sum_log(user_id)
 
