@@ -1,11 +1,22 @@
+""" App to control PW-modulated bakeout boxes """
 # -*- coding: utf-8 -*-
 import time
 import sys
 import threading
 import curses
-import wiringpi2 as wp
+import wiringpi2 as wp # pylint: disable=F0401
+from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.utilities import get_logger
+
+sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
+import settings # pylint: disable=F0401
+
+LOGGER = get_logger('Bakeout', level='INFO', file_log=True,
+                    file_name='bakeout_log.txt', terminal_log=False)
 
 class CursesTui(threading.Thread):
+    """ Text UI for bakeout program """
     def __init__(self, baker_instance):
         threading.Thread.__init__(self)
         self.baker = baker_instance
@@ -25,7 +36,8 @@ class CursesTui(threading.Thread):
             self.screen.addstr(4, 2, tui_string.format(self.watchdog.time_to_live))
             tui_string = "Watchdog Timer: {0:.1f}"
             self.screen.addstr(5, 2, tui_string.format(time.time() - self.watchdog.timer))
-            self.screen.addstr(6, 2, "Watchdog safe: " + str(self.watchdog.watchdog_safe)) 
+            self.screen.addstr(6, 2, "Watchdog safe: " + 
+                               str(self.watchdog.watchdog_safe) + ' ') 
 
             self.screen.addstr(8, 2, 'Current channel status:')
             for i in range(1, 7):
@@ -35,36 +47,35 @@ class CursesTui(threading.Thread):
             for i in range(1, 7):
                 self.screen.addstr(13, 7 * i, str(self.baker.dutycycles[i - 1]) + '    ')
 
-            n = self.screen.getch()
+            key = self.screen.getch()
 
-            self.screen.addstr(20, 2, str(n) + '     ')
+            self.screen.addstr(20, 2, str(key) + '     ')
 
-            if n == ord('1'):
+            if key == ord('1'):
                 self.baker.modify_dutycycle(1, 0.01)
-            if n == ord('!'):
-                self.baker.modify_dutycycle(1,-0.01)
-            if n == ord('2'):
+            if key == ord('!'):
+                self.baker.modify_dutycycle(1, -0.01)
+            if key == ord('2'):
                 self.baker.modify_dutycycle(2, 0.01)
-            if n == ord('"'):
+            if key == ord('"'):
                 self.baker.modify_dutycycle(2, -0.01)
-            if n == ord('3'):
+            if key == ord('3'):
                 self.baker.modify_dutycycle(3, 0.01)
-            if n == ord('#'):
+            if key == ord('#'):
                 self.baker.modify_dutycycle(3, -0.01)
-            if n == ord('4'):
+            if key == ord('4'):
                 self.baker.modify_dutycycle(4, 0.01)
-            if n == 194: #... '¤':
+            if key == 194: #... '¤':
                 self.baker.modify_dutycycle(4, -0.01)
-            if n == ord('5'):
+            if key == ord('5'):
                 self.baker.modify_dutycycle(5, 0.01)
-            if n == ord('%'):
+            if key == ord('%'):
                 self.baker.modify_dutycycle(5, -0.01)
-            if n == ord('6'):
+            if key == ord('6'):
                 self.baker.modify_dutycycle(6, 0.01)
-            if n == ord('&'):
+            if key == ord('&'):
                 self.baker.modify_dutycycle(6, -0.01)
-
-            if n == ord('q'):
+            if key == ord('q'):
                 self.baker.quit = True
                 self.screen.addstr(2, 2, 'Quitting....')
 
@@ -72,6 +83,7 @@ class CursesTui(threading.Thread):
             time.sleep(0.2)
 
     def stop(self):
+        """ Leave the terminal in a clean state """
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
@@ -82,11 +94,11 @@ class CursesTui(threading.Thread):
 class Watchdog(threading.Thread):
     """ Make sure heating stops if control loop fails """
     def __init__(self):
-	threading.Thread.__init__(self)
+        threading.Thread.__init__(self)
         wp.pinMode(0, 1)
         self.timer = time.time()
         self.cycle_time = 120
-        self.safety_margin = 3
+        self.safety_margin = 5
         self.watchdog_safe = True
         self.quit = False
         self.time_to_live = 0
@@ -129,16 +141,31 @@ class Watchdog(threading.Thread):
 
 class Bakeout(threading.Thread):
     """ The actual heater """
-    def __init__(self, watchdog):
+    def __init__(self):
         threading.Thread.__init__(self)
-        self.watchdog = watchdog
+        self.watchdog = Watchdog()
+        self.watchdog.daemon = True
+        self.watchdog.start()
+        time.sleep(1)
+
+        self.setup = settings.setup
         self.quit = False
         for i in range(0, 7): #Set GPIO pins to output
             wp.pinMode(i, 1)
+        self.setup = settings.setup
         self.dutycycles = [0, 0, 0, 0, 0, 0]
+        self.livesocket = LiveSocket(self.setup + '-bakeout',
+                                     ['1', '2', '3', '4', '5', '6'], 1)
+        self.livesocket.start()
+        self.pushsocket = DataPushSocket(self.setup + '-push_control', action='enqueue')
+        self.pushsocket.start()
 
     def activate(self, pin):
         """ Activate a pin """
+        if settings.count_from_right:
+            pin = pin
+        else:
+            pin = 7 - pin
         if self.watchdog.watchdog_safe:
             wp.digitalWrite(pin, 1)
         else:
@@ -148,58 +175,66 @@ class Bakeout(threading.Thread):
         """ De-activate a pin """
         wp.digitalWrite(pin, 0)
 
-    def modify_dutycycle(self, channel, amount):
-        self.dutycycles[channel-1] =  self.dutycycles[channel-1] + amount
+    def modify_dutycycle(self, channel, amount=None, value=None):
+        """ Change the dutycycle of a channel """
+        if amount is not None:
+            self.dutycycles[channel-1] =  self.dutycycles[channel-1] + amount
+        if value is not None:
+            self.dutycycles[channel-1] = value
+
         if  self.dutycycles[channel-1] > 1:
-             self.dutycycles[channel-1] = 1
+            self.dutycycles[channel-1] = 1
         if self.dutycycles[channel-1] < 0.0001:
-             self.dutycycles[channel-1] = 0
-        return  self.dutycycles[channel-1]
+            self.dutycycles[channel-1] = 0
+        self.livesocket.set_point_now(str(channel), self.dutycycles[channel-1])
+        return self.dutycycles[channel-1]
 
     def run(self):
-        totalcycles = 100
+        totalcycles = settings.number_of_cycles
 
         self.quit = False
         cycle = 0
         while not self.quit:
+            start_time = time.time()
+            qsize = self.pushsocket.queue.qsize()
+            LOGGER.debug('qsize: ' + str(qsize))
+            while qsize > 0:
+                element = self.pushsocket.queue.get()
+                channel = element.keys()[0]
+                value = element.keys()[1]
+                self.modify_dutycycle(channel, value) 
+                qsize = self.pushsocket.queue.qsize()
+
             self.watchdog.reset_ttl()
+            for i in range(1, 7):
+                if (1.0*cycle/totalcycles) < self.dutycycles[i-1]:
+                    self.activate(i)
+                else:
+                    self.deactivate(i)
+            cycle = cycle + 1
+            cycle = cycle % totalcycles
+            run_time = time.time() - start_time
+            sleep_time = 1.0 * settings.cycle_time / settings.number_of_cycles
             try:
-                for i in range(1, 7):
-                    if (1.0*cycle/totalcycles) < self.dutycycles[i-1]:
-                        baker.activate(i)
-                    else:
-                        baker.deactivate(i)
-                cycle = cycle + 1
-                cycle = cycle % totalcycles
-                time.sleep(0.1)
-            except:
+                time.sleep(sleep_time - run_time)
+            except IOError:
                 self.quit = True
-                print "Program terminated by user"
-                print sys.exc_info()[0]
-                print sys.exc_info()[1]
-                print sys.exc_info()[2]
-                for i in range(0, 7):
-                    baker.deactivate(i)
+                LOGGER.fatal('Program runs too slow to perform this operation!')
+        for i in range(0, 7): # Ready to quit
+            self.deactivate(i)
 
 
 
 if __name__ == '__main__':
     wp.wiringPiSetup()
 
-    watchdog = Watchdog()
-    watchdog.daemon = True
-    watchdog.start()
     time.sleep(1)
-    baker = Bakeout(watchdog)
-    baker.start()
+    BAKER = Bakeout()
+    BAKER.start()
 
-    tui = CursesTui(baker)
-    #tui.daemon = True
-    tui.start()
+    TUI = CursesTui(BAKER)
+    TUI.start()
 
-    while not baker.quit:
+    while not BAKER.quit:
         time.sleep(1)
 
-    watchdog.quit = True
-    time.sleep(2)
-    baker.quit = True
