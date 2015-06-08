@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 """ Module to run a graphical logbook of a specific area """
 import cv
 import time
@@ -5,6 +6,7 @@ import MySQLdb
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.drivers.vivo_technologies import ThreadedBarcodeReader, detect_barcode_device
+from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU
 import sys
 
 sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
@@ -17,6 +19,8 @@ class PictureLogbook(object):
 
     def __init__(self):
         LOGGER.info('Started Picture Logbook')
+        self.picaso = PicasouLCD28PTU(serial_device='/dev/ttyUSB0', baudrate=115200,
+                                 debug=True)
 
         dev_ = detect_barcode_device()
         LOGGER.info('Barcode device: ' +  dev_)
@@ -29,7 +33,7 @@ class PictureLogbook(object):
         self.livesocket.start()
 
         self.force_logout_user = settings.force_logut_user
-        self.camera = cv.CaptureFromCAM(0)
+        self.camera = cv.CaptureFromCAM(0) 
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_WIDTH, 320)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
         self.database = MySQLdb.connect(host='servcinf', user='picturelogbook',
@@ -46,7 +50,7 @@ class PictureLogbook(object):
         else:
             self.logged_in_user = current_state[0]
         LOGGER.info('Initially logged in user:' + str(self.logged_in_user))
-
+        self.update_external_screen(str(self.logged_in_user))
 
     def acquire_image(self):
         """ Take an image and return it as a string
@@ -56,6 +60,20 @@ class PictureLogbook(object):
         frame = cv.QueryFrame(self.camera)
         picture = cv.EncodeImage(".jpg", frame).tostring()
         return picture
+
+    def update_external_screen(self, text):
+        """ Update the phsysical screen """
+        self.picaso.clear_screen()
+        self.picaso.screen_mode('landscape')
+        self.picaso.move_cursor(3, 0)
+        self.picaso.text_width(3)
+        self.picaso.text_height(3)
+        if text == 'None':
+            self.picaso.put_string('No user\n logged in')
+        else:
+            self.picaso.put_string(text)
+        return True
+
 
     def save_image(self, image):
         """ Save an image to the database
@@ -115,6 +133,7 @@ class PictureLogbook(object):
         cursor = self.database.cursor()
         cursor.execute(query)
         self.database.commit()
+        self.update_external_screen(str(self.logged_in_user))
 
     def main(self):
         """ Main loop """
@@ -132,3 +151,5 @@ class PictureLogbook(object):
 if __name__ == '__main__':
     LOGBOOK = PictureLogbook()
     LOGBOOK.main()
+
+
