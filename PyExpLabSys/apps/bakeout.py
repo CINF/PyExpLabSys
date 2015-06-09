@@ -12,7 +12,7 @@ from PyExpLabSys.common.utilities import get_logger
 sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
 
-LOGGER = get_logger('Bakeout', level='warn', file_log=True,
+LOGGER = get_logger('Bakeout', level='info', file_log=True,
                     file_name='bakeout_log.txt', terminal_log=False)
 
 class CursesTui(threading.Thread):
@@ -38,10 +38,13 @@ class CursesTui(threading.Thread):
             self.screen.addstr(5, 2, tui_string.format(time.time() - self.watchdog.timer))
             self.screen.addstr(6, 2, "Watchdog safe: " + 
                                str(self.watchdog.watchdog_safe) + ' ') 
-
             self.screen.addstr(8, 2, 'Current channel status:')
-            for i in range(1, 7):
-                self.screen.addstr(9, 6 * i, str(wp.digitalRead(i)))
+            for channel in range(1, 7):
+                if settings.count_from_right:
+                    pin = channel
+                else:
+                    pin = 7 - channel
+                self.screen.addstr(9, 6 * channel, str(wp.digitalRead(pin)))
 
             self.screen.addstr(12, 2, 'Channel duty cycles')
             for i in range(1, 7):
@@ -90,14 +93,13 @@ class CursesTui(threading.Thread):
         curses.endwin()    
 
 
-
 class Watchdog(threading.Thread):
     """ Make sure heating stops if control loop fails """
     def __init__(self):
         threading.Thread.__init__(self)
         wp.pinMode(0, 1)
         self.timer = time.time()
-        self.cycle_time = settings.cycle_time
+        self.cycle_time = settings.safety_cycle_time
         self.safety_margin = settings.safety_margin
         self.watchdog_safe = True
         self.quit = False
@@ -127,14 +129,13 @@ class Watchdog(threading.Thread):
                 self.quit = True
             delta_t = time.time() - self.timer
             allowed_time = self.cycle_time - self.safety_margin
-            reactivate_time = self.cycle_time + self.safety_margin
-            if delta_t < allowed_time:
+            if (delta_t < allowed_time) and (delta_t > 0):
                 self.watchdog_safe = True
             else:
                 self.watchdog_safe = False
-            if delta_t > reactivate_time:
+            if delta_t > self.cycle_time:
                 self.reactivate()
-                self.timer = time.time()
+                self.timer = time.time() + self.safety_margin
             time.sleep(0.2)
         self.watchdog_safe = False
 
@@ -143,7 +144,7 @@ class Bakeout(threading.Thread):
     """ The actual heater """
     def __init__(self):
         threading.Thread.__init__(self)
-        self.watchdog = Watchdog()
+        self.watchdog = Watchdog() 
         self.watchdog.daemon = True
         self.watchdog.start()
         time.sleep(1)
@@ -153,7 +154,7 @@ class Bakeout(threading.Thread):
         for i in range(0, 7): #Set GPIO pins to output
             wp.pinMode(i, 1)
         self.setup = settings.setup
-        self.dutycycles = [0, 0, 0, 0, 0, 0]
+        self.dutycycles = [0, 0, 0.4, 0.6, 0.8, 1]
         self.livesocket = LiveSocket(self.setup + '-bakeout',
                                      ['1', '2', '3', '4', '5', '6'], 1)
         self.livesocket.start()

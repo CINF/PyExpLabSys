@@ -1079,7 +1079,7 @@ class DataPushSocket(threading.Thread):
         """Gets the queue, returns None if ``action`` is ``'store_last'`` or
         ``'callback_direct'``
         """
-        DPUSHSLOG.info('DPS: queue property used')
+        DPUSHSLOG.debug('DPS: queue property used')
         return DATA[self.port].get('queue')
 
     @property
