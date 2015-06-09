@@ -36,7 +36,8 @@ class CursesTui(threading.Thread):
             tui_string = "Watchdog TTL: {0:.0f}   "
             self.screen.addstr(4, 2, tui_string.format(self.watchdog.time_to_live))
             tui_string = "Watchdog Timer: {0:.1f}"
-            self.screen.addstr(5, 2, tui_string.format(time.time() - self.watchdog.timer))
+            self.screen.addstr(5, 2, tui_string.format(time.time() -
+                                                       self.watchdog.timer) + '  ')
             self.screen.addstr(6, 2, "Watchdog safe: " + 
                                str(self.watchdog.watchdog_safe) + ' ') 
             self.screen.addstr(8, 2, 'Current channel status:')
@@ -146,6 +147,7 @@ class Bakeout(threading.Thread):
         self.livesocket = LiveSocket(self.setup + '-bakeout', channels, 1)
         self.livesocket.start()
         self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=[2]*6)
+        self.pullsocket.start()
         self.pushsocket = DataPushSocket(self.setup + '-push_control', action='enqueue')
         self.pushsocket.start()
 
