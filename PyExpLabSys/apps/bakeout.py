@@ -7,6 +7,7 @@ import curses
 import wiringpi2 as wp # pylint: disable=F0401
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 
 sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
@@ -54,30 +55,16 @@ class CursesTui(threading.Thread):
 
             self.screen.addstr(20, 2, str(key) + '     ')
 
-            if key == ord('1'):
-                self.baker.modify_dutycycle(1, 0.01)
-            if key == ord('!'):
-                self.baker.modify_dutycycle(1, -0.01)
-            if key == ord('2'):
-                self.baker.modify_dutycycle(2, 0.01)
-            if key == ord('"'):
-                self.baker.modify_dutycycle(2, -0.01)
-            if key == ord('3'):
-                self.baker.modify_dutycycle(3, 0.01)
-            if key == ord('#'):
-                self.baker.modify_dutycycle(3, -0.01)
-            if key == ord('4'):
-                self.baker.modify_dutycycle(4, 0.01)
-            if key == 194: #... '¤':
-                self.baker.modify_dutycycle(4, -0.01)
-            if key == ord('5'):
-                self.baker.modify_dutycycle(5, 0.01)
-            if key == ord('%'):
-                self.baker.modify_dutycycle(5, -0.01)
-            if key == ord('6'):
-                self.baker.modify_dutycycle(6, 0.01)
-            if key == ord('&'):
-                self.baker.modify_dutycycle(6, -0.01)
+            keyboard_actions = {ord('1'): [1, 1], ord('!'): [1, -1],
+                                ord('2'): [2, 1], ord('"'): [2, -1],
+                                ord('3'): [3, 1], ord('#'): [3, -1],
+                                ord('4'): [4, 1], 194: [4, -1],
+                                ord('5'): [5, 1], ord('%'): [5, -1],
+                                ord('6'): [6, 1], ord('&'): [6, -1]}
+            if key in keyboard_actions:
+                channel = keyboard_actions[key][0]
+                sign = keyboard_actions[key][1]
+                self.baker.modify_dutycycle(channel, settings.step_size * sign)
             if key == ord('q'):
                 self.baker.quit = True
                 self.screen.addstr(2, 2, 'Quitting....')
@@ -154,10 +141,11 @@ class Bakeout(threading.Thread):
         for i in range(0, 7): #Set GPIO pins to output
             wp.pinMode(i, 1)
         self.setup = settings.setup
-        self.dutycycles = [0, 0, 0.4, 0.6, 0.8, 1]
-        self.livesocket = LiveSocket(self.setup + '-bakeout',
-                                     ['1', '2', '3', '4', '5', '6'], 1)
+        self.dutycycles = [0, 0, 0, 0, 0, 0]
+        channels = ['1', '2', '3', '4', '5', '6']
+        self.livesocket = LiveSocket(self.setup + '-bakeout', channels, 1)
         self.livesocket.start()
+        self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=[2]*6)
         self.pushsocket = DataPushSocket(self.setup + '-push_control', action='enqueue')
         self.pushsocket.start()
 
@@ -192,6 +180,7 @@ class Bakeout(threading.Thread):
         if self.dutycycles[channel-1] < 0.0001:
             self.dutycycles[channel-1] = 0
         self.livesocket.set_point_now(str(channel), self.dutycycles[channel-1])
+        self.pullsocket.set_point_now(str(channel), self.dutycycles[channel-1])
         return self.dutycycles[channel-1]
 
     def run(self):
