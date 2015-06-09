@@ -12,7 +12,7 @@ from PyExpLabSys.common.utilities import get_logger
 sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
 
-LOGGER = get_logger('Bakeout', level='INFO', file_log=True,
+LOGGER = get_logger('Bakeout', level='warn', file_log=True,
                     file_name='bakeout_log.txt', terminal_log=False)
 
 class CursesTui(threading.Thread):
@@ -97,12 +97,12 @@ class Watchdog(threading.Thread):
         threading.Thread.__init__(self)
         wp.pinMode(0, 1)
         self.timer = time.time()
-        self.cycle_time = 120
-        self.safety_margin = 5
+        self.cycle_time = settings.cycle_time
+        self.safety_margin = settings.safety_margin
         self.watchdog_safe = True
         self.quit = False
         self.time_to_live = 0
-        self.reactivate()#Watchdog is initially activated
+        self.reactivate()#Initially activate Watchdog
         self.reset_ttl()
 
     def reset_ttl(self):
@@ -173,6 +173,10 @@ class Bakeout(threading.Thread):
 
     def deactivate(self, pin):
         """ De-activate a pin """
+        if settings.count_from_right:
+            pin = pin
+        else:
+            pin = 7 - pin
         wp.digitalWrite(pin, 0)
 
     def modify_dutycycle(self, channel, amount=None, value=None):
@@ -200,9 +204,10 @@ class Bakeout(threading.Thread):
             LOGGER.debug('qsize: ' + str(qsize))
             while qsize > 0:
                 element = self.pushsocket.queue.get()
+                LOGGER.debug('Element: ' + str(element))
                 channel = element.keys()[0]
-                value = element.keys()[1]
-                self.modify_dutycycle(channel, value) 
+                value = element[channel]
+                self.modify_dutycycle(int(channel), value=value) 
                 qsize = self.pushsocket.queue.qsize()
 
             self.watchdog.reset_ttl()
