@@ -5,4 +5,4 @@ cycle_time = 10
 number_of_cycles = 100
 
 safety_margin = 5
-cycle_time = 120
+safety_cycle_time = 124
