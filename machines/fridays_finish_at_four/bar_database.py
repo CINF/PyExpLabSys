@@ -8,11 +8,17 @@ import time
 
 
 class BarDatabase(object):
-    """Class for comunicating with database"""
-    def __init__(self, host='servcinf', port=3306):
+    """Class for comunicating with database
+
+    NOTE: The underlying database connection is made aware of the database string encoding
+    of utf8 but does not convert to unicode, it lets the utf8 encoded strings through.
+
+    """
+    def __init__(self, host='servcinf', port=3306, use_unicode=False):
         self.connection = MySQLdb.connect(host=host, user='fridays',
                                           passwd='fridays', db='cinfdata',
-                                          port=port)
+                                          port=port, charset='utf8',
+                                          use_unicode=use_unicode)
         self.connection.autocommit(True)
         self.cursor = self.connection.cursor()
 
@@ -31,10 +37,10 @@ class BarDatabase(object):
             brewery (str): Name the brewery.
         """
         values = (barcode, price, name, alc, volume, energy_content,
-                  beer_description, brewery)
+                  beer_description, brewery, None, True)
         with self.connection:
             self.cursor.execute("INSERT INTO fridays_items "
-                                "VALUES(%s, %s, %s, %s, %s, %s, %s, %s)",
+                                "VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                 values)
 
     def replace_item(self, barcode, field, value):
@@ -82,7 +88,14 @@ class BarDatabase(object):
         raise NotImplementedError()
 
     def get_user(self, user_barcode):
-        """ Gets user name from user barcode """
+        """Gets user name from user barcode
+
+        Args:
+            user_barcode (str): The users barcode
+
+        Returns:
+            tuple: (Name (str), id (int)) tuple
+        """
         with self.connection:
             self.cursor.execute("SELECT name, id FROM fridays_user WHERE user_barcode=%s",
                                 (user_barcode,))
@@ -162,23 +175,38 @@ class BarDatabase(object):
         else:
             return "invalid"
 
+def module_test():
+    """Run the module test"""
+    try:
+        # Assume office PC and just try and connect to db
+        database = BarDatabase("servcinf", 3306)
+        through_tunnel = False
+    except MySQLdb.OperationalError:
+        # If not, try and create a tunnel
+        from ssh_tunnel import create_tunnel, close_tunnel
+        create_tunnel()
+        time.sleep(1)
+        database = BarDatabase("127.0.0.1", 9000)
+        through_tunnel = True
 
-if __name__ == "__main__":
-    from ssh_tunnel import create_tunnel, close_tunnel
-
-    create_tunnel()
-    time.sleep(1)
-
-    DATABASE = BarDatabase("127.0.0.1", 9000)
 
     #DATABASE.insert_user(1234567890128,"test2")
 
-    print DATABASE.get_user(1234567890128)
-    #insert_user(123,"test")
+    username, id_ = database.get_user('test')
+    print "For barcode 'test' fetch name '{}' and id '{}'".format(username, id_)
 
-    #DATABASE.insert_log(1234567890128, "deposit", 500)
-    #DATABASE.insert_log(123, "purchase", 35, 5425017810209)
-    DATABASE.sum_log(1234567890128)
+    print "For id {} fetch sum {}".format(id_, database.sum_log(id_))
 
-    close_tunnel()
-    time.sleep(1)
+    database.cursor.execute('select * from fridays_items')
+    for line in database.cursor.fetchall():
+        print line
+
+    if through_tunnel:
+        close_tunnel()
+        time.sleep(1)
+
+
+
+
+if __name__ == "__main__":
+    module_test()
