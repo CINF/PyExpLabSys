@@ -14,7 +14,7 @@ from MySQLdb import OperationalError
 from cowsay import Cowsay
 
 
-__version__ = 2.310
+__version__ = 2.317
 COWSAY = Cowsay(cow='cow', width=34)
 
 
