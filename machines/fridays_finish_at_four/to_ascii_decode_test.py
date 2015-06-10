@@ -4,13 +4,13 @@ friday_user can be decoded by the four_d_systems to_ascii function
 
 from __future__ import print_function
 import MySQLdb
-from PyExpLabSys.drivers.four_d_systems import to_ascii
+from PyExpLabSys.drivers.four_d_systems import to_ascii_utf8
 
 
 def main():
     """Run the decoding steps"""
     con = MySQLdb.connect('servcinf', 'fridays', 'fridays', 'cinfdata',
-                          charset='utf8', use_unicode=True)
+                          charset='utf8', use_unicode=False)
     cursor = con.cursor()
 
     print('\n========= Users ========')
@@ -18,14 +18,15 @@ def main():
     users = cursor.fetchall()
     for user in users:
         user = user[0]
-        norm_user = to_ascii(user)
+        print(type(user))
+        norm_user = to_ascii_utf8(user)
         try:
             norm_user.encode('ascii')
         except UnicodeDecodeError:
             print('Encoding to ascii failed for this entry')
             print(user)
             raise
-        print(u'Name:    {:<30} -> {}'.format(user, norm_user))
+        print('Name:    {:<30} -> {}'.format(user, norm_user))
 
 
     print('\n========= Items ========')
@@ -33,23 +34,25 @@ def main():
     items = cursor.fetchall()
     for name, brewery in items:
         print("--------------------")
-        norm_name = to_ascii(name)
+        norm_name = to_ascii_utf8(name)
         try:
             norm_name.encode('ascii')
         except UnicodeDecodeError:
             print('Encoding to ascii failed for this entry')
             print(name)
             raise
-        print(u'Name:    {:<30} -> {}'.format(name, norm_name))
+        print('Name:    {:<30} -> {}'.format(name, norm_name))
 
-        norm_brewery = to_ascii(brewery)
+        if brewery is None:
+            continue
+        norm_brewery = to_ascii_utf8(brewery)
         try:
             norm_brewery.encode('ascii')
         except UnicodeDecodeError:
             print('Encoding to ascii failed for this entry')
             print(brewery)
             raise
-        print(u'Brewery: {:<30} -> {}'.format(brewery, norm_brewery))
+        print('Brewery: {:<30} -> {}'.format(brewery, norm_brewery))
 
 
 main()
