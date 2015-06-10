@@ -21,7 +21,6 @@ class PictureLogbook(object):
         LOGGER.info('Started Picture Logbook')
         self.picaso = PicasouLCD28PTU(serial_device='/dev/ttyUSB0', baudrate=115200,
                                  debug=True)
-
         dev_ = detect_barcode_device()
         LOGGER.info('Barcode device: ' +  dev_)
         self.tbs = ThreadedBarcodeReader(dev_)
@@ -44,7 +43,10 @@ class PictureLogbook(object):
         cursor = self.database.cursor()
         cursor.execute(query)
         current_state = cursor.fetchone()
-        current_login = current_state[1]
+        try:
+            current_login = current_state[1]
+        except TypeError: # Happens with no items in database
+            current_login = 0
         if current_login == 0:
             self.logged_in_user = None
         else:
@@ -64,7 +66,7 @@ class PictureLogbook(object):
     def update_external_screen(self, text):
         """ Update the phsysical screen """
         self.picaso.clear_screen()
-        self.picaso.screen_mode('landscape')
+        self.picaso.screen_mode(settings.screen_orientation)
         self.picaso.move_cursor(3, 0)
         self.picaso.text_width(3)
         self.picaso.text_height(3)
