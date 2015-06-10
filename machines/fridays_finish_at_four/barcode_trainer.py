@@ -3,20 +3,14 @@
 """Barcode scanner module"""
 
 from bar_database import *  # pylint: disable=wildcard-import,unused-wildcard-import
-from PyExpLabSys.drivers.vivo_technologies import BlockingBarcodeReader, detect_barcode_device
 
-
-BAR_DATABASE = BarDatabase()
+BAR_DATABASE = BarDatabase(host='servcinf', port=3306)
 
 
 def read_barcode():
     """Read the barcode and return the number or None on error"""
     print 'Scan barcode now!'
-    dev_ = detect_barcode_device()
-    bbr = BlockingBarcodeReader(dev_)
-    #bbr.start()
-    line = bbr.read_barcode()
-
+    line = raw_input()
     out = int(line)
     return out
 
@@ -37,6 +31,8 @@ def new():
         data['price'] = input_with_type(message, int)
         message = 'type name of beer: '
         data['name'] = input_with_type(message, str)
+        message = 'type name of brewery: '
+        data['brewery'] = input_with_type(message, str)
         message = 'type alcohol precentage: '
         data['alc'] = input_with_type(message, float)
         message = 'type volume in liters: '
@@ -46,7 +42,6 @@ def new():
         return
 
     print data
-    #bc.insert_item(data['barcode'], data['price'], data['name'], data['alc'], data['volume'])
     BAR_DATABASE.insert_item(**data)
 
 
