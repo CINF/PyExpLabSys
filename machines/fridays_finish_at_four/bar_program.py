@@ -6,8 +6,7 @@
 import time
 import textwrap
 from bar_database import *  # pylint: disable=wildcard-import,unused-wildcard-import
-# to_ascii is not currently used, but maybe it should be to present user real name
-from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU  # to_ascii
+from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU, to_ascii_utf8
 from serial.serialutil import SerialException
 from PyExpLabSys.drivers.vivo_technologies import ThreadedBarcodeReader, detect_barcode_device
 from ssh_tunnel import create_tunnel, close_tunnel, get_ip_address, test_demon_connection
@@ -146,7 +145,7 @@ class Bar101(object):
         self.picaso.clear_screen()
         self.picaso.move_cursor(1, 0)
         self.picaso.put_string(cowsay("Enjoy your delicious {}".format(
-            self.bar_database.get_item(barcode, statement='name')
+            to_ascii_utf8(self.bar_database.get_item(barcode, statement='name'))
         )))
         self.timer(4)
 
@@ -161,6 +160,7 @@ class Bar101(object):
         """User purchases beer"""
         beer_price = self.bar_database.get_item(beer_barcode, statement='price')
         user_name, user_id = self.bar_database.get_user(user_barcode)
+        user_name = to_ascii_utf8(user_name)
         if beer_price <= self.bar_database.sum_log(user_id):
             # Since the beer_barcode may be both the real barcode or the alternative
             # barcode we need to get the real barcode from the db for the transactions log
@@ -168,6 +168,7 @@ class Bar101(object):
             self.bar_database.insert_log(user_id, user_barcode, "purchase", beer_price,
                                          item=real_beer_barcode)
             beer_name = self.bar_database.get_item(beer_barcode, statement='name')
+            beer_name = to_ascii_utf8(beer_name)
             balance = self.bar_database.sum_log(user_id)
 
             self.picaso.clear_screen()
@@ -224,6 +225,7 @@ class Bar101(object):
     def present_user(self, user_barcode):
         """Present user info, i.e. user name and balance"""
         user_name, user_id = self.bar_database.get_user(user_barcode)
+        user_name = to_ascii_utf8(user_name)
         balance = self.bar_database.sum_log(user_id)
         # Screen layout, username
         self.picaso.clear_screen()
