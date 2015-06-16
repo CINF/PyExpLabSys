@@ -2,17 +2,18 @@ import time
 import threading
 import PyExpLabSys.drivers.cpx400dp as CPX
 import PyExpLabSys.auxiliary.pid as pid
-#from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.value_logger import ValueLogger
+from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 import PyExpLabSys.drivers.keithley_smu as smu
 import emission_tui
+import credentials
 
 LOGGER = get_logger('Emission', level='info', file_log=True,
                     file_name='emission_log.txt', terminal_log=False)
-
 
 class EmissionControl(threading.Thread):
     """ Control the emission of a filament. """
@@ -48,8 +49,6 @@ class EmissionControl(threading.Thread):
         self.wanted_voltage = 0
         self.emission_current = 999
 
-
-
     def set_bias(self, bias):
         """ Set the bias-voltage """
         if self.datasocket is not None:
@@ -65,27 +64,31 @@ class EmissionControl(threading.Thread):
 
     def set_filament_voltage(self, voltage):
         """ Set the filament voltage """
-        return(self.filament['device'].set_voltage(voltage))
+        return self.filament['device'].set_voltage(voltage)
 
     def read_filament_voltage(self):
         """ Read the filament voltage """
-        return(self.filament['device'].read_actual_voltage())
+        return self.filament['device'].read_actual_voltage()
 
     def read_filament_current(self):
         """ Read the filament current """
-        return(self.filament['device'].read_actual_current())
+        return self.filament['device'].read_actual_current()
 
     def read_grid_voltage(self):
         """Read the actual grid voltage """
-        return(self.bias['device'].read_voltage())
+        return self.bias['device'].read_voltage()
 
     def read_emission_current(self):
         """ Read the grid current as measured by power supply """
-        return(self.bias['device'].read_current() * 1000)
+        return self.bias['device'].read_current() * 1000
 
     def read_grid_current(self):
         """ Read the actual emission current """
-        return(self.bias['device'].read_current())
+        return self.bias['device'].read_current()
+
+    def value(self):
+        """ Return the curren emission value """
+        return self.emission_current
 
     def run(self):
         while self.running:
@@ -120,12 +123,30 @@ class EmissionControl(threading.Thread):
 
 
 if __name__ == '__main__':
-
     ec = EmissionControl()
     #ec.set_bias(35)
     ec.start()
 
+    logger = ValueLogger(ec, comp_val = 1, comp_type='log')
+    logger.start()
+
+    CODENAMES = ['tof_emission_value']
+    db_logger = ContinuousLogger(table='dateplots_tof',
+                                 username=credentials.user,
+                                 password=credentials.passwd,
+                                 measurement_codenames=CODENAMES)
+    db_logger.start()
+
     tui = emission_tui.CursesTui(ec)
     tui.daemon = True
     tui.start()
+    time.sleep(10)
+
+    while ec.running:
+        time.sleep(1)
+        value = logger.read_value()
+        if logger.read_trigged():
+            LOGGER.debug('Logged value: ' + str(value))
+            db_logger.enqueue_point_now('tof_emission_value', value)
+            logger.clear_trigged()
 
