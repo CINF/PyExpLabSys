@@ -41,7 +41,7 @@ class PID(object):
             self.gain = {'Kp':1.7,
                          'Ki':0.015,
                          'Kd':0.0,
-                         'Pmax':90.0,
+                         'Pmax':60.0,
                          'Pmin':0.0}
         #Provid a starting setpoit to ensure that the PID does not
         #apply any power before an actual setpoit is set.
@@ -62,7 +62,8 @@ class PID(object):
         #self.initialize()
         self.time = {'current': time.time(),
                      'prev': time.time()}
-        self.error = {'current': 0.0, 'prev': 0.0}
+        self.error = {'current': 0.0,
+                      'prev': 0.0}
         self.prev_err = 0.0
         #self.prev_power = 0.0
 
@@ -70,17 +71,13 @@ class PID(object):
                           'i': 0.0,
                           'd': 0.0}
         
-    #def initialize(self,):
-    #    """ Initialize delta t variables. """
-    #    self.currtm = time.time()
-    #    self.prevtm = self.currtm
-    #    self.prev_err = 0
-    #    self.prev_P = 0
-    #    # term result variables
-    #    self.Cp = 0
-    #    self.Ci = 0
-    #    self.Cd = 0
-    #    self.P = 0
+    def initialize(self,):
+        """ Initialize delta t variables. """
+        self.error = {'current': 0.0,
+                      'prev': 0.0}        
+        self.cumulated = {'p': 0.0,
+                          'i': 0.0,
+                          'd': 0.0}
 
     def reset_integrated_error(self):
         """ Reset the I value, integrated error. """
@@ -104,7 +101,7 @@ class PID(object):
         self.time['current'] = time.time()
         #dt = self.currtm - self.prevtm
         dt = self.time['current'] - self.time['prev']
-        de = self.error['currrent'] - self.error['prev']
+        de = self.error['current'] - self.error['prev']
         # Calculate proportional gain.
         self.cumulated['p'] = self.error['current']
         
@@ -203,7 +200,7 @@ class CursesTui(threading.Thread):
         
     def run(self,):
         while self.running:
-            time.sleep(1)
+            time.sleep(0.1)
             try:
                 self.screen.addstr(3, 2,
                                    "Power Supply for HPC " \
@@ -272,6 +269,7 @@ class CursesTui(threading.Thread):
                                        (self.countdown_end_time - time.time())/3600.0 ))
                 if time.time() > self.countdown_end_time:
                     self.pcc.change_mode('Voltage Control')
+                    self.pcc.zero_setpoint()
                     #self.pcc.OutputOff()
                     self.countdown = False
             else:
@@ -431,6 +429,7 @@ class PowerControlClass(threading.Thread):
         #self.datasocket = datasocket
         #self.pushsocket = pushsocket
         threading.Thread.__init__(self)
+        write_setpoint(0.0)
         #self.PowerCalculatorClass = PID_class
         self.running = True
         self.status = {}
@@ -544,6 +543,9 @@ class PowerControlClass(threading.Thread):
         elif self.status['Mode'] in ['Power Control', 'Current Control', 'Voltage Control']:
             setpoint -= 0.1
         self.change_setpoint(setpoint)
+
+    def zero_setpoint(self,):
+        self.change_setpoint(0.0)
         
     def change_mode(self, new_mode):
         if new_mode in ['Temperature Control',
@@ -553,9 +555,11 @@ class PowerControlClass(threading.Thread):
             if new_mode in ['Power Control',
                             'Current Control',
                             'Voltage Control']:
-                self.change_setpoint(0.0)
+                self.change_setpoint(self.status['Voltage'])
+            elif new_mode in ['Power Control',]:
+                self.change_setpoint(self.status['Actual Power'])
             elif new_mode in  ['Temperature Control']:
-                self.change_setpoint(23.0)
+                self.change_setpoint(self.temp_class.temperature)
                 self.pid.initialize()
             self.status['Mode'] = new_mode
             
@@ -608,6 +612,7 @@ class PowerControlClass(threading.Thread):
         self.stop()
         
     def stop(self,):
+        self.OutputOff()
         self.running = False
         try:
             self.temp_class.stop()
