@@ -339,29 +339,33 @@ class CursesTui(threading.Thread):
         curses.echo()
         curses.endwin()
 
-def sqlTime():
-    sqltime = datetime.now().isoformat(' ')[0:19]
-    return sqltime
+#==============================================================================
+#def sqlTime():
+#    sqltime = datetime.now().isoformat(' ')[0:19]
+#    return sqltime
+#==============================================================================
 
-
-def sqlInsert(query):
-    try:
-        cnxn = MySQLdb.connect(
-            host="servcinf",
-            user="stm312",
-            passwd="stm312",
-            db="cinfdata")
-        cursor = cnxn.cursor()
-    except:
-        print("Unable to connect to database")
-        return()
-    try:
-        cursor.execute(query)
-        cnxn.commit()
-    except:
-        print "SQL-error, query written below:"
-        print query
-    cnxn.close()
+#==============================================================================
+# def sqlInsert(query):
+#     try:
+#         cnxn = MySQLdb.connect(
+#             host="servcinf",
+#             user="stm312",
+#             passwd="stm312",
+#             db="cinfdata")
+#         cursor = cnxn.cursor()
+#     except:
+#         print("Unable to connect to database")
+#         return()
+#     try:
+#         cursor.execute(query)
+#         cnxn.commit()
+#     except:
+#         print "SQL-error, query written below:"
+#         print query
+#    cnxn.close()
+#    return query
+#==============================================================================    
 
 def network_comm(host, port, string):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -376,6 +380,7 @@ def read_hp_temp():
     data = 'stm312_hpc_temperature#raw'
     host = '127.0.0.1'
     port = 9000
+    #received = network_comm(host, port, data)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(0.2)
     sock.sendto(data, (host, port))
@@ -384,15 +389,17 @@ def read_hp_temp():
     return temp
 
 def read_setpoint():
+    """Read the setpoint from socket."""
     received = network_comm('rasppi19', 9990, 'read_setpoint')
     temp = float(received)
     return(temp)
 
 def write_setpoint(setpoint):
+    """Write setpoint to socket."""
     #print "write_setpoint {}".format(setpoint)
     received = network_comm('rasppi19', 9990, 'set_setpoint '+str(setpoint))
     #temp = float(received)
-    #return(temp)
+    return received
 
 class TemperatureClass(threading.Thread):
     def __init__(self):
@@ -401,6 +408,7 @@ class TemperatureClass(threading.Thread):
         self.running = True
         self.error = False
         self.debug_level = 0
+        self.error_count = 0
 
     def run(self):
         while self.running:
@@ -412,8 +420,10 @@ class TemperatureClass(threading.Thread):
                 #received = sock.recv(1024)
                 #self.temperature = float(received[received.find(',') + 1:])
                 self.temperature = float(read_hp_temp())
+                self.error_count = 0
             except:
                 self.error = True
+                self.error_count += 1
             if self.debug_level > 0:
                 print(str(self.temperature))
             #temperature = self.temperature
