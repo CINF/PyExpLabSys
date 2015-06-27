@@ -8,7 +8,7 @@ from PyExpLabSys.common.sockets import LiveSocket
 import credentials
 
 
-LOGGER = get_logger('thetaprobe_pressure_logger', file_log=True)
+LOGGER = get_logger('thetaprobe_pressure_logger')
 
 
 def main():
@@ -41,7 +41,7 @@ def main():
             # value2, (status_code2, status_message2))
             try:
                 value_ll, code_ll, value_uv, code_uv = tpg.pressure_gauges()
-            except IOError:
+            except (IOError, ValueError):
                 LOGGER.info(
                     'Serial communication failed. Sleep 10 and try again.')
                 time.sleep(10)

@@ -1,45 +1,40 @@
+# pylint: disable=C0103
+""" Mass-spec settings for STM312 """
+
 import Queue
-import sys
 import time
-
-sys.path.append('../../')
-import SQL_saver
-
-sys.path.append('../../qms')
-import qms as ms
-import qmg422
-import qmg_status_output
-import qmg_meta_channels
-
+import logging
+import PyExpLabSys.common.sql_saver as sql_saver
+import PyExpLabSys.drivers.pfeiffer_qmg422 as qmg422
+import PyExpLabSys.apps.qms.qms as ms
+import PyExpLabSys.apps.qms.qmg_status_output as qmg_status_output
+import PyExpLabSys.apps.qms.qmg_meta_channels as qmg_meta_channels
 import sql_credentials
+
+logging.basicConfig(filename="qms.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.DEBUG)
 
 timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 sql_queue = Queue.Queue()
-sql_saver = SQL_saver.sql_saver(sql_queue,sql_credentials.username)
-sql_saver.daemon = True
+sql_saver = sql_saver.SqlSaver(sql_queue, sql_credentials.username)
 sql_saver.start()
 
 qmg = qmg422.qmg_422()
-qms = ms.qms(qmg, sql_queue)
+chamber = 'dummy'
+#chamber = 'stm312'
+qms = ms.qms(qmg, sql_queue, chamber=chamber, credentials=sql_credentials.username)
 
-
-qms.chamber = 'stm312' #Uncomment this to save data in correct db
-qms.communication_mode(computer_control=True)
 printer = qmg_status_output.qms_status_output(qms, sql_saver_instance=sql_saver)
-printer.daemon = True
 printer.start()
-if False:
+
+if True:
     channel_list = qms.read_ms_channel_list('channel_list.txt')
-    #printer = qmg_status_output.qms_status_output(qms, sql_saver_instance=sql_saver)
-    #printer.daemon = True
-    #printer.start()
-    
     meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
     meta_udp.daemon = True
     meta_udp.start()
     print qms.mass_time(channel_list['ms'], timestamp)
 
-if True:
+if False:
     # for choosing between mass time and mass scan
     qms.mass_scan(0, 20, comment='TEST')
 
@@ -49,7 +44,38 @@ printer.stop()
 # for turning on or off the filament and SEM
 if False:
     print qmg.sem_status(voltage=2200, turn_on=True)
-    print qmg.emission_status(current=0.1, turn_on=True)
+    print qmg.emission_status(current=0.2, turn_on=True)
 elif False:
     print qmg.sem_status(voltage=2200, turn_off=True)
     print qmg.emission_status(current=0.1, turn_off=True)
+
+"""
+print 'Status - ESQ'
+print qmg.comm('ESQ')
+esq = qmg.comm('ESQ')
+esq = int(esq[:esq.find(',')])
+print bin(esq)
+print 'Emission on: ' + bin(esq)[-3]
+print 'SEM on: ' + bin(esq)[-4]
+"""
+
+
+
+"""
+print '---'
+print '--'
+print qmg.comm('ECU') # Emission current, 0 to 20A
+print '---'
+print qmg.comm('QHW') # Ion source
+print '---'
+print 'These values needs to go in a config-file:'
+print qmg.comm('SQA') # Type of analyzer, 0: 125, 1: 400, 4:200
+print '---'
+print qmg.comm('SMR') # Mass-range, this needs to go in a config-file
+print '---'
+print qmg.comm('SDT') # Detector type
+print '---'
+print qmg.comm('SIT') # Ion source
+
+print qmg.comm('TSI, 0')# 1: Simulation, 0: real data
+"""

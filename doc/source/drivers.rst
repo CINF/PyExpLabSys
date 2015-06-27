@@ -14,3 +14,4 @@ more general equipment like temperature read out units.
     
     drivers_pfeiffer
     drivers_four_d_systems
+    drivers_bio_logic

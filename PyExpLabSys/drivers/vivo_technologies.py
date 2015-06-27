@@ -34,7 +34,7 @@ def detect_barcode_device():
 
 
 # pylint: disable=too-few-public-methods
-class BlockingLS689A(object):
+class BlockingBarcodeReader(object):
     """Blocking Barcode Reader"""
 
     def __init__(self, device_path):
@@ -60,11 +60,11 @@ class BlockingLS689A(object):
         self.dev.close()
 
 
-class ThreadedLS689A(threading.Thread):
+class ThreadedBarcodeReader(threading.Thread):
     """Threaded Barcode Scanner that holds only the last value"""
 
     def __init__(self, device_path):
-        super(ThreadedLS689A, self).__init__()
+        super(ThreadedBarcodeReader, self).__init__()
         self.dev = evdev.InputDevice(device_path)
         self.daemon = True
         self._barcode_queue = Queue.Queue()
@@ -135,7 +135,7 @@ SCANCODES = {
 if __name__ == '__main__':
     dev_ = detect_barcode_device()
     print dev_
-    tbs = ThreadedLS689A(dev_)
+    tbs = ThreadedBarcodeReader(dev_)
     tbs.start()
     try:
         while True:

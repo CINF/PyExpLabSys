@@ -1,0 +1,5 @@
+#!/usr/bin/env python2
+
+from PyExpLabSys.apps import socket_tester
+
+socket_tester.main()

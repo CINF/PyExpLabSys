@@ -1,12 +1,15 @@
+#!/usr/bin/env python
+
 """The super fancy presentation system"""
 
 import os
 import time
+import xml.etree.ElementTree as XML
+import socket
+from subprocess import call
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
-import xml.etree.ElementTree as XML
-import socket
 
 
 def get_chromium():
@@ -85,7 +88,11 @@ def main():
     #driver = get_chromium()
 
     # Read in general and page settings
-    tree = XML.parse('pages.xml')
+    pages = os.path.join(
+        os.path.split(os.path.realpath(__file__))[0],
+        'pages.xml'
+    )
+    tree = XML.parse(pages)
     root = tree.getroot()
     settings = get_settings(root)
     pages = get_pages(root)
@@ -102,6 +109,21 @@ def main():
     close_tab(driver)
     print 'fullscreen'
     fullscreen(driver)
+    time.sleep(2)
+    fullscreen(driver)
+    time.sleep(2)
+    fullscreen(driver)
+    time.sleep(6)
+    print 'move mouse'
+    #for pos in range(100, 600, 1):
+    #    call(['xdotool', 'mousemove', str(pos), str(pos)])
+    #    time.sleep(0.01)
+    call(['xdotool', 'mousemove', '0', '0'])
+    time.sleep(2)
+    fullscreen(driver)
+    time.sleep(2)
+    fullscreen(driver)
+    time.sleep(2)
 
     # Switch
     try:

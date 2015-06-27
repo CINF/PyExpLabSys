@@ -1,6 +1,6 @@
 # Python for Experimental Labs System
 
-## About PyExptLabSys
+## About PyExpLabSys
 This project contains various python code useful in experimental labs, such as
 drivers, plotting tools and data-logging.
 

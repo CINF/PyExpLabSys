@@ -31,6 +31,9 @@ def uptime(host, method, username='pi', password='cinf123'):
     return_value['up'] = ''
     return_value['load'] = ''
     return_value['git'] = ''
+    return_value['host_temperature'] = ''
+    return_value['python_version'] = ''
+    return_value['model'] = ''
     if method == 'ssh':
         uptime_string = subprocess.check_output(["sshpass", 
                                                  "-p", 
@@ -47,12 +50,20 @@ def uptime(host, method, username='pi', password='cinf123'):
         return_value['up'] = up
         return_value['load'] = load
 
-    if method in ['socket', 'ls']:
+    ports = []
+    for i in range(6000, 9999):
+        ports.append(str(i))
+    if method in ['socket', 'ls'] + ports:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(0.1)
+        sock.settimeout(0.5)
         port = 0
-        port = 9000 if method == 'socket' else port
-        port = 8000 if method == 'ls' else port
+        if method == 'socket':
+            port = 9000
+        if method == 'ls':
+            port = 8000
+        if method in ports:
+            port = int(method)
+
         try:
             sock.sendto('status', (host, port))
             received = sock.recv(1024)
@@ -65,6 +76,19 @@ def uptime(host, method, username='pi', password='cinf123'):
         except:
             return_value['up'] = 'Down'
             return_value['load'] = 'Down'
+        try:
+            model = system_status['rpi_model']
+            host_temperature = system_status['rpi_temperature']
+        except (KeyError, UnboundLocalError) as e:
+            model = ''
+            host_temperature = ''
+        try:
+            python_version = system_status['python_version']
+        except (KeyError, UnboundLocalError) as e:
+            python_version = ''
+        return_value['model'] = model
+        return_value['host_temperature'] = host_temperature
+        return_value['python_version'] = python_version
         try:
             gittime = system_status['last_git_fetch_unixtime']
             git = datetime.datetime.fromtimestamp(gittime).strftime('%Y-%m-%d')
@@ -104,7 +128,16 @@ class CheckHost(threading.Thread):
                 uptime_val['up'] = ''
                 uptime_val['load'] = ''
                 uptime_val['git'] = ''
-            self.results.put([host[0], up, uptime_val['up'], uptime_val['load'], host[3], host[4], host[1], uptime_val['git']])
+                uptime_val['host_temperature'] = ''
+                uptime_val['model'] = ''
+                uptime_val['python_version'] = ''
+            self.results.put([host[0], up, uptime_val['up'],
+                              uptime_val['load'], host[3],
+                              host[4], host[1],
+                              uptime_val['git'],
+                              uptime_val['host_temperature'],
+                              uptime_val['model'],
+                              uptime_val['python_version']])
             self.hosts.task_done()
 
 if __name__ == "__main__":
@@ -129,7 +162,7 @@ if __name__ == "__main__":
         for i in range(0, len(host_line)):
             host_line[i] = host_line[i].strip()
         hosts.put(host_line)
-    
+
     results = Queue.Queue()
     t = time.time()
     host_checkers = {}
@@ -139,22 +172,27 @@ if __name__ == "__main__":
     hosts.join()
 
     sorted_results = {}
+    i = 0
     while not results.empty():
+        i = i + 1
         result = results.get()
-        sorted_results[result[0]] = result
+        sorted_results[i] = result
 
     status_string = ""
     for host in sorted_results.values():
-        status_string += host[0] + ";"
+        status_string += host[0] + "|"
         if host[1]:
-            status_string += "1;"
-            status_string += host[2] + ";"
-            status_string += host[3] + ";"
+            status_string += "1|"
+            status_string += host[2] + "|"
+            status_string += host[3] + "|"
         else:
-            status_string += "0;;;"
-        status_string += host[4] + ";"
-        status_string += host[5] + ";"
-        status_string += host[6] + ";"
-        status_string += host[7]
+            status_string += "0|||"
+        status_string += host[4] + "|"
+        status_string += host[5] + "|"
+        status_string += host[6] + "|"
+        status_string += host[7] + "|"
+        status_string += str(host[8]) + "|"
+        status_string += host[9] + "|"
+        status_string += host[10]
         status_string += "\n"
     print(status_string)

@@ -1,102 +1,123 @@
-""" Data logger for mobile gas wall """
-# pylint: disable=C0301,R0904, C0103
-
+""" Pressure and temperature logger, PVD309"""
+# pylint: disable=C0103
 import threading
-import logging
 import time
-import FindSerialPorts
+import logging
 from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
-#from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.xgs600 as xgs600
+import PyExpLabSys.drivers.mks_925_pirani as mks_925_pirani
 import credentials
 
-
-class PressureReader(threading.Thread):
-    """ Communicates with the XGS controller """
-    def __init__(self, xgs_instance):
+class XgsReader(threading.Thread):
+    """ Pressure reader """
+    def __init__(self, xgs):
         threading.Thread.__init__(self)
-        self.xgs = xgs_instance
-        self.pressures = self.xgs.read_all_pressures()
+        self.xgs = xgs
+        self.pressures = {}
+        self.pressures['ig_ll'] = None # Iog Gauge, Load Lock
+        self.pressures['p_r_ll'] = None # Pirani, roughing, turbo, Load Lock
+        self.pressures['p_ll'] = None # Pirani, Load Lock
+        self.pressures['ig_mc'] = None # Ion gauge, main chamber
+        self.pressures['p_r_cr'] = None # Pirani, roughing, cryo pump
+        self.pressures['p_mc'] = None # Pirani, main chamber
         self.quit = False
+        self.ttl = 20
 
-    def run(self):
-        while not self.quit:
-            time.sleep(2)
-            self.pressures = self.xgs.read_all_pressures()
-
-
-class PressureLogger(threading.Thread):
-    """ Read a specific XGS pressure """
-    def __init__(self, xgsreader, channel, maximumtime=600):
-        threading.Thread.__init__(self)
-        self.xgsreader = xgsreader
-        self.channel = channel
-        self.pressure = None
-        self.maximumtime = maximumtime
-        self.quit = False
-        self.last_recorded_time = 0
-        self.last_recorded_value = 0
-        self.trigged = True
-
-    def read_pressure(self):
+    def value(self, channel):
         """ Read the pressure """
-        return(self.pressure)
+        self.ttl = self.ttl - 1
+        if self.ttl < 0:
+            self.quit = True
+            return_val = None
+        else:
+            if channel == 0:
+                return_val = self.pressures['ig_ll']
+            if channel == 1:
+                return_val = self.pressures['p_r_ll']
+            if channel == 2:
+                return_val = self.pressures['p_ll']
+            if channel == 3:
+                return_val = self.pressures['ig_mc']
+            if channel == 4:
+                return_val = self.pressures['p_r_cr']
+            if channel == 5:
+                return_val = self.pressures['p_mc']
+        return return_val
 
     def run(self):
         while not self.quit:
-            time.sleep(1)
-            self.pressure = self.xgsreader.pressures[self.channel]
-            time_trigged = (time.time() - self.last_recorded_time) > self.maximumtime
-            val_trigged = not (self.last_recorded_value * 0.9 < self.pressure < self.last_recorded_value * 1.1)
-            if (time_trigged or val_trigged) and (self.pressure > 0):
-                self.trigged = True
-                self.last_recorded_time = time.time()
-                self.last_recorded_value = self.pressure
+
+            time.sleep(0.5)
+            press = self.xgs.read_all_pressures()
+            try:
+                self.ttl = 50
+                self.pressures['ig_ll'] = press[0]
+                self.pressures['p_r_ll'] = press[1]
+                self.pressures['p_ll'] = press[2]
+                self.pressures['ig_mc'] = press[3]
+                self.pressures['p_r_cr'] = press[4]
+                self.pressures['p_mc'] = press[5]
+            except IndexError:
+                print "av"
+
+logging.basicConfig(filename="logger.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
+
+xgs_port = '/dev/ttyUSB1'
+xgs_instance = xgs600.XGS600Driver(xgs_port)
+print xgs_instance.read_all_pressures()
+
+xgs_pressure = XgsReader(xgs_instance)
+xgs_pressure.start()
+
+time.sleep(2.5)
+
+codenames = ['pvd309_load_lock_ig', 'pvd309_load_lock_turbo_roughing',
+             'pvd309_load_lock_pirani', 'pvd309_main_chamber_ig',
+             'pvd309_cryo_roughing', 'pvd309_main_chamber_pirani ']
+loggers = {}
+loggers[codenames[0]] = ValueLogger(xgs_pressure, comp_val = 0.1,
+                                    comp_type = 'log', channel = 0)
+loggers[codenames[0]].start()
+loggers[codenames[1]] = ValueLogger(xgs_pressure, comp_val = 0.1,
+                                    low_comp=1e-3, comp_type = 'log', channel = 1)
+loggers[codenames[1]].start()
+loggers[codenames[2]] = ValueLogger(xgs_pressure, comp_val = 0.1,
+                                    low_comp=1e-3, comp_type = 'log', channel = 2)
+loggers[codenames[2]].start()
+loggers[codenames[3]] = ValueLogger(xgs_pressure, comp_val = 0.1,
+                                    comp_type = 'log', channel = 3)
+loggers[codenames[3]].start()
+loggers[codenames[4]] = ValueLogger(xgs_pressure, comp_val = 0.3,
+                                    low_comp=1e-2, comp_type = 'log', channel = 4)
+loggers[codenames[4]].start()
+loggers[codenames[5]] = ValueLogger(xgs_pressure, comp_val = 0.1,
+                                    low_comp=1e-3, comp_type = 'log', channel = 5)
+loggers[codenames[5]].start()
 
 
-if __name__ == '__main__':
-    logging.basicConfig(filename="logger.txt", level=logging.ERROR)
-    logging.basicConfig(level=logging.ERROR)
+livesocket = LiveSocket('pvd309 pressure logger', codenames, 2)
+livesocket.start()
 
-    xgs = xgs600.XGS600Driver('/dev/ttyUSB1')
+socket = DateDataPullSocket('pvd309 pressure', codenames, timeouts=[1.0]*6)
+socket.start()
 
-    print xgs.read_all_pressures()
+db_logger = ContinuousLogger(table='dateplots_pvd309',
+                             username=credentials.user,
+                             password=credentials.passwd,
+                             measurement_codenames=codenames)
+db_logger.start()
 
-    pressurereader = PressureReader(xgs)
-    pressurereader.daemon = True
-    pressurereader.start()
-
-    pressure_codenames = ['pvd309_main_chamber_ig',
-                          'pvd309_main_chamber_pirani',
-                          'pvd309_load_lock_pirani']
-    loggers = {}
-    loggers['pvd309_main_chamber_ig'] = PressureLogger(pressurereader, 3)
-    loggers['pvd309_main_chamber_pirani'] = PressureLogger(pressurereader, 2)
-    loggers['pvd309_load_lock_pirani'] = PressureLogger(pressurereader, 5)
-
-    for codename in pressure_codenames:
-        loggers[codename].start()
-
-    socket = DateDataPullSocket('pvd309', pressure_codenames, timeouts=[5.0, 5.0, 5.0])
-    socket.start()
-
-    db_logger = ContinuousLogger(table='dateplots_pvd309',
-                                 username=credentials.user,
-                                 password=credentials.passwd,
-                                 measurement_codenames=pressure_codenames)
-    db_logger.start()
-
-    time.sleep(3)
-
-    while True:
-        time.sleep(0.25)
-        for codename in pressure_codenames:
-            p = loggers[codename].read_pressure()
-            socket.set_point_now(codename, p)
-            if loggers[codename].trigged:
-                print p
-                db_logger.enqueue_point_now(codename, p)
-                loggers[codename].trigged = False
-
-
+while xgs_pressure.isAlive():
+    time.sleep(0.25)
+    for name in codenames:
+        v = loggers[name].read_value()
+        livesocket.set_point_now(name, v)
+        socket.set_point_now(name, v)
+        if loggers[name].read_trigged():
+            print (name + ': ' + str(v))
+            db_logger.enqueue_point_now(name, v)
+            loggers[name].clear_trigged()
