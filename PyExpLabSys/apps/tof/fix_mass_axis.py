@@ -8,6 +8,7 @@ import math
 
 PEAK_FIT_WIDTH = 5
 
+
 def fit_peak(time, mass, data):
     center = np.where(Data[:,0] > fit_values[mass])[0][0]
     Start = center -50 #Display range
@@ -15,20 +16,29 @@ def fit_peak(time, mass, data):
     X_values = Data[Start:End,0]
     Y_values = Data[Start:End,1]
     center = np.where(Y_values == max(Y_values))[0][0]
-    
+
     #Fitting range
     x_values = X_values[center-PEAK_FIT_WIDTH:center+PEAK_FIT_WIDTH]
     y_values = Y_values[center-PEAK_FIT_WIDTH:center+PEAK_FIT_WIDTH]
     
     fitfunc = lambda p, x: p[0]*math.e**(-1*((x-fit_values[mass]-p[2])**2)/p[1])
     errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
-    p0 = [50, 0.00001, 0] # Initial guess for the parameters
+    p0 = [max(Y_values), 0.00001, 0] # Initial guess for the parameters
     try:
-        p1, success = optimize.leastsq(errfunc, p0[:], args=(x_values, y_values),maxfev=1000) 
+        p1, success = optimize.leastsq(errfunc, p0[:], args=(x_values, y_values),maxfev=10000) 
     except: # Fit failed
         p1 = p0
         success = 0
-    usefull = (p1[0] > 15) and (success==1) # Only use the values if fit succeeded and peak has decent height
+    usefull = (p1[0] > 20) and (p1[1] < 1e-4) and (success==1) # Only use the values if fit succeeded and peak has decent height
+    if usefull:
+        print p1
+    #fig = plt.figure()
+    #ax = fig.add_subplot(1, 1, 1)
+    #ax.plot(X_values, Y_values, 'k-')
+    #ax.plot(X_values, fitfunc(p1, X_values), 'r-')
+    #ax.axvline(X_values[center-PEAK_FIT_WIDTH])
+    #ax.axvline(X_values[center+PEAK_FIT_WIDTH])
+    #plt.show()
     return usefull, p1
 
 def x_axis_fit_func(p, time):
@@ -38,20 +48,19 @@ def x_axis_fit_func(p, time):
 def fit_x_axis(fit_values):
     errfunc = lambda p, x, y: x_axis_fit_func(p, x) - y # Distance to the target function
     p0 = [-0.01, 0.1, 2] # Initial guess for the parameters
-    p1, success = optimize.leastsq(errfunc, p0[:], args=(fit_values.values(), fit_values.keys()), maxfev=1000)
+    p1, success = optimize.leastsq(errfunc, p0[:], args=(fit_values.values(), fit_values.keys()), maxfev=10000)
     return p1
 
-
-db = MySQLdb.connect(host="servcinf", user="cinf_reader",passwd = "cinf_reader", db = "cinfdata")
+db = MySQLdb.connect(host="servcinf.fysik.dtu.dk", user="cinf_reader",passwd = "cinf_reader", db = "cinfdata")
 cursor = db.cursor()
-cursor.execute("SELECT x*1000000,y FROM xy_values_tof where measurement = 2668")
+cursor.execute("SELECT x*1000000,y FROM xy_values_tof where measurement = 2667")
 Data = np.array(cursor.fetchall())
 
 fit_values = {}
 fit_values[2] = 4.37
 fit_values[4] = 6.1
 fit_values[18] = 12.74
-fit_values[28] = 15.85
+fit_values[28] = 15.84
 
 i = 0
 for mass in fit_values:
@@ -60,7 +69,7 @@ for mass in fit_values:
 
 p1_x_axis = fit_x_axis(fit_values)
 
-for mass in range(2, 180):
+for mass in range(10, 180):
     times = np.arange(0, 45, 0.01) # Calculate all masses within a 45microsecond scan
     time_index = np.where(x_axis_fit_func(p1_x_axis, times) > mass)[0][0]
     flight_time = times[time_index]
@@ -72,8 +81,6 @@ for mass in range(2, 180):
         print mass
     else:
         del fit_values[mass]
-    #print p1_peak
-
 
 fig = plt.figure()
 ax = fig.add_subplot(2, 1, 1)
@@ -89,6 +96,5 @@ ax = fig.add_subplot(1, 1, 1)
 ax.plot(x_axis_fit_func(p1_x_axis, Data[:,0]), Data[:,1], 'k-')
 ax.set_xlim(1,200)
 print p1_x_axis
-
-
 plt.show()
+
