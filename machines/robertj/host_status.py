@@ -66,7 +66,7 @@ def uptime(host, method, username='pi', password='cinf123'):
 
         try:
             sock.sendto('status', (host, port))
-            received = sock.recv(1024)
+            received = sock.recv(4096)
             status = json.loads(received)
             system_status = status['system_status']
             up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))

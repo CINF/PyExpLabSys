@@ -60,7 +60,8 @@
  rasppi109, Raspberry Pi, ls,     TOF, Pressure
  rasppi110, Raspberry Pi, ssh,    TOF, Mass spec
  rasppi111, Raspberry Pi, ssh,    Sniffer, Mass spec
- rasppi112, Raspberry Pi, socket, b309 CVD, Effusion cell control
- rasppi112, Raspberry Pi, 9001, b309 CVD, Effusion cell logger
+ rasppi112, Raspberry Pi, 9000,   b309 CVD, MAI cell
+ rasppi112, Raspberry Pi, 9001,   b309 CVD, Effusion cell logger
+ rasppi112, Raspberry Pi, 9002,   b309 CVD, DCA cell
  cinf-microreactorng-ms,  Ubuntu, ssh,    &micro;-reactorNG, Mass Spec
  cinf-microreactor-ms,    Ubuntu, ssh,    &micro;-reactor, Mass Spec
