@@ -1,7 +1,7 @@
-#import matplotlib
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
-import MySQLdb
+import mysql.connector
 from scipy import optimize
 from scipy import interpolate
 import math
@@ -29,9 +29,9 @@ def fit_peak(time, mass, data):
     except: # Fit failed
         p1 = p0
         success = 0
-    usefull = (p1[0] > 20) and (p1[1] < 1e-4) and (success==1) # Only use the values if fit succeeded and peak has decent height
+    usefull = (p1[0] > 10) and (p1[1] < 1e-4) and (success==1) # Only use the values if fit succeeded and peak has decent height
     if usefull:
-        print p1
+        print(p1)
     #fig = plt.figure()
     #ax = fig.add_subplot(1, 1, 1)
     #ax.plot(X_values, Y_values, 'k-')
@@ -51,9 +51,12 @@ def fit_x_axis(fit_values):
     p1, success = optimize.leastsq(errfunc, p0[:], args=(fit_values.values(), fit_values.keys()), maxfev=10000)
     return p1
 
-db = MySQLdb.connect(host="servcinf.fysik.dtu.dk", user="cinf_reader",passwd = "cinf_reader", db = "cinfdata")
+spectrum_number = sys.argv[1]
+print spectrum_number
+
+db = mysql.connector.connect(host="servcinf.fysik.dtu.dk", user="tof",passwd = "tof", db = "cinfdata")
 cursor = db.cursor()
-cursor.execute("SELECT x*1000000,y FROM xy_values_tof where measurement = 2667")
+cursor.execute("SELECT x*1000000,y FROM xy_values_tof where measurement = " + str(spectrum_number))
 Data = np.array(cursor.fetchall())
 
 fit_values = {}
@@ -78,7 +81,7 @@ for mass in range(10, 180):
     if usefull is True:
         fit_values[mass] = fit_values[mass] + p1_peak[2]
         p1_x_axis = fit_x_axis(fit_values)
-        print mass
+        print(mass)
     else:
         del fit_values[mass]
 
@@ -94,7 +97,13 @@ plt.show()
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
 ax.plot(x_axis_fit_func(p1_x_axis, Data[:,0]), Data[:,1], 'k-')
-ax.set_xlim(1,200)
-print p1_x_axis
+ax.set_xlim(1,300)
+print(p1_x_axis)
 plt.show()
 
+query = ('update measurements_tof set time=time, tof_p1_0=' + str(p1_x_axis[0]) +
+         ', tof_p1_1=' + str(p1_x_axis[1]) + ', tof_p1_2=' + str(p1_x_axis[2]) +
+         ' where id = ' + str(spectrum_number))
+if sys.argv[2] == 'yes':
+    print query
+    cursor.execute(query)
