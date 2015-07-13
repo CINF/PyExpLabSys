@@ -8,8 +8,41 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.xgs600 as xgs600
-import PyExpLabSys.drivers.mks_925_pirani as mks_925_pirani
+import PyExpLabSys.drivers.intellemetrics_il800 as il800
 import credentials
+
+class QcmReader(threading.Thread):
+    """ QCM Reader """
+    def __init__(self, qcm):
+        threading.Thread.__init__(self)
+        self.qcm = qcm
+        self.rate = None
+        self.thickness = None
+        self.frequency = None
+        self.quit = False
+        self.ttl = 20
+
+    def value(self, channel):
+        """ Read values """
+        self.ttl = self.ttl - 1
+        if self.ttl < 0:
+            self.quit = True
+            return_val = None
+        else:
+            if channel == 0:
+                return_val = self.rate
+            if channel == 1:
+                return_val = self.thickness
+            if channel == 2:
+                return_val = self.frequency
+        return return_val
+
+    def run(self):
+        while not self.quit:
+            self.ttl = 50
+            self.thickness = self.qcm.thickness()
+            self.frequency = self.qcm.frequency()
+            self.rate = self.qcm.rate()
 
 class XgsReader(threading.Thread):
     """ Pressure reader """
@@ -73,14 +106,19 @@ print xgs_instance.read_all_pressures()
 xgs_pressure = XgsReader(xgs_instance)
 xgs_pressure.start()
 
+IL800_UNIT = il800.IL800('/dev/ttyUSB0')
+qcm_reader = QcmReader(IL800_UNIT)
+qcm_reader.start()
+
 time.sleep(2.5)
 
 codenames = ['pvd309_load_lock_ig', 'pvd309_load_lock_turbo_roughing',
              'pvd309_load_lock_pirani', 'pvd309_main_chamber_ig',
-             'pvd309_cryo_roughing', 'pvd309_main_chamber_pirani ']
+             'pvd309_cryo_roughing', 'pvd309_main_chamber_pirani',
+             'pvd309_qcm1_rate', 'pvd309_qcm1_thickness', 'pvd309_qcm1_frequency']
 loggers = {}
 loggers[codenames[0]] = ValueLogger(xgs_pressure, comp_val = 0.1,
-                                    comp_type = 'log', channel = 0)
+                                    low_comp=1e-9, comp_type = 'log', channel = 0)
 loggers[codenames[0]].start()
 loggers[codenames[1]] = ValueLogger(xgs_pressure, comp_val = 0.1,
                                     low_comp=1e-3, comp_type = 'log', channel = 1)
@@ -89,7 +127,7 @@ loggers[codenames[2]] = ValueLogger(xgs_pressure, comp_val = 0.1,
                                     low_comp=1e-3, comp_type = 'log', channel = 2)
 loggers[codenames[2]].start()
 loggers[codenames[3]] = ValueLogger(xgs_pressure, comp_val = 0.1,
-                                    comp_type = 'log', channel = 3)
+                                    low_comp=1e-9, comp_type = 'log', channel = 3)
 loggers[codenames[3]].start()
 loggers[codenames[4]] = ValueLogger(xgs_pressure, comp_val = 0.3,
                                     low_comp=1e-2, comp_type = 'log', channel = 4)
@@ -97,12 +135,21 @@ loggers[codenames[4]].start()
 loggers[codenames[5]] = ValueLogger(xgs_pressure, comp_val = 0.1,
                                     low_comp=1e-3, comp_type = 'log', channel = 5)
 loggers[codenames[5]].start()
+loggers[codenames[6]] = ValueLogger(qcm_reader, comp_val = 0.01,
+                                    comp_type = 'lin', channel = 0)
+loggers[codenames[6]].start()
+loggers[codenames[7]] = ValueLogger(qcm_reader, comp_val = 0.1,
+                                    comp_type = 'lin', channel = 1)
+loggers[codenames[7]].start()
+loggers[codenames[8]] = ValueLogger(qcm_reader, comp_val = 1,
+                                    comp_type = 'lin', channel = 2)
+loggers[codenames[8]].start()
 
 
 livesocket = LiveSocket('pvd309 pressure logger', codenames, 2)
 livesocket.start()
 
-socket = DateDataPullSocket('pvd309 pressure', codenames, timeouts=[1.0]*6)
+socket = DateDataPullSocket('pvd309 pressure', codenames, timeouts=[1.0]*9)
 socket.start()
 
 db_logger = ContinuousLogger(table='dateplots_pvd309',
