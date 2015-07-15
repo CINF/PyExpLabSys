@@ -74,4 +74,8 @@ class Multical302(object):
         else:
             result = None
         return result
-        
+
+if __name__ == '__main__':
+    port = '/dev/ttyUSB1'
+    multical = Multical302(port)
+    multical.read_value('Temp1')
