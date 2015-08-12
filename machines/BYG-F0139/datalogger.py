@@ -16,7 +16,7 @@ import logging
 #from PyExpLabSys.common.sockets import DateDataPullSocket
 #from PyExpLabSys.common.sockets import LiveSocket
 #from PyExpLabSys.common.value_logger import ValueLogger
-from PyExpLabSys.auxiliary.pic import pid
+from PyExpLabSys.auxiliary.pid import PID
 #import PyExpLabSys.drivers.omegabus as omegabus
 import PyExpLabSys.drivers.omega_cni as omega_CNi32
 #import PyExpLabSys.drivers.kampstrup as kampstrup
@@ -77,23 +77,55 @@ class TABS(threading.Thread):
         self.Omegas = Omegas
         self.temperatures
     def  update_temperatures(self,):
-        self.
+        self.update()
     def run(self):
         self.update_temperatures()
         self.update_flows
 #logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 #logging.basicConfig(level=logging.ERROR)
 
-ports = {}
-ports['Omega ceil'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0'
-ports['Kamp ceil'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
-Omega = {}
-Omega['a'] = omega_CNi32.ISeries(ports['Omega ceil'], 9600, comm_stnd='rs485')
 
+OmegaPortsDict = {}
+#OmegaPortsDict['omega ceiling'] = '/dev/serial/by-id/usb-FTDI_USB-RS_Cable_FTWEA5HJ-if00-port0'
+OmegaPortsDict['omega floor'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
+OmegaPortsDict['omega guard'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0'
+OmegaPortsDict['omega cooling'] = '/dev/serial/by-id/usb-OMEGA_ENGINEERING_12.34-if00'
 
+OmegaCommStnd = {}
+#OmegaCommStnd['omega ceiling'] = 'rs232'
+OmegaCommStnd['omega floor'] = 'rs485' #add 2
+OmegaCommStnd['omega guard'] = 'rs485'
+OmegaCommStnd['omega cooling'] = 'rs232'
 
-for i in range(5):
-    print('address: ' + str(i) + ' ' + str(temp.read_temperature(address=i) ) )
+OmegaCommAdd = {}
+OmegaCommAdd['omega floor'] = 1
+OmegaCommAdd['omega guard'] = 1
 
+OmegaDict = {}
+for key in OmegaPortsDict.keys():
+    OmegaDict[key] = omega_CNi32.ISeries(OmegaPortsDict[key], 9600, comm_stnd=OmegaCommStnd[key])
 
-temp.close()
+test = 'omega floor'
+#id_ = OmegaDict['omega floor'].command('R21', address=2)
+OmegaDict[test].command('X01', address=1)
+
+OmegaDict[test].command('R08', address=1)
+OmegaDict[test].command('W0882', address=1)
+OmegaDict[test].command('Z02', address = 1)
+
+time.sleep(5)
+OmegaDict[test].command('R08', address=1)
+OmegaDict[test].command('X01', address=1)
+
+"""
+for key, value in OmegaDict.items():
+    print("Omega: {}".format(key))
+    if OmegaCommStnd[key] == 'rs485':
+        print('Temp: ' + str(value.read_temperature(address=OmegaCommAdd[key]) ) )
+        print('Format: ' + str(value.command('R08', address=OmegaCommAdd[key]) ) )
+    else:
+        print('Temp: ' + str(value.read_temperature() ) )
+        print('Format: ' + str(value.command('R08') ) )
+"""
+for om in OmegaDict.values():
+    om.close()
