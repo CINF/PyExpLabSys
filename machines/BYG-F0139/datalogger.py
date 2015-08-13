@@ -12,15 +12,17 @@ sys.path.insert(2, '../..')
 import threading
 import time
 import logging
-#from PyExpLabSys.common.loggers import ContinuousLogger
-#from PyExpLabSys.common.sockets import DateDataPullSocket
-#from PyExpLabSys.common.sockets import LiveSocket
-#from PyExpLabSys.common.value_logger import ValueLogger
+from PyExpLabSys.common.loggers import ContinuousLogger
+ContinuousLogger.host = 'localhost'
+ContinuousLogger.database = 'bygdata'
+from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.auxiliary.pid import PID
 #import PyExpLabSys.drivers.omegabus as omegabus
 import PyExpLabSys.drivers.omega_cni as omega_CNi32
 #import PyExpLabSys.drivers.kampstrup as kampstrup
-#import credentials
+import credentials
 
 #==============================================================================
 # class OldTempReader(threading.Thread):
@@ -69,7 +71,7 @@ class NGTempReader(threading.Thread):
             time.sleep(1)
             self.temperature = self.omega.read_temperature(address = 2)
 
-class TABS(threading.Thread):
+class TABS_Temperature(threading.Thread):
     """ class for control of the TABS test room """
     def __init__(self, Multical, Omegas):
         threading.Thread.__init__(self)
@@ -81,51 +83,135 @@ class TABS(threading.Thread):
     def run(self):
         self.update_temperatures()
         self.update_flows
-#logging.basicConfig(filename="logger.txt", level=logging.ERROR)
-#logging.basicConfig(level=logging.ERROR)
+        
+class TemperatureReader(threading.Thread):
+    """ Temperature reader """
+    def __init__(self,):
+        threading.Thread.__init__(self)
+        self.OmegaPortsDict = {}
+        #OmegaPortsDict['tabs_ceiling_temperature'] = '/dev/serial/by-id/usb-FTDI_USB-RS_Cable_FTWEA5HJ-if00-port0'
+        self.OmegaPortsDict['tabs_floor_temperature'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
+        self.OmegaPortsDict['tabs_guard_temperature'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0'
+        self.OmegaPortsDict['tabs_cooling_temperature'] = '/dev/serial/by-id/usb-OMEGA_ENGINEERING_12.34-if00'
+        
+        self.OmegaCommStnd = {}
+        self.OmegaCommStnd['tabs_ceiling_temperature'] = 'rs232'
+        self.OmegaCommStnd['tabs_floor_temperature'] = 'rs485' #add 2
+        self.OmegaCommStnd['tabs_guard_temperature'] = 'rs485'
+        self.OmegaCommStnd['tabs_cooling_temperature'] = 'rs232'
+        
+        self.OmegaCommAdd = {}
+        self.OmegaCommAdd['tabs_floor_temperature'] = 1
+        self.OmegaCommAdd['tabs_guard_temperature'] = 1
+        
+        self.OmegaDict = {}
+        for key in self.OmegaPortsDict.keys():
+            print('Initializing: ' + key)
+            self.OmegaDict[key] = omega_CNi32.ISeries(self.OmegaPortsDict[key], 9600, comm_stnd=self.OmegaCommStnd[key])
+            
+        self.temperatures = {'tabs_ceiling_temperature': None,
+                             'tabs_floor_temperature': None,
+                             'tabs_guard_temperature': None,
+                             'tabs_cooling_temperature': None}
+        self.quit = False
+        self.ttl = 20
+
+    def value(self, channel):
+        """ Read the pressure """
+        self.ttl = self.ttl - 1
+        if self.ttl < 0:
+            self.quit = True
+            return_val = None
+        else:
+            if channel == 0:
+                return_val = self.temperatures['tabs_guard_temperature']
+            if channel == 1:
+                return_val = self.temperatures['tabs_floor_temperature']
+            if channel == 2:
+                return_val = self.temperatures['tabs_ceiling_temperature']
+            if channel == 3:
+                return_val = self.temperatures['tabs_cooling_temperature']
+        return return_val
+    def update_values(self,):
+        for key, value in self.OmegaDict.items():
+            try:
+                #print("Omega: {}".format(key))
+                if self.OmegaCommStnd[key] == 'rs485':
+                    v = value.read_temperature(address=self.OmegaCommAdd[key])
+                    #print('Temp: ' + str(self.temperatures[key]) )
+                elif self.OmegaCommStnd[key] == 'rs232':
+                    v = value.read_temperature()
+                    #print('Temp: ' + str(self.temperatures[key]) )
+                    #print('Format: ' + str(value.command('R08') ) )
+                else:
+                    pass
+                self.temperatures[key] = v
+                self.ttl = 50
+            except IndexError:
+                print("av")
+            print(self.temperatures)
+
+    def run(self):
+        while not self.quit:
+            time.sleep(2)
+            self.update_values()
+            
+    def close(self,):
+        for key, value in self.OmegaDict.items():
+            value.close()
+
+logging.basicConfig(filename="logger.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
+
+omega_temperature = TemperatureReader()
+#omega_temperature.start()
+omega_temperature.update_values()
+
+time.sleep(1.5)
+
+codenames = ['tabs_guard_temperature',
+             'tabs_floor_temperature',
+             'tabs_ceiling_temperature',
+             'tabs_cooling_temperature',
+             ]
+loggers = {}
+loggers[codenames[0]] = ValueLogger(omega_temperature, comp_val = 0.1, maximumtime=60,
+                                    comp_type = 'lin', channel = 0)
+loggers[codenames[0]].start()
+
+loggers[codenames[1]] = ValueLogger(omega_temperature, comp_val = 0.1, maximumtime=60,
+                                    comp_type = 'lin', channel = 1)
+loggers[codenames[1]].start()
+
+loggers[codenames[2]] = ValueLogger(omega_temperature, comp_val = 0.1, maximumtime=60,
+                                    comp_type = 'lin', channel = 2)
+loggers[codenames[2]].start()
+
+loggers[codenames[3]] = ValueLogger(omega_temperature, comp_val = 0.1, maximumtime=60,
+                                    comp_type = 'lin', channel = 3)
+loggers[codenames[3]].start()
+
+#livesocket = LiveSocket('tabs_temperature_logger', codenames, 2)
+#livesocket.start()
+
+#socket = DateDataPullSocket('tabs_temperature', codenames, timeouts=[1.0]*len(codenames))
+#socket.start()
+
+db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=codenames)
+print('Hostname of db logger: ' + db_logger.host)
+db_logger.start()
 
 
-OmegaPortsDict = {}
-#OmegaPortsDict['omega ceiling'] = '/dev/serial/by-id/usb-FTDI_USB-RS_Cable_FTWEA5HJ-if00-port0'
-OmegaPortsDict['omega floor'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
-OmegaPortsDict['omega guard'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0'
-OmegaPortsDict['omega cooling'] = '/dev/serial/by-id/usb-OMEGA_ENGINEERING_12.34-if00'
-
-OmegaCommStnd = {}
-#OmegaCommStnd['omega ceiling'] = 'rs232'
-OmegaCommStnd['omega floor'] = 'rs485' #add 2
-OmegaCommStnd['omega guard'] = 'rs485'
-OmegaCommStnd['omega cooling'] = 'rs232'
-
-OmegaCommAdd = {}
-OmegaCommAdd['omega floor'] = 1
-OmegaCommAdd['omega guard'] = 1
-
-OmegaDict = {}
-for key in OmegaPortsDict.keys():
-    OmegaDict[key] = omega_CNi32.ISeries(OmegaPortsDict[key], 9600, comm_stnd=OmegaCommStnd[key])
-
-test = 'omega floor'
-#id_ = OmegaDict['omega floor'].command('R21', address=2)
-OmegaDict[test].command('X01', address=1)
-
-OmegaDict[test].command('R08', address=1)
-OmegaDict[test].command('W0882', address=1)
-OmegaDict[test].command('Z02', address = 1)
-
-time.sleep(5)
-OmegaDict[test].command('R08', address=1)
-OmegaDict[test].command('X01', address=1)
-
-"""
-for key, value in OmegaDict.items():
-    print("Omega: {}".format(key))
-    if OmegaCommStnd[key] == 'rs485':
-        print('Temp: ' + str(value.read_temperature(address=OmegaCommAdd[key]) ) )
-        print('Format: ' + str(value.command('R08', address=OmegaCommAdd[key]) ) )
-    else:
-        print('Temp: ' + str(value.read_temperature() ) )
-        print('Format: ' + str(value.command('R08') ) )
-"""
-for om in OmegaDict.values():
-    om.close()
+i = 0
+while omega_temperature.isAlive():
+    print(i)
+    time.sleep(1)
+    for name in codenames:
+        v = loggers[name].read_value()
+        #livesocket.set_point_now(name, v)
+        #socket.set_point_now(name, v)
+        if loggers[name].read_trigged():
+            print(name, v)
+            db_logger.enqueue_point_now(name, v)
+            loggers[name].clear_trigged()
+print(i)
