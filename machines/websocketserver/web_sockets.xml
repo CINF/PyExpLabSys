@@ -81,4 +81,22 @@
     <!-- Chiller Parallel screening -->
     <socket>rasppi20:8000</socket>
 
+    <!-- Bakeout control box Palle -->
+    <socket>rasppi48:8000</socket>
+
+    <!-- Emmission control -->
+    <socket>rasppi49:8000</socket>
+
+    <!-- Palle, Analog MFC -->
+    <socket>rasppi62:8000</socket>
+
+    <!-- b309PVD temperatures -->
+    <socket>rasppi112:8000</socket>
+
+    <!-- b309PVD pressures -->
+    <socket>rasppi51:8000</socket>
+
+    <!-- b312 Temperature and ventilation pressure -->
+    <socket>rasppi66:8000</socket>
+
 </sockets>
