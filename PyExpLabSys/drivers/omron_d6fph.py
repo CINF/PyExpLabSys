@@ -27,14 +27,13 @@ class OmronD6fph(object):
         self.bus.write_byte(self.device_address, 0x07)
         high = self.bus.read_byte(self.device_address)
         low = self.bus.read_byte(self.device_address)
-        value = int(hex(high) + hex(low)[2:], 16)
+        value = int(hex(high) + hex(low)[2:].zfill(2), 16)
         return value
 
     def read_pressure(self):
         """ Read the pressure value """
         value = self.read_value([0xD0, 0x51, 0x2C])
         #TODO: Implement range calculation for all sensor models
-        print value
         pressure = (value - 1024) * self.full_range / 60000 - self.full_range/2
         return pressure
 
