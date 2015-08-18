@@ -37,7 +37,7 @@ class PictureLogbook(object):
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
         self.database = MySQLdb.connect(host='servcinf', user='picturelogbook',
                                         passwd='picturelogbook', db='cinfdata')
-
+        self.database.ping(True)
         query = 'select user, login from picture_logbooks where setup = "'
         query += self.setup + '" order by time desc limit 1'
         cursor = self.database.cursor()
@@ -148,7 +148,7 @@ class PictureLogbook(object):
                 print self.login(username, force_logout=force)
             else:
                 print '-'
-            time.sleep(2)
+            time.sleep(1)
 
 if __name__ == '__main__':
     LOGBOOK = PictureLogbook()
