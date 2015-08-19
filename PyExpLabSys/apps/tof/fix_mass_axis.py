@@ -40,14 +40,21 @@ def fit_peak(time, mass, data):
     #ax.axvline(X_values[center+PEAK_FIT_WIDTH])
     #plt.show()
     return usefull, p1
-
+"""
 def x_axis_fit_func(p, time):
     mass = p[0] + p[1]* pow(time, p[2])
+    return mass
+"""
+
+def x_axis_fit_func(p, time):
+    #mass = p[1]* pow(time-p[0], p[2])
+    mass = p[1]* pow(time-p[0], 2)
+
     return mass
 
 def fit_x_axis(fit_values):
     errfunc = lambda p, x, y: x_axis_fit_func(p, x) - y # Distance to the target function
-    p0 = [-0.01, 0.1, 2] # Initial guess for the parameters
+    p0 = [0.1, 0.1, 2] # Initial guess for the parameters
     p1, success = optimize.leastsq(errfunc, p0[:], args=(fit_values.values(), fit_values.keys()), maxfev=10000)
     return p1
 
