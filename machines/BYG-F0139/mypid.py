@@ -44,19 +44,31 @@ class PidTemperatureControl(threading.Thread):
         threading.Thread.__init__(self)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.PIDs = {}
-        self.temperatures = {}
-        self.setpoints = {}
-        self.powers = {}
+        #self.temperatures = {}
+        #self.setpoints = {}
+        #self.pidvalues = {}
         self.quit = False
         self.ttl = 50
-        for co in codenames:
-            self.PIDs[co[:-5]+'pid'] = PID(pid_p=0.15, pid_i=0.0025, pid_d=0, p_max=100, p_min=-100)
+        self.SYSTEMS = {}
+        for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']:
+            self.SYSTEMS[sy] = {'temperature_inlet': None, # float in C
+                                'temperature_outlet': None, # float in C
+                                'temperature_setpoint': None, # float in C
+                                'valve_cooling': None, # float 0-1
+                                'valve_heating': None, # float 0-1
+                                'pid_value': None, # float -1-1
+                                'water_flow': None} # float in l/min
+        for sy, value in self.SYSTEMS.items():
+            value['pid_value'] = 0.0
+        self.PIDs = {}
+        for sy in self.SYSTEMS.keys():
+            self.PIDs[sy+'_pid_value'] = PID(pid_p=0.015, pid_i=0.00025, pid_d=0, p_max=1, p_min=-1)
             #self.setpoints[co[:-5]+'setpoint'] = None
             #self.temperatures[co[:-5]+'temperature'] = None
             #self.powers[co[:-5]+'power'] = 0.0
-        self.temperatures = {'tabs_guard_temperature': None, 'tabs_floor_temperature': None, 'tabs_ceiling_temperature': None, 'tabs_cooling_temperature': None} 
-        self.setpoints = {'tabs_guard_setpoint': None, 'tabs_floor_setpoint': None, 'tabs_ceiling_setpoint': None, 'tabs_cooling_setpoint': None} 
-        self.powers = {'tabs_guard_power': None, 'tabs_floor_power': None, 'tabs_ceiling_power': None, 'tabs_cooling_power': None} 
+        #self.temperatures = {'tabs_guard_temperature': None, 'tabs_floor_temperature': None, 'tabs_ceiling_temperature': None, 'tabs_cooling_temperature': None} 
+        #self.setpoints = {'tabs_guard_setpoint': None, 'tabs_floor_setpoint': None, 'tabs_ceiling_setpoint': None, 'tabs_cooling_setpoint': None} 
+        #self.pidvalue = {'tabs_guard_pid': None, 'tabs_floor_pid': None, 'tabs_ceiling_pid': None, 'tabs_cooling_pid': None} 
         
     def update_temperatures(self,):
         info = socketinfo.INFO['tabs_temperatures']
@@ -67,14 +79,20 @@ class PidTemperatureControl(threading.Thread):
         #print(data)
         now = time.time()
         for key, value in data.items():
-            co = str(key)
-            if now - value[0] > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5spowers
-                # value to old
-               self.temperatures[co] = None
-            else:
-                self.temperatures[co] = value[1]
+            _key = str(key).rsplit('_')
+            sy = _key[0]+'_' + _key[1]
+            me = _key[2]+'_' + _key[3]
+            try:
+                if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                    # value to old
+                   #self.pidvalues[co] = 0.0
+                   self.SYSTEMS[sy][me] = None
+                else:
+                    self.SYSTEMS[sy][me] = value[1]
+            except:
+                self.SYSTEMS[sy][me] = None
         #print(self.temperatures)
-        return self.temperatures
+        return self.SYSTEMS
         
     def update_setpoints(self,):
         info = socketinfo.INFO['tabs_setpoints']
@@ -82,45 +100,64 @@ class PidTemperatureControl(threading.Thread):
         command = 'json_wn'
         self.sock.sendto(command, host_port)
         data = json.loads(self.sock.recv(2048))
+        #print(data)
         now = time.time()
         for key, value in data.items():
+            _key = str(key).rsplit('_')
+            sy = _key[0]+'_' + _key[1]
+            me = _key[2]+'_' + _key[3]
             try:
-                if now - value[0] > 3*60: # this is 3min change to 5s
+                if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
                     # value to old
-                   self.setpoints[key] = None
+                   #self.pidvalues[co] = 0.0
+                   self.SYSTEMS[sy][me] = None
                 else:
-                    self.setpoints[key] = value[1]
+                    self.SYSTEMS[sy][me] = value[1]
             except:
-                pass
-        #self.setpoints = {'tabs_guard_setpoint': 25.0, 'tabs_floor_setpoint': 25.0, 'tabs_ceiling_setpoint': 25.0, 'tabs_cooling_setpoint': 25.0}  
-        return self.setpoints
+                self.SYSTEMS[sy][me] = None
+            #print(self.SYSTEMS[sy][me])
+        return self.SYSTEMS
     
-    def update_powers(self,):
-        for key, value in self.PIDs.items():
-            co = str(key)
-            setpoint = self.setpoints[co[:-3]+'setpoint']
-            value.update_setpoint(setpoint)
-            temperature = self.temperatures[co[:-3]+'temperature']
-            self.powers[co[:-3]+'power'] = value.wanted_power(temperature)
+    def update_pidvalues(self,):
+        for sy, value in self.SYSTEMS.items():
+            #co = str(key)
+            setpoint = value['temperature_setpoint']
+            if setpoint == None:
+                pass
+            else:
+                self.PIDs[sy+'_pid_value'].update_setpoint(setpoint)
+            temperature = value['temperature_inlet']
+            #print(temperature)
+            if temperature == None:
+                pass
+            else:
+                value['pid_value'] = self.PIDs[sy+'_pid_value'].wanted_power(temperature)
+            #print(value['pid_values'])
         #print(self.powers)
-        return self.powers
+        return self.SYSTEMS
         
     def value(self, channel):
         """ Read the pressure """
         self.ttl = self.ttl - 1
+        #print('ttl: ', self.ttl, channel)
         if self.ttl < 0:
             self.quit = True
             return_val = None
         else:
+            me = 'pid_value'
             if channel == 0:
-                return_val = self.powers['tabs_guard_power']
+                sy = 'tabs_guard'
+                return_val = self.SYSTEMS[sy][me]
             elif channel == 1:
-                return_val = self.powers['tabs_floor_power']
+                sy = 'tabs_floor'
+                return_val = self.SYSTEMS[sy][me]
             elif channel == 2:
-                return_val = self.powers['tabs_ceiling_power']
+                sy = 'tabs_ceiling'
+                return_val = self.SYSTEMS[sy][me]
             elif channel == 3:
-                return_val = self.powers['tabs_cooling_power']
-        #print('return_val: ', return_val, '<-')
+                sy = 'tabs_cooling'
+                return_val = self.SYSTEMS[sy][me]
+        #print('return_val: ' , return_val)
         return return_val
                 
     def run(self):
@@ -128,7 +165,7 @@ class PidTemperatureControl(threading.Thread):
             time.sleep(1)
             self.update_temperatures()
             self.update_setpoints()
-            self.update_powers()
+            self.update_pidvalues()
             try:
                 self.ttl = 50
                 pass
@@ -138,12 +175,12 @@ class PidTemperatureControl(threading.Thread):
         self.quit = True
         
 if __name__ == '__main__':
-    codenames = ['tabs_guard_power',
-                 'tabs_floor_power',
-                 'tabs_ceiling_power',
-                 #'tabs_cooling_power',
+    codenames = ['tabs_guard_pid_value',
+                 'tabs_floor_pid_value',
+                 'tabs_ceiling_pid_value',
+                 'tabs_cooling_pid_value',
                  ]
-    sockname = 'tabs_powers'
+    sockname = 'tabs_pids'
     PullSocket = DateDataPullSocket(sockname, codenames, timeouts=[60.0]*len(codenames), port = socketinfo.INFO[sockname]['port'])
     PullSocket.start()
     
@@ -151,19 +188,19 @@ if __name__ == '__main__':
     PTC.start()
     #time.sleep(5)
     
-    chlist = {'tabs_guard_power': 0, 'tabs_floor_power': 1, 'tabs_ceiling_power': 2, 'tabs_cooling_power': 3}
+    chlist = {'tabs_guard_pid_value': 0, 'tabs_floor_pid_value': 1, 'tabs_ceiling_pid_value': 2, 'tabs_cooling_pid_value': 3}
     loggers = {}
     for key in codenames:
-        loggers[key] = ValueLogger(PTC, comp_val = 1.9, maximumtime=60,
+        loggers[key] = ValueLogger(PTC, comp_val = 0.10, maximumtime=60,
                                         comp_type = 'lin', channel = chlist[key])
         loggers[key].start()
     #livesocket = LiveSocket('tabs_temperature_logger', codenames, 2)
     #livesocket.start()
 
     
-    #db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=codenames)
-    #print('Hostname of db logger: ' + db_logger.host)
-    #db_logger.start()
+    db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=codenames)
+    print('Hostname of db logger: ' + db_logger.host)
+    db_logger.start()
     
     i = 0
     while PTC.isAlive():
@@ -178,7 +215,7 @@ if __name__ == '__main__':
                 PullSocket.set_point_now(name, v)
                 if loggers[name].read_trigged():
                     print('Log: ', name, v)
-                    #db_logger.enqueue_point_now(name, v)
+                    db_logger.enqueue_point_now(name, v)
                     loggers[name].clear_trigged()
         except (KeyboardInterrupt, SystemExit):
             PTC.stop()
