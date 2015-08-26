@@ -200,6 +200,10 @@ class SystemStatus(object):
     @works_on('linux2')
     def rpi_temperature():
         """Return the temperature of a Raspberry Pi"""
+        #Firmware bug in Broadcom chip craches raspberry pi when reading temperature
+        #and using i2c at the same time
+        if os.path.exists('/dev/i2c-1'):
+            return None
         # Get temperature string
         try:
             temp_str = subprocess.check_output(['cat',
