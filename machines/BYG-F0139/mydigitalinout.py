@@ -3,7 +3,7 @@
 # pylint: disable=C0301,R0904, C0103
 """ Pressure and temperature logger """
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import sys
 sys.path.insert(1, '/home/pi/PyExpLabSys')
@@ -14,13 +14,14 @@ import time
 import logging
 import socket
 import json
-#from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.loggers import ContinuousLogger
 import credentials
 import socketinfo
-#ContinuousLogger.host = credentials.dbhost
-#ContinuousLogger.database = credentials.dbname
+ContinuousLogger.host = credentials.dbhost
+ContinuousLogger.database = credentials.dbname
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.drivers.dataq_comm import DataQ
+from PyExpLabSys.drivers.omega_D6720 import OmegaD6720
 from PyExpLabSys.common.value_logger import ValueLogger
 #from PyExpLabSys.auxiliary.pid import PID
 #import PyExpLabSys.drivers.omegabus as omegabus
@@ -36,9 +37,12 @@ class FloatToDigital(object):
         self.totalcycles = totalcycles
         self.dutycycles = 0.0
     
-    def update(dutycycles):
-        if dutycycles < 0 or dutycycles > 1:
+    def update(self, dutycycles):
+        #print(dutycycles)
+        self.dutycycles = dutycycles
+        if self.dutycycles < 0 or self.dutycycles > 1:
             print('dutycycles is outside allowed area, should be between 0-1')
+        #print(self.cycle/self.totalcycles, self.dutycycles)
         if (self.cycle/self.totalcycles) < self.dutycycles:
             result = True
         else:
@@ -56,7 +60,7 @@ class ValveControl(threading.Thread):
         self.codenames = codenames
         self.ttl = 50
         self.SYSTEMS = {}
-        for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']:
+        for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling']: #, 'tabs_ice'
             self.SYSTEMS[sy] = {'temperature_inlet': None, # float in C
                                 'temperature_outlet': None, # float in C
                                 'temperature_setpoint': None, # float in C
@@ -64,8 +68,10 @@ class ValveControl(threading.Thread):
                                 'valve_heating': None, # float 0-1
                                 'pid_value': None, # float -1-1
                                 'water_flow': None} # float in l/min
-        port = '/dev/serial/by-id/usb-0683_1490-if00'
-        self.DATAQ = DataQ(port=port)
+        #port = '/dev/serial/by-id/usb-0683_1490-if00'
+        #self.DATAQ = DataQ(port=port)
+        port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWN2Q-if00-port0'
+        self.omega = OmegaD6720(1, port=port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #self.pidvalues = {'tabs_guard_pid': 0.0, 'tabs_floor_pid': 0.0, 'tabs_ceiling_pid': 0.0, 'tabs_cooling_pid': 0.0}
         #self.heater = {'tabs_guard_heater': None, 'tabs_floor_heater': None, 'tabs_ceiling_heater': None, 'tabs_cooling_heater': None}
@@ -82,10 +88,12 @@ class ValveControl(threading.Thread):
         data = json.loads(self.sock.recv(2048))
         #print('New Power settings: ', data)
         now = time.time()
+        #print('SOCK: ', data)
         for key, value in data.items():
             _key = str(key).rsplit('_')
             sy = _key[0]+'_' + _key[1]
             me = _key[2]+'_' + _key[3]
+            #print('SOCK: ', key, value)
             try:
                 if now - value[0] > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
                     # value to old
@@ -97,6 +105,7 @@ class ValveControl(threading.Thread):
                 self.SYSTEMS[sy][me] = None
                 #self.powers[co] = 0.0
         #print('Valve powers: ', self.powers)
+            #print('sock: rturn', self.SYSTEMS[sy][me])
         return self.SYSTEMS
         
     def value(self, channel):
@@ -124,20 +133,53 @@ class ValveControl(threading.Thread):
     
     def update_DO(self,):
         self.ttl = self.ttl - 1
+        keytochannel = {'tabs_guard_valve_heating': 0,
+                        'tabs_floor_valve_heating': 1,
+                        'tabs_ceiling_valve_heating': 2,
+                        'tabs_cooling_valve_heating': 3,
+                        'tabs_ice_valve_heating': 4,
+                        'tabs_guard_valve_cooling': 5,
+                        'tabs_floor_valve_cooling': 6,
+                        'tabs_ceiling_valve_cooling': 7,
+                        'tabs_cooling_valve_cooling': 8,
+                        'tabs_ice_valve_cooling': 9,}
         OnOffSignal = {}
-        for key, value in self.FloatToDigital.keys():
-            sy = key[0]+'_' + key[1]
-            me = key[2]+'_' + key[3]
-            OnOffSignal[key] = value.update(self.SYSTEMS[sy][me])
+        for key, value in self.FloatToDigital.items():
+            try:
+                _key = str(key).rsplit('_')
+                sy = _key[0]+'_' + _key[1]
+                me = _key[2]+'_' + _key[3]
+                #print('SYS', self.SYSTEMS[sy]['pid_value'])
+                val = self.SYSTEMS[sy]['pid_value']
+                if me == 'valve_heating' and val > 0:
+                    self.SYSTEMS[sy][me] = val
+                elif me == 'valve_heating' and val < 0:
+                    self.SYSTEMS[sy][me] = 0
+                elif me == 'valve_cooling' and val > 0:
+                    self.SYSTEMS[sy][me] = 0
+                elif me == 'valve_cooling' and val < 0:
+                    self.SYSTEMS[sy][me] = -val
+                else:
+                    self.SYSTEMS[sy][me] = 0
+                OnOffSignal[key] = int(value.update(self.SYSTEMS[sy][me]))
+                if me == 'valve_heating' or True:
+                    #print(keytochannel[key], int(OnOffSignal[key]))
+                    self.omega.write_channel(ch=keytochannel[key], value=int(OnOffSignal[key]))
+                    #write_channel(self,ch=0, value=0)
+                    self.ttl = 50
+                elif me == 'valve_cooling':
+                    pass
+            except:
+                    print('cant turn relay on/off for ch: ' , key)
         #print('Valve settings: ' , v)
-        try:
-            self.DATAQ.setOutputs(ch0=OnOffSignal['tabs_guard_valve_heating'],
-                                  ch1=OnOffSignal['tabs_floor_valve_heating'],
-                                  ch2=OnOffSignal['tabs_ceiling_valve_heating'],
-                                  ch3=OnOffSignal['tabs_cooling_valve_heating'])
-            self.ttl = 50
-        except:
-            print('Cant set digital out')
+        #try:
+        #    self.DATAQ.setOutputs(ch0=OnOffSignal['tabs_guard_valve_heating'],
+        #                          ch1=OnOffSignal['tabs_floor_valve_heating'],
+        #                          ch2=OnOffSignal['tabs_ceiling_valve_heating'],
+        #                          ch3=OnOffSignal['tabs_cooling_valve_heating'])
+        #    self.ttl = 50
+        #except:
+        #    print('Cant set digital out')
             
     def run(self):
         while not self.quit:
@@ -151,10 +193,13 @@ class ValveControl(threading.Thread):
                 print('Run error in PidTemperatureControl')
     def stop(self,):
         self.quit = True
+        #self.DATAQ.close()
+        self.omega.all_off()
+        self.omega.close()
 
 class MainDGIO(threading.Thread):
     """ Temperature reader """
-    def __init__(self, codenames):
+    def __init__(self):
         threading.Thread.__init__(self)
         #from digitalinot import ValveControl
         self.quit = False
@@ -172,8 +217,10 @@ class MainDGIO(threading.Thread):
         chlist = {'tabs_guard_valve_heating': 0, 'tabs_floor_valve_heating': 1, 'tabs_ceiling_valve_heating': 2, 'tabs_cooling_valve_heating': 3}
         self.loggers = {}
         for key in self.codenames:
-            self.loggers[key] = ValueLogger(self.VC, comp_val = 1.9, maximumtime=60, comp_type = 'lin', channel = chlist[key])
+            self.loggers[key] = ValueLogger(self.VC, comp_val = 0.05, maximumtime=60, comp_type = 'lin', channel = chlist[key])
             self.loggers[key].start()
+        self.db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=self.codenames)
+        self.db_logger.start()
     def run(self,):
         i = 0
         while not self.quit:
@@ -186,16 +233,19 @@ class MainDGIO(threading.Thread):
                     #livesocket.set_point_now(name, v)
                     self.PullSocket.set_point_now(name, v)
                     if self.loggers[name].read_trigged():
-                        #print('Log: ', name, v)
-                        #db_logger.enqueue_point_now(name, v)
+                        print('Log: ', name, v)
+                        self.db_logger.enqueue_point_now(name, v)
                         self.loggers[name].clear_trigged()
             except (KeyboardInterrupt, SystemExit):
-                self.VC.stop()
+                pass
+                #self.VC.stop()
                 #report error and proceed
             i += 1
     def stop(self):
         self.quit = True
+        self.VC.stop()
         self.PullSocket.stop()
+        self.db_logger.stop()
         for key in self.codenames:
             self.loggers[key].status['quit'] = True
 

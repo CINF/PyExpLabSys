@@ -18,10 +18,17 @@ from PyExpLabSys.common.value_logger import ValueLogger
 class CursesTui(threading.Thread):
     """ the display TUI for changing and chowing the temperature of the high
     pressure cell"""
-    def __init__(self, codenames):
+    def __init__(self, codenames=None):
         threading.Thread.__init__(self)
+        if codenames == None:
+            codenames = ['tabs_guard_temperature_setpoint',
+                     'tabs_floor_temperature_setpoint',
+                     'tabs_ceiling_temperature_setpoint',
+                     'tabs_cooling_temperature_setpoint',
+                     ]
         self.screen = curses.initscr()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(3)
         self.codenames = codenames
         curses.noecho()
         curses.cbreak()
@@ -73,33 +80,59 @@ class CursesTui(threading.Thread):
 
     def update_temperatures(self,):
         """ Read the temperature from a external socket server"""
-        info = socketinfo.INFO['tabs_temperatures']
-        host_port = (info['host'], info['port'])
-        command = 'json_wn'
-        self.sock.sendto(command, host_port)
-        data = json.loads(self.sock.recv(2048))
-        now = time.time()
-        #print(data)
-        for key, value in data.items():
-            _key = str(key).rsplit('_')
-            sy = _key[0]+'_' + _key[1]
-            me = _key[2]+'_' + _key[3]
-            try:
-                if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
-                    # value to old
-                   #self.pidvalues[co] = 0.0
-                   self.SYSTEMS[sy][me] = None
-                else:
-                    self.SYSTEMS[sy][me] = value[1]
-            except:
-                self.SYSTEMS[sy][me] = None
-        #print(self.temperatures)
+        try:
+            info = socketinfo.INFO['tabs_temperatures']
+            host_port = (info['host'], info['port'])
+            command = 'json_wn'
+            self.sock.sendto(command, host_port)
+            data = json.loads(self.sock.recv(2048))
+            now = time.time()
+            #print(data)
+            for key, value in data.items():
+                _key = str(key).rsplit('_')
+                sy = _key[0]+'_' + _key[1]
+                me = _key[2]+'_' + _key[3]
+                try:
+                    if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                       self.SYSTEMS[sy][me] = None
+                    else:
+                        self.SYSTEMS[sy][me] = value[1]
+                except:
+                    self.SYSTEMS[sy][me] = None
+        except socket.timeout:
+            pass
+        return self.SYSTEMS
+    
+    def update_pid(self,):
+        """ Read the pid values from a external socket server"""
+        try:
+            info = socketinfo.INFO['tabs_pids']
+            host_port = (info['host'], info['port'])
+            command = 'json_wn'
+            self.sock.sendto(command, host_port)
+            data = json.loads(self.sock.recv(2048))
+            now = time.time()
+            #print(data)
+            for key, value in data.items():
+                _key = str(key).rsplit('_')
+                sy = _key[0]+'_' + _key[1]
+                me = _key[2]+'_' + _key[3]
+                try:
+                    if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                       self.SYSTEMS[sy][me] = None
+                    else:
+                        self.SYSTEMS[sy][me] = value[1]
+                except:
+                    self.SYSTEMS[sy][me] = None
+        except socket.timeout:
+            pass
         return self.SYSTEMS
 
     def run(self,):
         while not self.quit:
             time.sleep(0.1)
             self.update_temperatures()
+            self.update_pid()
             self.screen.addstr(3, 2, "Tabs controller" )
             try:
                 self.screen.addstr(6, 2,
@@ -109,20 +142,22 @@ class CursesTui(threading.Thread):
                 global EXCEPTION
                 EXCEPTION = exception
             line = 8
-            self.screen.addstr(line, 2, "{0:15} {1:2} {2:2}".format('System', 'Temperature', 'Setpoint'))
+            self.screen.addstr(line, 2, "{0:15} {1:2} {2:2} {3:2}".format('System', 'Temperature', 'Setpoint', 'pid'))
             line += 1
             for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']:#self.SYSTEMS.keys():
+                self.screen.addstr(line, 2, "{0:15}: ".format(sy))
                 try:
-                    self.screen.addstr(line, 2,
-                                       "{0:15}: {1:+.2f} C    {2:+.2f} C".format(
-                                       sy,
-                                       self.SYSTEMS[sy]['temperature_inlet'],
-                                       self.SYSTEMS[sy]['temperature_setpoint']))
+                    self.screen.addstr(line, 20,"{0:+.2f} C".format(self.SYSTEMS[sy]['temperature_inlet']))
                 except:
-                    self.screen.addstr(line, 2,
-                                       "{0:15}:             {1:+.2f} C".format(
-                                       sy,
-                                       self.SYSTEMS[sy]['temperature_setpoint']))
+                    self.screen.addstr(line, 20, "       C")
+                try:
+                    self.screen.addstr(line, 30, "{0:+.2f} C".format(self.SYSTEMS[sy]['temperature_setpoint']))
+                except:
+                    self.screen.addstr(line, 30, "       C")
+                try:
+                    self.screen.addstr(line, 40, "{0:+.3f}".format(self.SYSTEMS[sy]['pid_value']))
+                except:
+                    self.screen.addstr(line, 40,"      ")
                 line += 1
             if self.last_key != None:
                 self.screen.addstr(24, 2,
@@ -150,6 +185,7 @@ class CursesTui(threading.Thread):
         #print EXCEPTION
 
     def stop(self):
+        self.quit = True
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
@@ -160,7 +196,7 @@ class MainTui(threading.Thread):
     """ Temperature reader """
     def __init__(self,):
         threading.Thread.__init__(self)
-        from mytui import CursesTui
+        #from mytui import CursesTui
         self.quit = False
         self.codenames = ['tabs_guard_temperature_setpoint',
                      'tabs_floor_temperature_setpoint',
@@ -171,7 +207,7 @@ class MainTui(threading.Thread):
         self.PullSocket = DateDataPullSocket(sockname, self.codenames, timeouts=[60.0]*len(self.codenames), port = socketinfo.INFO[sockname]['port'])
         self.PullSocket.start()
         
-        self.TUI = CursesTui(codenames)
+        self.TUI = CursesTui(self.codenames)
         self.TUI.start()
         #time.sleep(5)
         
@@ -194,6 +230,11 @@ class MainTui(threading.Thread):
         i = 0
         while not self.quit:
             #print(i)
+            if self.TUI.isAlive():
+                pass
+            else:
+                print('TUI has shutdown')
+                self.quit = True
             try:
                 #print(i)
                 time.sleep(2)
@@ -206,68 +247,41 @@ class MainTui(threading.Thread):
                         #print('Log: ', name, v)
                         self.db_logger.enqueue_point_now(name, v)
                         self.loggers[name].clear_trigged()
-            except (KeyboardInterrupt, SystemExit):
-                self.TUI.stop()
+            except:
+                print('run error')
+                pass
+                #self.TUI.stop()
                 #report error and proceed
             i += 1
-
+        self.stop()
+        
     def stop(self):
         self.quit = True
+        self.TUI.stop()
         self.PullSocket.stop()
+        self.db_logger.stop()
         for key in self.codenames:
             self.loggers[key].status['quit'] = True
         
         
 if __name__ == '__main__':
-    codenames = ['tabs_guard_temperature_setpoint',
-                 'tabs_floor_temperature_setpoint',
-                 'tabs_ceiling_temperature_setpoint',
-                 'tabs_cooling_temperature_setpoint',
-                 ]
-    sockname = 'tabs_setpoints'
-    PullSocket = DateDataPullSocket(sockname, codenames, timeouts=[60.0]*len(codenames), port = socketinfo.INFO[sockname]['port'])
-    PullSocket.start()
-    
-    TUI = CursesTui(codenames)
-    TUI.start()
-    #time.sleep(5)
-    
-    chlist = {'tabs_guard_temperature_setpoint': 0, 'tabs_floor_temperature_setpoint': 1, 'tabs_ceiling_temperature_setpoint': 2, 'tabs_cooling_temperature_setpoint': 3}
-    loggers = {}
-    for key in codenames:
-        loggers[key] = ValueLogger(TUI, comp_val = 0.2, maximumtime=60,
-                                        comp_type = 'lin', channel = chlist[key])
-        loggers[key].start()
-    #livesocket = LiveSocket('tabs_temperature_logger', codenames, 2)
-    #livesocket.start()
-    
-    
-    
-    db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=codenames)
-    #print('Hostname of db logger: ' + db_logger.host)
-    db_logger.start()
-    
-    i = 0
-    while TUI.isAlive():
-        #print(i)
+    """
+    T = CursesTui()
+    T.start()
+    while T.isAlive():
         try:
-            #print(i)
-            time.sleep(2)
-            for name in codenames:
-                v = loggers[name].read_value()
-                #print('Status: ', name , v)
-                #livesocket.set_point_now(name, v)
-                PullSocket.set_point_now(name, v)
-                if loggers[name].read_trigged():
-                    #print('Log: ', name, v)
-                    db_logger.enqueue_point_now(name, v)
-                    loggers[name].clear_trigged()
+            time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            TUI.stop()
-            #report error and proceed
-        i += 1
-    PullSocket.stop()
-    for key in codenames:
-        loggers[key].status['quit'] = True
-    #print(i)
+            T.stop()
+    """
+    #"""
+    MTUI = MainTui()
+    MTUI.start()
+    
+    while MTUI.isAlive():
+        try:
+            time.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            MTUI.stop()
     print('END')
+    #"""

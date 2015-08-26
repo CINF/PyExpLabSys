@@ -43,6 +43,7 @@ class PidTemperatureControl(threading.Thread):
     def __init__(self, codenames):
         threading.Thread.__init__(self)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(3)
         self.PIDs = {}
         #self.temperatures = {}
         #self.setpoints = {}
@@ -71,51 +72,57 @@ class PidTemperatureControl(threading.Thread):
         #self.pidvalue = {'tabs_guard_pid': None, 'tabs_floor_pid': None, 'tabs_ceiling_pid': None, 'tabs_cooling_pid': None} 
         
     def update_temperatures(self,):
-        info = socketinfo.INFO['tabs_temperatures']
-        host_port = (info['host'], info['port'])
-        command = 'json_wn'
-        self.sock.sendto(command, host_port)
-        data = json.loads(self.sock.recv(2048))
-        #print(data)
-        now = time.time()
-        for key, value in data.items():
-            _key = str(key).rsplit('_')
-            sy = _key[0]+'_' + _key[1]
-            me = _key[2]+'_' + _key[3]
-            try:
-                if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
-                    # value to old
-                   #self.pidvalues[co] = 0.0
-                   self.SYSTEMS[sy][me] = None
-                else:
-                    self.SYSTEMS[sy][me] = value[1]
-            except:
-                self.SYSTEMS[sy][me] = None
-        #print(self.temperatures)
+        try:
+            info = socketinfo.INFO['tabs_temperatures']
+            host_port = (info['host'], info['port'])
+            command = 'json_wn'
+            self.sock.sendto(command, host_port)
+            data = json.loads(self.sock.recv(2048))
+            #print(data)
+            now = time.time()
+            for key, value in data.items():
+                _key = str(key).rsplit('_')
+                sy = _key[0]+'_' + _key[1]
+                me = _key[2]+'_' + _key[3]
+                try:
+                    if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                        # value to old
+                       #self.pidvalues[co] = 0.0
+                       self.SYSTEMS[sy][me] = None
+                    else:
+                        self.SYSTEMS[sy][me] = value[1]
+                except:
+                    self.SYSTEMS[sy][me] = None
+            #print(self.temperatures)
+        except socket.timeout:
+            pass
         return self.SYSTEMS
         
     def update_setpoints(self,):
-        info = socketinfo.INFO['tabs_setpoints']
-        host_port = (info['host'], info['port'])
-        command = 'json_wn'
-        self.sock.sendto(command, host_port)
-        data = json.loads(self.sock.recv(2048))
-        #print(data)
-        now = time.time()
-        for key, value in data.items():
-            _key = str(key).rsplit('_')
-            sy = _key[0]+'_' + _key[1]
-            me = _key[2]+'_' + _key[3]
-            try:
-                if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
-                    # value to old
-                   #self.pidvalues[co] = 0.0
-                   self.SYSTEMS[sy][me] = None
-                else:
-                    self.SYSTEMS[sy][me] = value[1]
-            except:
-                self.SYSTEMS[sy][me] = None
-            #print(self.SYSTEMS[sy][me])
+        try:
+            info = socketinfo.INFO['tabs_setpoints']
+            host_port = (info['host'], info['port'])
+            command = 'json_wn'
+            self.sock.sendto(command, host_port)
+            data = json.loads(self.sock.recv(2048))
+            #print(data)
+            now = time.time()
+            for key, value in data.items():
+                _key = str(key).rsplit('_')
+                sy = _key[0]+'_' + _key[1]
+                me = _key[2]+'_' + _key[3]
+                try:
+                    if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                        # value to old
+                       #self.pidvalues[co] = 0.0
+                       self.SYSTEMS[sy][me] = None
+                    else:
+                        self.SYSTEMS[sy][me] = value[1]
+                except:
+                    self.SYSTEMS[sy][me] = None
+                #print(self.SYSTEMS[sy][me])
+        except socket.timeout:
+            pass
         return self.SYSTEMS
     
     def update_pidvalues(self,):
@@ -173,56 +180,76 @@ class PidTemperatureControl(threading.Thread):
                 print('Run error in PidTemperatureControl')
     def stop(self,):
         self.quit = True
-        
-if __name__ == '__main__':
-    codenames = ['tabs_guard_pid_value',
+
+class MainPID(threading.Thread):
+    """ pid controller """
+    def __init__(self,):
+        threading.Thread.__init__(self)
+        #from datalogger import TemperatureReader
+        self.quit = False
+        self.codenames = ['tabs_guard_pid_value',
                  'tabs_floor_pid_value',
                  'tabs_ceiling_pid_value',
                  'tabs_cooling_pid_value',
                  ]
-    sockname = 'tabs_pids'
-    PullSocket = DateDataPullSocket(sockname, codenames, timeouts=[60.0]*len(codenames), port = socketinfo.INFO[sockname]['port'])
-    PullSocket.start()
+        sockname = 'tabs_pids'
+        self.PullSocket = DateDataPullSocket(sockname, self.codenames, timeouts=[60.0]*len(self.codenames), port = socketinfo.INFO[sockname]['port'])
+        self.PullSocket.start()
     
-    PTC = PidTemperatureControl(codenames)
-    PTC.start()
-    #time.sleep(5)
+        self.PTC = PidTemperatureControl(self.codenames)
+        self.PTC.start()
+        #time.sleep(5)
     
-    chlist = {'tabs_guard_pid_value': 0, 'tabs_floor_pid_value': 1, 'tabs_ceiling_pid_value': 2, 'tabs_cooling_pid_value': 3}
-    loggers = {}
-    for key in codenames:
-        loggers[key] = ValueLogger(PTC, comp_val = 0.10, maximumtime=60,
+        chlist = {'tabs_guard_pid_value': 0, 'tabs_floor_pid_value': 1, 'tabs_ceiling_pid_value': 2, 'tabs_cooling_pid_value': 3}
+        self.loggers = {}
+        for key in self.codenames:
+            self.loggers[key] = ValueLogger(self.PTC, comp_val = 0.10, maximumtime=60,
                                         comp_type = 'lin', channel = chlist[key])
-        loggers[key].start()
-    #livesocket = LiveSocket('tabs_temperature_logger', codenames, 2)
-    #livesocket.start()
+            self.loggers[key].start()
+        #livesocket = LiveSocket('tabs_temperature_logger', codenames, 2)
+        #livesocket.start()
 
     
-    db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=codenames)
-    print('Hostname of db logger: ' + db_logger.host)
-    db_logger.start()
+        self.db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=self.codenames)
+        self.db_logger.start()
+
+    def run(self,):
+        i = 0
+        while not self.quit:
+            try:
+                #print(i)
+                time.sleep(1)
+                for name in self.codenames:
+                    v = self.loggers[name].read_value()
+                    #print('Status: ', name , v)
+                    #livesocket.set_point_now(name, v)
+                    self.PullSocket.set_point_now(name, v)
+                    if self.loggers[name].read_trigged():
+                        print(i, name, v)
+                        self.db_logger.enqueue_point_now(name, v)
+                        self.loggers[name].clear_trigged()
+            except (KeyboardInterrupt, SystemExit):
+                pass
+                #self.PTC.stop()
+                #report error and proceed
+            i += 1
+    def stop(self):
+        self.quit = True
+        self.PTC.stop()
+        self.PullSocket.stop()
+        self.db_logger.stop()
+        for key in self.codenames:
+            self.loggers[key].status['quit'] = True
+
+        
+if __name__ == '__main__':
+    MPID = MainPID()
+    MPID.start()
     
-    i = 0
-    while PTC.isAlive():
-        print(i)
+    while MPID.isAlive():
         try:
-            #print(i)
-            time.sleep(2)
-            for name in codenames:
-                v = loggers[name].read_value()
-                print('Status: ', name , v)
-                #livesocket.set_point_now(name, v)
-                PullSocket.set_point_now(name, v)
-                if loggers[name].read_trigged():
-                    print('Log: ', name, v)
-                    db_logger.enqueue_point_now(name, v)
-                    loggers[name].clear_trigged()
+            time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            PTC.stop()
-            #report error and proceed
-        i += 1
-    PullSocket.stop()
-    for key in codenames:
-        loggers[key].status['quit'] = True
-    print(i)
+            MPID.stop()
     print('END')
+

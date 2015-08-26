@@ -57,6 +57,18 @@ class TemperatureReader(threading.Thread):
         self.OmegaCommStnd['tabs_ceiling_temperature_inlet'] = 'rs232'
         self.OmegaCommStnd['tabs_cooling_temperature_inlet'] = 'rs232'
         
+        self.OldValue = {}
+        self.OldValue['tabs_guard_temperature_inlet'] = None
+        self.OldValue['tabs_floor_temperature_inlet'] = None
+        self.OldValue['tabs_ceiling_temperature_inlet'] = None
+        self.OldValue['tabs_cooling_temperature_inlet'] = None
+        
+        self.OffSet = {}
+        self.OffSet['tabs_guard_temperature_inlet'] = 25.92 - 25.3
+        self.OffSet['tabs_floor_temperature_inlet'] = 25.22 - 23.9
+        self.OffSet['tabs_ceiling_temperature_inlet'] = 26.50 - 26.30
+        self.OffSet['tabs_cooling_temperature_inlet'] = 26 - 26.09
+        
         self.OmegaCommAdd = {}
         self.OmegaCommAdd['tabs_guard_temperature_inlet'] = 1
         self.OmegaCommAdd['tabs_floor_temperature_inlet'] = 1
@@ -128,8 +140,16 @@ class TemperatureReader(threading.Thread):
                     #print('Format: ' + str(value.command('R08') ) )
                 else:
                     self.SYSTEMS[sy][me] = None
-                self.SYSTEMS[sy][me] = v
-                #self.temperatures[key] = v
+                new_val = v + self.OffSet[key]
+                old_val = self.OldValue[key]
+                if old_val == None:
+                    old_val = new_val
+                    self.SYSTEMS[sy][me] = new_val
+                elif abs(new_val - old_val) < 0.5:
+                    old_val = new_val
+                    self.SYSTEMS[sy][me] = new_val
+                else:
+                    pass
                 self.ttl = 50
             except IndexError:
                 print("av")
@@ -142,7 +162,7 @@ class TemperatureReader(threading.Thread):
             time.sleep(2)
             self.update_values()
             
-    def close(self,):
+    def stop(self,):
         self.quit = True
         for key, value in self.OmegaDict.items():
             value.close()
@@ -199,12 +219,15 @@ class MainDatalogger(threading.Thread):
                         self.db_logger.enqueue_point_now(name, v)
                         self.loggers[name].clear_trigged()
             except (KeyboardInterrupt, SystemExit):
-                self.omega_temperature.close()
+                pass
+                #self.omega_temperature.close()
                 #report error and proceed
             i += 1
     def stop(self):
         self.quit = True
-        self.PullSocket.close()
+        self.omega_temperature.stop()
+        self.db_logger.stop()
+        self.PullSocket.stop()
         for key in self.codenames:
             self.loggers[key].status['quit'] = True
 
