@@ -30,6 +30,7 @@ class CursesTui(threading.Thread):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(3)
         self.codenames = codenames
+        self.active_channel = None
         curses.noecho()
         curses.cbreak()
         curses.curs_set(False)
@@ -51,6 +52,7 @@ class CursesTui(threading.Thread):
                                 'water_flow': None} # float in l/min
         for sy, value in self.SYSTEMS.items():
             value['temperature_setpoint'] = 25.0
+         self.SYSTEMS['tabs_cooling']['temperature_setpoint']= 15.0
         #self.setpoints = {'tabs_guard_setpoint': 25.0, 'tabs_floor_setpoint': 25.0, 'tabs_ceiling_setpoint': 25.0, 'tabs_cooling_setpoint': 25.0}  
         #self.temperatures = {'tabs_guard_temperature': None, 'tabs_floor_temperature': None, 'tabs_ceiling_temperature': None, 'tabs_cooling_temperature': None} 
         
@@ -165,20 +167,38 @@ class CursesTui(threading.Thread):
             self.screen.addstr(21, 2,
                                "q: quit program, ")
             self.screen.addstr(22, 2,
-                               "1: increase, " \
-                               "!, decrease, ")
+                               "a: increase, " \
+                               "z, decrease, ")
+            self.screen.addstr(23, 2,
+                               "Active channel [0-9] : {}".format(self.active_channel))
             n = self.screen.getch()
             if n == ord("q"):
                 self.quit = True
                 self.last_key = chr(n)
+            elif n == ord('a'):
+                if self.active_channel != None:
+                    self.SYSTEMS[self.active_channel]['temperature_setpoint'] += 0.1
+                self.last_key = chr(n)
             elif n == ord('z'):
-                for key, value in self.SYSTEMS.items():
-                    value['temperature_setpoint'] += 0.1
+                if self.active_channel != None:
+                    self.SYSTEMS[self.active_channel]['temperature_setpoint'] -= 0.1
                 self.last_key = chr(n)
-            elif n == ord('x'):
-                for key, value in self.SYSTEMS.items():
-                    value['temperature_setpoint'] -= 0.1
+            elif n == ord("1"):
+                self.active_channel = 'tabs_guard'
                 self.last_key = chr(n)
+            elif n == ord("2"):
+                self.active_channel = 'tabs_floor'
+                self.last_key = chr(n)
+            elif n == ord("3"):
+                self.active_channel = 'tabs_ceiling'
+                self.last_key = chr(n)
+            elif n == ord("4"):
+                self.active_channel = 'tabs_cooling'
+                self.last_key = chr(n)
+            elif n == ord("0"):
+                self.active_channel = None
+                self.last_key = chr(n)
+                
             self.screen.refresh()
         time.sleep(5)
         self.stop()

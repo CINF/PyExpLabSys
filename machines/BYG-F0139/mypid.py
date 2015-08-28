@@ -35,7 +35,21 @@ SocketServer.UDPServer.allow_reuse_address = True
 
 
 
-
+def Safety(SYSTEMS):
+    if SYSTEMS['tabs_cooling']['temperature_inlet'] < 10.0:
+        SYSTEMS['tabs_guard']['pid_value'] = -1
+        SYSTEMS['tabs_floor']['pid_value'] = -1
+        SYSTEMS['tabs_ceiling']['pid_value'] = -1
+        SYSTEMS['tabs_cooling']['pid_value'] = 1
+        
+        SYSTEMS['tabs_guard']['valve_heating'] = 1
+        SYSTEMS['tabs_floor']['valve_heating'] = 1
+        SYSTEMS['tabs_ceiling']['valve_heating'] = 1
+        SYSTEMS['tabs_guard']['valve_cooling'] = 1
+        SYSTEMS['tabs_floor']['valve_cooling'] = 1
+        SYSTEMS['tabs_ceiling']['valve_cooling'] = 1
+        SYSTEMS['tabs_cooling']['valve_cooling'] = 0
+    return SYSTEMS
 
 
 class PidTemperatureControl(threading.Thread):
@@ -139,6 +153,7 @@ class PidTemperatureControl(threading.Thread):
                 pass
             else:
                 value['pid_value'] = self.PIDs[sy+'_pid_value'].wanted_power(temperature)
+        self.SYSTEMS = Safety(self.SYSTEMS)
             #print(value['pid_values'])
         #print(self.powers)
         return self.SYSTEMS

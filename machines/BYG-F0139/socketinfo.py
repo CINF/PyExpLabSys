@@ -35,6 +35,10 @@ INFO['tabs_valve'] = {'host': 'localhost',
                                           'tabs_floor_valve_cooling',
                                           'tabs_ceiling_valve_cooling',
                                           'tabs_cooling_valve_cooling']}
+INFO['tabs_multiplexer'] = {'host': 'localhost',
+                      'port': 9005,
+                      'codenames':['tabs_ceiling_temperature_delta',
+                                    'tabs_floor_temperature_delta',]}
 """INFO['tabs_heaters'] = {
                         'host': 'localhost',
                         'port': 9004,

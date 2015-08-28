@@ -68,8 +68,8 @@ class ValveControl(threading.Thread):
                                 'valve_heating': None, # float 0-1
                                 'pid_value': None, # float -1-1
                                 'water_flow': None} # float in l/min
-        #port = '/dev/serial/by-id/usb-0683_1490-if00'
-        #self.DATAQ = DataQ(port=port)
+        port = '/dev/serial/by-id/usb-0683_1490-if00'
+        self.DATAQ = DataQ(port=port)
         port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWN2Q-if00-port0'
         self.omega = OmegaD6720(1, port=port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -115,7 +115,7 @@ class ValveControl(threading.Thread):
             self.quit = True
             return_val = None
         else:
-            me = 'pid_value'
+            me = 'valve_heating'
             if channel == 0:
                 sy = 'tabs_guard'
                 return_val = self.SYSTEMS[sy][me]
@@ -126,6 +126,19 @@ class ValveControl(threading.Thread):
                 sy = 'tabs_ceiling'
                 return_val = self.SYSTEMS[sy][me]
             elif channel == 3:
+                sy = 'tabs_cooling'
+                return_val = self.SYSTEMS[sy][me]
+            me = 'valve_cooling'
+            if channel == 4:
+                sy = 'tabs_guard'
+                return_val = self.SYSTEMS[sy][me]
+            elif channel == 5:
+                sy = 'tabs_floor'
+                return_val = self.SYSTEMS[sy][me]
+            elif channel == 6:
+                sy = 'tabs_ceiling'
+                return_val = self.SYSTEMS[sy][me]
+            elif channel == 7:
                 sy = 'tabs_cooling'
                 return_val = self.SYSTEMS[sy][me]
         #print('return_val: ', return_val, '<-')
@@ -144,7 +157,11 @@ class ValveControl(threading.Thread):
                         'tabs_cooling_valve_cooling': 8,
                         'tabs_ice_valve_cooling': 9,}
         OnOffSignal = {}
-        for key, value in self.FloatToDigital.items():
+        if self.SYSTEMS['tabs_cooling']['temperature_inlet'] < 5.0:
+            self.SYSTEMS['tabs_guard']['pid_value'] = -1.0
+            self.SYSTEMS['tabs_floor']['pid_value'] = -1.0
+            self.SYSTEMS['tabs_ceiling']['pid_value'] = -1.0
+        for key, value in self.FloatToDigital.items(): 
             try:
                 _key = str(key).rsplit('_')
                 sy = _key[0]+'_' + _key[1]
@@ -152,34 +169,33 @@ class ValveControl(threading.Thread):
                 #print('SYS', self.SYSTEMS[sy]['pid_value'])
                 val = self.SYSTEMS[sy]['pid_value']
                 if me == 'valve_heating' and val > 0:
-                    self.SYSTEMS[sy][me] = val
+                    self.SYSTEMS[sy][me] = abs(val)
                 elif me == 'valve_heating' and val < 0:
-                    self.SYSTEMS[sy][me] = 0
+                    self.SYSTEMS[sy][me] = 0.0
                 elif me == 'valve_cooling' and val > 0:
-                    self.SYSTEMS[sy][me] = 0
+                    self.SYSTEMS[sy][me] = 0.0
                 elif me == 'valve_cooling' and val < 0:
-                    self.SYSTEMS[sy][me] = -val
+                    self.SYSTEMS[sy][me] = abs(val)
                 else:
                     self.SYSTEMS[sy][me] = 0
+            except:
+                print('error')
+        try:
+            for key, value in self.FloatToDigital.items():
                 OnOffSignal[key] = int(value.update(self.SYSTEMS[sy][me]))
-                if me == 'valve_heating' or True:
+                if me == 'valve_heating':
                     #print(keytochannel[key], int(OnOffSignal[key]))
                     self.omega.write_channel(ch=keytochannel[key], value=int(OnOffSignal[key]))
                     #write_channel(self,ch=0, value=0)
-                    self.ttl = 50
-                elif me == 'valve_cooling':
-                    pass
-            except:
-                    print('cant turn relay on/off for ch: ' , key)
-        #print('Valve settings: ' , v)
-        #try:
-        #    self.DATAQ.setOutputs(ch0=OnOffSignal['tabs_guard_valve_heating'],
-        #                          ch1=OnOffSignal['tabs_floor_valve_heating'],
-        #                          ch2=OnOffSignal['tabs_ceiling_valve_heating'],
-        #                          ch3=OnOffSignal['tabs_cooling_valve_heating'])
-        #    self.ttl = 50
-        #except:
-        #    print('Cant set digital out')
+            self.DATAQ.setOutputs(ch0=OnOffSignal['tabs_guard_valve_cooling'],
+                                  ch1=OnOffSignal['tabs_floor_valve_cooling'],
+                                  ch2=OnOffSignal['tabs_ceiling_valve_cooling'],
+                                  ch3=OnOffSignal['tabs_cooling_valve_cooling'])
+
+            self.ttl = 50
+        except:
+            print('error')
+ 
             
     def run(self):
         while not self.quit:
@@ -207,6 +223,10 @@ class MainDGIO(threading.Thread):
                      'tabs_floor_valve_heating',
                      'tabs_ceiling_valve_heating',
                      'tabs_cooling_valve_heating',
+                     'tabs_guard_valve_cooling',
+                     'tabs_floor_valve_cooling',
+                     'tabs_ceiling_valve_cooling',
+                     'tabs_cooling_valve_cooling',
                      ]
         sockname = 'tabs_valve'
         #codenames = socketinfo.INFO[sockname]['codenames']
@@ -214,7 +234,14 @@ class MainDGIO(threading.Thread):
         self.PullSocket.start()
         self.VC = ValveControl(self.codenames)
         self.VC.start()
-        chlist = {'tabs_guard_valve_heating': 0, 'tabs_floor_valve_heating': 1, 'tabs_ceiling_valve_heating': 2, 'tabs_cooling_valve_heating': 3}
+        chlist = {'tabs_guard_valve_heating': 0,
+                  'tabs_floor_valve_heating': 1,
+                  'tabs_ceiling_valve_heating': 2,
+                  'tabs_cooling_valve_heating': 3,
+                  'tabs_guard_valve_cooling': 4,
+                  'tabs_floor_valve_cooling': 5,
+                  'tabs_ceiling_valve_cooling': 6,
+                  'tabs_cooling_valve_cooling': 7}
         self.loggers = {}
         for key in self.codenames:
             self.loggers[key] = ValueLogger(self.VC, comp_val = 0.05, maximumtime=60, comp_type = 'lin', channel = chlist[key])

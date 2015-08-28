@@ -27,6 +27,11 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
+
+class RunningMean(object):
+    def __init__(length):
+        self.list = list(length)
+
 class TemperatureReader(threading.Thread):
     """ Temperature reader """
     def __init__(self, codenames):
@@ -48,7 +53,7 @@ class TemperatureReader(threading.Thread):
         
         #self.OmegaPortsDict['tabs_guard_temperature_inlet'] = '/dev/ttyUSB1'
         #self.OmegaPortsDict['tabs_floor_temperature_inlet'] = '/dev/ttyUSB0'
-        self.OmegaPortsDict['tabs_ceiling_temperature_inlet'] = '/dev/ttyACM2'
+        self.OmegaPortsDict['tabs_ceiling_temperature_inlet'] = '/dev/ttyACM0'
         self.OmegaPortsDict['tabs_cooling_temperature_inlet'] = '/dev/ttyACM1'
         
         self.OmegaCommStnd = {}
@@ -64,10 +69,10 @@ class TemperatureReader(threading.Thread):
         self.OldValue['tabs_cooling_temperature_inlet'] = None
         
         self.OffSet = {}
-        self.OffSet['tabs_guard_temperature_inlet'] = 25.92 - 25.3
-        self.OffSet['tabs_floor_temperature_inlet'] = 25.22 - 23.9
-        self.OffSet['tabs_ceiling_temperature_inlet'] = 26.50 - 26.30
-        self.OffSet['tabs_cooling_temperature_inlet'] = 26 - 26.09
+        self.OffSet['tabs_guard_temperature_inlet'] = 0.62
+        self.OffSet['tabs_floor_temperature_inlet'] = 1.32
+        self.OffSet['tabs_ceiling_temperature_inlet'] = 0.30
+        self.OffSet['tabs_cooling_temperature_inlet'] = -0.49
         
         self.OmegaCommAdd = {}
         self.OmegaCommAdd['tabs_guard_temperature_inlet'] = 1
@@ -142,7 +147,9 @@ class TemperatureReader(threading.Thread):
                     self.SYSTEMS[sy][me] = None
                 new_val = v + self.OffSet[key]
                 old_val = self.OldValue[key]
-                if old_val == None:
+                if new_val == None:
+                    pass
+                elif old_val == None:
                     old_val = new_val
                     self.SYSTEMS[sy][me] = new_val
                 elif abs(new_val - old_val) < 0.5:
