@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function, division
 #import curses
 #import socket
 import threading
@@ -7,22 +8,32 @@ import time
 #import socket
 #import json
 
-import credentials
-import socketinfo
-from PyExpLabSys.common.loggers import ContinuousLogger
-ContinuousLogger.host = credentials.dbhost
-ContinuousLogger.database = credentials.dbname
-from PyExpLabSys.common.sockets import DateDataPullSocket
-from PyExpLabSys.common.value_logger import ValueLogger
+
+import sys
+sys.path.insert(1, '/home/pi/PyExpLabSys')
+
+#import credentials
+#import socketinfo
+#from PyExpLabSys.common.loggers import ContinuousLogger
+#ContinuousLogger.host = credentials.dbhost
+#ContinuousLogger.database = credentials.dbname
+#from PyExpLabSys.common.sockets import DateDataPullSocket
+#from PyExpLabSys.common.value_logger import ValueLogger
 
 
 
 
 if __name__ == '__main__':
+    
     from mydatalogger import MainDatalogger
     MDL = MainDatalogger()
     MDL.start()
-    time.sleep(4)
+    #time.sleep(4)
+    
+    from mymultiplexer import MainMultilogger
+    MML = MainMultilogger()
+    MML.start()
+    #time.sleep(4)
     
     from mytui import MainTui
     MT = MainTui()
@@ -34,7 +45,7 @@ if __name__ == '__main__':
     MP.start()
     time.sleep(4)
     
-    from digitalinout import MainDGIO
+    from mydigitalinout import MainDGIO
     DGIO = MainDGIO()
     DGIO.start()
     
@@ -46,6 +57,8 @@ if __name__ == '__main__':
     DGIO.stop()
     MP.stop()
     MT.stop()
+    MML.stop()
     MDL.stop()
     print('END')
+    
     

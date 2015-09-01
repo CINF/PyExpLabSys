@@ -80,7 +80,7 @@ class TemperatureReader(threading.Thread):
         
         self.OmegaDict = {}
         for key in codenames:
-            print('Initializing: ' + key)
+            #print('Initializing: ' + key)
             self.OmegaDict[key] = omega_CNi32.ISeries(self.OmegaPortsDict[key], 9600, comm_stnd=self.OmegaCommStnd[key])
             
         #self.temperatures = {'tabs_guard_temperature': None,
@@ -213,7 +213,7 @@ class MainDatalogger(threading.Thread):
     
     def run(self,):
         i = 0
-        while not self.quit:
+        while not self.quit and self.omega_temperature.isAlive():
             try:
                 #print(i)
                 time.sleep(1)
@@ -222,7 +222,8 @@ class MainDatalogger(threading.Thread):
                     #livesocket.set_point_now(name, v)
                     self.PullSocket.set_point_now(name, v)
                     if self.loggers[name].read_trigged():
-                        #print(i, name, v)
+                        if __name__ == '__main__':
+                            print('Log: ', i, name, v)
                         self.db_logger.enqueue_point_now(name, v)
                         self.loggers[name].clear_trigged()
             except (KeyboardInterrupt, SystemExit):
@@ -230,6 +231,7 @@ class MainDatalogger(threading.Thread):
                 #self.omega_temperature.close()
                 #report error and proceed
             i += 1
+        self.stop()
     def stop(self):
         self.quit = True
         self.omega_temperature.stop()
@@ -247,5 +249,5 @@ if __name__ == '__main__':
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
             MDL.stop()
-    print('END')
+    #print('END')
     

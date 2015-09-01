@@ -7,6 +7,9 @@ import time
 import socket
 import json
 
+import sys
+sys.path.insert(1, '/home/pi/PyExpLabSys')
+
 import credentials
 import socketinfo
 from PyExpLabSys.common.loggers import ContinuousLogger
@@ -20,11 +23,16 @@ class CursesTui(threading.Thread):
     pressure cell"""
     def __init__(self, codenames=None):
         threading.Thread.__init__(self)
+        
+        import ramp
+        self.ramp = ramp.ramp()
+        self.run_ramp = False
         if codenames == None:
             codenames = ['tabs_guard_temperature_setpoint',
                      'tabs_floor_temperature_setpoint',
                      'tabs_ceiling_temperature_setpoint',
                      'tabs_cooling_temperature_setpoint',
+                     'tabs_all_control_active',
                      ]
         self.screen = curses.initscr()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -40,19 +48,25 @@ class CursesTui(threading.Thread):
         self.countdown = False
         self.last_key = None
         self.quit = False
+        self.active = False
         self.ttl = 50
         self.SYSTEMS = {}
-        for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']:
-            self.SYSTEMS[sy] = {'temperature_inlet': None, # float in C
-                                'temperature_outlet': None, # float in C
-                                'temperature_setpoint': None, # float in C
-                                'valve_cooling': None, # float 0-1
-                                'valve_heating': None, # float 0-1
-                                'pid_value': None, # float -1-1
-                                'water_flow': None} # float in l/min
-        for sy, value in self.SYSTEMS.items():
-            value['temperature_setpoint'] = 25.0
-         self.SYSTEMS['tabs_cooling']['temperature_setpoint']= 15.0
+        sys = ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']
+        vals = ['temperature_inlet', 'temperature_outlet', 'temperature_setpoint', 'valve_cooling', 'valve_heating', 'pid_value', 'water_flow']
+        for sy in sys:
+            for val in vals:
+                self.SYSTEMS[sy + '_' + val] = None
+        #        {sy + '_'+'temperature_inlet': None, # float in C
+        #                        'temperature_outlet': None, # float in C
+        #                        'temperature_setpoint': None, # float in C
+        #                        'valve_cooling': None, # float 0-1
+        #                        'valve_heating': None, # float 0-1
+        #                        'pid_value': None, # float -1-1
+        #                        'water_flow': None} # float in l/min
+        self.update_ramp()
+        #for sy, value in self.SYSTEMS.items():
+        #    #value['temperature_setpoint'] = 25.0
+        #self.SYSTEMS['tabs_cooling']['temperature_setpoint'] = 15.0
         #self.setpoints = {'tabs_guard_setpoint': 25.0, 'tabs_floor_setpoint': 25.0, 'tabs_ceiling_setpoint': 25.0, 'tabs_cooling_setpoint': 25.0}  
         #self.temperatures = {'tabs_guard_temperature': None, 'tabs_floor_temperature': None, 'tabs_ceiling_temperature': None, 'tabs_cooling_temperature': None} 
         
@@ -67,16 +81,16 @@ class CursesTui(threading.Thread):
             me = 'temperature_setpoint'
             if channel == 0:
                 sy = 'tabs_guard'
-                return_val = self.SYSTEMS[sy][me]
+                return_val = self.SYSTEMS[sy+'_'+me]
             elif channel == 1:
                 sy = 'tabs_floor'
-                return_val = self.SYSTEMS[sy][me]
+                return_val = self.SYSTEMS[sy+'_'+me]
             elif channel == 2:
                 sy = 'tabs_ceiling'
-                return_val = self.SYSTEMS[sy][me]
+                return_val = self.SYSTEMS[sy+'_'+me]
             elif channel == 3:
                 sy = 'tabs_cooling'
-                return_val = self.SYSTEMS[sy][me]
+                return_val = self.SYSTEMS[sy+'_'+me]
         #print('return_val: ', return_val, '<-')
         return return_val
 
@@ -91,16 +105,17 @@ class CursesTui(threading.Thread):
             now = time.time()
             #print(data)
             for key, value in data.items():
-                _key = str(key).rsplit('_')
-                sy = _key[0]+'_' + _key[1]
-                me = _key[2]+'_' + _key[3]
-                try:
-                    if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
-                       self.SYSTEMS[sy][me] = None
-                    else:
-                        self.SYSTEMS[sy][me] = value[1]
-                except:
-                    self.SYSTEMS[sy][me] = None
+                #_key = str(key).rsplit('_')
+                #sy = _key[0]+'_' + _key[1]
+                #me = _key[2]+'_' + _key[3]
+                if not 'temperature_setpoint' in key:
+                    try:
+                        if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                           self.SYSTEMS[key] = None
+                        else:
+                            self.SYSTEMS[key] = value[1]
+                    except:
+                        self.SYSTEMS[key] = None
         except socket.timeout:
             pass
         return self.SYSTEMS
@@ -116,19 +131,60 @@ class CursesTui(threading.Thread):
             now = time.time()
             #print(data)
             for key, value in data.items():
-                _key = str(key).rsplit('_')
-                sy = _key[0]+'_' + _key[1]
-                me = _key[2]+'_' + _key[3]
-                try:
-                    if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
-                       self.SYSTEMS[sy][me] = None
-                    else:
-                        self.SYSTEMS[sy][me] = value[1]
-                except:
-                    self.SYSTEMS[sy][me] = None
+                if 'pid_value' in key:
+                    #_key = str(key).rsplit('_')
+                    #sy = _key[0]+'_' + _key[1]
+                    #me = _key[2]+'_' + _key[3]
+                    try:
+                        if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                           self.SYSTEMS[key] = None
+                        else:
+                            self.SYSTEMS[key] = value[1]
+                    except:
+                        self.SYSTEMS[key] = None
         except socket.timeout:
             pass
         return self.SYSTEMS
+        
+    def update_room(self,):
+        """ Read the pid values from a external socket server"""
+        try:
+            info = socketinfo.INFO['tabs_multiplexer']
+            host_port = (info['host'], info['port'])
+            command = 'json_wn'
+            self.sock.sendto(command, host_port)
+            data = json.loads(self.sock.recv(2048))
+            now = time.time()
+            #print(data)
+            for key, value in data.items():
+                #_key = str(key).rsplit('_')
+                #sy = _key[0]+'_' + _key[1]
+                #me = _key[2]+'_' + _key[3]
+                try:
+                    if abs(now - value[0]) > 3*60 or value[1] == 'OLD_DATA': # this is 3min change to 5s
+                       self.SYSTEMS[key] = None
+                    else:
+                        self.SYSTEMS[key] = value[1]
+                except:
+                    self.SYSTEMS[key] = None
+        except socket.timeout:
+            pass
+        return self.SYSTEMS
+        
+    def load_ramp(self,):
+        """ load a ramp defined in external script"""
+        import ramp
+        reload(ramp)
+        self.ramp = ramp.ramp()
+        self.run_ramp = True
+        
+    def update_ramp(self,):
+        pre = self.ramp.present()
+        self.SYSTEMS['tabs_guard_temperature_setpoint'] = pre['tabs_guard_temperature_setpoint']
+        self.SYSTEMS['tabs_floor_temperature_setpoint'] = pre['tabs_floor_temperature_setpoint']
+        self.SYSTEMS['tabs_ceiling_temperature_setpoint'] = pre['tabs_ceiling_temperature_setpoint']
+        self.SYSTEMS['tabs_cooling_temperature_setpoint'] = pre['tabs_cooling_temperature_setpoint']
+                
 
     def run(self,):
         while not self.quit:
@@ -136,10 +192,12 @@ class CursesTui(threading.Thread):
             self.update_temperatures()
             self.update_pid()
             self.screen.addstr(3, 2, "Tabs controller" )
+            if self.run_ramp == True:
+                self.update_ramp()
             try:
                 self.screen.addstr(6, 2,
                                    "Setpoint:    {0:+.2f} C".format(
-                                       self.SYSTEMS['tabs_guard']['temperature_setpoint']))
+                                       self.SYSTEMS['tabs_guard_temperature_setpoint']))
             except Exception as exception:
                 global EXCEPTION
                 EXCEPTION = exception
@@ -149,15 +207,15 @@ class CursesTui(threading.Thread):
             for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']:#self.SYSTEMS.keys():
                 self.screen.addstr(line, 2, "{0:15}: ".format(sy))
                 try:
-                    self.screen.addstr(line, 20,"{0:+.2f} C".format(self.SYSTEMS[sy]['temperature_inlet']))
+                    self.screen.addstr(line, 20,"{0:+.2f} C".format(self.SYSTEMS[sy+'_temperature_inlet']))
                 except:
                     self.screen.addstr(line, 20, "       C")
                 try:
-                    self.screen.addstr(line, 30, "{0:+.2f} C".format(self.SYSTEMS[sy]['temperature_setpoint']))
+                    self.screen.addstr(line, 30, "{0:+.2f} C".format(self.SYSTEMS[sy+'_temperature_setpoint']))
                 except:
                     self.screen.addstr(line, 30, "       C")
                 try:
-                    self.screen.addstr(line, 40, "{0:+.3f}".format(self.SYSTEMS[sy]['pid_value']))
+                    self.screen.addstr(line, 40, "{0:+.3f}".format(self.SYSTEMS[sy+'_pid_value']))
                 except:
                     self.screen.addstr(line, 40,"      ")
                 line += 1
@@ -168,7 +226,11 @@ class CursesTui(threading.Thread):
                                "q: quit program, ")
             self.screen.addstr(22, 2,
                                "a: increase, " \
-                               "z, decrease, ")
+                               "z, decrease, " \
+                               "o, Turn On, " \
+                               "f, Turn Off, " \
+                               "l, Load Program, " \
+                               )
             self.screen.addstr(23, 2,
                                "Active channel [0-9] : {}".format(self.active_channel))
             n = self.screen.getch()
@@ -177,11 +239,11 @@ class CursesTui(threading.Thread):
                 self.last_key = chr(n)
             elif n == ord('a'):
                 if self.active_channel != None:
-                    self.SYSTEMS[self.active_channel]['temperature_setpoint'] += 0.1
+                    self.SYSTEMS[self.active_channel+'_temperature_setpoint'] += 0.1
                 self.last_key = chr(n)
             elif n == ord('z'):
                 if self.active_channel != None:
-                    self.SYSTEMS[self.active_channel]['temperature_setpoint'] -= 0.1
+                    self.SYSTEMS[self.active_channel+'_temperature_setpoint'] -= 0.1
                 self.last_key = chr(n)
             elif n == ord("1"):
                 self.active_channel = 'tabs_guard'
@@ -197,6 +259,16 @@ class CursesTui(threading.Thread):
                 self.last_key = chr(n)
             elif n == ord("0"):
                 self.active_channel = None
+                self.last_key = chr(n)
+            elif n == ord("o"):
+                self.active = True
+                self.last_key = chr(n)
+            elif n == ord("f"):
+                self.active = False
+                self.run_ramp = False
+                self.last_key = chr(n)
+            elif n == ord("l"):
+                self.load_ramp()
                 self.last_key = chr(n)
                 
             self.screen.refresh()
@@ -231,7 +303,10 @@ class MainTui(threading.Thread):
         self.TUI.start()
         #time.sleep(5)
         
-        chlist = {'tabs_guard_temperature_setpoint': 0, 'tabs_floor_temperature_setpoint': 1, 'tabs_ceiling_temperature_setpoint': 2, 'tabs_cooling_temperature_setpoint': 3}
+        chlist = {'tabs_guard_temperature_setpoint': 0,
+                  'tabs_floor_temperature_setpoint': 1,
+                  'tabs_ceiling_temperature_setpoint': 2,
+                  'tabs_cooling_temperature_setpoint': 3}
         self.loggers = {}
         for key in self.codenames:
             self.loggers[key] = ValueLogger(self.TUI, comp_val = 0.2, maximumtime=60,
@@ -264,6 +339,8 @@ class MainTui(threading.Thread):
                     #livesocket.set_point_now(name, v)
                     self.PullSocket.set_point_now(name, v)
                     if self.loggers[name].read_trigged():
+                        #if __name__ == '__main__':
+                        #    print('Log: ', i, name, v)
                         #print('Log: ', name, v)
                         self.db_logger.enqueue_point_now(name, v)
                         self.loggers[name].clear_trigged()
