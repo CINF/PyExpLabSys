@@ -29,71 +29,71 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
-Setting_channel_list = {'tabs_ceiling_temperature_delta': 101,
-                  'tabs_ceiling_temperature_deltaref': 102,
-                  'tabs_floor_temperature_delta': 103,
-                  'tabs_floor_temperature_deltaref': 104,
-                  #'Tpipe_up': 105, # Tpipe_up
-                  'tabs_room_temperature_aircenter110': 106,
-                  #'tabs_ceiling_temperature_up': 107, # Tceil2_1up
-                  #'Tconcsus_1up': 108, # Tconcsus_1up
-                  #'DT_1up109': 109, # DT_1up109
-                  #'Tsurref_1up': 110, # Tsurref_1up
+Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up101
+                  'tabs_ceiling_temperature_supply_x03': 102, # Tref_up102
+                  'tabs_floor_thermopile_supplyreturn_x05': 103, # DT_low103
+                  'tabs_floor_temperature_supply_x06': 104, # Tref_low104
+                  'tabs_ceiling_temperature_pipesurface_x07': 105, # Tpipe_up
+                  'tabs_room_temperature_aircenter110': 106, # 
+                  'tabs_ceiling_temperature_pipebetween_x12': 107, # Tceil2_1up
+                  'tabs_ceiling_temperature_surfaceupper_x13': 108, # Tconcsus_1up
+                  'tabs_ceiling_thermopile_raisedfloor_x14': 109, # DT_1up109
+                  'tabs_ceiling_temperature_raisedfloor_x15': 110, # Tsurref_1up
                   'tabs_room_temperature_aircenter010': 111,
-                  #'DT_2up112': 112, # DT_2up112
-                  #'Tsurref_2up': 113, # Tsurref_2up
-                  #'DTfloor1_up': 114, # DTfloor1_up
-                  #'Tref1_up': 115, # Tref1_up
-                  #'Tpipe_low': 116, # Tpipe_low
-                  #'DT_1flow117': 117, # DT_1flow117
-                  #'Tsurref_1low': 118, # Tsurref_1low
-                  #'DT_2low119': 119, # DT_2low119
-                  #'Tsurref_2low': 120, # Tsurref_2low
-                  #'Flow_up121': 121, # Flow_up121
-                  #'Flow_low122': 122, # Flow_low122
+                  'tabs_ceiling_thermopile_raisedfloor_x18': 112, # DT_2up112
+                  'tabs_ceiling_temperature_raisedfloor_x19': 113, # Tsurref_2up
+                  'tabs_ceiling_thermopile_raisedfloor_x20': 114, # DTfloor1_up
+                  'tabs_ceiling_temperature_raisedfloor_x21': 115, # Tref1_up
+                  'tabs_floor_temperature_pipesurface_x22': 116, # Tpipe_low
+                  'tabs_floor_thermopile_raisedfloor_x27': 117, # DT_1flow117
+                  'tabs_floor_temperature_raisedfloor_x28': 118, # Tsurref_1low
+                  'tabs_floor_thermopile_raisedfloor_x30': 119, # DT_2low119
+                  'tabs_floor_temperature_raisedfloor_x31': 120, # Tsurref_2low
+                  #'None': 121, # Flow_up121
+                  #'None': 122, # Flow_low122
                   
                   #'None': 201
-                  #'Top2_room_1.1m': 202, # Top2_room_1.1m
+                  'tabs_room_temperature_operative110': 202, # Top2_room_1.1m
                   #'None': 203,
-                  #'Tsur2_room_wall2': 204, # Tsur2_room_wall2
+                  'tabs_room_temperature_surfacewallnorth': 204, # Tsur2_room_wall2
                   'tabs_room_temperature_aircenter170': 205, # Tair4_room_1.7m
                   'tabs_room_temperature_aircenter060': 206, # Tair2_room_0.6m
-                  #'Tsur1_room_wall1': 207, # Tsur1_room_wall1
-                  #'Tsur4_room_ceiling1': 208, # Tsur4_room_ceiling1
+                  'tabs_room_temperature_surface_wallsouth': 207, # Tsur1_room_wall1
+                  'tabs_room_temperature_surface_ceilingcenter': 208, # Tsur4_room_ceiling1
                   #'None': 209,
                   #'None': 210,
-                  #'Tsur5_room_ceiling2': 211, # Tsur5_room_ceiling2
+                  'tabs_room_temperature_surface_ceilingnearjunction': 211, # Tsur5_room_ceiling2
                   #'None': 212,
-                  'tabs_room_temperature_aircenter355': 213, # air_room_0.1mTOP
-                  #'Tsur3_room_floor': 214, # Tsur3_room_floor
-                  #'Top1_room_0.6': 215, # Top1_room_0.6
-                  #'Tsur6_room_ceiling3': 216, # Tsur6_room_ceiling3
-                  #'HeatFlow4_floor': 217, # HeatFlow4_floor
-                  #'DTfloor1_low': 218, # DTfloor1_low
-                  #'Tref1_low': 219, # Tref1_low
-                  #'HeatFlow3_ceiling': 220, # HeatFlow3_ceiling
+                  'tabs_room_temperature_air345': 213, # air_room_0.1mTOP
+                  'tabs_room_temperature_surface_floorcenter': 214, # Tsur3_room_floor
+                  'tabs_room_temperature_operative060': 215, # Top1_room_0.6
+                  #'tabs_room_temperature_surface_ceilingjunction': 216, # Tsur6_room_ceiling3
+                  'tabs_room_heatflow_floorcenter': 217, # HeatFlow4_floor
+                  'tabs_floor_thermopile_raisedfloor_x32': 218, # DTfloor1_low
+                  'tabs_floor_temperature_raisedfloor_x33': 219, # Tref1_low
+                  'tabs_room_heatflow_ceilingnearjunction': 220, # HeatFlow3_ceiling
                   #'None': 221,
                   #'None': 222,
-                  'tabs_guard_temperature_airfloor': 301, # Tair1_guard
-                  'tabs_guard_temperature_airceiling': 302, # Tair2_guard
-                  'tabs_guard_temperature_airwallsouth': 303, # Tair3_guard
-                  'tabs_guard_temperature_airwallnorth': 304, # Tair4_guard
-                  'tabs_guard_temperature_airwalleast': 305, # Tair5_guard
-                  'tabs_guard_temperature_airwallwest': 306, # Tair6_guard
-                  #'tabs_wallsouth_temperature_delta': 307, # DTwall1307
-                  #'HeatFlow2_ceiling': 308, # HeatFlow2_ceiling
-                  #'tabs_wallnorth_temperature_delta': 309, # DTwall2309
-                  #'tabs_wallnorth_temperature_deltaref': 310, # Twallref2
-                  #'tabs_walleast_temperature_delta': 311, # DTwall3311
-                  #'tabs_walleast_temperature_deltaref': 312, # Twallref3
-                  #'tabs_wallwest_temperature_delta': 313, # DTwall4313
-                  #'tabs_wallwest_temperature_deltaref': 314, # Twallref4
-                  #'DTlen_gaurdup': 315, # DTlen_gaurdup
-                  #'Treflen_guardup': 316, # Treflen_guardup
-                  #'Treflen_guardup1': 317, # Treflen_guardup1
-                  #'Treflen_guardup2': 318, # Treflen_guardup2
+                  'tabs_guard_temperature_airfloor_x51': 301, # Tair1_guard
+                  'tabs_guard_temperature_airceiling_x50': 302, # Tair2_guard
+                  'tabs_guard_temperature_airwallsouth_x52': 303, # Tair3_guard
+                  'tabs_guard_temperature_airwallnorth_x53': 304, # Tair4_guard
+                  'tabs_guard_temperature_airwalleast_x54': 305, # Tair5_guard
+                  'tabs_guard_temperature_airwallwest_x55': 306, # Tair6_guard
+                  'tabs_wallsouth_thermopile_roomguard_x56': 307, # DTwall1307
+                  'tabs_room_heatflow_ceilingjunction': 308, # HeatFlow2_ceiling
+                  'tabs_wallnorth_thermopile_roomguard_x58': 309, # DTwall2309
+                  'tabs_wallnorth_temperature_center_x59': 310, # Twallref2
+                  'tabs_walleast_thermopile_roomguard_x60': 311, # DTwall3311
+                  'tabs_walleast_temperature_center_x61': 312, # Twallref3
+                  'tabs_wallwest_thermopile_roomguard_x62': 313, # DTwall4313
+                  'tabs_wallwest_temperature_center_x63': 314, # Twallref4
+                  'tabs_ceiling_thermopile_sidedeckguard_x64': 315, # DTlen_gaurdup
+                  'tabs_ceiling_temperature_sidedeck_x65': 316, # Treflen_guardup
+                  'tabs_ceiling_temperature_sidedeck_x66': 317, # Treflen_guardup1
+                  'tabs_ceiling_temperature_sidedeck_x67': 318, # Treflen_guardup2
                   #'None': 319,
-                  #'HeatFlow1_ceiling': 320, # HeatFlow1_ceiling
+                  'tabs_room_heatflow_ceilingcenter': 320, # HeatFlow1_ceiling
                   #'None': 321,
                   #'None': 322,
                   }
@@ -130,8 +130,11 @@ class MultiplexReader(threading.Thread):
     def update_values(self,):
         try:
             response = self.Agilent.read_single_scan()
+            #print(response)
             chs = response[2::4]
+            #print(chs)
             values = response[0::4]
+            #print(values)
             self.ttl = 100
         except:
             print('Cant connect to agilent')
@@ -144,7 +147,7 @@ class MultiplexReader(threading.Thread):
                         if ch == v:
                             codename = k
                             break
-                    if codename in ['tabs_ceiling_temperature_delta', 'tabs_floor_temperature_delta']:
+                    if False and codename in ['tabs_ceiling_temperature_delta', 'tabs_floor_temperature_delta']:
                         self.DATA[codename] = TC_Calculator(value*1000, No=3, tctype='K')
                     else:
                         self.DATA[codename] = value
@@ -170,7 +173,8 @@ class MainMultilogger(threading.Thread):
         threading.Thread.__init__(self)
         #from datalogger import TemperatureReader
         self.quit = False
-        self.codenames = ['tabs_ceiling_temperature_delta',
+        self.codenames = Setting_channel_list.keys()
+        """['tabs_ceiling_temperature_delta',
                           'tabs_ceiling_temperature_deltaref',
                           'tabs_floor_temperature_delta',
                           'tabs_floor_temperature_deltaref',
@@ -186,7 +190,7 @@ class MainMultilogger(threading.Thread):
                           'tabs_guard_temperature_airwalleast',
                           'tabs_guard_temperature_airwallwest',
                           
-                          ]
+                          ]"""
         self.multiplex_reader = MultiplexReader(self.codenames)
         self.multiplex_reader.start()
         #omega_temperature.update_values()
@@ -196,7 +200,7 @@ class MainMultilogger(threading.Thread):
         chlist = Setting_channel_list
         self.loggers = {}
         for key in self.codenames:
-            self.loggers[key] = ValueLogger(self.multiplex_reader, comp_val = 0.2, maximumtime=60,
+            self.loggers[key] = ValueLogger(self.multiplex_reader, comp_val = 0.5, maximumtime=600,
                                             comp_type = 'lin', channel = chlist[key])
             self.loggers[key].start()
         
@@ -220,7 +224,7 @@ class MainMultilogger(threading.Thread):
                     #livesocket.set_point_now(name, v)
                     self.PullSocket.set_point_now(name, v)
                     #print(i, name, v)
-                    if self.loggers[name].read_trigged():
+                    if self.loggers[name].read_trigged() and abs(v) < 9.9E+5:
                         if __name__ == '__main__':
                             print('Log: ', i, name, v)
                         #print(name, v)
@@ -242,6 +246,7 @@ class MainMultilogger(threading.Thread):
 
 if __name__ == '__main__':
     MML = MainMultilogger()
+    time.sleep(5)
     MML.start()
     
     while MML.isAlive():

@@ -44,14 +44,14 @@ class ramp(object):
                         'tabs_cooling_temperature_setpoint': 30.0,
                      }
         elif self.start_time < t0 < self.end_time:
-            if self.temp['tabs_room_temperature_aircenter110'] == None:
-                self.temp['tabs_room_temperature_aircenter110'] = self.standard()['tabs_guard_temperature_setpoint']
+            if self.temp['tabs_room_temperature_operative110'] == None:
+                self.temp['tabs_room_temperature_operative110'] = self.standard()['tabs_guard_temperature_setpoint']
             
             self.setpoint = {
-                        'tabs_guard_temperature_setpoint': self.temp['tabs_room_temperature_aircenter110'],
+                        'tabs_guard_temperature_setpoint': self.temp['tabs_room_temperature_operative110'],
                         'tabs_floor_temperature_setpoint': 15.0,
                         'tabs_ceiling_temperature_setpoint': 15.0,
-                        'tabs_cooling_temperature_setpoint': 15.0-1.5,
+                        'tabs_cooling_temperature_setpoint': 15.0-2.0,
                      }
         elif self.end_time < t0:
             self.setpoint = {
@@ -80,7 +80,7 @@ class ramp(object):
             host_port = (info['host'], info['port'])
             command = 'json_wn'
             self.sock.sendto(command, host_port)
-            data = json.loads(self.sock.recv(2048))
+            data = json.loads(self.sock.recv(2*2048))
             now = time.time()
             for key, value in data.items():
                 try:
@@ -92,8 +92,8 @@ class ramp(object):
                     pass
         except socket.timeout:
             pass
-        if not 'tabs_room_temperature_aircenter110' in self.temp.keys():
-            self.temp['tabs_room_temperature_aircenter110'] = self.standard()['tabs_guard_temperature_setpoint']
+        if not 'tabs_room_temperature_operative110' in self.temp.keys():
+            self.temp['tabs_room_temperature_operative110'] = self.standard()['tabs_guard_temperature_setpoint']
             
         return self.temp
 

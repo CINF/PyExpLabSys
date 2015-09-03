@@ -23,6 +23,7 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.drivers.dataq_comm import DataQ
 from PyExpLabSys.drivers.omega_D6720 import OmegaD6720
 from PyExpLabSys.common.value_logger import ValueLogger
+from PyExpLabSys.drivers.cpx400dp import CPX400DPDriver
 #from PyExpLabSys.auxiliary.pid import PID
 #import PyExpLabSys.drivers.omegabus as omegabus
 #import PyExpLabSys.drivers.omega_cni as omega_CNi32
@@ -31,6 +32,8 @@ from PyExpLabSys.common.value_logger import ValueLogger
 #logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 #logging.basicConfig(level=logging.ERROR)
 
+
+import random
 class FloatToDigital(object):
     def __init__(self, totalcycles=100):
         self.cycle = 0
@@ -44,6 +47,7 @@ class FloatToDigital(object):
             print('dutycycles is outside allowed area, should be between 0-1')
         #print(self.cycle/self.totalcycles, self.dutycycles)
         if (float(self.cycle)/float(self.totalcycles)) < self.dutycycles:
+        #if (random.random()) < self.dutycycles:
             result = True
         else:
             result = False
@@ -67,13 +71,20 @@ class ValveControl(threading.Thread):
         self.DATAQ = DataQ(port=port)
         port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWN2Q-if00-port0'
         self.omega = OmegaD6720(1, port=port)
+        self.CPX400DP = {}
+        self.CPX400DP['tabs_cooling_valve_cooling'] = CPX400DPDriver(output = 1, interface = 'serial', device = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_55126271-if00')
+        self.CPX400DP['tabs_guard_valve_cooling'] = CPX400DPDriver(output = 2, interface = 'serial', device = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_55126271-if00')
+        self.CPX400DP['tabs_cooling_valve_cooling'].set_voltage(0.0)
+        self.CPX400DP['tabs_guard_valve_cooling'].set_voltage(0.0)
+        self.CPX400DP['tabs_cooling_valve_cooling'].output_status(on = True)
+        self.CPX400DP['tabs_guard_valve_cooling'].output_status(on = True)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #self.pidvalues = {'tabs_guard_pid': 0.0, 'tabs_floor_pid': 0.0, 'tabs_ceiling_pid': 0.0, 'tabs_cooling_pid': 0.0}
         #self.heater = {'tabs_guard_heater': None, 'tabs_floor_heater': None, 'tabs_ceiling_heater': None, 'tabs_cooling_heater': None}
         self.FloatToDigital = {}
         for co in self.codenames:
-            self.FloatToDigital[co] = FloatToDigital(totalcycles=100)
-        self.FloatToDigital['tabs_cooling_valve_cooling'] = FloatToDigital(totalcycles=15)
+            self.FloatToDigital[co] = FloatToDigital(totalcycles=60)
+        self.FloatToDigital['tabs_cooling_valve_cooling'] = FloatToDigital(totalcycles=60)
         
     def update_pidvalues(self,):
         try:
@@ -202,6 +213,12 @@ class ValveControl(threading.Thread):
         except:
             #print('hardware error')
             pass
+        try:
+            #self.CPX400DP.set_voltage(10*self.SYSTEMS['tabs_cooling_valve_cooling'])
+            self.CPX400DP['tabs_cooling_valve_cooling'].set_voltage(10*self.SYSTEMS['tabs_cooling_valve_cooling'])
+            self.CPX400DP['tabs_guard_valve_cooling'].set_voltage(10*self.SYSTEMS['tabs_guard_valve_cooling'])
+        except:
+            pass
  
     def run(self):
         while not self.quit:
@@ -213,7 +230,11 @@ class ValveControl(threading.Thread):
     def stop(self,):
         self.quit = True
         #self.DATAQ.close()
-        self.omega.all_off()
+        #self.omega.all_off()
+        self.CPX400DP['tabs_cooling_valve_cooling'].set_voltage(0.0)
+        self.CPX400DP['tabs_guard_valve_cooling'].set_voltage(0.0)
+        self.CPX400DP['tabs_cooling_valve_cooling'].output_status(on = False)
+        self.CPX400DP['tabs_guard_valve_cooling'].output_status(on = False)
         self.omega.close()
 
 class MainDGIO(threading.Thread):
@@ -236,18 +257,18 @@ class MainDGIO(threading.Thread):
         #self.PullSocket.start()
         self.VC = ValveControl(self.codenames)
         self.VC.start()
-        #chlist = {'tabs_guard_valve_heating': 0,
-        #          'tabs_floor_valve_heating': 1,
-        #          'tabs_ceiling_valve_heating': 2,
-        #          'tabs_cooling_valve_heating': 3,
-        #          'tabs_guard_valve_cooling': 4,
-        #          'tabs_floor_valve_cooling': 5,
-        #          'tabs_ceiling_valve_cooling': 6,
-        #          'tabs_cooling_valve_cooling': 7}
-        #self.loggers = {}
-        #for key in self.codenames:
-        #    self.loggers[key] = ValueLogger(self.VC, comp_val = 0.05, maximumtime=60, comp_type = 'lin', channel = chlist[key])
-        #    self.loggers[key].start()
+        chlist = {'tabs_guard_valve_heating': 0,
+                  'tabs_floor_valve_heating': 1,
+                  'tabs_ceiling_valve_heating': 2,
+                  'tabs_cooling_valve_heating': 3,
+                  'tabs_guard_valve_cooling': 4,
+                  'tabs_floor_valve_cooling': 5,
+                  'tabs_ceiling_valve_cooling': 6,
+                  'tabs_cooling_valve_cooling': 7}
+        self.loggers = {}
+        for key in self.codenames:
+            self.loggers[key] = ValueLogger(self.VC, comp_val = 0.05, maximumtime=60, comp_type = 'lin', channel = chlist[key])
+            self.loggers[key].start()
         #self.db_logger = ContinuousLogger(table='dateplots_tabs', username=credentials.user, password=credentials.passwd, measurement_codenames=self.codenames)
         #self.db_logger.start()
     def run(self,):
@@ -256,17 +277,16 @@ class MainDGIO(threading.Thread):
             try:
                 #print(i)
                 time.sleep(2)
-                #for name in self.codenames:
-                    #v = self.loggers[name].read_value()
+                for name in self.codenames:
+                    v = self.loggers[name].read_value()
                     #print('Status: ', name , v)
                     #livesocket.set_point_now(name, v)
                     #self.PullSocket.set_point_now(name, v)
-                    #if self.loggers[name].read_trigged():
-                    #    if __name__ == '__main__':
-                    #        print('Log: ', i, name, v)
-                        #print('Log: ', name, v)
+                    if self.loggers[name].read_trigged():
+                        if __name__ == '__main__':
+                            print('Log: ', i, name, v)
                         #self.db_logger.enqueue_point_now(name, v)
-                        #self.loggers[name].clear_trigged()
+                        self.loggers[name].clear_trigged()
             except (KeyboardInterrupt, SystemExit):
                 self.quit = True
                 pass
@@ -283,7 +303,9 @@ class MainDGIO(threading.Thread):
         #    self.loggers[key].status['quit'] = True
 
 if __name__ == '__main__':
+    
     DGIO = MainDGIO()
+    time.sleep(3)
     DGIO.start()
     
     while DGIO.isAlive():
@@ -292,3 +314,4 @@ if __name__ == '__main__':
         except (KeyboardInterrupt, SystemExit):
             DGIO.stop()
     print('END')
+    

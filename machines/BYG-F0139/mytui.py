@@ -131,7 +131,7 @@ class CursesTui(threading.Thread):
             now = time.time()
             #print(data)
             for key, value in data.items():
-                if 'pid_value' in key:
+                if 'pid_value' in key or 'valve' in key:
                     #_key = str(key).rsplit('_')
                     #sy = _key[0]+'_' + _key[1]
                     #me = _key[2]+'_' + _key[3]
@@ -153,7 +153,7 @@ class CursesTui(threading.Thread):
             host_port = (info['host'], info['port'])
             command = 'json_wn'
             self.sock.sendto(command, host_port)
-            data = json.loads(self.sock.recv(2048))
+            data = json.loads(self.sock.recv(2*2048))
             now = time.time()
             #print(data)
             for key, value in data.items():
@@ -184,6 +184,7 @@ class CursesTui(threading.Thread):
         self.SYSTEMS['tabs_floor_temperature_setpoint'] = pre['tabs_floor_temperature_setpoint']
         self.SYSTEMS['tabs_ceiling_temperature_setpoint'] = pre['tabs_ceiling_temperature_setpoint']
         self.SYSTEMS['tabs_cooling_temperature_setpoint'] = pre['tabs_cooling_temperature_setpoint']
+        pass
                 
 
     def run(self,):
@@ -218,6 +219,14 @@ class CursesTui(threading.Thread):
                     self.screen.addstr(line, 40, "{0:+.3f}".format(self.SYSTEMS[sy+'_pid_value']))
                 except:
                     self.screen.addstr(line, 40,"      ")
+                try:
+                    self.screen.addstr(line, 50, "{0:+.3f}".format(self.SYSTEMS[sy+'_valve_heating']))
+                except:
+                    self.screen.addstr(line, 50,"      ")
+                try:
+                    self.screen.addstr(line, 60, "{0:+.3f}".format(self.SYSTEMS[sy+'_valve_cooling']))
+                except:
+                    self.screen.addstr(line, 60,"      ")
                 line += 1
             if self.last_key != None:
                 self.screen.addstr(24, 2,
@@ -373,6 +382,7 @@ if __name__ == '__main__':
     """
     #"""
     MTUI = MainTui()
+    time.sleep(3)
     MTUI.start()
     
     while MTUI.isAlive():

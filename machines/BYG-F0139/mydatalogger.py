@@ -242,6 +242,7 @@ class MainDatalogger(threading.Thread):
 
 if __name__ == '__main__':
     MDL = MainDatalogger()
+    time.sleep(3)
     MDL.start()
     
     while MDL.isAlive():
