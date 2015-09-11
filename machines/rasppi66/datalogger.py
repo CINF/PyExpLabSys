@@ -37,16 +37,14 @@ class OmronReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            i = 0
             pressures = []
             self.ttl = 50
-            while (i < 200) and (not self.quit):
+            for i in range(0, 100):
                 pressure = self.omron.read_pressure()
-                if pressure > -100:
-                    pressures.append(pressure)
-                    i = i + 1
+                pressures.append(pressure)
             self.pressure = sum(pressures) / len(pressures)
             self.temperature = self.omron.read_temperature()
+
                     
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
@@ -62,7 +60,7 @@ time.sleep(2.5)
 codenames = ['hall_ventilation_pressure', 'hall_temperature']
 
 loggers = {}
-loggers[codenames[0]] = ValueLogger(omron_reader, comp_val = 1,
+loggers[codenames[0]] = ValueLogger(omron_reader, comp_val = 1.5,
                                     comp_type = 'lin', channel = 0)
 loggers[codenames[0]].start()
 loggers[codenames[1]] = ValueLogger(omron_reader, comp_val = 1,
