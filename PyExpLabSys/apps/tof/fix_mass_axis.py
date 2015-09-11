@@ -29,7 +29,7 @@ def fit_peak(time, mass, data):
     except: # Fit failed
         p1 = p0
         success = 0
-    usefull = (p1[0] > 10) and (p1[1] < 1e-4) and (success==1) # Only use the values if fit succeeded and peak has decent height
+    usefull = (p1[0] > 150) and (p1[1] < 1e-4) and (success==1) # Only use the values if fit succeeded and peak has decent height
     if usefull:
         print(p1)
     #fig = plt.figure()
