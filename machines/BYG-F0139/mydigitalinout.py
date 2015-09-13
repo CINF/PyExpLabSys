@@ -44,7 +44,8 @@ class FloatToDigital(object):
         #print(dutycycles)
         self.dutycycles = dutycycles
         if self.dutycycles < 0 or self.dutycycles > 1:
-            print('dutycycles is outside allowed area, should be between 0-1')
+            if __name__ == '__main__':
+                print('dutycycles is outside allowed area, should be between 0-1')
         #print(self.cycle/self.totalcycles, self.dutycycles)
         if (float(self.cycle)/float(self.totalcycles)) < self.dutycycles:
         #if (random.random()) < self.dutycycles:
@@ -256,6 +257,7 @@ class MainDGIO(threading.Thread):
         #self.PullSocket = DateDataPullSocket(sockname, self.codenames, timeouts=[60.0]*len(self.codenames), port = socketinfo.INFO[sockname]['port'])
         #self.PullSocket.start()
         self.VC = ValveControl(self.codenames)
+        self.VC.daemon = True
         self.VC.start()
         chlist = {'tabs_guard_valve_heating': 0,
                   'tabs_floor_valve_heating': 1,
@@ -299,8 +301,8 @@ class MainDGIO(threading.Thread):
         self.VC.stop()
         #self.PullSocket.stop()
         #self.db_logger.stop()
-        #for key in self.codenames:
-        #    self.loggers[key].status['quit'] = True
+        for key in self.codenames:
+            self.loggers[key].status['quit'] = True
 
 if __name__ == '__main__':
     
@@ -312,6 +314,6 @@ if __name__ == '__main__':
         try:
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            DGIO.stop()
+            DGIO.quit = True
     print('END')
     

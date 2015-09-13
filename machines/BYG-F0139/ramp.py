@@ -4,6 +4,8 @@ Created on Tue Oct 21 08:49:40 2014
 
 @author: aufn
 """
+
+# Important dont change the import statements
 import time
 import numpy as np
 import socket
@@ -17,16 +19,18 @@ import credentials
 import socketinfo
 
 class ramp(object):
+    """ class for automatically control the setpoints"""
     def __init__(self,):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(3)
-        date_str = "2014-10-30 13:30:00"
+        
+        date_str = "2014-10-30 13:30:00" # <---- startdate for experiment, change HERE
         time_tuple = time.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         start = time.mktime(time_tuple)
         #start = time.time()
         self.start_time = start
         
-        date_str = "2015-09-05 23:59:59"
+        date_str = "2015-09-8 16:00:59" # <---- enddate for experiment, change HERE
         time_tuple = time.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         end = time.mktime(time_tuple)
         #end = self.start_time + 3600*3
@@ -36,24 +40,24 @@ class ramp(object):
     def present(self):
         self.update_temperatures()
         t0 = time.time()
-        if t0 < self.start_time:
+        if t0 < self.start_time: # before start of experiment, set safe conditions
             self.setpoint = {
                         'tabs_guard_temperature_setpoint': 15.0,
                         'tabs_floor_temperature_setpoint': 15.0,
                         'tabs_ceiling_temperature_setpoint': 15.0,
                         'tabs_cooling_temperature_setpoint': 30.0,
                      }
-        elif self.start_time < t0 < self.end_time:
+        elif self.start_time < t0 < self.end_time: # <---- setpoint during the experiment, change below
             if self.temp['tabs_room_temperature_operative110'] == None:
                 self.temp['tabs_room_temperature_operative110'] = self.standard()['tabs_guard_temperature_setpoint']
             
             self.setpoint = {
                         'tabs_guard_temperature_setpoint': self.temp['tabs_room_temperature_operative110'],
-                        'tabs_floor_temperature_setpoint': 15.0,
-                        'tabs_ceiling_temperature_setpoint': 15.0,
-                        'tabs_cooling_temperature_setpoint': 15.0-2.0,
+                        'tabs_floor_temperature_setpoint': 23.0,
+                        'tabs_ceiling_temperature_setpoint': 23.0,
+                        'tabs_cooling_temperature_setpoint': 24.0 - 2.0,
                      }
-        elif self.end_time < t0:
+        elif self.end_time < t0: # after end of experiment, set safe conditions
             self.setpoint = {
                         'tabs_guard_temperature_setpoint': 15.0,
                         'tabs_floor_temperature_setpoint': 15.0,
@@ -99,4 +103,6 @@ class ramp(object):
 
 if __name__ == '__main__':
     R = ramp()
+    for k, v in R.present().items():
+        print(k, v)
 

@@ -29,6 +29,7 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
+# this list consist of codenames for a measurement, and the channel number on the multiplxer
 Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up101
                   'tabs_ceiling_temperature_supply_x03': 102, # Tref_up102
                   'tabs_floor_thermopile_supplyreturn_x05': 103, # DT_low103
@@ -192,6 +193,7 @@ class MainMultilogger(threading.Thread):
                           
                           ]"""
         self.multiplex_reader = MultiplexReader(self.codenames)
+        self.multiplex_reader.daemon = True
         self.multiplex_reader.start()
         #omega_temperature.update_values()
         
@@ -236,6 +238,8 @@ class MainMultilogger(threading.Thread):
                 #self.omega_temperature.close()
                 #report error and proceed
             i += 1
+        self.stop()
+        
     def stop(self):
         self.quit = True
         self.multiplex_reader.stop()
@@ -253,6 +257,6 @@ if __name__ == '__main__':
         try:
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            MML.stop()
+            MML.quit = True
     #print('END')
     

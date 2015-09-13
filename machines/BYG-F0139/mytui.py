@@ -203,7 +203,7 @@ class CursesTui(threading.Thread):
                 global EXCEPTION
                 EXCEPTION = exception
             line = 8
-            self.screen.addstr(line, 2, "{0:15} {1:2} {2:2} {3:2}".format('System', 'Temperature', 'Setpoint', 'pid'))
+            self.screen.addstr(line, 2, "{0:15} {1:2} {2:2}    {3:2}    {4:2}     {5:2} ".format('System', 'Temperature', 'Setpoint', 'pid', 'heat', 'cool'))
             line += 1
             for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']:#self.SYSTEMS.keys():
                 self.screen.addstr(line, 2, "{0:15}: ".format(sy))
@@ -309,6 +309,7 @@ class MainTui(threading.Thread):
         self.PullSocket.start()
         
         self.TUI = CursesTui(self.codenames)
+        self.TUI.daemon = True
         self.TUI.start()
         #time.sleep(5)
         
@@ -389,6 +390,6 @@ if __name__ == '__main__':
         try:
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            MTUI.stop()
+            MTUI.quit = True
     print('END')
     #"""

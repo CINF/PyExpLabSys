@@ -27,11 +27,13 @@ if __name__ == '__main__':
     
     from mydatalogger import MainDatalogger
     MDL = MainDatalogger()
+    MDL.daemon = True
     MDL.start()
     #time.sleep(4)
     
     from mymultiplexer import MainMultilogger
     MML = MainMultilogger()
+    MML.daemon = True
     MML.start()
     #time.sleep(4)
     
@@ -42,23 +44,25 @@ if __name__ == '__main__':
     
     from mypid import MainPID
     MP = MainPID()
+    MP.daemon = True
     MP.start()
     time.sleep(4)
     
     from mydigitalinout import MainDGIO
     DGIO = MainDGIO()
+    DGIO.daemon = True
     DGIO.start()
     
     while MT.isAlive():
         try:
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            MT.stop()
-    DGIO.stop()
-    MP.stop()
-    MT.stop()
-    MML.stop()
-    MDL.stop()
+            MT.quit = True
+    DGIO.quit = True
+    MP.quit = True
+    MT.quit = True
+    MML.quit = True
+    MDL.quit = True
     print('END')
     
     

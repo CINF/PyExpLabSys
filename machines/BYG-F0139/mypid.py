@@ -55,7 +55,8 @@ def Safety(SYSTEMS):
     except:
         pass
     if case1:
-        print("case 1")
+        if __name__ == '__main__':
+            print("case 1")
         SYSTEMS['tabs_guard_pid_value'] = -1
         SYSTEMS['tabs_floor_pid_value'] = -1
         SYSTEMS['tabs_ceiling_pid_value'] = -1
@@ -70,7 +71,8 @@ def Safety(SYSTEMS):
         SYSTEMS['tabs_ceiling_valve_cooling'] = 1
         SYSTEMS['tabs_cooling_valve_cooling'] = 0
     elif case2:
-        print("case 2")
+        if __name__ == '__main__':
+            print('Log: ', i, name, v)
         SYSTEMS['tabs_guard_valve_heating'] = 0
         SYSTEMS['tabs_floor_valve_heating'] = 0
         SYSTEMS['tabs_ceiling_valve_heating'] = 0
@@ -80,7 +82,8 @@ def Safety(SYSTEMS):
         SYSTEMS['tabs_ceiling_valve_cooling'] = 1
         SYSTEMS['tabs_cooling_valve_cooling'] = 0
     elif case3:
-        print("case 3")
+        if __name__ == '__main__':
+            print("case 3")
         SYSTEMS['tabs_cooling_pid_value'] = 0
         SYSTEMS['tabs_cooling_valve_cooling'] = 0
     return SYSTEMS
@@ -191,7 +194,7 @@ class PidTemperatureControl(threading.Thread):
                 else:
                     self.SYSTEMS[sy+'valve_heating'] = 0
                     self.SYSTEMS[sy+'valve_cooling'] = max(0.2, abs(self.SYSTEMS[sy+'pid_value']) )
-                if sy+'pid_value' = 'tabs_cooling_pid_values':
+                if sy+'pid_value' == 'tabs_cooling_pid_values':
                     self.SYSTEMS[sy+'valve_cooling'] = abs(self.SYSTEMS[sy+'pid_value'])
         self.SYSTEMS = Safety(self.SYSTEMS)
             #print(value['pid_values'])
@@ -266,6 +269,7 @@ class MainPID(threading.Thread):
         self.PullSocket.start()
     
         self.PTC = PidTemperatureControl(self.codenames)
+        self.PTC.daemon = True
         self.PTC.start()
         #time.sleep(5)
     
@@ -337,6 +341,6 @@ if __name__ == '__main__':
         try:
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            MPID.stop()
+            MPID.quit = True
     #print('END')
 

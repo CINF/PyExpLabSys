@@ -145,7 +145,8 @@ class TemperatureReader(threading.Thread):
                     #print('Format: ' + str(value.command('R08') ) )
                 else:
                     self.SYSTEMS[sy][me] = None
-                new_val = v + self.OffSet[key]
+                if type(v) == type(0.0):
+                    new_val = v + self.OffSet[key]
                 old_val = self.OldValue[key]
                 if new_val == None:
                     pass
@@ -190,6 +191,7 @@ class MainDatalogger(threading.Thread):
                      'tabs_cooling_temperature_inlet',
                      ]
         self.omega_temperature = TemperatureReader(self.codenames)
+        self.omega_temperature.daemon = True
         self.omega_temperature.start()
         #omega_temperature.update_values()
         
@@ -232,6 +234,7 @@ class MainDatalogger(threading.Thread):
                 #report error and proceed
             i += 1
         self.stop()
+        
     def stop(self):
         self.quit = True
         self.omega_temperature.stop()
@@ -249,6 +252,6 @@ if __name__ == '__main__':
         try:
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            MDL.stop()
+            MDL.quit = True
     #print('END')
     
