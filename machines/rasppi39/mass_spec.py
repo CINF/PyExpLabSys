@@ -27,11 +27,14 @@ qmg = qmg420.qmg_420(switch_range=True)
 # This mass spec had a wrong order of range 9 and 11
 qms = ms.qms(qmg, sql_queue)
 
-#qms.chamber = 'ps' #Uncomment this to save data in correct db
+qms.chamber = 'ps' #Uncomment this to save data in correct db
+qms.sql_credentials = sql_credentials.username
 
 qms.communication_mode(computer_control=True)
 
 channel_list = qms.read_ms_channel_list('channel_list.txt')
+print channel_list
+
 printer = qmg_status_output.qms_status_output(qms, sql_saver_instance=sql_saver)
 printer.daemon = True
 printer.start()
@@ -40,23 +43,13 @@ meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
 meta_udp.daemon = True
 meta_udp.start()
 
-
-#meta_flow = qmg_meta_channels.compound_udp_meta_channel(qms, timestamp, channel_list['ms'][0]['comment'], 5, 'rasppi27', 9999, 'read_flows')
-#meta_flow.create_channel('Sample Pressure', 0)
-#meta_flow.create_channel('Flow1, O2', 1)
-#meta_flow.create_channel('Flow2, D2', 2)
-#meta_flow.create_channel('Flow3, He', 3)
-#meta_flow.create_channel('Flow4, H2', 4)
-#meta_flow.daemon = True
-#meta_flow.start()
-
-qms.mass_scan(0, 50, comment = 'Ammonia oxidation in hydrogen - RT', amp_range=-9)
-#print qms.mass_time(channel_list['ms'], timestamp)
+print qms.mass_time(channel_list['ms'], timestamp)
 
 time.sleep(1)
-#printer.stop()
+printer.stop()
 
 #print qmg.read_voltages()
 #print qmg.sem_status(voltage=1800, turn_on=True)
 #print qmg.emission_status(current=0.1,turn_on=True)
 #print qmg.qms_status()
+
