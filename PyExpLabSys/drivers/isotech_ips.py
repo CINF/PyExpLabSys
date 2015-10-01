@@ -20,6 +20,30 @@ class IPS(object):
         time.sleep(0.5)
         return True
 
-IPS = IPS('/dev/ttyS0')
+    def set_vlimit_to_max(self):
+        """ Set the voltage limit to the maximum the device deliver """
+        self.comm('SUM')
 
+    def set_ilimit_to_max(self):
+        """ Set the current limit to the maximum the device deliver """
+        self.comm('SIM')
+
+    def set_relay_status(self, status=False):
+        """ Turn the output on or off """
+        if status is True:
+            self.comm('KOE')
+        else:
+            self.comm('KOD')
+
+    def set_output_voltage(self, voltage):
+        """ Set the output voltage """
+        self.comm('SV ' + '{:2.2f}'.format(voltage).zfill(5))
+
+    def set_voltage_limit(self, voltage):
+        """ Set the voltage limit """
+        self.comm('SU ' + str(voltage))
+
+    def set_current_limit(self, current):
+        """ Set the current limit """
+        self.comm('SI ' + '{:1.2f}'.format(current).zfill(3))
 
