@@ -60,6 +60,10 @@ class PictureLogbook(object):
         :rtype: string
         """
         frame = cv.QueryFrame(self.camera)
+        frame = cv.QueryFrame(self.camera)
+        frame = cv.QueryFrame(self.camera)
+        frame = cv.QueryFrame(self.camera)
+        frame = cv.QueryFrame(self.camera)
         picture = cv.EncodeImage(".jpg", frame).tostring()
         return picture
 
