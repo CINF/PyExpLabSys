@@ -7,7 +7,7 @@ import logging
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
-from PyExpLabSys.common.sockets import LiveSocket
+#from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.xgs600 as xgs600
 import credentials
 
@@ -69,11 +69,11 @@ loggers[codenames[1]] = ValueLogger(pressure, comp_val = 0.1,
                                     comp_type = 'log', channel = 1)
 loggers[codenames[1]].start()
 
-livesocket = LiveSocket('PS', codenames, 2)
-livesocket.start()
+#livesocket = LiveSocket('PS', codenames, 2)
+#livesocket.start()
 
 socket = DateDataPullSocket('PS pressure logger',
-                            codenames, timeouts=2 * [1.0])
+                            codenames, timeouts=2 * [1.0], port=9001)
 socket.start()
 
 
@@ -87,7 +87,7 @@ while pressure.isAlive():
     time.sleep(0.5)
     for name in codenames:
         v = loggers[name].read_value()
-        livesocket.set_point_now(name, v)
+        #livesocket.set_point_now(name, v)
         socket.set_point_now(name, v)
         if loggers[name].read_trigged():
             print v
