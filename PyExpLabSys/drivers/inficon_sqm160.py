@@ -59,12 +59,12 @@ class InficonSQM160():
         command = '@'
         return(self.comm(command))
 
-    def show_film_parameters(self, film):
+    def show_film_parameters(self):
         """ Read the film paramters """
         command = 'A1?'
         print self.comm(command)
         
-    def rate(self, channel):
+    def rate(self, channel=1):
         """ Return the deposition rate """
         command = 'L' + str(channel)
         value_string = self.comm(command)
@@ -85,7 +85,7 @@ class InficonSQM160():
         frequency = float(value_string)        
         return(frequency)
 
-    def crystal_life(self,channel=1):
+    def crystal_life(self, channel=1):
         """ Read crystal life """
         command = 'R' + str(channel)
         value_string = self.comm(command)
