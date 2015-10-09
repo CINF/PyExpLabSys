@@ -47,3 +47,7 @@ class IPS(object):
         """ Set the current limit """
         self.comm('SI ' + '{:1.2f}'.format(current).zfill(3))
 
+if __name__ == '__main__':
+    ips = IPS('/dev/ttyUSB2')
+    ips.set_relay_status(True)
+    ips.set_output_voltage(5)
