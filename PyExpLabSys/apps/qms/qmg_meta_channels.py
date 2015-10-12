@@ -61,6 +61,7 @@ class udp_meta_channel(threading.Thread):
                 try:
                     sock.sendto(channel['cmd'], (channel['host'], port))
                     received = sock.recv(1024)
+                    received = received.strip()
                 except socket.timeout:
                     received = ""
                 logging.debug('Meta recieve: ' + received)
