@@ -1,0 +1,39 @@
+comment: leak test of HPC
+autorange: yes
+
+
+#ms_channel: mass, 2, speed, 9, masslabel, M2, amp_range, 6
+#ms_channel: mass, 4, speed, 9, masslabel, M4, amp_range, 6
+ms_channel: mass, 7, speed, 9, masslabel, M7, amp_range, 6
+#ms_channel: mass, 14, speed, 9, masslabel, M14, amp_range, 6
+ms_channel: mass, 18, speed, 9, masslabel, M18, amp_range, 6
+ms_channel: mass, 20, speed, 9, masslabel, M20, amp_range, 6
+#ms_channel: mass, 28, speed, 9, masslabel, M28, amp_range, 6
+ms_channel: mass, 32, speed, 9, masslabel, M32, amp_range, 6
+ms_channel: mass, 40, speed, 9, masslabel, M40, amp_range, 6
+ms_channel: mass, 44, speed, 9, masslabel, M44, amp_range, 6
+#ms_channel: mass, 78, speed, 9, masslabel, M78, amp_range, 6
+#xms_channel: mass, 99, speed, 9, masslabel, M99, amp_range, 6
+
+#ms_channel: mass, 4.0, speed, 9, masslabel, M40, amp_range, 6
+#ms_channel: mass, 4.2, speed, 9, masslabel, M42, amp_range, 6
+#ms_channel: mass, 4.4, speed, 9, masslabel, M44, amp_range, 6
+#ms_channel: mass, 4.6, speed, 9, masslabel, M46, amp_range, 6
+#ms_channel: mass, 4.8, speed, 9, masslabel, M48, amp_range, 6
+#ms_channel: mass, 5.0, speed, 9, masslabel, M50, amp_range, 6
+
+meta_channel: label, Chamber pressure, host, rasppi19, port, 9990, command, read_global_pressure
+#meta_channel: label, HPC Temperature, host, rasppi19, port, 9990, command, read_hp_temp
+
+
+#channel_list[1] = {'mass':4,'speed':9, 'masslabel':'M4'}
+#channel_list[3] = {'mass':7,'speed':9, 'masslabel':'M7'}
+#channel_list[4] = {'mass':7,'speed':9, 'masslabel':'M7'}
+#channel_list[2] = {'mass':7,'speed':9, 'masslabel':'M7'}
+#channel_list[2] = {'mass':7,'speed':9, 'masslabel':'M7'}
+#channel_list[2] = {'mass':7,'speed':9, 'masslabel':'M7'}
+
+
+#meta_udp.create_channel('Chamber pressure', 'rasppi19', 9990, 'read_global_pressure')
+#meta_udp.create_channel('HPC, Temperature', 'rasppi19', 9990, 'read_hp_temp')
+#meta_udp.create_channel('HPC, Pirani', 'rasppi13', 9999, 'read_pirani')

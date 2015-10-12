@@ -31,7 +31,7 @@ class SCPI:
             self.f.write(command)
             time.sleep(0.02)
             self.f.close()
-            time.sleep(0.1)
+            time.sleep(0.05)
             if command.find('?') > -1:
                 self.f = open(self.device, 'r')
                 return_string = self.f.readline()
@@ -42,7 +42,7 @@ class SCPI:
                 return_string = self.f.readline()
         if self.interface == 'lan':
             self.f.write(command + '\n')
-            if command.find('?') > -1:
+            if (command.find('?') > -1) or (expect_return is True):
                 return_string = self.f.read_until(chr(10),2)
         return return_string
     

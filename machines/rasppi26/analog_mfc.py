@@ -13,9 +13,19 @@ class AnalogMFC():
         self.daq = daq
 
     def read_flow(self):
-        value = self.daq.read_adc_voltage(1)
+        value = 0
+        for i in range(0, 10):
+            value += self.daq.read_adc_voltage(1)
+        value = value / 10
+        print 'Value: ' + str(value)
         flow = value * self.fullrange / self.voltagespan
         return flow
+
+    def set_flow(self, flow):
+        voltage = flow *  self.voltagespan / self.fullrange 
+        print 'Voltage: ' + str(voltage)
+        self.daq.set_dac_voltage(1, voltage)
+        return voltage
 
 
 class FlowControl(threading.Thread):
@@ -50,7 +60,7 @@ adcdac = ADCDACPi()  # create an instance of ADCDACPi
 adcdac.set_adc_refvoltage(3.3)
 
 devices = ['1']
-MFC = AnalogMFC(1, 2, 2, adcdac)
+MFC = AnalogMFC(1, 2, 1.5, adcdac)
 MFCs = {}
 MFCs['1'] = MFC
 

@@ -7,7 +7,9 @@ from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
-from ABElectronics_DeltaSigmaPi import DeltaSigma
+from ABE_helpers import ABEHelpers
+#from ABE_ADCPi import ADCPi
+from ABE_DeltaSigmaPi import DeltaSigma
 import credentials
 
 class TemperatureReader(threading.Thread):
@@ -28,20 +30,22 @@ class TemperatureReader(threading.Thread):
         return value
 
     def run(self):
+        time.sleep(0.1)
         while not self.quit:
             temp_hot = 0
             temp_cold = 0
             for _ in range(0, 4): 
-                temp_hot += adc_instance.readVoltage(1)
-                temp_cold += adc_instance.readVoltage(2)
+                temp_hot += adc_instance.read_voltage(1)
+                temp_cold += adc_instance.read_voltage(2)
             self.hot = (temp_hot/4 - 0.4) / 0.0195
             self.cold = (temp_cold/4 - 0.4) / 0.0195 - 3.5
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 
-
-adc_instance = DeltaSigma(0x68, 0x69, 18)
+i2c_helper = ABEHelpers()
+bus = i2c_helper.get_smbus()
+adc_instance = DeltaSigma(bus, 0x68, 0x69, 18)
 
 tempreader = TemperatureReader(adc_instance)
 tempreader.daemon = True

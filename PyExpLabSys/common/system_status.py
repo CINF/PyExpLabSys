@@ -200,19 +200,20 @@ class SystemStatus(object):
     @works_on('linux2')
     def rpi_temperature():
         """Return the temperature of a Raspberry Pi"""
+        #Firmware bug in Broadcom chip craches raspberry pi when reading temperature
+        #and using i2c at the same time
+        if os.path.exists('/dev/i2c-1'):
+            return None
         # Get temperature string
         try:
-            temp_str = subprocess.check_output(['/opt/vc/bin/vcgencmd', 'measure_temp'])
+            temp_str = subprocess.check_output(['cat',
+                                                '/sys/class/thermal/thermal_zone0/temp'])
         except OSError:
             return None
 
-        # Temperature string is on the form "temp=46.5'C" match with an RE
-        # pylint: disable=E1103
-        match = RPI_TEMP_RE.match(temp_str.decode('ascii'))
-        if match:
-            return float(match.group(1))
-        else:
-            return None
+        # Temperature string simply returns temperature in milli-celcius
+        temp = float(temp_str) / 1000
+        return temp
 
     @staticmethod
     @works_on('linux2')

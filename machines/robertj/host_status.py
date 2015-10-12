@@ -50,15 +50,23 @@ def uptime(host, method, username='pi', password='cinf123'):
         return_value['up'] = up
         return_value['load'] = load
 
-    if method in ['socket', 'ls']:
+    ports = []
+    for i in range(6000, 9999):
+        ports.append(str(i))
+    if method in ['socket', 'ls'] + ports:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(0.5)
         port = 0
-        port = 9000 if method == 'socket' else port
-        port = 8000 if method == 'ls' else port
+        if method == 'socket':
+            port = 9000
+        if method == 'ls':
+            port = 8000
+        if method in ports:
+            port = int(method)
+
         try:
             sock.sendto('status', (host, port))
-            received = sock.recv(1024)
+            received = sock.recv(4096)
             status = json.loads(received)
             system_status = status['system_status']
             up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
@@ -154,7 +162,7 @@ if __name__ == "__main__":
         for i in range(0, len(host_line)):
             host_line[i] = host_line[i].strip()
         hosts.put(host_line)
-    
+
     results = Queue.Queue()
     t = time.time()
     host_checkers = {}
@@ -164,9 +172,11 @@ if __name__ == "__main__":
     hosts.join()
 
     sorted_results = {}
+    i = 0
     while not results.empty():
+        i = i + 1
         result = results.get()
-        sorted_results[result[0]] = result
+        sorted_results[i] = result
 
     status_string = ""
     for host in sorted_results.values():

@@ -189,6 +189,7 @@ class ContinuousLogger(threading.Thread):
         for codename in measurement_codenames:
             query = 'SELECT id FROM dateplots_descriptions '\
                 'WHERE codename=\'{}\''.format(codename)
+            LOGGER.debug('CL: Query: ' + query)
             self._cursor.execute(query)
             results = self._cursor.fetchall()
             LOGGER.debug('CL: query for {} returned {}'

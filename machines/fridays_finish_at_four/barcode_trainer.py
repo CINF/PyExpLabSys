@@ -2,16 +2,15 @@
 
 """Barcode scanner module"""
 
-import sys
-from BarCodeScanner import *
+from bar_database import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
-bc = BeerClass()
+BAR_DATABASE = BarDatabase(host='servcinf', port=3306)
+
 
 def read_barcode():
     """Read the barcode and return the number or None on error"""
     print 'Scan barcode now!'
-    line = sys.stdin.readline().strip()
-
+    line = raw_input()
     out = int(line)
     return out
 
@@ -32,6 +31,8 @@ def new():
         data['price'] = input_with_type(message, int)
         message = 'type name of beer: '
         data['name'] = input_with_type(message, str)
+        message = 'type name of brewery: '
+        data['brewery'] = input_with_type(message, str)
         message = 'type alcohol precentage: '
         data['alc'] = input_with_type(message, float)
         message = 'type volume in liters: '
@@ -39,10 +40,9 @@ def new():
     except ValueError:
         print 'Wrong input!... are you drunk?'
         return
-    
+
     print data
-    #bc.insert_item(data['barcode'], data['price'], data['name'], data['alc'], data['volume'])
-    bc.insert_item(**data)
+    BAR_DATABASE.insert_item(**data)
 
 
 def update():
@@ -54,21 +54,21 @@ def update():
     data = {}
     try:
         data['barcode'] = read_barcode()
-        bc.get_item(data['barcode'])
+        BAR_DATABASE.get_item(data['barcode'])
         message = 'state the field to update: '
         data['field'] = input_with_type(message, str)
         message_new = 'state the new value: '
-        data['value'] = raw_input('state the new value: ')
-        bc.replace_item(data['barcode'], data['field'], data['value'])
+        data['value'] = raw_input(message_new)
+        BAR_DATABASE.replace_item(data['barcode'], data['field'], data['value'])
     except ValueError:
         print 'Wrong input!... are you drunk?'
         return
-    
+
 def input_with_type(prompt, type_function):
     '''Read input from raw input and type convert'''
     out = raw_input(prompt)
     out = type_function(out)
-    
+
     return out
 
 def run():

@@ -1,6 +1,7 @@
 """ Tui for controling the temperature of the high pressure
 cell of stm312"""
 # -*- coding: utf-8 -*-
+
 import time
 import threading
 import curses
@@ -27,7 +28,6 @@ db_logger = ContinuousLogger(table='dateplots_stm312',
 class PID(object):
     """Implementation of a PID routine
     """
-    
     def __init__(self, case=None):
         """The input parameter case is used to simplify that several
         system is sharing the software, each with it own parametors."""
@@ -41,7 +41,7 @@ class PID(object):
             self.gain = {'Kp':1.7,
                          'Ki':0.015,
                          'Kd':0.0,
-                         'Pmax':90.0,
+                         'Pmax':60.0,
                          'Pmin':0.0}
         #Provid a starting setpoit to ensure that the PID does not
         #apply any power before an actual setpoit is set.
@@ -62,25 +62,22 @@ class PID(object):
         #self.initialize()
         self.time = {'current': time.time(),
                      'prev': time.time()}
-        self.error = {'current': 0.0, 'prev': 0.0}
+        self.error = {'current': 0.0,
+                      'prev': 0.0}
         self.prev_err = 0.0
         #self.prev_power = 0.0
 
         self.cumulated = {'p': 0.0,
                           'i': 0.0,
                           'd': 0.0}
-        
-    #def initialize(self,):
-    #    """ Initialize delta t variables. """
-    #    self.currtm = time.time()
-    #    self.prevtm = self.currtm
-    #    self.prev_err = 0
-    #    self.prev_P = 0
-    #    # term result variables
-    #    self.Cp = 0
-    #    self.Ci = 0
-    #    self.Cd = 0
-    #    self.P = 0
+
+    def initialize(self,):
+        """ Initialize delta t variables. """
+        self.error = {'current': 0.0,
+                      'prev': 0.0}
+        self.cumulated = {'p': 0.0,
+                          'i': 0.0,
+                          'd': 0.0}
 
     def reset_integrated_error(self):
         """ Reset the I value, integrated error. """
@@ -103,30 +100,29 @@ class PID(object):
         #self.currtm = time.time()
         self.time['current'] = time.time()
         #dt = self.currtm - self.prevtm
-        dt = self.time['current'] - self.time['prev']
-        de = self.error['currrent'] - self.error['prev']
+        diff_temp = self.time['current'] - self.time['prev']
+        diff_error = self.error['current'] - self.error['prev']
         # Calculate proportional gain.
         self.cumulated['p'] = self.error['current']
-        
+
         # Calculate integral gain, including limits
         if self.power['prev'] > self.power['max'] and self.error['current'] > 0:
             pass
         elif self.power['prev'] < self.power['min'] and self.error['current'] < 0:
             pass
         else:
-            self.cumulated['i'] += self.error['current'] * dt
-        
+            self.cumulated['i'] += self.error['current'] * diff_temp
         # Calculate derivative gain.
-        if dt > 0:
-            self.cumulated['d'] = de/dt
+        if diff_temp > 0:
+            self.cumulated['d'] = diff_error/diff_temp
         else:
             self.cumulated['d'] = 0
-            
+
         # Adjust times, and error for next iteration.
         #self.prevtm = self.currtm
         self.time['prev'] = self.time['current']
         self.error['prev'] = self.error['current']
-        
+
         #Calculate Output.
         self.power['current'] = 0
         for key, value in self.pid_coef.iteritems():
@@ -135,7 +131,7 @@ class PID(object):
         #    self.Ki * self.Ci + \
         #    self.Kd * self.Cd
         self.power['prev'] = self.power['current']
-        
+
         #Check if output is valid.
         if self.power['current'] > self.power['max']:
             self.power['current'] = self.power['max']
@@ -200,10 +196,10 @@ class CursesTui(threading.Thread):
         self.countdown = False
         self.last_key = None
         self.running = True
-        
+
     def run(self,):
         while self.running:
-            time.sleep(1)
+            time.sleep(0.1)
             try:
                 self.screen.addstr(3, 2,
                                    "Power Supply for HPC " \
@@ -272,6 +268,7 @@ class CursesTui(threading.Thread):
                                        (self.countdown_end_time - time.time())/3600.0 ))
                 if time.time() > self.countdown_end_time:
                     self.pcc.change_mode('Voltage Control')
+                    self.pcc.zero_setpoint()
                     #self.pcc.OutputOff()
                     self.countdown = False
             else:
@@ -293,7 +290,7 @@ class CursesTui(threading.Thread):
                                "3: shutdown in 3h, " \
                                "8: shutdown -900s, " \
                                "9: shutdown +900s")
-            
+
             n = self.screen.getch()
             if n == ord("q"):
                 self.pcc.running = False
@@ -342,29 +339,33 @@ class CursesTui(threading.Thread):
         curses.echo()
         curses.endwin()
 
-def sqlTime():
-    sqltime = datetime.now().isoformat(' ')[0:19]
-    return sqltime
+#==============================================================================
+#def sqlTime():
+#    sqltime = datetime.now().isoformat(' ')[0:19]
+#    return sqltime
+#==============================================================================
 
-
-def sqlInsert(query):
-    try:
-        cnxn = MySQLdb.connect(
-            host="servcinf",
-            user="stm312",
-            passwd="stm312",
-            db="cinfdata")
-        cursor = cnxn.cursor()
-    except:
-	print "Unable to connect to database"
-	return()
-    try:
-        cursor.execute(query)
-        cnxn.commit()
-    except:
-        print "SQL-error, query written below:"
-        print query
-    cnxn.close()
+#==============================================================================
+# def sqlInsert(query):
+#     try:
+#         cnxn = MySQLdb.connect(
+#             host="servcinf",
+#             user="stm312",
+#             passwd="stm312",
+#             db="cinfdata")
+#         cursor = cnxn.cursor()
+#     except:
+#         print("Unable to connect to database")
+#         return()
+#     try:
+#         cursor.execute(query)
+#         cnxn.commit()
+#     except:
+#         print "SQL-error, query written below:"
+#         print query
+#    cnxn.close()
+#    return query
+#==============================================================================    
 
 def network_comm(host, port, string):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -379,23 +380,26 @@ def read_hp_temp():
     data = 'stm312_hpc_temperature#raw'
     host = '127.0.0.1'
     port = 9000
+    #received = network_comm(host, port, data)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(0.2)
     sock.sendto(data, (host, port))
     received = sock.recv(1024)
     temp = float(received[received.find(',')+1:])
-    return(temp)
+    return temp
 
 def read_setpoint():
+    """Read the setpoint from socket."""
     received = network_comm('rasppi19', 9990, 'read_setpoint')
     temp = float(received)
     return(temp)
 
 def write_setpoint(setpoint):
+    """Write setpoint to socket."""
     #print "write_setpoint {}".format(setpoint)
     received = network_comm('rasppi19', 9990, 'set_setpoint '+str(setpoint))
     #temp = float(received)
-    #return(temp)
+    return received
 
 class TemperatureClass(threading.Thread):
     def __init__(self):
@@ -404,7 +408,8 @@ class TemperatureClass(threading.Thread):
         self.running = True
         self.error = False
         self.debug_level = 0
-        
+        self.error_count = 0
+
     def run(self):
         while self.running:
             #data_temp = 'T1#raw'
@@ -415,54 +420,55 @@ class TemperatureClass(threading.Thread):
                 #received = sock.recv(1024)
                 #self.temperature = float(received[received.find(',') + 1:])
                 self.temperature = float(read_hp_temp())
+                self.error_count = 0
             except:
                 self.error = True
+                self.error_count += 1
             if self.debug_level > 0:
                 print(str(self.temperature))
             #temperature = self.temperature
             time.sleep(0.25)
     def stop(self,):
         self.running = False
-        pass
 
 class PowerControlClass(threading.Thread):
-    
     def __init__(self):#,datasocket,pushsocket
         #self.datasocket = datasocket
         #self.pushsocket = pushsocket
         threading.Thread.__init__(self)
+        write_setpoint(0.0)
         #self.PowerCalculatorClass = PID_class
         self.running = True
         self.status = {}
         self.status['Mode'] = 'Voltage Control' #, 'Power Control'
+
         self.logger = False
-        
         self.init_status()
         self.init_PID_class()
         #self.init_temp_class()
         self.init_heater_class()
-    
+
     def init_status(self,):
         self.status['error'] = None
         self.status['Setpoint'] = 0.0
         self.status['Setpoint unit'] = "au"
-        
+
         self.status['Current'] = 0.0
         self.status['Wanted Current'] = 0.0
-        
+
         self.status['Voltage'] = 0.0
         self.status['Wanted Voltage'] = 0.0
-        
+
         self.status['Actual Power'] = 0.0
         self.status['Wanted power'] = 0.0
-        
+
         self.status['Resistance'] = 1.0
-        
+
         self.status['ID'] = '0'
-    
+
     def init_temp_class(self, temp_class):
         self.temp_class = temp_class
-        
+
     def init_PID_class(self,):
         self.power = 0.0
         self.setpoint = 0.0
@@ -474,7 +480,7 @@ class PowerControlClass(threading.Thread):
         self.pid.update_setpoint(self.setpoint)
         self.status['Wanted Power'] = self.power
         self.status['Setpoint'] = self.setpoint
-        
+
     def init_heater_class(self,):
         dev_port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F9545A-if00'
         self.heater = CPX.CPX400DPDriver(1, interface='serial', device=dev_port)
@@ -496,7 +502,7 @@ class PowerControlClass(threading.Thread):
         self.valuelogger['Current'].add_logger(self.db_logger)
         self.valuelogger['Voltage'].add_logger(self.db_logger)
         self.logger = True
-    
+
     def init_resistance(self,):
         self.heater.set_voltage(2)
         self.heater.output_status(on=True)
@@ -504,15 +510,17 @@ class PowerControlClass(threading.Thread):
         I_calib = self.heater.read_actual_current()
         self.heater.output_status(on=False)
         self.R_calib = 2.0/I_calib
-        
+
     def OutputOn(self,):
+        """Set Output to On."""
         self.status['Output'] = True
         self.heater.output_status(on=True)
-        
+
     def OutputOff(self,):
+        """Set output to Off."""
         self.status['Output'] = False
         self.heater.output_status(on=False)
-        
+
     def update_output(self,):
         self.status['Current'] = self.heater.read_actual_current()
         self.status['Voltage'] = self.heater.read_actual_voltage()
@@ -522,6 +530,7 @@ class PowerControlClass(threading.Thread):
             self.status['Resistance'] = 1.0
         
     def change_setpoint(self, setpoint):
+        """Change the setpoint."""
         try:
             write_setpoint(setpoint)
         except:
@@ -530,6 +539,7 @@ class PowerControlClass(threading.Thread):
         self.status['Setpoint'] = read_setpoint()
 
     def increase_setpoint(self,):
+        """Increment setpoint."""
         setpoint = read_setpoint()
         if self.status['Mode'] == 'Temperature Control':
             setpoint += 1
@@ -538,14 +548,21 @@ class PowerControlClass(threading.Thread):
         self.change_setpoint(setpoint)
 
     def decrease_setpoint(self,):
+        """Decrement setpoint."""
         setpoint = read_setpoint()
         if self.status['Mode'] == 'Temperature Control':
             setpoint -= 1
         elif self.status['Mode'] in ['Power Control', 'Current Control', 'Voltage Control']:
             setpoint -= 0.1
         self.change_setpoint(setpoint)
-        
+
+    def zero_setpoint(self,):
+        """Set setpoint to Zero."""
+        self.change_setpoint(0.0)
+
     def change_mode(self, new_mode):
+        """Change the mode between:
+        Temperature, Power, Voltage, and Current."""
         if new_mode in ['Temperature Control',
                         'Power Control',
                         'Current Control',
@@ -553,12 +570,14 @@ class PowerControlClass(threading.Thread):
             if new_mode in ['Power Control',
                             'Current Control',
                             'Voltage Control']:
-                self.change_setpoint(0.0)
+                self.change_setpoint(self.status['Voltage'])
+            elif new_mode in ['Power Control',]:
+                self.change_setpoint(self.status['Actual Power'])
             elif new_mode in  ['Temperature Control']:
-                self.change_setpoint(23.0)
+                self.change_setpoint(self.temp_class.temperature)
                 self.pid.initialize()
             self.status['Mode'] = new_mode
-            
+
             if new_mode in ['Temperature Control',]:
                 self.status['Setpoint unit'] = 'degC'
             elif new_mode in ['Power Control',]:
@@ -570,7 +589,7 @@ class PowerControlClass(threading.Thread):
         else:
             self.status['error'] = 'Mode does not exsist'
             self.status['error time'] = time.time()
-    
+
     def run(self,):
         self.heater.set_voltage(0)
         self.OutputOn()
@@ -606,8 +625,10 @@ class PowerControlClass(threading.Thread):
         self.pid.update_setpoint(-200)
         self.OutputOff()
         self.stop()
-        
+
     def stop(self,):
+        """Stop function."""
+        self.OutputOff()
         self.running = False
         try:
             self.temp_class.stop()

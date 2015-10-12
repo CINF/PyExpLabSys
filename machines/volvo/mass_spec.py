@@ -22,26 +22,28 @@ sql_saver.start()
 
 qmg = qmg422.qmg_422(port='/dev/ttyS0', speed=9600)
 chamber = 'dummy'
-#chamber = 'volvo'                                                                        
+#chamber = 'volvo'
 
 qms = ms.qms(qmg, sql_queue, chamber=chamber, credentials=sql_credentials.username)
 qmg.reverse_range = False
+
 printer = qmg_status_output.qms_status_output(qms, sql_saver_instance=sql_saver)
 printer.start()
 
-if False:
+if True:
     channel_list = qms.read_ms_channel_list('channel_list.txt')
     meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
     meta_udp.daemon = True
     meta_udp.start()
     print qms.mass_time(channel_list['ms'], timestamp)
 
-if True:
-    qms.mass_scan(26, 8, comment='qmg421 -8', amp_range=-8)
-    qms.mass_scan(26, 8, comment='qmg421 -9', amp_range=-9)
-    qms.mass_scan(26, 8, comment='qmg421 -10', amp_range=-10)
-    qms.mass_scan(26, 8, comment='qmg421 -11', amp_range=-11)
-    qms.mass_scan(26, 8, comment='qmg421 -12', amp_range=-12)
+if False:
+    qms.mass_scan(26, 8, comment='Background scan', amp_range=-11)
+
 
 time.sleep(1)
 printer.stop()
+
+if False: # here filament and sem can be modified
+    print qmg.sem_status(voltage=1800, turn_on=True)
+    print qmg.emission_status(current=0.1,turn_on=True)

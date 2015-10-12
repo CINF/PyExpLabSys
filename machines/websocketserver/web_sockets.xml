@@ -8,14 +8,17 @@
     <!-- Gas alarm 307 -->
     <socket>rasppi34:8000</socket>
 
+    <!-- Gas alarm 312 -->
+    <socket>rasppi15:8000</socket>
+
     <!-- N5 argon gas line -->
-    <socket>rasppi45:8000</socket>
+    <socket>rasppi01:8000</socket>
 
     <!-- Cooling water pressure -->
     <socket>rasppi02:8000</socket>
 
     <!-- Cooling water temperature -->
-    <socket>rasppi23:8000</socket>
+    <socket>rasppi61:8000</socket>
 
     <!-- Micro-reactor NG temperature -->
     <socket>rasppi12:8000</socket>
@@ -63,6 +66,46 @@
     <!-- Microreactor Analogue flow controller -->
     <socket>rasppi26:8000</socket>
 
+    <!-- Microreactor Turbo Pump -->
+    <socket>rasppi100:8000</socket>
+
+    <!-- PS Turbo Pump -->
+    <socket>rasppi28:8000</socket>
+
     <!-- UPS logging -->
     <socket>rasppi14:8000</socket>
+
+    <!-- Thetaprobe chiller -->
+    <socket>rasppi57:8000</socket>
+
+    <!-- XRD chiller -->
+    <socket>rasppi60:8000</socket>
+
+    <!-- Sputterchamber chiller + qcm -->
+    <socket>rasppi21:8000</socket>
+
+    <!-- Chiller Parallel screening -->
+    <socket>rasppi20:8000</socket>
+
+    <!-- Bakeout control box Palle -->
+    <socket>rasppi48:8000</socket>
+
+    <!-- Emmission control -->
+    <socket>rasppi49:8000</socket>
+
+    <!-- Palle, Analog MFC -->
+    <socket>rasppi62:8000</socket>
+
+    <!-- b309PVD temperatures -->
+    <socket>rasppi112:8000</socket>
+
+    <!-- b309PVD pressures -->
+    <socket>rasppi51:8000</socket>
+
+    <!-- b309PVD QCMs -->
+    <socket>rasppi106:8000</socket>
+
+    <!-- b312 Temperature and ventilation pressure -->
+    <socket>rasppi66:8000</socket>
+
 </sockets>

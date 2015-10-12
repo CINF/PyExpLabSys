@@ -41,6 +41,8 @@ Presently the module contains the following socket servers:
  what is happening.
 """
 
+from __future__ import print_function
+
 import threading
 import socket
 import SocketServer
@@ -592,6 +594,8 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
          * **name** (*str*): Return the name of the PushSocket server
          * **status** (*str*): Return the system status and status for all
            socket servers.
+         * **commands** (*str*): Return a json encoded list of commands. The returns value is
+           is prefixed with :data:`.PUSH_RET` and '#' so e.g. 'RET#actual_date'
         """
         request = self.request[0]
         PUSHUHLOG.debug('Request \'{}\'received'.format(request))
@@ -602,6 +606,9 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         # Parse the request and call the appropriate helper methods
         if request == 'name':
             return_value = '{}#{}'.format(PUSH_RET, DATA[self.port]['name'])
+        elif request == 'commands':
+            commands = ['json_wn#', 'raw_wn#', 'name', 'status', 'commands']
+            return_value = '{}#{}'.format(PUSH_RET, json.dumps(commands))
         elif request == 'status':
             return_value = json.dumps({
                 'system_status': SYSTEM_STATUS.complete_status(),
@@ -1079,7 +1086,7 @@ class DataPushSocket(threading.Thread):
         """Gets the queue, returns None if ``action`` is ``'store_last'`` or
         ``'callback_direct'``
         """
-        DPUSHSLOG.info('DPS: queue property used')
+        DPUSHSLOG.debug('DPS: queue property used')
         return DATA[self.port].get('queue')
 
     @property
@@ -1408,3 +1415,27 @@ DATA = {}
 #: The dict that transforms strings to convertion functions
 TYPE_FROM_STRING = {'int': int, 'float': float, 'str': str,
                     'bool': bool_translate}
+
+
+def run_module():
+    """This functions sets"""
+    def push_callback(incoming):
+        """Calback function for the push socket"""
+        print('Push socket got:', incoming)
+
+    push_socket = DataPushSocket(
+        'module_test_push_socket', action='callback_direct', callback=push_callback
+    )
+    push_socket.start()
+    print('Started DataPushSocket on port 8500 with name "module_test_push_socket"')
+
+    try:
+        time.sleep(1E7)
+    except KeyboardInterrupt:
+        push_socket.stop()
+        print('Stopped DataPushSocket on port 8500 with name "module_test_push_socket"')
+        time.sleep(2)
+
+
+if __name__ == '__main__':
+    run_module()
