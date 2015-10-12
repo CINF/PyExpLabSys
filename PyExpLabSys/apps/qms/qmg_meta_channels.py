@@ -77,6 +77,10 @@ class udp_meta_channel(threading.Thread):
                     value = None
                 except TypeError:
                     logging.warn('Type error from meta channel, most likely during shutdown')
+                    value = None
+                except Exception as e:
+                    logging.error('Unknown error: ' + str(e))
+                    value = None
 
                 if not value == None:
                     query  = 'insert into xy_values_' + self.qms.chamber + ' '
