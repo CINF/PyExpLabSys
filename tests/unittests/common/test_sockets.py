@@ -15,7 +15,7 @@ from numpy import isclose
 from PyExpLabSys.common import sockets
 from PyExpLabSys.common.sockets import (
     bool_translate, socket_server_status, PullUDPHandler, CommonDataPullSocket, DataPullSocket,
-    DateDataPullSocket,
+    DateDataPullSocket, PushUDPHandler,
 )
 
 ### Test data
@@ -656,50 +656,149 @@ class TestDateDataPullSocket(object):
 class TestPushUDPHandler(object):
     """Test the PushUDPHandler"""
 
-    def test_handle_name(self, mocket, server, cases):
-        """Test the handle name case"""
+    def test_port(self, mocket, server, clean_data):
+        """Test setting the port"""
         # mock handle, which is called at instantiate time, inside a try except
-        with mock.patch(FIXME   self.path('handle')):
-            # HEEEEERE HERE FIXME
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler(('dummy_request', mocket), CLIENT_ADDRESS, server)
+        handler.handle()
+        assert handler.port == 9876
+        
+    def test_handle_name(self, mocket, server, clean_data):
+        """Test the handle name case"""
+        request = b'name'
+        clean_data[9876] = {'name': FIRTS_MEASUREMENT_NAME}
+
+        # mock handle, which is called at instantiate time, inside a try except
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
             handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
 
+        handler.handle()
+        expected = '{}#{}'.format(sockets.PUSH_RET, FIRTS_MEASUREMENT_NAME)
+        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
 
-    def test_handle_single_val_and_port(self, mocket, server):
-        """Test the handle method"""
-        return
-        request = b'dummy#request'
-        mock_return_value = 'mock return value'
-
-        # mock handle, which is called at instantiate time, inside a try except
-        with mock.patch(self.path('handle')):
-            handler = PullUDPHandler((request, mocket), CLIENT_ADDRESS, server)
-
-        # Test single value case
-        with mock.patch(self.path('_single_value')) as _single_value:
-            _single_value.return_value = mock_return_value
-            with mock.patch(self.path('_all_values')) as _all_values:
-                handler.handle()
-                _single_value.assert_called_once_with(request)
-                assert not _all_values.called
-                mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
-
-        assert handler.port == PORT
-
-    def test_handle_all_value(self, mocket, server):
-        """Test the handle method"""
-        return
-        request = b'dummy_request'
-        mock_return_value = 'mock return value'
+    def test_handle_commands(self, mocket, server, clean_data):
+        """Test the handle name case"""
+        request = b'commands'
+        clean_data[9876] = {'name': FIRTS_MEASUREMENT_NAME}
 
         # mock handle, which is called at instantiate time, inside a try except
-        with mock.patch(self.path('handle')):
-            handler = PullUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
 
-        # Test all values case
-        with mock.patch(self.path('_single_value')) as _single_value:
-            with mock.patch(self.path('_all_values')) as _all_values:
-                _all_values.return_value = mock_return_value
+        handler.handle()
+        expected = '{}#[\"json_wn#\", \"raw_wn#\", \"name\", \"status\", \"commands\"]'.format(
+            sockets.PUSH_RET)
+        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+
+    def test_handle_status(self, mocket, server, clean_data):
+        """Test the handle name case"""
+        request = b'status'
+
+        # mock handle, which is called at instantiate time, inside a try except
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+
+        # Set up mocks for SYSTEM_STATUS and socket_server_status
+        with mock.patch(SOCKETS_PATH.format('SYSTEM_STATUS')) as system_status:
+            system_status.complete_status.return_value = 1
+            with mock.patch(SOCKETS_PATH.format('socket_server_status')) as\
+                 socket_server_status:
+                socket_server_status.return_value = 2
+
                 handler.handle()
-                _all_values.assert_called_once_with(request)
-                assert not _single_value.called
-                mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
+
+                # Test the expected output
+                expected = {'system_status': 1, 'socket_server_status': 2}
+                args = tuple(mocket.sendto.call_args[0])
+                assert args[1] == CLIENT_ADDRESS
+                assert json.loads(args[0]) == expected
+
+    def test_not_previous_and_no_hash(self, mocket, server, clean_data):
+        """Test the case, where the command is not any of the previous ones and it does not
+        contain an #
+        """
+        request = b'some_bad_command'
+
+        # mock handle, which is called at instantiate time, inside a try except
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+    
+        handler.handle()
+        expected = '{}#{}'.format(sockets.PUSH_ERROR, sockets.UNKNOWN_COMMAND)
+        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+
+    def test_json_wn(self, mocket, server, clean_data):
+        """Test the case, where the command is not any of the previous ones and it does not
+        contain an #
+        """
+        request = b'json_wn#{"meas1": 4.7, "string1": "Hallo World!"}'
+        json_return_value = 'json_wn_return_value'
+
+        # mock handle, which is called at instantiate time, inside a try except
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._json_with_names')) as json_wn:
+            json_wn.return_value = json_return_value
+            handler.handle()
+            json_wn.assert_called_once_with('{"meas1": 4.7, "string1": "Hallo World!"}')
+
+        mocket.sendto.assert_called_once_with(json_return_value, CLIENT_ADDRESS)
+
+    def test_raw_wn(self, mocket, server, clean_data):
+        """Test the case, where the command is not any of the previous ones and it does not
+        contain an #
+        """
+        request = b'raw_wn#meas1:float:47.0;string1:str:Hallo World!'
+        raw_return_value = 'raw_wn_return_value'
+
+        # mock handle, which is called at instantiate time, inside a try except
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._raw_with_names')) as raw_wn:
+            raw_wn.return_value = raw_return_value
+            handler.handle()
+            raw_wn.assert_called_once_with('meas1:float:47.0;string1:str:Hallo World!')
+
+        mocket.sendto.assert_called_once_with(raw_return_value, CLIENT_ADDRESS)
+    
+
+    # def test_handle_single_val_and_port(self, mocket, server):
+    #     """Test the handle method"""
+    #     return
+    #     request = b'dummy#request'
+    #     mock_return_value = 'mock return value'
+
+    #     # mock handle, which is called at instantiate time, inside a try except
+    #     with mock.patch(self.path('handle')):
+    #         handler = PullUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+
+    #     # Test single value case
+    #     with mock.patch(self.path('_single_value')) as _single_value:
+    #         _single_value.return_value = mock_return_value
+    #         with mock.patch(self.path('_all_values')) as _all_values:
+    #             handler.handle()
+    #             _single_value.assert_called_once_with(request)
+    #             assert not _all_values.called
+    #             mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
+
+    #     assert handler.port == PORT
+
+    # def test_handle_all_value(self, mocket, server):
+    #     """Test the handle method"""
+    #     return
+    #     request = b'dummy_request'
+    #     mock_return_value = 'mock return value'
+
+    #     # mock handle, which is called at instantiate time, inside a try except
+    #     with mock.patch(SOCKETS_PATH.format('handle')):
+    #         handler = PullUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+
+    #     # Test all values case
+    #     with mock.patch(self.path('_single_value')) as _single_value:
+    #         with mock.patch(self.path('_all_values')) as _all_values:
+    #             _all_values.return_value = mock_return_value
+    #             handler.handle()
+    #             _all_values.assert_called_once_with(request)
+    #             assert not _single_value.called
+    #             mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
