@@ -69,7 +69,12 @@ def bool_translate(string):
 
 
 def socket_server_status():
-    """Returns the status of all socket servers"""
+    """Returns the status of all socket servers
+
+    Returns:
+        dict: Dict with port to status dict mapping. The status dict has the following keys:
+            name, type, status (with str values) and since_last_activity with float value.
+    """
     status_dict = {}
     for port, data in DATA.items():
         if data['activity']['check_activity']:
@@ -168,7 +173,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
                 out = OLD_DATA
             else:
                 out = '{},{}'.format(*DATA[self.port]['data'][name])
-        # Return a json encoded string
+
         elif command == 'json' and name in DATA[self.port]['data']:
             if self._old_data(name):
                 out = json.dumps(OLD_DATA)
