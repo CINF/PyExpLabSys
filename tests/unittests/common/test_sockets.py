@@ -36,6 +36,7 @@ ALL_DATA = {PORT: {
     'codenames': [FIRTS_MEASUREMENT_NAME, SECOND_MEASUREMENT_NAME],
 }}
 SOCKETS_PATH = 'PyExpLabSys.common.sockets.{}'
+ANY_RETURN = 'any_return_value'
 
 
 ### Fixtures
@@ -106,6 +107,13 @@ def clean_data():
     yield sockets.DATA
     sockets.DATA = old_data
 
+
+@pytest.yield_fixture
+def push_udp_handler(mocket, server):
+    """An any request PushUDPHandler"""
+    # mock handle, which is called at instantiate time, inside a try except
+    with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+        yield PushUDPHandler(('any_request', mocket), CLIENT_ADDRESS, server)
 
 ### Tests
 def test_bool_translate():
@@ -658,6 +666,8 @@ class TestPushUDPHandler(object):
 
     raw_wn_request = b'raw_wn#meas1:float:47.0;string1:str:Hallo World!'
     json_wn_request = b'json_wn#{"meas1": 4.7, "string1": "Hallo World!"}'
+    set_data_dict = {'last': None, 'last_time': None, 'updated': {'meas1': 66},
+                     'updated_time': None, 'action': None}
 
     def test_port(self, mocket, server, clean_data):
         """Test setting the port"""
@@ -790,43 +800,92 @@ class TestPushUDPHandler(object):
         expected = '{}#{}'.format(sockets.PUSH_ERROR, msg)
         mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
 
+    def test_raw_with_names(self, clean_data, push_udp_handler):
+        """Test the _raw_with_names method"""
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._set_data')) as set_data:
+            set_data.return_value = ANY_RETURN
+            assert push_udp_handler._raw_with_names(self.raw_wn_request.split('#')[1]) ==\
+                ANY_RETURN
+            set_data.assert_called_once_with({'meas1': 47.0, 'string1': 'Hallo World!'})
 
-    # def test_handle_single_val_and_port(self, mocket, server):
-    #     """Test the handle method"""
-    #     return
-    #     request = b'dummy#request'
-    #     mock_return_value = 'mock return value'
+    def test_raw_with_names_exceptions(self, clean_data, push_udp_handler):
+        """Test the _raw_with_names exceptions"""
+        # Test exception for a bad format
+        with pytest.raises(ValueError) as exception:
+            push_udp_handler._raw_with_names('mymeas:int8')
+        assert str(exception.value).startswith('The data part ')
+        assert str(exception.value).endswith(
+            ' did not match the expected format of 3 parts divided by \':\'')
 
-    #     # mock handle, which is called at instantiate time, inside a try except
-    #     with mock.patch(self.path('handle')):
-    #         handler = PullUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+        # Test the exception for an unknown type
+        with pytest.raises(ValueError) as exception:
+            push_udp_handler._raw_with_names('mymeas:longint:8')
+        assert str(exception.value).startswith(
+            'The data type \'longint\' is unknown. Only ')
+        assert str(exception.value).endswith(' are allowed')
 
-    #     # Test single value case
-    #     with mock.patch(self.path('_single_value')) as _single_value:
-    #         _single_value.return_value = mock_return_value
-    #         with mock.patch(self.path('_all_values')) as _all_values:
-    #             handler.handle()
-    #             _single_value.assert_called_once_with(request)
-    #             assert not _all_values.called
-    #             mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
+        # Test the exception when the type function cannot convert
+        with pytest.raises(ValueError) as exception:
+            push_udp_handler._raw_with_names('mymeas:float:jkljkl')
+        assert str(exception.value).startswith('Unable to convert values to \'')
 
-    #     assert handler.port == PORT
+    def test_json_with_names(self, clean_data, push_udp_handler):
+        """Test the _json_with_names method"""
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._set_data')) as set_data:
+            set_data.return_value = ANY_RETURN
+            assert push_udp_handler._json_with_names(self.json_wn_request.split('#')[1]) ==\
+                ANY_RETURN
+            set_data.assert_called_once_with({'meas1': 4.7, 'string1': 'Hallo World!'})
 
-    # def test_handle_all_value(self, mocket, server):
-    #     """Test the handle method"""
-    #     return
-    #     request = b'dummy_request'
-    #     mock_return_value = 'mock return value'
+    def test_json_with_names_exceptions(self, clean_data, push_udp_handler):
+        """Test the _json_with_names exceptions"""
+        # Test the not json exception
+        with pytest.raises(ValueError) as exception:
+            push_udp_handler._json_with_names('dsd')
+        assert str(exception.value).startswith('The string ')
+        assert str(exception.value).endswith(' could not be decoded as JSON')
 
-    #     # mock handle, which is called at instantiate time, inside a try except
-    #     with mock.patch(SOCKETS_PATH.format('handle')):
-    #         handler = PullUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+        # Test the not dict exception
+        with pytest.raises(ValueError) as exception:
+            push_udp_handler._json_with_names('"dsd"')
+        assert str(exception.value).startswith('The object \'')
+        assert str(exception.value).endswith(
+            ' returned after decoding the JSON string is not a dict')
 
-    #     # Test all values case
-    #     with mock.patch(self.path('_single_value')) as _single_value:
-    #         with mock.patch(self.path('_all_values')) as _all_values:
-    #             _all_values.return_value = mock_return_value
-    #             handler.handle()
-    #             _all_values.assert_called_once_with(request)
-    #             assert not _single_value.called
-    #             mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
+    def test_set_data_main(self, clean_data, push_udp_handler):
+        """Test the _set_data main data set in DATA"""
+        # Setup
+        clean_data[PORT] = dict(self.set_data_dict)
+        data = {'meas1': 4.7, 'string1': 'Hallo World!'}
+        push_udp_handler.port = PORT
+
+        # Set and test
+        with mock.patch('time.time') as mocktime:
+            mocktime.return_value = 789.0
+            push_udp_handler._set_data({'meas1': 4.7, 'string1': 'Hallo World!'})
+        assert clean_data[PORT]['last'] == data
+        assert clean_data[PORT]['last_time'] == 789.0
+        assert clean_data[PORT]['updated'] == data
+        assert clean_data[PORT]['updated_time'] == 789.0
+
+    @pytest.mark.parametrize('action', ['enqueue', 'callback_async', 'nonaction'],
+                             ids=['enqueue', 'callback_async', 'nonaction'])
+    def test_set_data_main_enqueue(self, clean_data, push_udp_handler, action):
+        """Test the _set_data enqueue data set in DATA"""
+        # Setup
+        clean_data[PORT] = dict(self.set_data_dict)
+        clean_data[PORT]['action'] = action
+        clean_data[PORT]['queue'] = mock.MagicMock()
+        data = {'meas1': 4.7, 'string1': 'Hallo World!'}
+        push_udp_handler.port = PORT
+
+        # Set and test
+        push_udp_handler._set_data({'meas1': 4.7, 'string1': 'Hallo World!'})
+        if action == 'nonaction':
+            assert clean_data[PORT]['queue'].put.call_count == 0
+        else:
+            clean_data[PORT]['queue'].put.assert_called_once_with(data)
+
+    def test_set_data_callback_direct(self, clean_data, push_udp_handler):
+        """Test the set data callback_direct case"""
+        pass
