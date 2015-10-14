@@ -656,6 +656,9 @@ class TestDateDataPullSocket(object):
 class TestPushUDPHandler(object):
     """Test the PushUDPHandler"""
 
+    raw_wn_request = b'raw_wn#meas1:float:47.0;string1:str:Hallo World!'
+    json_wn_request = b'json_wn#{"meas1": 4.7, "string1": "Hallo World!"}'
+
     def test_port(self, mocket, server, clean_data):
         """Test setting the port"""
         # mock handle, which is called at instantiate time, inside a try except
@@ -663,7 +666,7 @@ class TestPushUDPHandler(object):
             handler = PushUDPHandler(('dummy_request', mocket), CLIENT_ADDRESS, server)
         handler.handle()
         assert handler.port == 9876
-        
+
     def test_handle_name(self, mocket, server, clean_data):
         """Test the handle name case"""
         request = b'name'
@@ -678,7 +681,7 @@ class TestPushUDPHandler(object):
         mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
 
     def test_handle_commands(self, mocket, server, clean_data):
-        """Test the handle name case"""
+        """Test the handle commands case"""
         request = b'commands'
         clean_data[9876] = {'name': FIRTS_MEASUREMENT_NAME}
 
@@ -692,7 +695,7 @@ class TestPushUDPHandler(object):
         mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
 
     def test_handle_status(self, mocket, server, clean_data):
-        """Test the handle name case"""
+        """Test the handle status case"""
         request = b'status'
 
         # mock handle, which is called at instantiate time, inside a try except
@@ -714,7 +717,7 @@ class TestPushUDPHandler(object):
                 assert args[1] == CLIENT_ADDRESS
                 assert json.loads(args[0]) == expected
 
-    def test_not_previous_and_no_hash(self, mocket, server, clean_data):
+    def test_handle_no_hash(self, mocket, server, clean_data):
         """Test the case, where the command is not any of the previous ones and it does not
         contain an #
         """
@@ -723,21 +726,18 @@ class TestPushUDPHandler(object):
         # mock handle, which is called at instantiate time, inside a try except
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
             handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
-    
+
         handler.handle()
         expected = '{}#{}'.format(sockets.PUSH_ERROR, sockets.UNKNOWN_COMMAND)
         mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
 
-    def test_json_wn(self, mocket, server, clean_data):
-        """Test the case, where the command is not any of the previous ones and it does not
-        contain an #
-        """
-        request = b'json_wn#{"meas1": 4.7, "string1": "Hallo World!"}'
+    def test_handle_json_wn(self, mocket, server, clean_data):
+        """Test the handle json with names case"""
         json_return_value = 'json_wn_return_value'
 
         # mock handle, which is called at instantiate time, inside a try except
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
-            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+            handler = PushUDPHandler((self.json_wn_request, mocket), CLIENT_ADDRESS, server)
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler._json_with_names')) as json_wn:
             json_wn.return_value = json_return_value
             handler.handle()
@@ -745,23 +745,51 @@ class TestPushUDPHandler(object):
 
         mocket.sendto.assert_called_once_with(json_return_value, CLIENT_ADDRESS)
 
-    def test_raw_wn(self, mocket, server, clean_data):
-        """Test the case, where the command is not any of the previous ones and it does not
-        contain an #
-        """
-        request = b'raw_wn#meas1:float:47.0;string1:str:Hallo World!'
+    def test_handle_raw_wn(self, mocket, server, clean_data):
+        """Test the handle raw with names case"""
         raw_return_value = 'raw_wn_return_value'
 
         # mock handle, which is called at instantiate time, inside a try except
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
-            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+            handler = PushUDPHandler((self.raw_wn_request, mocket), CLIENT_ADDRESS, server)
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler._raw_with_names')) as raw_wn:
             raw_wn.return_value = raw_return_value
             handler.handle()
             raw_wn.assert_called_once_with('meas1:float:47.0;string1:str:Hallo World!')
 
         mocket.sendto.assert_called_once_with(raw_return_value, CLIENT_ADDRESS)
-    
+
+    def test_handle_unknown(self, mocket, server, clean_data):
+        """Test the handle unknown command case"""
+        request = b'unkonwn_command'
+        # mock handle, which is called at instantiate time, inside a try except
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+        handler.handle()
+
+        expected = '{}#{}'.format(sockets.PUSH_ERROR, sockets.UNKNOWN_COMMAND)
+        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+
+    @pytest.mark.parametrize("method_and_request",
+        (('_json_with_names', json_wn_request), ('_raw_with_names', raw_wn_request)),
+        ids=['json_with_names', 'raw_with_names'])
+    def test_handle_wn_exceptions(self, mocket, server, clean_data, method_and_request):
+        """Test the handle json and raw with name exception case"""
+        method, request = method_and_request
+        msg = 'You messed up!'
+
+        # mock handle, which is called at instantiate time, inside a try except
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
+            handler = PushUDPHandler((request, mocket), CLIENT_ADDRESS, server)
+
+        # Mock the with name method to raise a ValueError
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.' + method)) as method:
+            method.side_effect = ValueError(msg)
+            handler.handle()
+
+        expected = '{}#{}'.format(sockets.PUSH_ERROR, msg)
+        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+
 
     # def test_handle_single_val_and_port(self, mocket, server):
     #     """Test the handle method"""
