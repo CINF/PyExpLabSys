@@ -668,6 +668,7 @@ class TestPushUDPHandler(object):
     json_wn_request = b'json_wn#{"meas1": 4.7, "string1": "Hallo World!"}'
     set_data_dict = {'last': None, 'last_time': None, 'updated': {'meas1': 66},
                      'updated_time': None, 'action': None}
+    test_data = {'meas1': 4.7, 'string1': 'Hallo World!'}
 
     def test_port(self, mocket, server, clean_data):
         """Test setting the port"""
@@ -880,12 +881,110 @@ class TestPushUDPHandler(object):
         push_udp_handler.port = PORT
 
         # Set and test
-        push_udp_handler._set_data({'meas1': 4.7, 'string1': 'Hallo World!'})
+        push_udp_handler._set_data(self.test_data)
         if action == 'nonaction':
             assert clean_data[PORT]['queue'].put.call_count == 0
         else:
-            clean_data[PORT]['queue'].put.assert_called_once_with(data)
+            clean_data[PORT]['queue'].put.assert_called_once_with(self.test_data)
 
-    def test_set_data_callback_direct(self, clean_data, push_udp_handler):
+    @pytest.mark.parametrize(
+        'formatter', ['_format_return_json', '_format_return_raw', '_format_return_string'],
+        ids=['format_return_json', 'format_return_raw', 'format_return_string'])
+    def test_set_data_callback_direct(self, clean_data, push_udp_handler, formatter):
         """Test the set data callback_direct case"""
-        pass
+        cbmock = mock.MagicMock(name='mycallback')
+        cbmock.return_value = 'callback_return_value'
+        clean_data[PORT] = dict(self.set_data_dict)
+        clean_data[PORT]['action'] = 'callback_direct'
+        clean_data[PORT]['callback'] = cbmock
+        clean_data[PORT]['return_format'] = formatter.split('_')[-1]
+        push_udp_handler.port = PORT
+
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler.' + formatter)) as formatter:
+            formatter.return_value = ANY_RETURN
+            assert push_udp_handler._set_data(self.test_data) == ANY_RETURN
+            cbmock.assert_called_once_with(self.test_data)
+            formatter.assert_called_once_with('callback_return_value')
+
+    def test_set_data_bad_return_format(self, clean_data, push_udp_handler):
+        """Test the _set_data callback raise exception case"""
+        cbmock = mock.MagicMock(name='mycallback')
+        cbmock.return_value = 'callback_return_value'
+        clean_data[PORT] = dict(self.set_data_dict)
+        clean_data[PORT]['action'] = 'callback_direct'
+        clean_data[PORT]['return_format'] = 'unknown_return_format'
+        clean_data[PORT]['callback'] = cbmock
+        push_udp_handler.port = PORT
+
+        expected = '{}#Bad return format. REPORT AS BUG.'.format(sockets.PUSH_ERROR)
+        assert push_udp_handler._set_data(self.test_data) == expected
+
+    def test_set_data_cb_raise(self, clean_data, push_udp_handler):
+        """Test the _set_data callback raise exception case"""
+        cbmock = mock.MagicMock(name='mycallback')
+        cbmock.side_effect = ValueError('You messed up!')
+        clean_data[PORT] = dict(self.set_data_dict)
+        clean_data[PORT]['action'] = 'callback_direct'
+        clean_data[PORT]['callback'] = cbmock
+        clean_data[PORT]['return_format'] = 'json'
+        push_udp_handler.port = PORT
+
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._format_return_json')) as\
+             formatter:
+            expected = '{}#You messed up!'.format(sockets.PUSH_EXCEP)
+            assert push_udp_handler._set_data(self.test_data) == expected
+
+    def test_set_data_formatter_raise(self, clean_data, push_udp_handler):
+        """Test the _set_data callback formatter raise exception case"""
+        cbmock = mock.MagicMock(name='mycallback')
+        cbmock.return_value = ANY_RETURN
+        clean_data[PORT] = dict(self.set_data_dict)
+        clean_data[PORT]['action'] = 'callback_direct'
+        clean_data[PORT]['callback'] = cbmock
+        clean_data[PORT]['return_format'] = 'json'
+        push_udp_handler.port = PORT
+
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._format_return_json')) as\
+             formatter:
+            formatter.side_effect = ValueError('You messed up!')
+            expected = '{}#You messed up!'.format(sockets.PUSH_EXCEP)
+            assert push_udp_handler._set_data(self.test_data) == expected
+
+    def test_format_return_json(self, clean_data, push_udp_handler):
+        """Test the _format_return_json method"""
+        with mock.patch('json.dumps') as dumps:
+            dumps.return_value = ANY_RETURN
+            expected = '{}#{}'.format(sockets.PUSH_RET, ANY_RETURN)
+            assert push_udp_handler._format_return_json(self.test_data) == expected
+
+        with mock.patch('json.dumps') as dumps:
+            dumps.side_effect = TypeError('You messed up!')
+            expected = '{}#You messed up!'.format(sockets.PUSH_EXCEP)
+            assert push_udp_handler._format_return_json(self.test_data) == expected
+
+    def test_format_return_string(self, clean_data, push_udp_handler):
+        """Test the _format_return_string method"""
+        obj = mock.MagicMock()
+        obj.__str__.return_value = ANY_RETURN
+        expected = '{}#{}'.format(sockets.PUSH_RET, ANY_RETURN)
+        assert push_udp_handler._format_return_string(obj) == expected
+
+    def test_format_return_string_raise(self, clean_data, push_udp_handler):
+        """Test the _format_return_string method str raise exception"""
+        obj = mock.MagicMock()
+        # __str__ is also called for the logging call, therefore, make it return nicely on the
+        # first call and raise exception on the second
+        obj.__str__.side_effect = [ANY_RETURN, AttributeError('You messed up!')]
+        expected = '{}#You messed up!'.format(sockets.PUSH_EXCEP)
+        assert push_udp_handler._format_return_string(obj) == expected
+
+    @pytest.mark.parametrize('input_', ({'a': 8}, [3, 4]), ids=('dict', 'list'))
+    def test_format_return_raw(self, clean_data, push_udp_handler, input_):
+        """Test the _format_return_raw case"""
+        called_formatter_name = 'PushUDPHandler._format_return_raw_' +\
+                                input_.__class__.__name__
+        with mock.patch(SOCKETS_PATH.format(called_formatter_name)) as called_formatter:
+            called_formatter.return_value = ANY_RETURN
+            assert push_udp_handler._format_return_raw(input_) == ANY_RETURN
+
+            
