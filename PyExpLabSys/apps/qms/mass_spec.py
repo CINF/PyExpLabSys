@@ -17,42 +17,64 @@ import settings # pylint: disable=F0401
 LOGGER = get_logger('Mass Spec', level='info', file_log=True,
                     file_name='qms.txt', terminal_log=False)
 
-def main():
-    """ Main mass main loop """
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    sql_queue = Queue.Queue()
-    data_saver = sql_saver.SqlSaver(sql_queue, settings.username)
-    data_saver.start()
+class MassSpec(object):
+    """ User interface to mass spec code """
+    def __init__(self):
+        sql_queue = Queue.Queue()
+        self.data_saver = sql_saver.SqlSaver(sql_queue, settings.username)
+        self.data_saver.start()
+        if settings.qmg == '420':
+            self.qmg = qmg420.qmg_420(settings.port)
+        if settings.qmg == '422':
+            self.qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
+        self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
+                          credentials=settings.username)
+        self.qmg.reverse_range = settings.reverse_range
+        self.printer = qmg_status_output.qms_status_output(self.qms,
+                                                           sql_saver_instance=self.data_saver)
+        self.printer.start()
 
-    if settings.qmg == '420':
-        qmg = qmg420.qmg_420(settings.port)
-    if settings.qmg == '422':
-        qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
-    chamber = settings.chamber
+    def __del__(self):
+        self.printer.stop()
 
-    qms = ms.QMS(qmg, sql_queue, chamber=chamber, credentials=settings.username)
-    qmg.reverse_range = settings.reverse_range
+    def sem_and_filament(self, turn_on=False):
+        """ Turn on and off the mas spec """
+        if turn_on is True:
+            self.qmg.sem_status(voltage=1800, turn_on=True)
+            self.qmg.emission_status(current=0.1, turn_on=True)
+        else:
+            self.qmg.sem_status(voltage=1800, turn_off=True)
+            self.qmg.emission_status(current=0.1, turn_off=True)
 
-    printer = qmg_status_output.qms_status_output(qms, sql_saver_instance=data_saver)
-    printer.start()
+    def leak_search(self):
+        """ Do a mass time scan on mass 4 """
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        channel_list = {}
+        channel_list['ms'] = {}
+        channel_list['ms'][0] = {'comment': 'Leak Search', 'autorange':False}
+        channel_list['ms'][1] = {'masslabel': 'He', 'speed':10, 'mass':4, 'amp_range':9}
+        self.qms.mass_time(channel_list['ms'], timestamp, no_save=True)
 
-    if True:
-        channel_list = qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
-                                                sys.argv[1] + '/channel_list.txt')
-        meta_udp = qmg_meta_channels.udp_meta_channel(qms, timestamp, channel_list, 5)
+    def mass_time_scan(self):
+        """ Perform a mass-time scan """
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        channel_list = self.qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
+                                                     sys.argv[1] + '/channel_list.txt')
+        meta_udp = qmg_meta_channels.udp_meta_channel(self.qms, timestamp, channel_list, 5)
         meta_udp.daemon = True
         meta_udp.start()
-        print qms.mass_time(channel_list['ms'], timestamp)
+        self.qms.mass_time(channel_list['ms'], timestamp)
 
-    if False:
-        qms.mass_scan(26, 8, comment='Background scan', amp_range=-11)
-
+    def mass_scan(self, start_mass=0, scan_width=50):
+        """ Perform mass scan """
+        self.qms.mass_scan(start_mass, scan_width, comment='Background scan', amp_range=-11)
         time.sleep(1)
-        printer.stop()
 
-    if False: # here filament and sem can be modified
-        print qmg.sem_status(voltage=1800, turn_on=True)
-        print qmg.emission_status(current=0.1, turn_on=True)
 
+        
 if __name__ == '__main__':
-    main()
+    MS = MassSpec()
+    MS.leak_search()
+    #MS.mass_scan(10, 5)
+    #MS.mass_time_scan()
+    #MS.mass_scan(10, 5)

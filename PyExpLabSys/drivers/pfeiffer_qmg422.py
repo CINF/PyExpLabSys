@@ -375,7 +375,7 @@ class qmg_422():
             15: 60} # unit: [s/amu]
         speed = 9
         try:
-            total_time = scan_width * spped_list[speed]
+            total_time = scan_width * speed_list[speed]
         except:
             total_time = -1
 
@@ -389,11 +389,11 @@ class qmg_422():
 
         self.comm('CYM, 0') #0, single. 1, multi
         self.comm('SMC, 0') #Channel 0
-        self.comm('DSE ,0')  #Use default SEM voltage
-        self.comm('DTY ,1')  #Use SEM for ion detection
-        self.comm('SDT ,1')  #Use SEM for ion detection
+        self.comm('DSE ,0') #Use default SEM voltage
+        self.comm('DTY ,1') #Use SEM for ion detection
+        self.comm('SDT ,1') #Use SEM for ion detection
         self.comm('MRE ,1') #Resolve peak
-        self.comm('MMO, 0')  #Mass scan, to enable FIR filter, set value to 1
+        self.comm('MMO, 0') #Mass scan, to enable FIR filter, set value to 1
         self.comm('MST, 0') #Steps 0: 1: 2: 64/amu
         self.comm('MSD, ' + str(speed)) #Speed
         self.comm('MFM, ' + str(first_mass)) #First mass

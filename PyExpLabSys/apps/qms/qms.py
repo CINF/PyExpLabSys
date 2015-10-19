@@ -117,7 +117,7 @@ class QMS(object):
             if (len(line) > 0) and (not line[0] == '#'):
                 data_lines.append(line)
 
-        ms = 1
+        ms_count = 1
         meta = 1
         for line in data_lines:
             items = line.split(':')
@@ -136,9 +136,9 @@ class QMS(object):
                 speed = int(params[params.index('speed') + 1])
                 mass = params[params.index('mass') + 1]
                 amp_range = int(params[params.index('amp_range') + 1])
-                channel_list['ms'][ms] = {'masslabel':label, 'speed':speed,
-                                          'mass':mass, 'amp_range':amp_range}
-                ms += 1
+                channel_list['ms'][ms_count] = {'masslabel':label, 'speed':speed,
+                                                'mass':mass, 'amp_range':amp_range}
+                ms_count += 1
 
             if key == 'meta_channel':
                 params = items[1].split(',')
@@ -191,7 +191,7 @@ class QMS(object):
         LOGGER.error(ids)
         return ids
         
-    def mass_time(self, ms_channel_list, timestamp):
+    def mass_time(self, ms_channel_list, timestamp, no_save=False):
         """ Perfom a mass-time scan """
         self.operating_mode = "Mass Time"
         self.stop = False
@@ -199,8 +199,7 @@ class QMS(object):
         self.qmg.mass_time(number_of_channels)
 
         start_time = time.time()
-        ids = self.create_ms_channellist(ms_channel_list,
-                                         timestamp, no_save=False)
+        ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=no_save)
         self.current_timestamp = ids[0]
         
         while self.stop == False:
@@ -237,7 +236,8 @@ class QMS(object):
                     query += 'set measurement="' + str(ids[channel])
                     query += '", x="' + sqltime + '", y="' + str(value) + '"'
                 self.channel_list[channel]['value'] = str(value)
-                self.sqlqueue.put(query)
+                if no_save is False:
+                    self.sqlqueue.put(query)
                 time.sleep(0.25)
             time.sleep(0.1)
         self.operating_mode = "Idling"
@@ -249,7 +249,7 @@ class QMS(object):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         self.operating_mode = 'Mass-scan'
         sql_id = self.create_mysql_measurement(0, timestamp, 'Mass Scan',
-                                               comment = comment, amp_range=amp_range,
+                                               comment=comment, amp_range=amp_range,
                                                measurement_type=4)
         self.message = 'ID number: ' + str(sql_id) + '. Scanning from '
         self.message += str(first_mass) + ' to '
