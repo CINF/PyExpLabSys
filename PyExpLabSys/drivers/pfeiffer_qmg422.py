@@ -18,6 +18,10 @@ import serial
 import time
 import logging
 
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
+
 class qmg_422():
     """ The actual driver class.
     """ 
@@ -45,14 +49,12 @@ class qmg_422():
         iterations = 0
         while not done:
             iterations += 1
-            logging.debug("Command in progress: " + command)
+            LOGGER.debug("Command in progress: " + command)
 
             n = self.serial.inWaiting()
-
             if n > 0: #Skip characters that are currently waiting in line
                 debug_info = self.serial.read(n)
-                logging.debug("Elements not read: " + str(n) +
-                              ": Contains: " + debug_info)
+                LOGGER.debug("Elements not read: " + str(n) + ": Contains: " + debug_info)
             
             ret = " "
             error_counter = 0
@@ -60,47 +62,43 @@ class qmg_422():
                 error_counter += 1
                 self.serial.write(command + '\r')
                 ret = self.serial.readline()
-                logging.debug("Debug: Error counter: " + str(error_counter))
-                logging.debug("Debug! In waiting: " + str(n))
+                LOGGER.debug("Debug: Error counter: " + str(error_counter))
+                LOGGER.debug("Debug! In waiting: " + str(n))
 
                 if error_counter == 3:
                     error = "Communication error: " + str(error_counter)
-                    logging.warning(error)
+                    LOGGER.warning(error)
                 if error_counter == 10:
-                    logging.error("Communication error: " + str(error_counter))
+                    LOGGER.error("Communication error: " + str(error_counter))
                 if error_counter > 50:
-                    logging.error("Communication error! Quit program!")
+                    LOGGER.error("Communication error! Quit program!")
                     quit()
 
             #We are now quite sure the instrument is ready to give back data
             self.serial.write(chr(5))
             ret = self.serial.readline()
 
-            logging.debug("Number in waiting after enq: " + str(n))
-            logging.debug("Return value after enq:" + ret)
-            logging.debug("Ascii value of last char in ret: "
-                          + str(ord(ret[-1])))
+            LOGGER.debug("Number in waiting after enq: " + str(n))
+            LOGGER.debug("Return value after enq:" + ret)
+            LOGGER.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
             if (iterations > 1) and (iterations < 1000):
-                logging.info(iterations)
+                LOGGER.info(iterations)
             if (ret[-1] == chr(10)) or (ret[-1] == chr(13)):
                 ret_string = ret.strip()
                 done = True
             else:
-                logging.basicConfig(filename="qms_debug.txt",
-                                    level=logging.DEBUG,
-                                    format='%(asctime)s %(message)s')
-                logging.info("Wrong line termination")
-                logging.info("Ascii value of last char in ret: "
+                LOGGER.info("Wrong line termination")
+                LOGGER.info("Ascii value of last char in ret: "
                              + str(ord(ret[-1])))
-                logging.info('Value of string: ' + ret)
+                LOGGER.info('Value of string: ' + ret)
                 time.sleep(0.5)
                 self.serial.write(chr(5))
                 ret = self.serial.readline()
                 ret_string = ret.strip()
-                logging.info("Ascii value of last char in ret: " +
+                LOGGER.info("Ascii value of last char in ret: " +
                              str(ord(ret[-1])))
-                logging.info('Value of string: ' + ret)
-                logging.info('Returning: ' + ret_string)
+                LOGGER.info('Value of string: ' + ret)
+                LOGGER.info('Returning: ' + ret_string)
                 done = True
         return ret_string
 
@@ -290,18 +288,17 @@ class qmg_422():
         samples = 0
         while samples == 0:
             status = self.comm('MBH')
-            logging.info(status)
+            LOGGER.info(status)
             status = status.split(',')
             try:
                 samples = int(status[3])
             except:
-                logging.warn('Could not read status, continuing measurement')
+                LOGGER.warn('Could not read status, continuing measurement')
             time.sleep(0.05)
-            #time.sleep(0.2) # An old attempt to correct comm problems
         try:
             value = self.comm('MDB')
         except:
-            logging.error('Error in MDB command')
+            LOGGER.error('Error in MDB command')
             value = -1
         return value
 
@@ -313,8 +310,7 @@ class qmg_422():
         return values
 
 
-    def config_channel(self, channel, mass=-1, speed=-1,
-                       enable="", amp_range=0):
+    def config_channel(self, channel, mass=-1, speed=-1, enable="", amp_range=0):
         """ Config a MS channel for measurement """
         self.comm('SPC ,' + str(channel)) #SPC: Select current parameter channel
         if mass > -1:

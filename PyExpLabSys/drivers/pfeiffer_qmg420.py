@@ -2,6 +2,10 @@ import serial
 import time
 import logging
 
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
+
 class qmg_420():
 
     def speeds(self, n):
@@ -60,12 +64,12 @@ class qmg_420():
         helper
 
         """
-        logging.debug("Command in progress: " + command)
+        LOGGER.debug("Command in progress: " + command)
 
         waiting = self.f.inWaiting()
         if waiting > 0: #Skip characters that are currently waiting in line
             debug_info = self.f.read(waiting)
-            logging.debug("Elements not read: " + str(waiting) + 
+            LOGGER.debug("Elements not read: " + str(waiting) + 
                           ": Contains: " + debug_info)            
 
         commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA',
@@ -93,7 +97,6 @@ class qmg_420():
         """ Produces a simulated spectrum, does not work on qmg420 """
         pass
 
-
     def sem_status(self, voltage=-1, turn_off=False, turn_on=False):
         """ Get or set the SEM status """
         if voltage > -1:
@@ -112,9 +115,7 @@ class qmg_420():
 
         ret_string = self.status('ROP', 2)
         sem_on = ret_string == "1"
-        
         return sem_voltage, sem_on
-
 
     def speed(self, speed):
         """ Set the integration speed """
@@ -125,7 +126,7 @@ class qmg_420():
 
     def emission_status(self, current=-1, turn_off=False, turn_on=False):
         """ Get or set the emission status. """
-        emission_current = -1 
+        emission_current = -1
         if turn_off ^ turn_on:
             if turn_off:
                 self.comm('EMI 0')
@@ -203,7 +204,7 @@ class qmg_420():
         values = [0] * number
         for i in range(0, number):
             val = self.comm(chr(5))
-            if not (val == ''):
+            if not val == '':
                 values[i] = val
         return values
 
@@ -214,7 +215,7 @@ class qmg_420():
             time.sleep(0.2)
             error = error + 1
         if error > 39:
-            logging.error('Sample did arrive on time')
+            LOGGER.error('Sample did arrive on time')
             value = ""
         else:
             value = self.comm(chr(5))
@@ -224,8 +225,7 @@ class qmg_420():
         """ Config a MS channel for measurement """
         self.set_channel(channel)
         self.comm('OPM 1')
-        logging.error('Wanted range, channel ' + str(channel) +
-                      ': ' + str(amp_range))
+        LOGGER.error('Wanted range, channel ' + str(channel) + ': ' + str(amp_range))
 
         if mass > -1:
             self.first_mass(mass)
@@ -235,8 +235,7 @@ class qmg_420():
 
         if amp_range < -2:
             range_index = self.ranges(amp_range, reverse=True)
-            logging.error('Range, channel ' + str(channel) +
-                          str(range_index))
+            LOGGER.error('Range, channel ' + str(channel) + str(range_index))
             self.comm('RAN ' + str(range_index))
 
         if enable == "yes":
