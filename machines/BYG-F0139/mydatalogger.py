@@ -22,6 +22,8 @@ from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.omega_cni as omega_CNi32
 #import PyExpLabSys.drivers.kampstrup as kampstrup
 
+import pykamtest
+
 import socketinfo
 import credentials
 ContinuousLogger.host = credentials.dbhost
@@ -31,6 +33,89 @@ ContinuousLogger.database = credentials.dbname
 class RunningMean(object):
     def __init__(length):
         self.list = list(length)
+
+class WaterTemperatureReader(threading.Thread):
+    """ Temperature reader """
+    def __init__(self,):
+        threading.Thread.__init__(self)
+        self.chlist = {'tabs_guard_temperature_inlet': 0,
+                   'tabs_guard_temperature_outlet': 1,
+                   'tabs_guard_temperature_delta': 2,
+                   'tabs_floor_temperature_inlet': 3,
+                   'tabs_floor_temperature_outlet': 4,
+                   'tabs_floor_temperature_delta': 5,                   
+                   'tabs_ceiling_temperature_inlet': 6,
+                   'tabs_ceiling_temperature_outlet': 7,
+                   'tabs_ceiling_temperature_delta': 8,
+                   'tabs_guard_water_flow': 9,
+                   'tabs_floor_water_flow': 10,
+                   'tabs_ceiling_water_flow': 11,}
+        self.DATA= {}
+        for key in self.chlist.keys():
+            self.DATA[key] = None
+        port = '/dev/serial/by-id/usb-Silicon_Labs_Kamstrup_M-Bus_Master_MultiPort_250D_131751521-if00-port0'
+        self.MCID = {}
+        self.MCID['tabs_guard_'] = 13
+        self.MCID['tabs_floor_'] = 15
+        self.MCID['tabs_ceiling_'] = 14
+        
+        self.MC302device = pykamtest.kamstrup(serial_port=port)
+
+        self.quit = False
+        self.ttl = 500
+
+
+
+    def value(self, channel):
+        """ Read the pressure """
+        self.ttl = self.ttl - 1
+        if self.ttl < 0:
+            self.quit = True
+            return_val = None
+        else:
+            if channel in self.chlist.values():
+                for key, value in self.chlist.items():
+                    if channel == value:
+                        return_val = self.DATA[key]
+            else:
+                return_val = None
+        return return_val
+
+    def update_values(self,):
+        for key, ID in self.MCID.items():
+            try:
+                v = self.MC302device.read_water_temperature(ID)
+                #print(v)
+                if len(v) == 4:
+                    self.DATA[key +'temperature_inlet'] = v['inlet']
+                    self.DATA[key +'temperature_outlet'] = v['outlet']
+                    self.DATA[key +'temperature_delta'] = v['diff']
+                    self.DATA[key +'water_flow'] = v['flow']
+                else:
+                    self.DATA[key +'temperature_inlet'] = None
+                    self.DATA[key +'temperature_outlet'] = None
+                    self.DATA[key +'temperature_delta'] = None
+                    self.DATA[key +'water_flow'] = None
+                self.ttl = 500
+            except IndexError:
+                print("av")
+            except ValueError, TypeError:
+                self.DATA[key +'temperature_inlet'] = None
+                self.DATA[key +'temperature_outlet'] = None
+                self.DATA[key +'temperature_delta'] = None
+                self.DATA[key +'water_flow'] = None
+            time.sleep(2)
+            #print(self.temperatures)
+
+    def run(self):
+        while not self.quit:
+            self.update_values()
+            time.sleep(2)
+        self.quit = True
+            
+    def stop(self,):
+        self.quit = True
+        self.MC302device.close()
 
 class TemperatureReader(threading.Thread):
     """ Temperature reader """
@@ -53,8 +138,8 @@ class TemperatureReader(threading.Thread):
         
         #self.OmegaPortsDict['tabs_guard_temperature_inlet'] = '/dev/ttyUSB1'
         #self.OmegaPortsDict['tabs_floor_temperature_inlet'] = '/dev/ttyUSB0'
-        self.OmegaPortsDict['tabs_ceiling_temperature_inlet'] = '/dev/ttyACM0'
-        self.OmegaPortsDict['tabs_cooling_temperature_inlet'] = '/dev/ttyACM1'
+        self.OmegaPortsDict['tabs_ceiling_temperature_inlet'] = '/dev/ttyACM3'
+        self.OmegaPortsDict['tabs_cooling_temperature_inlet'] = '/dev/ttyACM2'
         
         self.OmegaCommStnd = {}
         self.OmegaCommStnd['tabs_guard_temperature_inlet'] = 'rs485'
@@ -190,20 +275,44 @@ class MainDatalogger(threading.Thread):
                      'tabs_ceiling_temperature_inlet',
                      'tabs_cooling_temperature_inlet',
                      ]
-        self.omega_temperature = TemperatureReader(self.codenames)
+        self.MC302 = WaterTemperatureReader()
+        self.MC302.start()
+        self.codenames = [
+                     'tabs_cooling_temperature_inlet',
+                     ]
+        self.omega_temperature = TemperatureReader(['tabs_cooling_temperature_inlet',])
         self.omega_temperature.daemon = True
         self.omega_temperature.start()
         #omega_temperature.update_values()
         
         time.sleep(1.5)
         
-        chlist = {'tabs_guard_temperature_inlet': 0, 'tabs_floor_temperature_inlet': 1, 'tabs_ceiling_temperature_inlet': 2, 'tabs_cooling_temperature_inlet': 3}
+        chlist = {'tabs_guard_temperature_inlet': 0,
+                  'tabs_floor_temperature_inlet': 1,
+                  'tabs_ceiling_temperature_inlet': 2,
+                  'tabs_cooling_temperature_inlet': 3}
         self.loggers = {}
-        for key in self.codenames:
-            self.loggers[key] = ValueLogger(self.omega_temperature, comp_val = 0.2, maximumtime=60,
+        for key in ['tabs_cooling_temperature_inlet',]:
+            self.loggers[key] = ValueLogger(self.omega_temperature, comp_val = 0.2, maximumtime=300,
                                             comp_type = 'lin', channel = chlist[key])
             self.loggers[key].start()
-        
+        chlist = {'tabs_guard_temperature_inlet': 0,
+                   'tabs_guard_temperature_outlet': 1,
+                   'tabs_guard_temperature_delta': 2,
+                   'tabs_floor_temperature_inlet': 3,
+                   'tabs_floor_temperature_outlet': 4,
+                   'tabs_floor_temperature_delta': 5,                   
+                   'tabs_ceiling_temperature_inlet': 6,
+                   'tabs_ceiling_temperature_outlet': 7,
+                   'tabs_ceiling_temperature_delta': 8,
+                   'tabs_guard_water_flow': 9,
+                   'tabs_floor_water_flow': 10,
+                   'tabs_ceiling_water_flow': 11,}
+        for key in chlist.keys():
+            self.loggers[ key] = ValueLogger(self.MC302, comp_val = 0.2, maximumtime=300,
+                                            comp_type = 'lin', channel = chlist[key])
+            self.loggers[key].start()
+        self.codenames = chlist.keys()+ ['tabs_cooling_temperature_inlet']
         #livesocket = LiveSocket('tabs_temperature_logger', codenames, 2)
         #livesocket.start()
         sockname = 'tabs_temperatures'
@@ -219,15 +328,19 @@ class MainDatalogger(threading.Thread):
             try:
                 #print(i)
                 time.sleep(1)
-                for name in self.codenames:
+                for name in self.loggers.keys():
                     v = self.loggers[name].read_value()
                     #livesocket.set_point_now(name, v)
                     self.PullSocket.set_point_now(name, v)
+                    
                     if self.loggers[name].read_trigged():
                         if __name__ == '__main__':
                             print('Log: ', i, name, v)
                         self.db_logger.enqueue_point_now(name, v)
                         self.loggers[name].clear_trigged()
+                    else:
+                        if __name__ == '__main__':
+                            print('STA: ', i, name, v)
             except (KeyboardInterrupt, SystemExit):
                 pass
                 #self.omega_temperature.close()
@@ -238,6 +351,7 @@ class MainDatalogger(threading.Thread):
     def stop(self):
         self.quit = True
         self.omega_temperature.stop()
+        self.MC302.stop()
         self.db_logger.stop()
         self.PullSocket.stop()
         for key in self.codenames:

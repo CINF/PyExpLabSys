@@ -61,8 +61,8 @@ Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up
                   'tabs_room_temperature_aircenter060': 206, # Tair2_room_0.6m
                   'tabs_room_temperature_surface_wallsouth': 207, # Tsur1_room_wall1
                   'tabs_room_temperature_surface_ceilingcenter': 208, # Tsur4_room_ceiling1
-                  #'None': 209,
-                  #'None': 210,
+                  'tabs_ventilation_temperature_inlet': 209,
+                  'tabs_ventilation_temperature_outlet': 210,
                   'tabs_room_temperature_surface_ceilingnearjunction': 211, # Tsur5_room_ceiling2
                   #'None': 212,
                   'tabs_room_temperature_air345': 213, # air_room_0.1mTOP

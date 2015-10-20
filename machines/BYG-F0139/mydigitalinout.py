@@ -84,7 +84,7 @@ class ValveControl(threading.Thread):
         #self.heater = {'tabs_guard_heater': None, 'tabs_floor_heater': None, 'tabs_ceiling_heater': None, 'tabs_cooling_heater': None}
         self.FloatToDigital = {}
         for co in self.codenames:
-            self.FloatToDigital[co] = FloatToDigital(totalcycles=60)
+            self.FloatToDigital[co] = FloatToDigital(totalcycles=50 + int(50*random.random()))
         self.FloatToDigital['tabs_cooling_valve_cooling'] = FloatToDigital(totalcycles=60)
         
     def update_pidvalues(self,):
