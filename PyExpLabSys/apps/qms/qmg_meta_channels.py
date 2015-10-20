@@ -5,6 +5,10 @@ import time
 import socket
 import logging
 
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
+
 class udp_meta_channel(threading.Thread):
     """ A class to handle meta data for the QMS program.
 
@@ -57,25 +61,30 @@ class udp_meta_channel(threading.Thread):
                 port = channel['port']
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.settimeout(0.2)
-                logging.debug('Meta command: ' + channel['cmd'])
+                LOGGER.debug('Meta command: ' + channel['cmd'])
                 try:
                     sock.sendto(channel['cmd'], (channel['host'], port))
                     received = sock.recv(1024)
+                    received = received.strip()
                 except socket.timeout:
                     received = ""
-                logging.debug('Meta recieve: ' + received)
+                LOGGER.debug('Meta recieve: ' + received)
                 if channel['cmd'][-4:] == '#raw':
                     received = received[received.find(',')+1:]
                 sock.close()
                 try:
                     value = float(received)
-                    logging.error(str(value))
+                    LOGGER.error(str(value))
                     sqltime = str((time.time() - start_time) * 1000)
                 except ValueError:
-                    logging.warn('Meta-channel, could not convert to float: ' + received)
+                    LOGGER.warn('Meta-channel, could not convert to float: ' + received)
                     value = None
                 except TypeError:
-                    logging.warn('Type error from meta channel, most likely during shutdown')
+                    LOGGER.warn('Type error from meta channel, most likely during shutdown')
+                    value = None
+                except Exception as e:
+                    LOGGER.error('Unknown error: ' + str(e))
+                    value = None
 
                 if not value == None:
                     query  = 'insert into xy_values_' + self.qms.chamber + ' '

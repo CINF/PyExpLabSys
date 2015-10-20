@@ -23,7 +23,7 @@ class PressureReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            time.sleep(2)
+            time.sleep(5)
             pressures = self.xgs.read_all_pressures()
             self.chamberpressure = pressures[0]
 

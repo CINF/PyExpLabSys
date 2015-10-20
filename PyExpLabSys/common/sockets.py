@@ -69,7 +69,12 @@ def bool_translate(string):
 
 
 def socket_server_status():
-    """Returns the status of all socket servers"""
+    """Returns the status of all socket servers
+
+    Returns:
+        dict: Dict with port to status dict mapping. The status dict has the following keys:
+            name, type, status (with str values) and since_last_activity with float value.
+    """
     status_dict = {}
     for port, data in DATA.items():
         if data['activity']['check_activity']:
@@ -168,7 +173,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
                 out = OLD_DATA
             else:
                 out = '{},{}'.format(*DATA[self.port]['data'][name])
-        # Return a json encoded string
+
         elif command == 'json' and name in DATA[self.port]['data']:
             if self._old_data(name):
                 out = json.dumps(OLD_DATA)
@@ -843,7 +848,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         # corner cases
         for key, value in argument.items():
             if isinstance(value, list) and len(value) > 0:
-                # Check all values in list are of some type
+                # Check all values in list are of same type
                 types = [type(element) for element in value]
                 element_type = types[0]
                 if types != len(types) * [element_type]:
@@ -865,7 +870,8 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             if element_type not in [int, float, bool, str]:
                 message = 'With return format raw, the item type can '\
                     'only be one of \'int\', \'float\', \'bool\' and '\
-                    '\'str\''
+                    '\'str\'. Object: \'{}\' is of type: {}'.format(
+                        value, element_type)
                 raise TypeError(message)
 
             # pylint: disable=maybe-no-member
@@ -897,13 +903,14 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         element_type = types[0]
         if types != len(types) * [element_type]:
             message = 'With return format raw on a list of lists, all values '\
-                ' in list must have same type'
+                ' in list must have same type. Types are: {}'.format(types)
             raise ValueError(message)
 
         # Check that the element type makes sense for raw conversion
         if element_type not in [int, float, bool, str]:
             message = 'With return format raw, the item type can only be one '\
-                'of \'int\', \'float\', \'bool\' and \'str\''
+                'of \'int\', \'float\', \'bool\' and \'str\'. The type is: {}'\
+                    .format(element_type)
             raise TypeError(message)
 
         return '{}#{}:{}'.format(PUSH_RET, element_type.__name__,

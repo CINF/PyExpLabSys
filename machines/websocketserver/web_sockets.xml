@@ -66,6 +66,12 @@
     <!-- Microreactor Analogue flow controller -->
     <socket>rasppi26:8000</socket>
 
+    <!-- Microreactor Turbo Pump -->
+    <socket>rasppi100:8000</socket>
+
+    <!-- PS Turbo Pump -->
+    <socket>rasppi28:8000</socket>
+
     <!-- UPS logging -->
     <socket>rasppi14:8000</socket>
 
@@ -95,6 +101,9 @@
 
     <!-- b309PVD pressures -->
     <socket>rasppi51:8000</socket>
+
+    <!-- b309PVD QCMs -->
+    <socket>rasppi106:8000</socket>
 
     <!-- b312 Temperature and ventilation pressure -->
     <socket>rasppi66:8000</socket>

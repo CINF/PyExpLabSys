@@ -35,7 +35,7 @@ class PictureLogbook(object):
         self.camera = cv.CaptureFromCAM(0) 
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_WIDTH, 320)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
-        self.database = MySQLdb.connect(host='servcinf', user='picturelogbook',
+        self.database = MySQLdb.connect(host='servcinf-sql', user='picturelogbook',
                                         passwd='picturelogbook', db='cinfdata')
         self.database.ping(True)
         query = 'select user, login from picture_logbooks where setup = "'
@@ -59,6 +59,10 @@ class PictureLogbook(object):
         :return: jpg image represented as a string
         :rtype: string
         """
+        frame = cv.QueryFrame(self.camera)
+        frame = cv.QueryFrame(self.camera)
+        frame = cv.QueryFrame(self.camera)
+        frame = cv.QueryFrame(self.camera)
         frame = cv.QueryFrame(self.camera)
         picture = cv.EncodeImage(".jpg", frame).tostring()
         return picture
@@ -126,16 +130,19 @@ class PictureLogbook(object):
             return None
 
         image = self.acquire_image()
-        id_number = self.save_image(image)
-        query = 'insert into picture_logbooks set setup = "' + self.setup + '", '
-        query += 'user = "' + user + '", pictureid=' + str(id_number) + ', '
-        login = action is 'login'       
-        query += 'login = ' + str(login)
-        LOGGER.info(query)
-        cursor = self.database.cursor()
-        cursor.execute(query)
-        self.database.commit()
-        self.update_external_screen(str(self.logged_in_user))
+        try:
+            id_number = self.save_image(image)
+            query = 'insert into picture_logbooks set setup = "' + self.setup + '", '
+            query += 'user = "' + user + '", pictureid=' + str(id_number) + ', '
+            login = action is 'login'       
+            query += 'login = ' + str(login)
+            LOGGER.info(query)
+            cursor = self.database.cursor()
+            cursor.execute(query)
+            self.database.commit()
+            self.update_external_screen(str(self.logged_in_user))
+        except MySQLdb.OperationalError:
+            self.update_external_screen(str('No access to database'))
 
     def main(self):
         """ Main loop """

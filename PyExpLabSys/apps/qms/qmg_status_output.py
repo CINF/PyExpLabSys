@@ -31,12 +31,15 @@ class qms_status_output(threading.Thread):
                 self.screen.addstr(3, 1, timestamp)
                 runtime = "Experiment runtime: {0:.1f}s".format(self.qms.measurement_runtime)
                 self.screen.addstr(4, 1, runtime)
+                qsize = "Queue length: {0:.0f} items".format(self.sql.queue.qsize())
+                self.screen.addstr(5, 1, qsize)
+                self.screen.clrtoeol()
                 
                 #self.screen.addstr(5,20, self.qms.channel_list[0]['comment'])
-                self.screen.addstr(6,1, 'QMS-channels')
-                for i in range(1,len(self.qms.channel_list)+1):
+                self.screen.addstr(7, 1, 'QMS-channels')
+                for i in range(1, len(self.qms.channel_list) + 1):
                     ch = self.qms.channel_list[i]
-                    self.screen.addstr(7+i,1,ch['masslabel'] + ': ' + ch['value'] + '    ')
+                    self.screen.addstr(8+i, 1, ch['masslabel'] + ': ' + ch['value'] + '    ')
             
             if self.qms.operating_mode == 'Mass-scan':
                 self.screen.addstr(2, 1, self.qms.message)
@@ -46,6 +49,7 @@ class qms_status_output(threading.Thread):
                 self.screen.addstr(4, 1, runtime)
                 self.screen.addstr(5, 1, 'Current action: ' + self.qms.current_action)
                 self.screen.clrtoeol()
+
 
 
             if not self.sql == None:

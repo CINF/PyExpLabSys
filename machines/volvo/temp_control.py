@@ -106,9 +106,9 @@ class SimplePlot(QWidget):
         QtCore.QObject.connect(self.gui.start_ramp_button,
                                QtCore.SIGNAL('clicked()'),
                                self.on_start_ramp)        
-        QtCore.QObject.connect(self.gui.standby_button,
+        QtCore.QObject.connect(self.gui.stop_ramp_button,
                                QtCore.SIGNAL('clicked()'),
-                               self.on_standby)        
+                               self.on_stop_ramp)        
         QtCore.QObject.connect(self.gui.start_button,
                                QtCore.SIGNAL('clicked()'),
                                self.on_start)
@@ -133,10 +133,6 @@ class SimplePlot(QWidget):
 
             QtCore.QTimer.singleShot(0, self.plot_iteration)
 
-    def on_standby(self):
-        """Standby button method"""
-        self.sputtergun.goto_standby = True
-
     def update_setpoint(self):
         """Standby button method"""
         new_setpoint = self.gui.new_setpoint.text()
@@ -157,7 +153,7 @@ class SimplePlot(QWidget):
     def on_start_ramp(self):
         """Start temperature ramp"""
         self.ramp_start = time.time()
-        for i in range(0,5):
+        for i in range(0,11):
             self.ramp['time'][i] = int(self.gui.temperature_ramp.item(i,0).text())
             self.ramp['temp'][i] = int(self.gui.temperature_ramp.item(i,1).text())
             self.ramp['step'][i] = int(self.gui.temperature_ramp.item(i,2).checkState()) == 2
@@ -169,6 +165,15 @@ class SimplePlot(QWidget):
         sock.sendto(data, (host, port))
         received = sock.recv(1024)
 
+    def on_stop_ramp(self):
+        """Start temperature ramp"""
+        data = 'stop_ramp'
+        host = '130.225.87.213'
+        port = 9999
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(0.2)
+        sock.sendto(data, (host, port))
+        received = sock.recv(1024)
 
     def on_stop(self):
         """Stop button method"""
