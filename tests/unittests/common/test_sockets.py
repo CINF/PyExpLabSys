@@ -10,12 +10,13 @@ import mock
 import json
 import collections
 import socket
+import Queue
 import pytest
 from numpy import isclose
 from PyExpLabSys.common import sockets
 from PyExpLabSys.common.sockets import (
     bool_translate, socket_server_status, PullUDPHandler, CommonDataPullSocket, DataPullSocket,
-    DateDataPullSocket, PushUDPHandler,
+    DateDataPullSocket, PushUDPHandler, DataPushSocket, CallBackThread
 )
 
 ### Test data
@@ -454,7 +455,7 @@ class TestCommonDataPullSocket(object):
         assert str(exception.value) == expected_error_msg
 
     def test_udp_server_exception(self, cdps_init_args, udp_server, clean_data):
-        """Test that if UDPServer raises ???"""
+        """Test that if UDPServer raises we either intercept of code is 98 or re raise"""
         class MyException(Exception):
             """Exception with errno"""
             def __init__(self, msg, errno):
@@ -987,4 +988,355 @@ class TestPushUDPHandler(object):
             called_formatter.return_value = ANY_RETURN
             assert push_udp_handler._format_return_raw(input_) == ANY_RETURN
 
-            
+    def test_format_return_raw_none(self, clean_data, push_udp_handler):
+        """Test the _format_return_raw format None case"""
+        assert push_udp_handler._format_return_raw(None) == '{}#None'.format(sockets.PUSH_RET)
+
+    @pytest.mark.parametrize('input_',  ({'a': 8}, [3, 4]), ids=('dict', 'list'))
+    def test_format_return_raw_raise(self, clean_data, push_udp_handler, input_):
+        """Test the _format_return_raw raise from formatter"""
+        # Test that exceptions in the formatters are passed on
+        method_name = 'PushUDPHandler._format_return_raw_{}'.format(input_.__class__.__name__)
+        with mock.patch(SOCKETS_PATH.format(method_name)) as formatter:
+            formatter.side_effect = Exception('You messed up!')
+            expected = '{}#Raw conversion failed with message:You messed up!'.\
+                format(sockets.PUSH_EXCEP)
+            assert push_udp_handler._format_return_raw(input_) == expected
+
+        # Test that using a wrong input type gives an error
+        expected = '{}#Raw conversion failed with message:Return value must be a dict or '\
+                   'list with return format \'raw\''.format(sockets.PUSH_EXCEP)
+        assert push_udp_handler._format_return_raw(7) == expected
+
+    def test_format_return_raw_dict(self, clean_data, push_udp_handler):
+        """Test the _format_return_raw_dict method
+
+        It is expected to turn an input on the form:
+            {'answer': 42, 'values': [42, 47], 'answer_good': False}
+        into:
+            'answer:int:42;values:int:42,47:answer_good:bool:False'
+        """
+        # Test valid input
+        inputs = (
+            {'answer': 42, 'values': [42, 47], 'answer_good': False},
+            {'mystr': b'Live long and prosper', 'myfloat': 47.0},
+            {'list_of_floats': [1.0, 2.0, 3.0e-18, 4.0, 5.0]}
+        )
+        replies = (
+            ('answer:int:42', 'values:int:42,47', 'answer_good:bool:False'),
+            ('mystr:str:Live long and prosper', 'myfloat:float:47.0'),
+            ('list_of_floats:float:1.0,2.0,3e-18,4.0,5.0',)
+        )
+        for input_, expected_reply in zip(inputs, replies):
+            # Get the output
+            reply = push_udp_handler._format_return_raw_dict(input_)
+
+            # Check that the output starts with 'RET#
+            assert reply.startswith(sockets.PUSH_RET + '#')
+
+            # Break of the beginning and split the rest into data chunks
+            reply_chunks = set(reply.split('#', 1)[1].split(';'))
+
+            # Check that each chunk is in the expected results and pop it from there
+            for chunk in expected_reply:
+                assert chunk in reply_chunks
+                reply_chunks.remove(chunk)
+
+            # Check that there are noe expected chunks left
+            assert len(reply_chunks) == 0
+
+        # Test invalid input, differing types in lists
+        expected_exception = 'With return format raw, value in list must have same type'
+        with pytest.raises(ValueError) as exception:
+            push_udp_handler._format_return_raw_dict({'mylist': [1, 47.0]})
+        assert str(exception.value) == expected_exception
+
+        # Test invalid type
+        expected_exception = ('With return format raw, the item type can only be one of '
+                              '\'int\', \'float\', \'bool\' and \'str\'. Object: \'(1+3j)\' '
+                              'is of type: <type \'complex\'>')
+        with pytest.raises(TypeError) as exception:
+            push_udp_handler._format_return_raw_dict({'mycomplex': 1 + 3j})
+        assert str(exception.value) == expected_exception
+
+    def test_format_return_raw_list(self, clean_data, push_udp_handler):
+        """Test the _format_return_raw_list method
+
+        It is expected to turn an input on the form:
+            [[7.0, 42.0], [7.5, 45.5], [8.0, 47.0]]
+        into:
+            'RET#float:7.0,42.0&7.5,45.5&8.0,47.0'
+        """
+        # Test valid input
+        inputs = (
+            [[7.0, 42.0], [7.5, 45.5], [8.0, 47.0]],
+            [[1, 2], [3, 4], [5 * 10**6, 9 * 10**9]]
+        )
+        replies = (
+            ('7.0,42.0', '7.5,45.5', '8.0,47.0'),
+            ('1,2', '3,4', '5000000,9000000000'),
+        )
+        for input_, expected_reply in zip(inputs, replies):
+            # Get the return value
+            reply = push_udp_handler._format_return_raw_list(input_)
+
+            # Check that the return startswith RET#<type>:
+            assert reply.startswith(sockets.PUSH_RET + '#' + type(input_[0][0]).__name__)
+
+            # Break of the beginning, and break the rest into data parrs
+            reply_chunks = set(reply.split(':', 1)[1].split('&'))
+
+            # Check that each chunk in the reply is expected
+            for chunk in expected_reply:
+                assert chunk in reply_chunks
+                reply_chunks.remove(chunk)
+
+            # Check that there are no expected chunks left
+            assert len(reply_chunks) == 0
+
+        # Check for error on differing types in the lists
+        with pytest.raises(ValueError) as exception:
+            push_udp_handler._format_return_raw_list([[1.0, 2], [3.0, 4.0]])
+
+        expected = 'With return format raw on a list of lists, all values '\
+            ' in list must have same type'
+        assert str(exception.value).startswith(expected)
+
+        # Check for error on invalid type
+        with pytest.raises(TypeError) as exception:
+            push_udp_handler._format_return_raw_list([[1.0j, 2j], [3.0j, 4.0j]])
+
+        expected_error_msg = 'With return format raw, the item type can only be one '\
+                'of \'int\', \'float\', \'bool\' and \'str\'. The type is: '
+        assert str(exception.value).startswith(expected_error_msg)
+
+
+class TestDataPushSocket(object):
+    """Test the DataPushSocket"""
+
+    @pytest.mark.parametrize('port', [8500, 8765])
+    def test_init_common(self, clean_data, udp_server, port):
+        """Test the common initializations in init"""
+        with mock.patch('time.time') as time_:
+            time_.return_value = 12345.6
+            data_push_socket = DataPushSocket(NAME, port=port)
+
+        # Check (internal) properties
+        assert data_push_socket.port == port
+        assert data_push_socket.daemon is True
+        assert data_push_socket._stop is False
+        assert data_push_socket._callback_thread is None
+
+        # Check udp_socket_server init
+        udp_server.assert_called_once_with(('', port), PushUDPHandler)
+
+        # Check socket config in DATA
+        assert clean_data.has_key(port)
+        expected_values = {
+            'action': 'store_last', 'last': None, 'type': 'push', 'updated': {},
+            'last_time': None, 'updated_time': None, 'name': NAME,
+            'activity': {
+                'check_activity': False,
+                'activity_timeout': 900,
+                'last_activity': 12345.6,
+            }
+        }
+        assert clean_data[port] == expected_values
+
+    def test_init_bad_queue_raise(self, clean_data, udp_server):
+        """Test that using the queue argument is only allowed with enqueue action"""
+        with pytest.raises(ValueError) as exception:
+            DataPushSocket(NAME, queue='myqueue')
+        assert str(exception.value) == 'The \'queue\' argument can only be used when the '\
+            'action is \'enqueue\''
+
+    def test_init_bad_callback_raise(self, clean_data, udp_server):
+        """Test that using the callback argument is only allowed with the callback actions"""
+        with pytest.raises(ValueError) as exception:
+            DataPushSocket(NAME, callback='mycallback')
+        assert str(exception.value) == 'The \'callback\' argument can only be used when '\
+            'the action is \'callback_async\' or \'callback_direct\''
+
+    def test_init_noncallable_callback_raise(self, clean_data, udp_server):
+        """Test that supplying non-callable callback raises"""
+        with pytest.raises(ValueError) as exception:
+            DataPushSocket(NAME, action='callback_async', callback='mycallback')
+        assert str(exception.value) == 'Value for callback: \'mycallback\' is not callable'
+
+    def test_init_bad_return_format_raise(self, clean_data, udp_server):
+        """Test that giving a bad return format raises"""
+        with pytest.raises(ValueError) as exception:
+            DataPushSocket(NAME, return_format='foobar')
+        assert str(exception.value) == 'The \'return_format\' argument may only be one of '\
+            'the \'json\', \'raw\' or \'string\' values'
+
+    @pytest.mark.parametrize('queue', ('myqueue', None), ids=('queue_set', 'queue_not_set'))
+    def test_init_enqueue(self, clean_data, udp_server, queue):
+        """Test that choosing enqueue is properly setting the queue"""
+        with mock.patch('Queue.Queue') as mock_queue:
+            mock_queue.return_value = 'queue_from_Queue'
+            DataPushSocket(NAME, port=PORT, action='enqueue', queue=queue)
+        assert clean_data[PORT]['action'] == 'enqueue'
+        if queue == 'myqueue':
+            assert clean_data[PORT]['queue'] == 'myqueue'
+        else:
+            mock_queue.assert_called_once_with()
+            assert clean_data[PORT]['queue'] == 'queue_from_Queue'
+
+    def test_init_callback_async(self, clean_data, udp_server):
+        """Test that choosing callback_async is properly setup"""
+        def callback_func():
+            pass
+        with mock.patch('Queue.Queue') as mock_queue:
+            mock_queue.return_value = 'my_queue'
+            with mock.patch(SOCKETS_PATH.format('CallBackThread')) as callback_thread:
+                callback_thread.return_value = 'my_callback_thread'
+                data_push_socket = DataPushSocket(NAME, port=PORT, action='callback_async',
+                                                  callback=callback_func)
+        mock_queue.assert_called_once_with()
+        callback_thread.assert_called_once_with('my_queue', callback_func)
+        assert clean_data[PORT]['action'] == 'callback_async'
+        assert clean_data[PORT]['queue'] == 'my_queue'
+        assert data_push_socket._callback_thread == 'my_callback_thread'
+
+    @pytest.mark.parametrize('return_format', ('json', 'raw', 'string'),
+                             ids=('json', 'raw', 'string'))
+    def test_init_callback_direct(self, clean_data, udp_server, return_format):
+        """Test that choosing callback_direct if properly setup"""
+        def callback_func():
+            pass
+        DataPushSocket(NAME, port=PORT, action='callback_direct', callback=callback_func,
+                       return_format=return_format)
+        assert clean_data[PORT]['callback'] == callback_func
+        assert clean_data[PORT]['return_format'] == return_format
+
+    def test_init_bad_action_raise(self, clean_data, udp_server):
+        """Test that initializing with a bad action raises"""
+        with pytest.raises(ValueError) as exception:
+            DataPushSocket(NAME, action='foobar')
+        assert str(exception.value) == 'Unknown action \'foobar\'. Must be one of: '\
+            '[\'store_last\', \'enqueue\', \'callback_async\', \'callback_direct\']'
+
+    def test_udp_server_exception(self, clean_data, udp_server):
+        """Test that if UDPServer raises we either intercept of code is 98 or re raise"""
+        class MyException(Exception):
+            """Exception with errno"""
+            def __init__(self, msg, errno):
+                super(MyException, self).__init__(msg)
+                self.errno = errno
+
+        # Monkey-patch socket.error
+        original_error = socket.error
+        socket.error = MyException
+
+        # If errno is 97, we re-raise the exception
+        udp_server.side_effect = MyException('BOOM', 97)
+        with pytest.raises(MyException):
+            DataPushSocket(NAME, port=PORT)
+
+        udp_server.side_effect = MyException('BOOM', 98)
+        with pytest.raises(sockets.PortStillReserved):
+            DataPushSocket(NAME, port=PORT)
+
+        # Reverse monkey patch
+        socket.error = original_error
+
+    @pytest.mark.parametrize('action_and_callback',
+                             (('enqueue', None), ('callback_async', mock.MagicMock())),
+                             ids=('enqueue', 'callback_async'))
+    def test_run(self, clean_data, udp_server, action_and_callback):
+        """Test the run method"""
+        action, callback = action_and_callback
+        with mock.patch(SOCKETS_PATH.format('CallBackThread')):
+            data_push_socket = DataPushSocket(NAME, action=action, callback=callback)
+
+        # Set up mocks
+        data_push_socket._callback_thread = mock.MagicMock()
+        data_push_socket.server = mock.MagicMock()
+
+        # Call and check external calls
+        data_push_socket.run()
+        if action == 'callback_async':
+            data_push_socket._callback_thread.start.assert_called_once_with()
+        data_push_socket.server.serve_forever.assert_called_once_with()
+
+    @pytest.mark.parametrize('action_and_callback',
+                             (('enqueue', None), ('callback_async', mock.MagicMock())),
+                             ids=('enqueue', 'callback_async'))
+    def test_stop(self, clean_data, udp_server, action_and_callback):
+        """Test the stop method"""
+        action, callback = action_and_callback
+        assert PORT not in clean_data
+        with mock.patch(SOCKETS_PATH.format('CallBackThread')):
+            data_push_socket = DataPushSocket(NAME, port=PORT, action=action, callback=callback)
+        assert PORT in clean_data
+
+        # Set up mocks
+        data_push_socket._callback_thread = mock.MagicMock()
+        data_push_socket.server = mock.MagicMock()
+
+        # Call and check external calls
+        with mock.patch('time.sleep') as sleep:
+            data_push_socket.stop()
+        if action == 'callback_async':
+            data_push_socket._callback_thread.stop.assert_called_once_with()
+        data_push_socket.server.shutdown.assert_called_once_with()
+        sleep.assert_has_calls([mock.call(0.1)] * 2)
+        # Check that config is removed from data
+        assert PORT not in clean_data
+
+    def test_queue(self, clean_data, udp_server):
+        """Test the queue property"""
+        data_push_socket = DataPushSocket(NAME, action='enqueue', queue='MyQueue')
+        assert data_push_socket.queue == 'MyQueue'
+
+    @pytest.mark.parametrize('last', (None, {'a': 5, 'b': 8.0}), ids=('None', 'point'))
+    def test_last(self, clean_data, udp_server, last):
+        """Test the last property"""
+        data_push_socket = DataPushSocket(NAME, port=PORT)
+        clean_data[PORT]['last'] = last
+        clean_data[PORT]['last_time'] = 'last_time'
+        returned_time, returned_last = data_push_socket.last
+        assert returned_time == 'last_time'
+        if last is None:
+            assert returned_last is None
+        else:
+            assert returned_last is not last
+            assert returned_last == last
+
+    def test_updated(self, clean_data, udp_server):
+        """Test the update property"""
+        data_push_socket = DataPushSocket(NAME, port=PORT)
+        updated = {'a': 9.0}
+        clean_data[PORT]['updated_time'] = 'mytime'
+        clean_data[PORT]['updated'] = updated
+        returned_time, returned_updated = data_push_socket.updated
+        assert returned_time == 'mytime'
+        assert returned_updated is not updated
+        assert returned_updated == updated
+
+    def test_set_last_to_none(self, clean_data, udp_server):
+        """Test the set_last_to_none method"""
+        data_push_socket = DataPushSocket(NAME, port=PORT)
+        clean_data[PORT]['last'] = 'not_none'
+        clean_data[PORT]['last_time'] = 'not_none'
+        data_push_socket.set_last_to_none()
+        assert clean_data[PORT]['last'] is None
+        assert clean_data[PORT]['last_time'] is None
+
+    def test_clear_updated(self, clean_data, udp_server):
+        """Test the clear_updated method"""
+        data_push_socket = DataPushSocket(NAME, port=PORT)
+        clean_data[PORT]['updated'] = mock.MagicMock()
+        clean_data[PORT]['updated_time'] = 'not_none'
+        data_push_socket.clear_updated()
+        clean_data[PORT]['updated'].clear.assert_called_once_with()
+        assert clean_data[PORT]['updated_time'] is None
+
+    def test_poke(self, clean_data, udp_server):
+        """Test the poke method"""
+        data_push_socket = DataPushSocket(NAME, port=PORT, check_activity=True)
+        with mock.patch('time.time') as time_:
+            time_.return_value = 12345.6
+            data_push_socket.poke()
+        assert clean_data[PORT]['activity']['last_activity'] == 12345.6
