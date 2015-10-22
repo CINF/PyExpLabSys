@@ -4,12 +4,14 @@
 
 from __future__ import print_function
 import re
+import os
 import numpy as np
 from PyExpLabSys.file_parsers.specs import SpecsFile
 
 
 FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
 ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
+THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def capital_to_underscore(string):
@@ -25,13 +27,13 @@ def capital_to_underscore(string):
 
 def get_specs_region(filepath, region):
     """Get the specs region"""
-    specs_file = SpecsFile(filepath)
+    specs_file = SpecsFile(os.path.join(THIS_FILE_DIR, filepath))
     return specs_file.search_regions(region)[0]
 
 
 def get_xy_data(filepath):
     """Get the xy region"""
-    with open(filepath) as file_:
+    with open(os.path.join(THIS_FILE_DIR, filepath)) as file_:
         data = np.genfromtxt(file_, delimiter='  ')
     return data
 
@@ -52,7 +54,7 @@ def get_xy_metadata(filepath):
         ('Kinetic Energy', float),
     )
     meta = {}
-    with open(filepath) as file_:
+    with open(os.path.join(THIS_FILE_DIR, filepath)) as file_:
         for line in file_:
             for metas in metanames:
                 try:
