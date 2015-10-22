@@ -1,4 +1,4 @@
-# pylint: disable=too-many-arguments,too-many-lines
+# pylint: disable=too-many-arguments,too-many-lines,import-error
 # -*- coding: utf-8 -*-
 """The sockets module contains various implementations of UDP socket servers
 (at present 4 in total) for transmission of data over the network. The
@@ -41,14 +41,23 @@ Presently the module contains the following socket servers:
  what is happening.
 """
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
+import sys
 import threading
 import socket
-import SocketServer
+try:
+    import SocketServer
+except ImportError:
+    # SocketServer was renamed in Python3
+    import socketserver as SocketServer
 import time
 import json
-import Queue
+try:
+    import Queue
+except ImportError:
+    # Queue was renamed to queueu in Python 3
+    import queue as Queue
 import logging
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -139,7 +148,8 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
          * **status** (*str*): Return the system status and status for all
            socket servers.
         """
-        command = self.request[0]
+        command = self.request[0].decode('ascii')
+        print(type(command))
         # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
         sock = self.request[1]
@@ -152,7 +162,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
             # The "name" and "status" commands are also handled here
             data = self._all_values(command)
 
-        sock.sendto(data, self.client_address)
+        sock.sendto(data.encode('ascii'), self.client_address)
         PULLUHLOG.debug('Sent back \'{}\' to {}'
                         .format(data, self.client_address))
 
@@ -602,7 +612,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
          * **commands** (*str*): Return a json encoded list of commands. The returns value is
            is prefixed with :data:`.PUSH_RET` and '#' so e.g. 'RET#actual_date'
         """
-        request = self.request[0]
+        request = self.request[0].decode('ascii')
         PUSHUHLOG.debug('Request \'{}\'received'.format(request))
         # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
@@ -634,10 +644,10 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             # Several of the helper methods will raise ValueError on wrong
             # input
             except ValueError as exception:
-                return_value = '{}#{}'.format(PUSH_ERROR, exception.message)
+                return_value = '{}#{}'.format(PUSH_ERROR, str(exception))
 
         PUSHUHLOG.debug('Send back: {}'.format(return_value))
-        sock.sendto(return_value, self.client_address)
+        sock.sendto(return_value.encode('ascii'), self.client_address)
 
     def _raw_with_names(self, data):
         """Adds raw data to the queue"""
@@ -670,7 +680,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 )
             except ValueError as exception:
                 message = 'Unable to convert values to \'{}\'. Error is: {}'\
-                    .format(data_type, exception.message)
+                    .format(data_type, str(exception))
                 PUSHUHLOG.error('{}'.format(message))
                 raise ValueError(message)
             # Remove list for length 1 data
@@ -744,7 +754,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                     out = '{}#{}'.format(PUSH_ERROR, message)
             # pylint: disable=broad-except
             except Exception as exception:  # Catch anything it might raise
-                out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+                out = '{}#{}'.format(PUSH_EXCEP, str(exception))
         else:
             # Return the ACK message with the interpreted data
             out = '{}#{}'.format(PUSH_ACK, data)
@@ -766,7 +776,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         try:
             out = '{}#{}'.format(PUSH_RET, json.dumps(value))
         except TypeError as exception:
-            out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+            out = '{}#{}'.format(PUSH_EXCEP, str(exception))
         return out
 
     @staticmethod
@@ -780,12 +790,12 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             (str): The request return value
         """
-        PUSHUHLOG.debug('Format return string: {}'.format(value))
+        PUSHUHLOG.debug('Format return string: %s', value)
         try:
             out = '{}#{}'.format(PUSH_RET, str(value))
         # pylint: disable=broad-except
         except Exception as exception:  # Have no idea, maybe attribute error
-            out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+            out = '{}#{}'.format(PUSH_EXCEP, str(exception))
         return out
 
     def _format_return_raw(self, argument):
@@ -830,7 +840,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         # pylint: disable=broad-except
         except Exception as exception:
             message = 'Raw conversion failed with message'
-            out = '{}#{}:{}'.format(PUSH_EXCEP, message, exception.message)
+            out = '{}#{}:{}'.format(PUSH_EXCEP, message, str(exception))
 
         return out
 
@@ -866,8 +876,14 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 element_type = type(value)
                 value_string = str(value)
 
+            # Convert element_type to string
+            if element_type != '':
+                element_type = element_type.__name__  # pylint: disable=maybe-no-member
+            # We always call it str
+            if sys.version_info[0] == 2 and element_type == 'unicode':
+                element_type = 'str'
             # Check that the element type makes sense for raw conversion
-            if element_type not in [int, float, bool, str]:
+            if element_type not in ['int', 'float', 'bool', 'str']:
                 message = 'With return format raw, the item type can '\
                     'only be one of \'int\', \'float\', \'bool\' and '\
                     '\'str\'. Object: \'{}\' is of type: {}'.format(
@@ -875,7 +891,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 raise TypeError(message)
 
             # pylint: disable=maybe-no-member
-            item_str = '{}:{}:{}'.format(str(key), element_type.__name__,
+            item_str = '{}:{}:{}'.format(str(key), element_type,
                                          value_string)
             items.append(item_str)
 
@@ -1041,9 +1057,8 @@ class DataPushSocket(threading.Thread):
             content['callback'] = callback
             content['return_format'] = return_format
         else:
-            message = 'Unknown action \'{}\'. Must be one of: {}'.\
-                format(action, ['store_last', 'enqueue', 'callback_async',
-                                'callback_direct'])
+            message = 'Unknown action \'{}\'. Must be one of: [\'store_last\', \'enqueue\', '\
+                      '\'callback_async\', \'callback_direct\']'.format(action)
             raise ValueError(message)
 
         # Setup server

@@ -1,16 +1,16 @@
-# pylint: disable=no-member,no-name-in-module,redefined-outer-name,protected-access,
-# pylint: disable=unused-argument,no-self-use
+# pylint: disable=too-many-lines,no-member,no-name-in-module,redefined-outer-name,
+# pylint: disable=unused-argument,no-self-use,protected-access
 
 """This file contains unit tests for PyExpLabSys.common.sockets"""
 
 from __future__ import unicode_literals, print_function
 
+import sys
 import time
 import mock
 import json
 import collections
 import socket
-import Queue
 import pytest
 from numpy import isclose
 from PyExpLabSys.common import sockets
@@ -20,6 +20,10 @@ from PyExpLabSys.common.sockets import (
 )
 
 ### Test data
+if sys.version_info[0] == 3:
+    QUEUE_CLASS_PATH = 'queue.Queue'
+else:
+    QUEUE_CLASS_PATH = 'Queue.Queue'
 SERVER_ADDRESS = '42.42.42.42'
 CLIENT_ADDRESS = '47.47.47.47'
 PORT = 9876
@@ -99,9 +103,13 @@ def cdps_init_args():
 @pytest.yield_fixture
 def udp_server():
     """A UDPServer fixure"""
-    with mock.patch('SocketServer.UDPServer') as udp_server:
-        yield udp_server
-
+    if sys.version_info[0] == 2:
+        with mock.patch('SocketServer.UDPServer') as udp_server:
+            yield udp_server
+    # SocketServer was renamed to socketserver in Python 3
+    else:
+        with mock.patch('socketserver.UDPServer') as udp_server:
+            yield udp_server
 
 @pytest.yield_fixture
 def clean_data():
@@ -189,9 +197,10 @@ class TestPullUDPHandler(object):
             _single_value.return_value = mock_return_value
             with mock.patch(SOCKETS_PATH.format('PullUDPHandler._all_values')) as _all_values:
                 handler.handle()
-                _single_value.assert_called_once_with(request)
+                _single_value.assert_called_once_with(request.decode('ascii'))
                 assert not _all_values.called
-                mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
+                mocket.sendto.assert_called_once_with(mock_return_value.encode('ascii'),
+                                                      CLIENT_ADDRESS)
 
         assert handler.port == PORT
 
@@ -209,9 +218,10 @@ class TestPullUDPHandler(object):
             with mock.patch(SOCKETS_PATH.format('PullUDPHandler._all_values')) as _all_values:
                 _all_values.return_value = mock_return_value
                 handler.handle()
-                _all_values.assert_called_once_with(request)
+                _all_values.assert_called_once_with(request.decode('ascii'))
                 assert not _single_value.called
-                mocket.sendto.assert_called_once_with(mock_return_value, CLIENT_ADDRESS)
+                mocket.sendto.assert_called_once_with(mock_return_value.encode('ascii'),
+                                                      CLIENT_ADDRESS)
 
     def test_single_raw(self, pull_udp_handler, sockets_data_single):
         """Test the _single_value raw case"""
@@ -494,7 +504,7 @@ class TestCommonDataPullSocket(object):
     def test_stop(self, cdps_init_args, clean_data):
         """Test the stop method"""
         sock = CommonDataPullSocket(**cdps_init_args)
-        assert clean_data.has_key(PORT)
+        assert PORT in clean_data
         sock.server = mock.MagicMock()
         sock.stop()
 
@@ -502,7 +512,7 @@ class TestCommonDataPullSocket(object):
         sock.server.shutdown.assert_called_once_with()
 
         # ... and that the port has been removed from data
-        assert not clean_data.has_key(PORT)
+        assert not PORT in clean_data
 
     def test_poke(self, cdps_init_args, clean_data):
         """Test the poke method"""
@@ -683,7 +693,7 @@ class TestPushUDPHandler(object):
         """Test setting the port"""
         # mock handle, which is called at instantiate time, inside a try except
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler.handle')):
-            handler = PushUDPHandler(('dummy_request', mocket), CLIENT_ADDRESS, server)
+            handler = PushUDPHandler((b'dummy_request', mocket), CLIENT_ADDRESS, server)
         handler.handle()
         assert handler.port == 9876
 
@@ -698,7 +708,7 @@ class TestPushUDPHandler(object):
 
         handler.handle()
         expected = '{}#{}'.format(sockets.PUSH_RET, SOCKET_NAME)
-        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+        mocket.sendto.assert_called_once_with(expected.encode('ascii'), CLIENT_ADDRESS)
 
     def test_handle_commands(self, mocket, server, clean_data):
         """Test the handle commands case"""
@@ -711,7 +721,7 @@ class TestPushUDPHandler(object):
         handler.handle()
         expected = '{}#[\"json_wn#\", \"raw_wn#\", \"name\", \"status\", \"commands\"]'.\
                    format(sockets.PUSH_RET)
-        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+        mocket.sendto.assert_called_once_with(expected.encode('ascii'), CLIENT_ADDRESS)
 
     def test_handle_status(self, mocket, server, clean_data):
         """Test the handle status case"""
@@ -734,7 +744,7 @@ class TestPushUDPHandler(object):
                 expected = {'system_status': 1, 'socket_server_status': 2}
                 args = tuple(mocket.sendto.call_args[0])
                 assert args[1] == CLIENT_ADDRESS
-                assert json.loads(args[0]) == expected
+                assert json.loads(args[0].decode('ascii')) == expected
 
     def test_handle_no_hash(self, mocket, server, clean_data):
         """Test the case, where the command is not any of the previous ones and it does not
@@ -748,7 +758,7 @@ class TestPushUDPHandler(object):
 
         handler.handle()
         expected = '{}#{}'.format(sockets.PUSH_ERROR, sockets.UNKNOWN_COMMAND)
-        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+        mocket.sendto.assert_called_once_with(expected.encode('ascii'), CLIENT_ADDRESS)
 
     def test_handle_json_wn(self, mocket, server, clean_data):
         """Test the handle json with names case"""
@@ -764,7 +774,8 @@ class TestPushUDPHandler(object):
             handler.handle()
             json_wn.assert_called_once_with('{"meas1": 4.7, "string1": "Hallo World!"}')
 
-        mocket.sendto.assert_called_once_with(json_return_value, CLIENT_ADDRESS)
+        mocket.sendto.assert_called_once_with(json_return_value.encode('ascii'),
+                                              CLIENT_ADDRESS)
 
     def test_handle_raw_wn(self, mocket, server, clean_data):
         """Test the handle raw with names case"""
@@ -780,7 +791,8 @@ class TestPushUDPHandler(object):
             handler.handle()
             raw_wn.assert_called_once_with('meas1:float:47.0;string1:str:Hallo World!')
 
-        mocket.sendto.assert_called_once_with(raw_return_value, CLIENT_ADDRESS)
+        mocket.sendto.assert_called_once_with(raw_return_value.encode('ascii'),
+                                              CLIENT_ADDRESS)
 
     def test_handle_unknown(self, mocket, server, clean_data):
         """Test the handle unknown command case"""
@@ -791,7 +803,7 @@ class TestPushUDPHandler(object):
         handler.handle()
 
         expected = '{}#{}'.format(sockets.PUSH_ERROR, sockets.UNKNOWN_COMMAND)
-        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+        mocket.sendto.assert_called_once_with(expected.encode('ascii'), CLIENT_ADDRESS)
 
     @pytest.mark.parametrize("method_and_request",
         (('_json_with_names', json_wn_request), ('_raw_with_names', raw_wn_request)),
@@ -811,14 +823,14 @@ class TestPushUDPHandler(object):
             handler.handle()
 
         expected = '{}#{}'.format(sockets.PUSH_ERROR, msg)
-        mocket.sendto.assert_called_once_with(expected, CLIENT_ADDRESS)
+        mocket.sendto.assert_called_once_with(expected.encode('ascii'), CLIENT_ADDRESS)
 
     def test_raw_with_names(self, clean_data, push_udp_handler):
         """Test the _raw_with_names method"""
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler._set_data')) as set_data:
             set_data.return_value = ANY_RETURN
-            assert push_udp_handler._raw_with_names(self.raw_wn_request.split('#')[1]) ==\
-                ANY_RETURN
+            argument = self.raw_wn_request.decode('ascii').split('#')[1]
+            assert push_udp_handler._raw_with_names(argument) == ANY_RETURN
             set_data.assert_called_once_with({'meas1': 47.0, 'string1': 'Hallo World!'})
 
     def test_raw_with_names_exceptions(self, clean_data, push_udp_handler):
@@ -846,8 +858,8 @@ class TestPushUDPHandler(object):
         """Test the _json_with_names method"""
         with mock.patch(SOCKETS_PATH.format('PushUDPHandler._set_data')) as set_data:
             set_data.return_value = ANY_RETURN
-            assert push_udp_handler._json_with_names(self.json_wn_request.split('#')[1]) ==\
-                ANY_RETURN
+            argument = self.json_wn_request.decode('ascii').split('#')[1]
+            assert push_udp_handler._json_with_names(argument) == ANY_RETURN
             set_data.assert_called_once_with({'meas1': 4.7, 'string1': 'Hallo World!'})
 
     def test_json_with_names_exceptions(self, clean_data, push_udp_handler):
@@ -889,7 +901,6 @@ class TestPushUDPHandler(object):
         clean_data[PORT] = dict(self.set_data_dict)
         clean_data[PORT]['action'] = action
         clean_data[PORT]['queue'] = mock.MagicMock()
-        data = {'meas1': 4.7, 'string1': 'Hallo World!'}
         push_udp_handler.port = PORT
 
         # Set and test
@@ -947,8 +958,7 @@ class TestPushUDPHandler(object):
         push_udp_handler.port = PORT
 
         # Call _set_data and check that callback raised excep. is passed on as error
-        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._format_return_json')) as\
-             formatter:
+        with mock.patch(SOCKETS_PATH.format('PushUDPHandler._format_return_json')):
             expected = '{}#You messed up!'.format(sockets.PUSH_EXCEP)
             assert push_udp_handler._set_data(self.test_data) == expected
 
@@ -996,7 +1006,7 @@ class TestPushUDPHandler(object):
         obj = mock.MagicMock()
         # __str__ is also called for the logging call, therefore, make it return nicely on the
         # first call and raise exception on the second
-        obj.__str__.side_effect = [ANY_RETURN, AttributeError('You messed up!')]
+        obj.__str__.side_effect = [AttributeError('You messed up!')]
         expected = '{}#You messed up!'.format(sockets.PUSH_EXCEP)
         assert push_udp_handler._format_return_string(obj) == expected
 
@@ -1017,7 +1027,7 @@ class TestPushUDPHandler(object):
         """Test the _format_return_raw format None case"""
         assert push_udp_handler._format_return_raw(None) == '{}#None'.format(sockets.PUSH_RET)
 
-    @pytest.mark.parametrize('input_',  ({'a': 8}, [3, 4]), ids=('dict', 'list'))
+    @pytest.mark.parametrize('input_', ({'a': 8}, [3, 4]), ids=('dict', 'list'))
     def test_format_return_raw_raise(self, clean_data, push_udp_handler, input_):
         """Test the _format_return_raw raise from formatter"""
         # Test that exceptions in the formatters are passed on
@@ -1044,7 +1054,7 @@ class TestPushUDPHandler(object):
         # Test valid input
         inputs = (
             {'answer': 42, 'values': [42, 47], 'answer_good': False},
-            {'mystr': b'Live long and prosper', 'myfloat': 47.0},
+            {'mystr': 'Live long and prosper', 'myfloat': 47.0},
             {'list_of_floats': [1.0, 2.0, 3.0e-18, 4.0, 5.0]}
         )
         replies = (
@@ -1079,7 +1089,7 @@ class TestPushUDPHandler(object):
         # Test invalid type
         expected_exception = ('With return format raw, the item type can only be one of '
                               '\'int\', \'float\', \'bool\' and \'str\'. Object: \'(1+3j)\' '
-                              'is of type: <type \'complex\'>')
+                              'is of type: {}').format(type(1 + 3j).__name__)
         with pytest.raises(TypeError) as exception:
             push_udp_handler._format_return_raw_dict({'mycomplex': 1 + 3j})
         assert str(exception.value) == expected_exception
@@ -1156,7 +1166,7 @@ class TestDataPushSocket(object):
         udp_server.assert_called_once_with(('', port), PushUDPHandler)
 
         # Check socket config in DATA
-        assert clean_data.has_key(port)
+        assert port in clean_data
         expected_values = {
             'action': 'store_last', 'last': None, 'type': 'push', 'updated': {},
             'last_time': None, 'updated_time': None, 'name': NAME,
@@ -1182,13 +1192,13 @@ class TestDataPushSocket(object):
         assert str(exception.value) == 'The \'callback\' argument can only be used when '\
             'the action is \'callback_async\' or \'callback_direct\''
 
-    def test_init_noncallable_callback_raise(self, clean_data, udp_server):
+    def test_init_noncallable_cb_raise(self, clean_data, udp_server):
         """Test that supplying non-callable callback raises"""
         with pytest.raises(ValueError) as exception:
             DataPushSocket(NAME, action='callback_async', callback='mycallback')
         assert str(exception.value) == 'Value for callback: \'mycallback\' is not callable'
 
-    def test_init_bad_return_format_raise(self, clean_data, udp_server):
+    def test_init_bad_ret_format_raise(self, clean_data, udp_server):
         """Test that giving a bad return format raises"""
         with pytest.raises(ValueError) as exception:
             DataPushSocket(NAME, return_format='foobar')
@@ -1198,7 +1208,7 @@ class TestDataPushSocket(object):
     @pytest.mark.parametrize('queue', ('myqueue', None), ids=('queue_set', 'queue_not_set'))
     def test_init_enqueue(self, clean_data, udp_server, queue):
         """Test that choosing enqueue is properly setting the queue"""
-        with mock.patch('Queue.Queue') as mock_queue:
+        with mock.patch(QUEUE_CLASS_PATH) as mock_queue:
             mock_queue.return_value = 'queue_from_Queue'
             DataPushSocket(NAME, port=PORT, action='enqueue', queue=queue)
         assert clean_data[PORT]['action'] == 'enqueue'
@@ -1215,7 +1225,7 @@ class TestDataPushSocket(object):
             pass
 
         # Setup
-        with mock.patch('Queue.Queue') as mock_queue:
+        with mock.patch(QUEUE_CLASS_PATH) as mock_queue:
             mock_queue.return_value = 'my_queue'
             with mock.patch(SOCKETS_PATH.format('CallBackThread')) as callback_thread:
                 callback_thread.return_value = 'my_callback_thread'
@@ -1301,7 +1311,8 @@ class TestDataPushSocket(object):
         action, callback = action_and_callback
         assert PORT not in clean_data
         with mock.patch(SOCKETS_PATH.format('CallBackThread')):
-            data_push_socket = DataPushSocket(NAME, port=PORT, action=action, callback=callback)
+            data_push_socket = DataPushSocket(NAME, port=PORT, action=action,
+                                              callback=callback)
         assert PORT in clean_data
 
         # Set up mocks
