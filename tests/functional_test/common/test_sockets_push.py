@@ -1,27 +1,34 @@
 # -*- coding: utf-8 -*-
 # pylint: disable = no-member,star-args,protected-access,too-few-public-methods
-# pylint: disable = unused-argument,redefined-outer-name,no-self-use
+# pylint: disable = unused-argument,redefined-outer-name,no-self-use,import-error
 
 # NOTE: About pylint disable. Everything on the second line are
 # disables that simply makes no sense when using pytest and fixtures
 
 """Unit tests for the DataPushSocket"""
 
-import Queue
+from __future__ import unicode_literals
+
+import sys
+try:
+    import Queue
+except ImportError:
+    import queue as Queue
 import time
 import json
 import ast
 import threading
-import SocketServer
+import socket
+try:
+    import SocketServer
+except ImportError:
+    import socketserver as SocketServer
 # Allow for fast restart of a socket on a port for test purposes
 SocketServer.UDPServer.allow_reuse_address = True
 import pytest
-from PyExpLabSys.common.sockets import DataPushSocket, CallBackThread
+from PyExpLabSys.common.sockets import DataPushSocket
 import PyExpLabSys.common.sockets
 DATA = PyExpLabSys.common.sockets.DATA
-
-#from PyExpLabSys.common.utilities import get_logger
-#LOGGER = get_logger('Hallo', level='debug')
 
 
 ### Module variables
@@ -58,6 +65,14 @@ DATA_SETS['NONE'] = {'action': 'None'}
 
 
 ### Define fixtures
+@pytest.yield_fixture
+def sock():
+    """Client socket fixture"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    yield sock
+    sock.close()
+
+
 @pytest.fixture(params=['json', 'json_multiple_values'])
 def json_data(request):
     """Return two different json data sets"""
@@ -71,10 +86,17 @@ def raw_data(request):
     return DATA_SETS[data_dict_name], DATA_SETS[request.param]
 
 
-@pytest.yield_fixture
-def dps(request):
-    """DataPushSocket fixture, if requested in a class that has dps_kwargs
-    class variable, use those in init
+@pytest.yield_fixture(scope='class')
+def class_dps(request):
+    """DataPushSocket fixture
+
+    If requested in a class that has dps_kwargs class variable, use those in init
+
+    .. note:: This fixture lasts for the duration of a test class. It has been setup like this
+       because the sockets take a long time to shut down. So in order to save time on the test
+       run, we only initiate the socket once per class, but reset it in the dps fixture. It is
+       the dps fixture that should be used.
+
     """
     if hasattr(request, 'cls') and hasattr(request.cls, 'dps_kwargs'):
         dps_ = DataPushSocket(NAME, **request.cls.dps_kwargs)
@@ -83,6 +105,22 @@ def dps(request):
     dps_.start()
     yield dps_
     dps_.stop()
+
+
+@pytest.fixture(scope='function')
+def dps(class_dps):
+    """DataPushSocket fixture
+
+    If requested in a class that has dps_kwargs class variable, use those in init (via the
+    class_dps fixture).
+
+    .. note:: This fixture takes an DataPushSocket (dps) instance as an argument, which is
+       re-used throughout the entire test class. This fixture, which only has the scope of
+       a function, will then reset the socket before every method.
+    """
+    class_dps.clear_updated()
+    class_dps.set_last_to_none()
+    return class_dps
 
 
 @pytest.fixture(params=['new_name', 'same_name'])
@@ -152,202 +190,78 @@ def echo_list_callback(argument):
 
 
 ### Here starts the tests
-def test_bad_init():
-    """Test initializing with wrong parameters"""
-    # Unknown action
-    with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, action='oo')
-    message = 'Unknown action \'oo\'. Must be one of: [\'store_last\', '\
-        '\'enqueue\', \'callback_async\', \'callback_direct\']'
-    assert str(excinfo.value) == message
+class TestErrors(object):
+    """Simple tests of errors"""
 
-    # Action 'callback' but supplied callback not call_able
-    with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, action='callback_async',
-                       callback='not callable str')
-    message = 'Value for callback: \'not callable str\' is not callable'
-    assert str(excinfo.value) == message
+    def test_unknown_command(self, dps, sock):
+        """Test that we return unknown command"""
+        expected = '{}#{}'.format(PyExpLabSys.common.sockets.PUSH_ERROR,
+                                  PyExpLabSys.common.sockets.UNKNOWN_COMMAND).encode('ascii')
+        # Nonsense command
+        sock.sendto(b'bad bad command', (HOST, PORT))
+        received = sock.recv(1024)
+        assert received == expected
 
-    # Action 'callback' but no supplied callback
-    with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, action='callback_async')
-    message = 'Value for callback: \'None\' is not callable'
-    assert str(excinfo.value) == message
-
-    # queue given but action not enqueue (deault action is store_last)
-    with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, queue=Queue.Queue())
-    message = 'The \'queue\' argument can only be used when the action is '\
-        '\'enqueue\''
-    assert str(excinfo.value) == message
-
-    # callback given but action not callback (deault action is store_last)
-    with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, callback=dir)
-    message = 'The \'callback\' argument can only be used when the action is '\
-        '\'callback_async\' or \'callback_direct\''
-    assert str(excinfo.value) == message
-
-    # Unknown return_format given
-    with pytest.raises(ValueError) as excinfo:
-        DataPushSocket(NAME, return_format='blah')
-    message = 'The \'return_format\' argument may only be one of the '\
-        '\'json\', \'raw\' or \'string\' values'
-    assert str(excinfo.value) == message
+        # Bad command name
+        sock.sendto(b'bad#nonsense', (HOST, PORT))
+        received = sock.recv(1024)
+        assert received == expected
 
 
-class TestInit(object):
-    """Class that wraps test of successful initialization"""
+    def test_json_wn_bad_data(self, dps, sock):
+        """Test the correct error handling for the json_wn command"""
+        # Send string that cannot be parsed as JSON
+        sock.sendto(b'json_wn#nonsense', (HOST, PORT))
+        received = sock.recv(1024)
+        message = '{}#The string \'nonsense\' could not be decoded as JSON'\
+            .format(PyExpLabSys.common.sockets.PUSH_ERROR)
+        assert received == message.encode('ascii')
 
-    @staticmethod
-    def init_common_tests(dps, action):
-        """Common init tests (called by other tests, not by pytest)"""
-        # action
-        assert dps.action == action
-        assert DATA[PORT]['action'] == dps.action
-        # port
-        assert dps.port == PORT
-        assert isinstance(DATA.get(PORT), dict)
-        # last
-        assert dps.last == (None, None)
-        assert((DATA[PORT]['last_time'],
-                DATA[PORT]['last']) == dps.last)
-        # updated
-        assert dps.updated == (None, {})
-        assert((DATA[PORT]['updated_time'],
-                DATA[PORT]['updated']) == dps.updated)
-        # name
-        assert DATA[PORT]['name'] == NAME
-
-    def test_init_default(self, dps):
-        """Test initialization with default patameters"""
-        self.init_common_tests(dps, 'store_last')
-        assert dps.queue is None
-        assert hasattr(DATA, 'queue') is False
-
-    def test_init_enqueue(self):
-        """Test initialization with when action is enqueue"""
-        dps_ = DataPushSocket(NAME, action='enqueue')
-        dps_.start()
-        self.init_common_tests(dps_, 'enqueue')
-        assert isinstance(dps_.queue, Queue.Queue)
-        assert DATA[PORT]['queue'] is dps_.queue
-        dps_.stop()
-
-    def test_init_custom_queue(self):
-        """Test initialization when action is enqueue and use custom queue"""
-        queue_ = Queue.Queue()
-        dps_ = DataPushSocket(NAME, action='enqueue', queue=queue_)
-        dps_.start()
-        self.init_common_tests(dps_, 'enqueue')
-        assert dps_.queue is queue_
-        assert DATA[PORT]['queue'] is queue_
-        dps_.stop()
-
-    def test_init_callback_async(self):
-        """Test initialization when action is callback_async"""
-        # Test init of callback
-        dps_ = DataPushSocket(NAME, action='callback_async', callback=dir)
-        dps_.start()
-        self.init_common_tests(dps_, 'callback_async')
-        assert isinstance(dps_.queue, Queue.Queue)
-        assert DATA[PORT]['queue'] is dps_.queue
-        assert isinstance(dps_._callback_thread, CallBackThread)
-        assert dps_._callback_thread.callback is dir
-        dps_.stop()
-
-    def test_init_cb_direct_default(self):
-        """Test initialization when action is callback_direct"""
-        # Test init of callback
-        dps_ = DataPushSocket(NAME, action='callback_direct', callback=dir)
-        dps_.start()
-        self.init_common_tests(dps_, 'callback_direct')
-        assert DATA[PORT]['callback'] is dir
-        assert DATA[PORT]['return_format'] == 'json'
-        dps_.stop()
-
-    def test_init_callback_direct_raw(self):
-        """Test initialization when action is callback_direct"""
-        # Test init of callback
-        dps_ = DataPushSocket(NAME, action='callback_direct', callback=dir,
-                             return_format='raw')
-        dps_.start()
-        self.init_common_tests(dps_, 'callback_direct')
-        assert DATA[PORT]['callback'] is dir
-        assert DATA[PORT]['return_format'] == 'raw'
-        dps_.stop()
+        # Send string that can be parsed as JSON, but not into a dict
+        sock.sendto(b'json_wn#"nonsense"', (HOST, PORT))
+        received = sock.recv(1024)
+        message = '{}#The object \'nonsense\' returned after decoding the JSON '\
+            'string is not a dict'.format(PyExpLabSys.common.sockets.PUSH_ERROR)
+        assert received == message.encode('ascii')
 
 
-def test_unknown_command(dps, sock):
-    """Test that we return unknown command"""
-    expected = '{}#{}'.format(PyExpLabSys.common.sockets.PUSH_ERROR,
-                              PyExpLabSys.common.sockets.UNKNOWN_COMMAND)
-    # Nonsense command
-    sock.sendto('bad bad command', (HOST, PORT))
-    received = sock.recv(1024)
-    assert received == expected
+    def test_raw_wn_bad_data(self, dps, sock):
+        """Test the error handling for the raw_wn command"""
+        # Test incorrect data part formatting, must be name:type:data i.e. 2 x ':'
+        for string in ['bad', 'bad:bad', 'bad:bad:bad:bad']:
+            command = 'raw_wn#{}'.format(string).encode('ascii')
+            sock.sendto(command, (HOST, PORT))
+            received = sock.recv(1024)
+            message = '{}#The data part \'{}\' did not match the expected '\
+                      'format of 3 parts divided by \':\''.format(
+                    PyExpLabSys.common.sockets.PUSH_ERROR, string)
+            assert received == message.encode('ascii')
 
-    # Bad command name
-    sock.sendto('bad#nonsense', (HOST, PORT))
-    received = sock.recv(1024)
-    assert received == expected
-
-
-def test_json_wn_bad_data(dps, sock):
-    """Test the correct error handling for the json_wn command"""
-    # Send string that cannot be parsed as JSON
-    sock.sendto('json_wn#nonsense', (HOST, PORT))
-    received = sock.recv(1024)
-    message = '{}#The string \'nonsense\' could not be decoded as JSON'\
-        .format(PyExpLabSys.common.sockets.PUSH_ERROR)
-    assert received == message
-
-    # Send string that can be parsed as JSON, but not into a dict
-    sock.sendto('json_wn#"nonsense"', (HOST, PORT))
-    received = sock.recv(1024)
-    message = '{}#The object \'nonsense\' returned after decoding the JSON '\
-        'string is not a dict'.format(PyExpLabSys.common.sockets.PUSH_ERROR)
-    assert received == message
-
-
-def test_raw_wn_bad_data(dps, sock):
-    """Test the error handling for the raw_wn command"""
-    # Test incorrect data part formatting, must be name:type:data i.e. 2 x ':'
-    for string in ['bad', 'bad:bad', 'bad:bad:bad:bad']:
-        command = 'raw_wn#{}'.format(string)
+        # Test unknown data type
+        command = b'raw_wn#codename1:nondatatype:1'
         sock.sendto(command, (HOST, PORT))
         received = sock.recv(1024)
-        message = '{}#The data part \'{}\' did not match the expected '\
-                  'format of 3 parts divided by \':\''.format(
-                PyExpLabSys.common.sockets.PUSH_ERROR, string)
-        assert received == message
+        message = '{}#The data type \'{}\' is unknown. Only {} are '\
+            'allowed'.format(PyExpLabSys.common.sockets.PUSH_ERROR, 'nondatatype',
+                             PyExpLabSys.common.sockets.TYPE_FROM_STRING.keys())
+        assert received == message.encode('ascii')
 
-    # Test unknown data type
-    command = 'raw_wn#codename1:nondatatype:1'
-    sock.sendto(command, (HOST, PORT))
-    received = sock.recv(1024)
-    message = '{}#The data type \'{}\' is unknown. Only {} are '\
-        'allowed'.format(PyExpLabSys.common.sockets.PUSH_ERROR, 'nondatatype',
-                         PyExpLabSys.common.sockets.TYPE_FROM_STRING.keys())
-    assert received == message
-
-    # Test conversion error
-    command = 'raw_wn#codename1:int:hh'
-    sock.sendto(command, (HOST, PORT))
-    received = sock.recv(1024)
-    message = '{}#Unable to convert values to \'int\'. Error is: invalid '\
-        'literal for int() with base 10: \'hh\''.format(
-            PyExpLabSys.common.sockets.PUSH_ERROR)
-    assert received == message
+        # Test conversion error
+        command = b'raw_wn#codename1:int:hh'
+        sock.sendto(command, (HOST, PORT))
+        received = sock.recv(1024)
+        message = '{}#Unable to convert values to \'int\'. Error is: invalid '\
+            'literal for int() with base 10: \'hh\''.format(
+                PyExpLabSys.common.sockets.PUSH_ERROR)
+        assert received == message.encode('ascii')
 
 
-def test_name(dps, sock):
-    """Test the get name command"""
-    command = 'name'
-    sock.sendto(command, (HOST, PORT))
-    received = sock.recv(1024)
-    assert(received == '{}#{}'.format(PyExpLabSys.common.sockets.PUSH_RET,
-                                      NAME))
+    def test_name(self, dps, sock):
+        """Test the get name command"""
+        sock.sendto(b'name', (HOST, PORT))
+        received = sock.recv(1024)
+        assert received == \
+            '{}#{}'.format(PyExpLabSys.common.sockets.PUSH_RET, NAME).encode('ascii')
 
 
 class TestDataTransfer(object):
@@ -355,7 +269,10 @@ class TestDataTransfer(object):
 
     @staticmethod
     def reply_test(reply, data):
-        """Perform test and comparisons on the reply"""
+        """Perform test and comparisons on the reply
+
+        reply and data are unicode object
+        """
         response, data_back = reply.split('#')
         data_back = ast.literal_eval(data_back)
         assert response == PyExpLabSys.common.sockets.PUSH_ACK
@@ -381,10 +298,10 @@ class TestDataTransfer(object):
         # Loop over data sets
         for data in json_data:
             data_updated.update(data)
-            command = 'json_wn#{}'.format(json.dumps(data))
+            command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
             time_sent = time.time()
             sock.sendto(command, (HOST, PORT))
-            reply = sock.recv(1024)
+            reply = sock.recv(1024).decode('ascii')
             # Test the reply, last and updated value and times of reception
             self.reply_test(reply, data)
             self.last_test(dps, data, time_sent)
@@ -397,8 +314,8 @@ class TestDataTransfer(object):
         for data, command in zip(*raw_data):
             data_updated.update(data)
             time_sent = time.time()
-            sock.sendto(command, (HOST, PORT))
-            reply = sock.recv(1024)
+            sock.sendto(command.encode('ascii'), (HOST, PORT))
+            reply = sock.recv(1024).decode('ascii')
             # Test the reply, last and updated value and times of reception
             self.reply_test(reply, data)
             self.last_test(dps, data, time_sent)
@@ -407,6 +324,7 @@ class TestDataTransfer(object):
 
 class TestCallBack(object):
     """Test the call back functionality"""
+
     # Used in dps fixture to init dps with certain kwargs.
     # NOTE. The fixture callback_with memory cannot be used here, so the
     # ordinary memory_callback_with_time function is used and then it is
@@ -423,19 +341,21 @@ class TestCallBack(object):
 
         # Add 10 data points
         for data in data_sample['data']:
-            command = 'json_wn#{}'.format(json.dumps(data))
+            command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
             sock.sendto(command, (HOST, PORT))
             # Append data to local list with timestamp
             local_data.append((time.time(), data))
-            reply = sock.recv(1024)
+            reply = sock.recv(1024).decode('ascii')
             # Check that the command was successful
             assert reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK)
 
         # Give the dps time to clear the queue by calling the callback
-        time.sleep(0.1)
+        while dps.queue.qsize() > 0:
+            time.sleep(1E-4)
+
         # Check that the correct data is there and received in less than 10 ms
         for sent, received in zip(local_data, CALLBACK_MEMORY):
-            assert abs(received[0] - sent[0]) < 0.010
+            assert abs(received[0] - sent[0]) < 0.020
             assert sent[1] == received[1]
 
         # Check that queue has been emptied and that last and updated makes
@@ -456,16 +376,16 @@ class TestCallBackReturnJson(object):
     def test_callback(self, dps, sock, data_sample):
         """Test the callback and test json return values"""
         for data in data_sample['data']:
-            command = 'json_wn#{}'.format(json.dumps(data))
-            reply = send_and_resc(sock, command)
+            command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
+            reply = send_and_resc(sock, command).decode('ascii')
             assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
             data_back = json.loads(reply.split('#')[1])
             assert data == data_back
 
     def test_none_return(self, dps, sock):
         """Test the return of a None value"""
-        command = 'json_wn#{}'.format(json.dumps(DATA_SETS['NONE']))
-        reply = send_and_resc(sock, command)
+        command = 'json_wn#{}'.format(json.dumps(DATA_SETS['NONE'])).encode('ascii')
+        reply = send_and_resc(sock, command).decode('ascii')
         assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = json.loads(reply.split('#')[1])
         assert data_back is None
@@ -480,27 +400,27 @@ class TestCallBackReturnRaw(object):
     def test_callback(self, dps, sock, data_sample):
         """Test the callback and test raw return values"""
         for data in data_sample['data']:
-            command = 'json_wn#{}'.format(json.dumps(data))
-            reply = send_and_resc(sock, command)
+            command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
+            reply = send_and_resc(sock, command).decode('ascii')
             assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
             data_back = reply.split('#')[1]
-            expected = '{}:float:{}'.format(*data.items()[0])
+            expected = '{}:float:{}'.format(*list(data.items())[0])
             assert data_back == expected
 
     def test_callback_multiple_values(self, dps, sock):
         """Test the callback and test raw return values with multiple values"""
         data = {'myints': [42, 47]}
-        command = 'json_wn#{}'.format(json.dumps(data))
-        reply = send_and_resc(sock, command)
+        command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
+        reply = send_and_resc(sock, command).decode('ascii')
         assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
-        expected = '{}:int:{},{}'.format(data.keys()[0], *data.values()[0])
+        expected = '{}:int:{},{}'.format(list(data.keys())[0], *list(data.values())[0])
         assert data_back == expected
 
     def test_none_return(self, dps, sock):
         """Test the return of a None value"""
-        command = 'raw_wn#action:str:None'
-        reply = send_and_resc(sock, command)
+        command = b'raw_wn#action:str:None'
+        reply = send_and_resc(sock, command).decode('ascii')
         assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
         assert data_back == 'None'
@@ -516,8 +436,8 @@ class TestCallBackReturnRawList(object):
         """Test the callback and test raw return values with a list of lists"""
         data = {'number': 3, '0': [1.0, 42.0], '1': [1.5, 45.6],
                 '2': [2.0, 47.0]}
-        command = 'json_wn#{}'.format(json.dumps(data))
-        reply = send_and_resc(sock, command)
+        command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
+        reply = send_and_resc(sock, command).decode('ascii')
         assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
         expected = 'float:1.0,42.0&1.5,45.6&2.0,47.0'
@@ -533,17 +453,20 @@ class TestCallBackReturnStr(object):
     def test_callback(self, dps, sock, data_sample):
         """Test the callback and test str return values"""
         for data in data_sample['data']:
-            command = 'json_wn#{}'.format(json.dumps(data))
-            reply = send_and_resc(sock, command)
+            command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
+            reply = send_and_resc(sock, command).decode('ascii')
             assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
             data_back = reply.split('#')[1]
-            expected = '{{u\'{}\': {}}}'.format(*data.items()[0])
+            if sys.version_info[0] == 3:
+                expected = '{{\'{}\': {}}}'.format(*list(data.items())[0])
+            else:
+                expected = '{{u\'{}\': {}}}'.format(*list(data.items())[0])
             assert data_back == expected
 
     def test_none_return(self, dps, sock):
         """Test the return of a None value"""
-        command = 'json_wn#{}'.format(json.dumps(DATA_SETS['NONE']))
-        reply = send_and_resc(sock, command)
+        command = 'json_wn#{}'.format(json.dumps(DATA_SETS['NONE'])).encode('ascii')
+        reply = send_and_resc(sock, command).decode('ascii')
         assert reply.startswith(PyExpLabSys.common.sockets.PUSH_RET + '#')
         data_back = reply.split('#')[1]
         assert data_back == 'None'
@@ -561,9 +484,9 @@ class TestEnqueue(object):
         """
         # Send data
         for data in data_sample['data']:
-            command = 'json_wn#{}'.format(json.dumps(data))
+            command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
             sock.sendto(command, (HOST, PORT))
-            reply = sock.recv(1024)
+            reply = sock.recv(1024).decode('ascii')
             # Check that the command was successful
             assert reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK)
         # Check that it was received
@@ -586,16 +509,22 @@ class TestEnqueue(object):
         # Send data
         local_data = []
         for data in data_sample['data']:
-            command = 'json_wn#{}'.format(json.dumps(data))
+            command = 'json_wn#{}'.format(json.dumps(data)).encode('ascii')
             sock.sendto(command, (HOST, PORT))
             local_data.append((time.time(), data))
-            reply = sock.recv(1024)
+            reply = sock.recv(1024).decode('ascii')
             # Check that the command was successful
             assert reply.startswith(PyExpLabSys.common.sockets.PUSH_ACK)
+
         # Give the dps time to clear the queue
+        while dps.queue.qsize() > 0:
+            time.sleep(1E-4)
         time.sleep(0.1)
+
         dequeuer.stop = True
-        time.sleep(0.1)
+        while dequeuer.isAlive():
+            time.sleep(0.01)
+
         # Check that the correct data is there and received in less than 10 ms
         for sent, received in zip(local_data, dequeuer.received):
             assert abs(received[0] - sent[0]) < 0.010

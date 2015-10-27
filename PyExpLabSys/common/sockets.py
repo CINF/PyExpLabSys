@@ -149,7 +149,6 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
            socket servers.
         """
         command = self.request[0].decode('ascii')
-        print(type(command))
         # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
         sock = self.request[1]
@@ -438,7 +437,9 @@ class CommonDataPullSocket(threading.Thread):
         # environment before we are done if this is the last thread
         time.sleep(0.1)
         # Delete the data, to allow forming another socket on this port
+        #print(DATA)
         del DATA[self.port]
+        #print(DATA)
         CDPULLSLOG.info('Stopped')
 
     def poke(self):
@@ -998,9 +999,10 @@ class DataPushSocket(threading.Thread):
                    sent back looks like: ``'1.0,42.0&1.5,45.6&2.0,47.0'``,
                    where '&' separates the inner lists and ',' the points in
                    those lists
-                 * ``'string'`` in which case the callback must return a
-                   string and it will be passed through as is.
-
+                 * ``'string'`` in which the string representation of the value the
+                   call back returns will be sent back. NOTE: These string
+                   representations may differ between Python 2 and 3, so do not parse
+                   them
 
         """
         DPUSHSLOG.info('Initialize with: {}'.format(call_spec_string()))
