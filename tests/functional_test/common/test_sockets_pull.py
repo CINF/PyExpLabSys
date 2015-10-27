@@ -4,7 +4,10 @@
 import time
 import json
 import socket
-import SocketServer
+try:
+    import SocketServer
+except ImportError:
+    import socketserver as SocketServer
 # Allow for fast restart of a socket on a port for test purposes
 SocketServer.UDPServer.allow_reuse_address = True
 
@@ -54,8 +57,9 @@ def sockettype(request):
 
 def send_and_resc(sock, command, port):
     """Helper UPD socket send and receive"""
-    sock.sendto(command, (HOST, port))
+    sock.sendto(command.encode('ascii'), (HOST, port))
     data, _ = sock.recvfrom(1024)
+    data = data.decode('ascii')
     return data
 
 
