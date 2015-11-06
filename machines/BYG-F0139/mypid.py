@@ -50,6 +50,12 @@ def Safety(SYSTEMS):
         SYSTEMS['tabs_cooling_temperature_inlet'] > 40.0)
     except:
         pass
+    try:
+        case3 = sum([SYSTEMS['tabs_guard_valve_cooling'],
+                     SYSTEMS['tabs_floor_valve_cooling'],
+                     SYSTEMS['tabs_ceiling_valve_cooling']]) < 0.5
+    except:
+        pass
     #try:
     #    case3 = SYSTEMS['tabs_cooling_temperature_inlet'] < SYSTEMS['tabs_cooling_temperature_setpoint']  - 2.0
     #except:
@@ -110,10 +116,15 @@ class PidTemperatureControl(threading.Thread):
         self.SYSTEMS['tabs_cooling_pid_value'] = 0.0
         
         self.PIDs = {}
-        self.PIDs['tabs_guard_pid_value'] = PID(pid_p=0.01, pid_i=0.002, pid_d=0, p_max=1, p_min=-1)
-        self.PIDs['tabs_floor_pid_value'] = PID(pid_p=0.01, pid_i=0.002, pid_d=0, p_max=1, p_min=-1)
-        self.PIDs['tabs_ceiling_pid_value'] = PID(pid_p=0.01, pid_i=0.002, pid_d=0, p_max=1, p_min=-1)
-        self.PIDs['tabs_cooling_pid_value'] = PID(pid_p=0.05, pid_i=0.1/3600.0, pid_d=0, p_max=0, p_min=-0.4)
+        self.PIDs['tabs_guard_pid_value'] = PID(pid_p=0.05, pid_i=0.2/3600.0, pid_d=0, p_max=1, p_min=-1)
+        self.PIDs['tabs_floor_pid_value'] = PID(pid_p=0.05, pid_i=0.2/3600.0, pid_d=0, p_max=1, p_min=-1)
+        self.PIDs['tabs_ceiling_pid_value'] = PID(pid_p=0.05, pid_i=0.2/3600.0, pid_d=0, p_max=1, p_min=-1)
+        self.PIDs['tabs_cooling_pid_value'] = PID(pid_p=0.05, pid_i=0.2/3600.0, pid_d=0, p_max=0, p_min=-0.4)
+        
+        self.PIDs['tabs_guard_pid_value'].int_err = self.PIDs['tabs_guard_pid_value'].p_min
+        self.PIDs['tabs_floor_pid_value'].int_err = self.PIDs['tabs_floor_pid_value'].p_min
+        self.PIDs['tabs_ceiling_pid_value'].int_err = self.PIDs['tabs_ceiling_pid_value'].p_min
+        self.PIDs['tabs_cooling_pid_value'].int_err = self.PIDs['tabs_guard_pid_value'].p_max
             #self.setpoints[co[:-5]+'setpoint'] = None
             #self.temperatures[co[:-5]+'temperature'] = None
             #self.powers[co[:-5]+'power'] = 0.0
@@ -179,7 +190,10 @@ class PidTemperatureControl(threading.Thread):
                 pass
             else:
                 self.PIDs[key].update_setpoint(setpoint)
-            temperature = self.SYSTEMS[sy + 'temperature_inlet']
+            if sy == 'tabs_guard_':
+                temperature = self.SYSTEMS[sy + 'temperature_control']
+            else:
+                temperature = self.SYSTEMS[sy + 'temperature_inlet']
             #print(temperature)
             if temperature == None:
                 pass
@@ -187,10 +201,10 @@ class PidTemperatureControl(threading.Thread):
                 self.SYSTEMS[sy+'pid_value'] = self.PIDs[key].wanted_power(temperature)
                 if self.SYSTEMS[sy+'pid_value'] > 0:
                     self.SYSTEMS[sy+'valve_heating'] = abs(self.SYSTEMS[sy+'pid_value'])
-                    self.SYSTEMS[sy+'valve_cooling'] = abs(0.1)
+                    self.SYSTEMS[sy+'valve_cooling'] = abs(0.05)
                 elif self.SYSTEMS[sy+'pid_value'] < 0:
                     self.SYSTEMS[sy+'valve_heating'] = abs(0.0)
-                    self.SYSTEMS[sy+'valve_cooling'] = max(0.1, abs(self.SYSTEMS[sy+'pid_value']) )
+                    self.SYSTEMS[sy+'valve_cooling'] = max(0.05, abs(self.SYSTEMS[sy+'pid_value']) )
                 else:
                     self.SYSTEMS[sy+'valve_heating'] = 0
                     self.SYSTEMS[sy+'valve_cooling'] = max(0.1, abs(self.SYSTEMS[sy+'pid_value']) )

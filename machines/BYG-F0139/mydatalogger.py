@@ -121,52 +121,41 @@ class TemperatureReader(threading.Thread):
     """ Temperature reader """
     def __init__(self, codenames):
         threading.Thread.__init__(self)
-        self.SYSTEMS = {}
-        for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice']:
+        """self.SYSTEMS = {}
+        for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice', 'tabs_room']:
             self.SYSTEMS[sy] = {'temperature_inlet': None, # float in C
                                 'temperature_outlet': None, # float in C
                                 'temperature_setpoint': None, # float in C
+                                'temperature_control': None, # float in C
                                 'valve_cooling': None, # float 0-1
                                 'valve_heating': None, # float 0-1
                                 'pid_value': None, # float -1-1
                                 'water_flow': None} # float in l/min
-        self.OmegaPortsDict = {}
-        self.OmegaPortsDict['tabs_guard_temperature_inlet'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0'
-        self.OmegaPortsDict['tabs_floor_temperature_inlet'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
-        self.OmegaPortsDict['tabs_ceiling_temperature_inlet'] = '/dev/serial/by-id/usb-OMEGA_ENGINEERING_12.34-if00'
-        self.OmegaPortsDict['tabs_cooling_temperature_inlet'] = '/dev/serial/by-id/usb-OMEGA_ENGINEERING_12.34-if01'
-        
-        #self.OmegaPortsDict['tabs_guard_temperature_inlet'] = '/dev/ttyUSB1'
-        #self.OmegaPortsDict['tabs_floor_temperature_inlet'] = '/dev/ttyUSB0'
-        self.OmegaPortsDict['tabs_ceiling_temperature_inlet'] = '/dev/ttyACM3'
-        self.OmegaPortsDict['tabs_cooling_temperature_inlet'] = '/dev/ttyACM2'
-        
-        self.OmegaCommStnd = {}
-        self.OmegaCommStnd['tabs_guard_temperature_inlet'] = 'rs485'
-        self.OmegaCommStnd['tabs_floor_temperature_inlet'] = 'rs485' #add 2
-        self.OmegaCommStnd['tabs_ceiling_temperature_inlet'] = 'rs232'
-        self.OmegaCommStnd['tabs_cooling_temperature_inlet'] = 'rs232'
-        
+                                """
         self.OldValue = {}
-        self.OldValue['tabs_guard_temperature_inlet'] = None
-        self.OldValue['tabs_floor_temperature_inlet'] = None
-        self.OldValue['tabs_ceiling_temperature_inlet'] = None
+        self.OldValue['tabs_guard_temperature_control'] = None
+        self.OldValue['tabs_room_temperature_control'] = None
+        #self.OldValue['tabs_ceiling_temperature_inlet'] = None
         self.OldValue['tabs_cooling_temperature_inlet'] = None
         
         self.OffSet = {}
-        self.OffSet['tabs_guard_temperature_inlet'] = 0.62
-        self.OffSet['tabs_floor_temperature_inlet'] = 1.32
-        self.OffSet['tabs_ceiling_temperature_inlet'] = 0.30
-        self.OffSet['tabs_cooling_temperature_inlet'] = -0.49
+        self.OffSet['tabs_guard_temperature_control'] = 23.5-34.8 # 0.62
+        self.OffSet['tabs_room_temperature_control'] = 27.0-28.3 #1.32
+        #self.OffSet['tabs_ceiling_temperature_inlet'] = 0.30
+        self.OffSet['tabs_cooling_temperature_inlet'] = 0 #-0.49
         
         self.OmegaCommAdd = {}
-        self.OmegaCommAdd['tabs_guard_temperature_inlet'] = 1
-        self.OmegaCommAdd['tabs_floor_temperature_inlet'] = 1
+        self.OmegaCommAdd['tabs_guard_temperature_control'] = 1
+        self.OmegaCommAdd['tabs_room_temperature_control'] = 1
         
         self.OmegaDict = {}
-        for key in codenames:
-            #print('Initializing: ' + key)
-            self.OmegaDict[key] = omega_CNi32.ISeries(self.OmegaPortsDict[key], 9600, comm_stnd=self.OmegaCommStnd[key])
+        self.OmegaDict['tabs_guard_temperature_control'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0', 9600, comm_stnd='rs485', address = 1)
+        self.OmegaDict['tabs_room_temperature_control'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0', 9600, comm_stnd='rs485', address = 1)
+        self.OmegaDict['tabs_cooling_temperature_inlet'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-OMEGA_ENGINEERING_12.34-if00', 9600, comm_stnd='rs232')
+        
+        self.SYSTEMS = {}
+        for key in self.OmegaDict.keys():
+            self.SYSTEMS[key] = None
             
         #self.temperatures = {'tabs_guard_temperature': None,
         #                     'tabs_floor_temperature': None,
@@ -198,38 +187,20 @@ class TemperatureReader(threading.Thread):
             self.quit = True
             return_val = None
         else:
-            me = 'temperature_inlet'
             if channel == 0:
-                sy = 'tabs_guard'
-                return_val = self.SYSTEMS[sy][me]
+                return_val = self.SYSTEMS['tabs_guard_temperature_control']
             elif channel == 1:
-                sy = 'tabs_floor'
-                return_val = self.SYSTEMS[sy][me]
-            elif channel == 2:
-                sy = 'tabs_ceiling'
-                return_val = self.SYSTEMS[sy][me]
+                return_val = self.SYSTEMS['tabs_room_temperature_control']
             elif channel == 3:
-                sy = 'tabs_cooling'
-                return_val = self.SYSTEMS[sy][me]
+                return_val = self.SYSTEMS['tabs_cooling_temperature_inlet']
         return return_val
 
     def update_values(self,):
         for key, value in self.OmegaDict.items():
-            _key = str(key).rsplit('_')
-            sy = _key[0]+'_' + _key[1]
-            me = _key[2]+'_' + _key[3]
             #print(sy, me)
             try:
                 #print("Omega: {}".format(key))
-                if self.OmegaCommStnd[key] == 'rs485':
-                    v = value.read_temperature(address=self.OmegaCommAdd[key])
-                    #print('Temp: ' + str(self.temperatures[key]) )
-                elif self.OmegaCommStnd[key] == 'rs232':
-                    v = value.read_temperature()
-                    #print('Temp: ' + str(self.temperatures[key]) )
-                    #print('Format: ' + str(value.command('R08') ) )
-                else:
-                    self.SYSTEMS[sy][me] = None
+                v = value.read_temperature()
                 if type(v) == type(0.0):
                     new_val = v + self.OffSet[key]
                 old_val = self.OldValue[key]
@@ -237,17 +208,19 @@ class TemperatureReader(threading.Thread):
                     pass
                 elif old_val == None:
                     old_val = new_val
-                    self.SYSTEMS[sy][me] = new_val
+                    self.SYSTEMS[key] = new_val
                 elif abs(new_val - old_val) < 0.5:
                     old_val = new_val
-                    self.SYSTEMS[sy][me] = new_val
+                    self.SYSTEMS[key] = new_val
                 else:
                     pass
                 self.ttl = 50
             except IndexError:
                 print("av")
-            except ValueError, TypeError:
-                self.SYSTEMS[sy][me] = None
+            except ValueError:
+                self.SYSTEMS[key] = None
+            except TypeError:
+                self.SYSTEMS[key] = None
         #print(self.temperatures)
 
     def run(self):
@@ -258,7 +231,10 @@ class TemperatureReader(threading.Thread):
     def stop(self,):
         self.quit = True
         for key, value in self.OmegaDict.items():
-            value.close()
+            try:
+                value.close()
+            except:
+                pass
 
 #logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 #logging.basicConfig(level=logging.ERROR)
@@ -287,12 +263,12 @@ class MainDatalogger(threading.Thread):
         
         time.sleep(1.5)
         
-        chlist = {'tabs_guard_temperature_inlet': 0,
-                  'tabs_floor_temperature_inlet': 1,
-                  'tabs_ceiling_temperature_inlet': 2,
+        chlist = {'tabs_guard_temperature_control': 0,
+                  'tabs_room_temperature_control': 1,
+                  #'tabs_ceiling_temperature_inlet': 2,
                   'tabs_cooling_temperature_inlet': 3}
         self.loggers = {}
-        for key in ['tabs_cooling_temperature_inlet',]:
+        for key in chlist.keys():
             self.loggers[key] = ValueLogger(self.omega_temperature, comp_val = 0.2, maximumtime=300,
                                             comp_type = 'lin', channel = chlist[key])
             self.loggers[key].start()
@@ -312,7 +288,7 @@ class MainDatalogger(threading.Thread):
             self.loggers[ key] = ValueLogger(self.MC302, comp_val = 0.2, maximumtime=300,
                                             comp_type = 'lin', channel = chlist[key])
             self.loggers[key].start()
-        self.codenames = chlist.keys()+ ['tabs_cooling_temperature_inlet']
+        self.codenames = self.loggers.keys()
         #livesocket = LiveSocket('tabs_temperature_logger', codenames, 2)
         #livesocket.start()
         sockname = 'tabs_temperatures'
@@ -333,7 +309,7 @@ class MainDatalogger(threading.Thread):
                     #livesocket.set_point_now(name, v)
                     self.PullSocket.set_point_now(name, v)
                     
-                    if self.loggers[name].read_trigged():
+                    if self.loggers[name].read_trigged() and v != None:
                         if __name__ == '__main__':
                             print('Log: ', i, name, v)
                         self.db_logger.enqueue_point_now(name, v)

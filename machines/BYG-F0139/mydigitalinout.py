@@ -21,7 +21,8 @@ ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.drivers.dataq_comm import DataQ
-from PyExpLabSys.drivers.omega_D6720 import OmegaD6720
+from PyExpLabSys.drivers.omega_D6000 import OmegaD6720
+from PyExpLabSys.drivers.omega_D6000 import OmegaD6500
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.drivers.cpx400dp import CPX400DPDriver
 #from PyExpLabSys.auxiliary.pid import PID
@@ -67,25 +68,21 @@ class ValveControl(threading.Thread):
         self.SYSTEMS = {}
         for co in self.codenames:
             self.SYSTEMS[co] = None
-
-        port = '/dev/serial/by-id/usb-0683_1490-if00'
-        self.DATAQ = DataQ(port=port)
         port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWN2Q-if00-port0'
-        self.omega = OmegaD6720(1, port=port)
-        self.CPX400DP = {}
-        self.CPX400DP['tabs_cooling_valve_cooling'] = CPX400DPDriver(output = 1, interface = 'serial', device = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_55126271-if00')
-        self.CPX400DP['tabs_guard_valve_cooling'] = CPX400DPDriver(output = 2, interface = 'serial', device = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_55126271-if00')
-        self.CPX400DP['tabs_cooling_valve_cooling'].set_voltage(0.0)
-        self.CPX400DP['tabs_guard_valve_cooling'].set_voltage(0.0)
-        self.CPX400DP['tabs_cooling_valve_cooling'].output_status(on = True)
-        self.CPX400DP['tabs_guard_valve_cooling'].output_status(on = True)
+        self.omegaDO = OmegaD6720(1, port=port)
+        self.omegaAO = {}
+        self.omegaAO['tabs_guard_valve_cooling'] = OmegaD6500(2, port=port, activechannel=1)
+        self.omegaAO['tabs_floor_valve_cooling'] = OmegaD6500(2, port=port, activechannel=2)
+        self.omegaAO['tabs_ceiling_valve_cooling'] = OmegaD6500(3, port=port, activechannel=1)
+        self.omegaAO['tabs_cooling_valve_cooling'] = OmegaD6500(3, port=port, activechannel=2)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #self.pidvalues = {'tabs_guard_pid': 0.0, 'tabs_floor_pid': 0.0, 'tabs_ceiling_pid': 0.0, 'tabs_cooling_pid': 0.0}
         #self.heater = {'tabs_guard_heater': None, 'tabs_floor_heater': None, 'tabs_ceiling_heater': None, 'tabs_cooling_heater': None}
         self.FloatToDigital = {}
-        for co in self.codenames:
-            self.FloatToDigital[co] = FloatToDigital(totalcycles=50 + int(50*random.random()))
-        self.FloatToDigital['tabs_cooling_valve_cooling'] = FloatToDigital(totalcycles=60)
+        for key in ['tabs_guard_valve_heating',
+                        'tabs_floor_valve_heating',
+                        'tabs_ceiling_valve_heating']:
+            self.FloatToDigital[key] = FloatToDigital(totalcycles=100)
         
     def update_pidvalues(self,):
         try:
@@ -182,13 +179,14 @@ class ValveControl(threading.Thread):
                         'tabs_ceiling_valve_cooling': 7,
                         'tabs_cooling_valve_cooling': 8,
                         'tabs_ice_valve_cooling': 9,}
-        OnOffSignal = {}
+        
         if self.SYSTEMS['tabs_cooling_temperature_inlet'] < 10.0 and self.SYSTEMS['tabs_cooling_temperature_inlet'] != None:
             #print('Safety in progress')
             self.SYSTEMS['tabs_guard_valve_cooling'] = 1.0
             self.SYSTEMS['tabs_floor_valve_cooling'] = 1.0
             self.SYSTEMS['tabs_ceiling_valve_cooling'] = 1.0
             self.SYSTEMS['tabs_cooling_valve_cooling'] = -1.0
+        OnOffSignal = {}
         for key, value in self.FloatToDigital.items():
             OnOffSignal[key] = value.update(self.SYSTEMS[key])
         try:
@@ -198,29 +196,22 @@ class ValveControl(threading.Thread):
                 #me = _key[2]+'_' + _key[3]
                 if 'valve_heating' in key:
                     #print(keytochannel[key], int(OnOffSignal[key]))
-                    self.omega.write_channel(ch=keytochannel[key], value=int(OnOffSignal[key]))
-                    #write_channel(self,ch=0, value=0)
-                #if key == 'tabs_cooling_valve_cooling':
-                #    print('Here: ', key, self.SYSTEMS[sy][me], OnOffSignal[key])
-
-            #print(OnOffSignal)
-            re = self.DATAQ.setOutputs(ch0=OnOffSignal['tabs_guard_valve_cooling'],
-                                  ch1=OnOffSignal['tabs_floor_valve_cooling'],
-                                  ch2=OnOffSignal['tabs_ceiling_valve_cooling'],
-                                  ch3=OnOffSignal['tabs_cooling_valve_cooling'])
-            #print('output from DataQ: ', re)
+                    self.omegaDO.write_channel(ch=keytochannel[key], value=int(OnOffSignal[key]))
 
             self.ttl = 50
         except:
             #print('hardware error')
             pass
         try:
-            #self.CPX400DP.set_voltage(10*self.SYSTEMS['tabs_cooling_valve_cooling'])
-            self.CPX400DP['tabs_cooling_valve_cooling'].set_voltage(10*self.SYSTEMS['tabs_cooling_valve_cooling'])
-            self.CPX400DP['tabs_guard_valve_cooling'].set_voltage(10*self.SYSTEMS['tabs_guard_valve_cooling'])
+            for key in self.omegaAO.keys():
+                v = 10.*self.SYSTEMS[key]
+                #print(key, v)
+                self.omegaAO[key].set_value(v)
+                self.ttl = 50
+                #print(key, v)
         except:
             pass
- 
+
     def run(self):
         while not self.quit:
             #print('------------')
@@ -228,15 +219,17 @@ class ValveControl(threading.Thread):
             self.update_pidvalues()
             self.update_temperatures()
             self.update_DO()
+            
     def stop(self,):
         self.quit = True
         #self.DATAQ.close()
         #self.omega.all_off()
-        self.CPX400DP['tabs_cooling_valve_cooling'].set_voltage(0.0)
-        self.CPX400DP['tabs_guard_valve_cooling'].set_voltage(0.0)
-        self.CPX400DP['tabs_cooling_valve_cooling'].output_status(on = False)
-        self.CPX400DP['tabs_guard_valve_cooling'].output_status(on = False)
-        self.omega.close()
+        for key in self.omegaAO.keys():
+            try:
+                self.omegaAO[key].close()
+            except:
+                pass
+        self.omegaDO.close()
 
 class MainDGIO(threading.Thread):
     """ Temperature reader """
