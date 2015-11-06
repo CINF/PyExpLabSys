@@ -3,7 +3,10 @@
 
 """The bar database module"""
 
-import MySQLdb
+try:
+    import MySQLdb
+except ImportError:
+    import pymysql as MySQLdb
 import time
 
 
