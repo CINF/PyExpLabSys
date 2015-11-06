@@ -228,6 +228,31 @@ class CursesTui(threading.Thread):
                 except:
                     self.screen.addstr(line, 60,"      ")
                 line += 1
+            line += 1
+            self.screen.addstr(line, 2, "{0:15} {1:9} {2:9}    {3:9}    {4:2}     {5:2} ".format('System', 'Guard', 'Room', '', '', ''))
+            line += 1
+            self.screen.addstr(line, 2, "{0:15}: ".format('Guard - Room'))
+            try:
+                self.screen.addstr(line, 20,"{0:+.2f} C".format(self.SYSTEMS['tabs_guard_temperature_control']))
+            except:
+                self.screen.addstr(line, 20, "       C")
+            try:
+                self.screen.addstr(line, 30, "{0:+.2f} C".format(self.SYSTEMS['tabs_room_temperature_control']))
+            except:
+                self.screen.addstr(line, 30, "       C")
+            try:
+                self.screen.addstr(line, 40, "{0:+.3f}".format(self.SYSTEMS['tabs_guard_pid_value']))
+            except:
+                self.screen.addstr(line, 40,"      ")
+            try:
+                self.screen.addstr(line, 50, "{0:+.3f}".format(self.SYSTEMS['tabs_guard_valve_heating']))
+            except:
+                self.screen.addstr(line, 50,"      ")
+            try:
+                self.screen.addstr(line, 60, "{0:+.3f}".format(self.SYSTEMS['tabs_guard_valve_cooling']))
+            except:
+                self.screen.addstr(line, 60,"      ")
+            line += 1
             if self.last_key != None:
                 self.screen.addstr(24, 2,
                                    " Latest key: {}".format(self.last_key))
