@@ -17,6 +17,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   overview
    common
    drivers
    file-parsers
