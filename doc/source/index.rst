@@ -19,8 +19,9 @@ Contents:
 
    overview
    common
-   drivers
    file-parsers
+   drivers
+   drivers_autogen_only
 
 
 ##################
@@ -30,4 +31,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
