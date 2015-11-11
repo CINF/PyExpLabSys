@@ -11,7 +11,12 @@ more general equipment like temperature read out units.
 .. that is below this level, which is contained in the files below.
 .. toctree::
     :maxdepth: 4
+    :glob:
     
-    drivers_pfeiffer
-    drivers_four_d_systems
-    drivers_bio_logic
+    drivers/*
+
+
+
+..    drivers_pfeiffer
+..    drivers_four_d_systems
+..    drivers_bio_logic
