@@ -522,8 +522,8 @@ format the arguments in manually:
 
 The complete and running example of both server and client for this example can
 be downloaded in these two files: :download:`server
-<_static/laser_control_server.py>`, :download:`client
-<_static/laser_control_client.py>`.
+<../_static/laser_control_server.py>`, :download:`client
+<../_static/laser_control_client.py>`.
 
 Command examples
 ^^^^^^^^^^^^^^^^
