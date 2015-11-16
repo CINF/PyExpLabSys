@@ -22,6 +22,7 @@ Contents:
    file-parsers
    drivers
    drivers_autogen_only
+   developer-notes
 
 
 ##################
