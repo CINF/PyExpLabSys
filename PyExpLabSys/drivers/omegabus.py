@@ -1,6 +1,5 @@
 import serial
 import time
-import FindSerialPorts
 
 class OmegaBus():
 
@@ -73,22 +72,7 @@ class OmegaBus():
             return(False)
 
 if __name__ == "__main__":
-    ports = FindSerialPorts.find_ports()
-    print ports
-    for p in ports:
-        print p
-        omega = OmegaBus('/dev/' + p)
-        try:
-            print omega.ReadSetup()
-            break
-        except:
-            pass
-        #id = AK.IdentifyDevice()
-        #if not (id == 'Error'):
-        #    break
-
-
-    #omega = OmegaBus()
+    omega = OmegaBus()
     print omega.ReadValue(1)
     print omega.ReadValue(2)
     print omega.ReadValue(3)
