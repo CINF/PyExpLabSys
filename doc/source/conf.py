@@ -22,9 +22,12 @@ sys.path.insert(1, os.path.join(os.path.abspath('.'), '..', '..'))
 # done by the make file, but that does not get executed on read the docs
 if os.environ.get('READTHEDOCS', None) == 'True':
     print 'Generating: overview.rst'
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    sys.path.append(this_dir)
     from generate_py3_stat import main
     main()
-    #this_dir = os.path.dirname(os.path.realpath(__file__))
+    sys.path.pop()
+    
     #os.path.join(this_dir, 'generate_py3_stat.py')
 
 # -- General configuration -----------------------------------------------------
