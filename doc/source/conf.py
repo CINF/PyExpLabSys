@@ -18,7 +18,14 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(1, os.path.join(os.path.abspath('.'), '..', '..'))
 
-print 'YEAH YEAH YEAH'
+# If we are on read the docs, generate the overview. This is normally
+# done by the make file, but that does not get executed on read the docs
+if os.environ.get('READTHEDOCS', None) == 'True':
+    print 'Generating: overview.rst'
+    from generate_py3_stat import main
+    main()
+    #this_dir = os.path.dirname(os.path.realpath(__file__))
+    #os.path.join(this_dir, 'generate_py3_stat.py')
 
 # -- General configuration -----------------------------------------------------
 
