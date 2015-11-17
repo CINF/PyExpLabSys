@@ -1,3 +1,5 @@
+.. _drivers-doc-four_d_systems:
+
 *********************
 The 4d Systems module
 *********************

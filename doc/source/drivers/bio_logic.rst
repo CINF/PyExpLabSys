@@ -1,3 +1,5 @@
+.. _drivers-doc-bio_logic:
+
 ********************
 The bio_logic module
 ********************

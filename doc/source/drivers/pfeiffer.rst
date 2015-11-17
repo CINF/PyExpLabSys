@@ -1,3 +1,5 @@
+.. _drivers-doc-pfeiffer:
+
 *******************
 The pfeiffer module
 *******************
