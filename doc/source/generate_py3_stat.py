@@ -160,10 +160,10 @@ def write_statuses(statuses):
             
 
 
-def main():
+def generate_py3_stat():
     """Gather the stats and write them out in restructured text"""
     statuses = allfiles_statuses()
     write_statuses(statuses)
 
 
-main()
+generate_py3_stat()
