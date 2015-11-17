@@ -38,7 +38,7 @@ follow this procedure.
 
 In the PyExpLabSys documentation the driver documentation files are
 located in two different folders depending on whether it is a stub or
-has extra documentation. To add extra documentation first git move the
+has extra documentation. To add extra documentation, first git move the
 file and then start to edit and commit it as usual:
 
 .. code-block:: bash
@@ -54,38 +54,86 @@ Writing Documentation
 Hint: Disable Browser Cache
 ---------------------------
 
-It is useful to disable caching in your browser, when it is being used to preview local
-Sphinx pages. The easiest way to disable browser cache temporarily, is to disable caching
-when the developer tools are open. For Firefox, the recipy is:
+It is useful to disable caching in your browser temporarily, when it is being used to
+preview local Sphinx pages. The easiest way to disable browser cache temporarily, is to
+disable caching when the developer tools are open. For Firefox, the procedure is:
 
 1. Open developer view (F12).
 2. Open the settings for developer view (there is a little gear in the headline of
    developer view, third icon from the right)
-3. Under "Avanced Settings" click "Disable Cache (when tool is open)"
+3. Under "Advanced Settings" click "Disable Cache (when tool is open)"
 
-In Chrohmium, the procedure is similar, except the check box is under "General".
+In Chromium, the procedure is similar, except the check box is under "General".
 
-Restructured text quick reference
+Restructured Text Quick Reference
 ---------------------------------
 
 General restructured text primer is located here: http://sphinx-doc.org/rest.html. Most of
 the examples are from there. Super short summary of that follows:
 
-Inline markup and external links
+Inline Markup and External Links
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **\*\*bold\*\***, *\*italics\**, ````code````.
 
-External weblinks: ``http://xkcd.com/`` or ```Coolest comic ever <http://xkcd.com/>`_``.
+External weblinks: ``http://xkcd.com/`` or with custom title ```Coolest comic ever
+<http://xkcd.com/>`_``.
 
-Labels and references
+Sections
+^^^^^^^^
+
+The way to mark something as a section title is::
+
+ #####
+ parts
+ #####
+
+ ********
+ chapters
+ ********
+
+ sections
+ ========
+
+ subsections
+ -----------
+
+ subsubsections
+ ^^^^^^^^^^^^^^
+
+ paragraphs
+ """"""""""
+
+The following is the convention for how to use those in PyExpLabSys and the overall
+structure.
+
+* ``index.rst``
+
+  * Uses parts
+  * includes the main table of contents that links to chapter files for common, drivers,
+    apps etc.
+  * ``common.rst`` (or any other chapter file)
+
+    * Starts sections at chapter level
+    * May include an additions table of contents tree for sub files
+      e.g. common_contionuous_logger
+    * ``common_contionuous_logger.rst``
+
+      * Once again starts at chapter level
+
+How these sections level work, I (Kenneth) must admit I have not investigated in
+detail. It seems, that you can re-use section levels at a lower level in the document
+hierarchy, if they are included in a table of contents tree, so we do. At some point it
+would probably be good to try and understand that better
+
+Labels and References
 ^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: rst
 
    .. _my-reference-label:
 
-   Section to cross-reference
+   Section to Cross-Reference
    --------------------------
 
    References to its own section: ``:ref:`my-reference-label``` or ``:ref:`Link title
@@ -158,7 +206,7 @@ shortened form) are :
 * ``:func:`` for functions
 * ``:data:`` for module level variables
 * ``:class:`` for classes
-* ``:meth:`` for method
+* ``:meth:`` for methods
 * ``:attr:`` for attributes
 * ``:const:`` a "constant", a variable that is not supposed to be changed
 * ``:exc:`` for exceptions
@@ -174,7 +222,7 @@ Whatever is written as the target is `searched in the order
 If you prefix the target with a ``.``, then this `search order
 <http://sphinx-doc.org/latest/domains.html#cross-referencing-syntax>`_ is reversed.
 
-Prepending the target with a ``~`` will shorten the link text to `only show the last
+Prefixing the target with a ``~`` will shorten the link text to `only show the last
 part <http://sphinx-doc.org/latest/domains.html#cross-referencing-syntax>`_.
 
 Writing docstring with Napoleon
@@ -217,11 +265,14 @@ A few things to note:
   but these are the recommended ones for PyExpLabSys (`all possibly sections
   <http://sphinxcontrib-napoleon.readthedocs.org/en/latest/#docstring-sections>`_).
 * All are optional! Do not feel obligated to fill in Raises if it is not relevant.
-* Args and kwargs are in the form: ``name (type): description``
+* Args and kwargs are on the form: ``name (type): description``
 * Raises and Returns (which has no name) are on the form: ``type: description``
-* If the description needs to continue on the next line, it will need to be indented another level
+* If the description needs to continue on the next line, it will need to be indented
+  another level
 
-In classes, attributes that are not defined explicitely with decorators, are documented in
+The call signature for instantiation should be documented in ``__init__``.
+
+In classes, attributes that are not defined explicitly with decorators, are documented in
 the class docstring under the ``Attributes`` section::
 
     class MyClass(object):
