@@ -15,7 +15,8 @@ except ImportError:
     if os.environ.get('READTHEDOCS', None) == 'True':
         class Qwt:
             QwtPlot = list
-    raise
+    else:
+        raise
 
 class Colors:
     """Class that gives plot colors"""
