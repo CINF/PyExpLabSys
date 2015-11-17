@@ -1,7 +1,7 @@
 sphinx
 sphinxcontrib-napoleon
 pyserial
-numpy
 evdev
 minimalmodbus
 MySQL-python
+smbus-cffi
