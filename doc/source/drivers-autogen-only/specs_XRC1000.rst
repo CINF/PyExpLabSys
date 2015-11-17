@@ -4,7 +4,7 @@
    If you wish to add more content e.g. usage examples please also move the file from the
    drivers-autogen-only folder to the drivers folder.
 
-.. _driver-doc-specs_XRC1000:
+.. _drivers-doc-specs_XRC1000:
 
 ************************
 The specs_XRC1000 module

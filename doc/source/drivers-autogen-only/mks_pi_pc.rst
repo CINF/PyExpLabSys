@@ -4,7 +4,7 @@
    If you wish to add more content e.g. usage examples please also move the file from the
    drivers-autogen-only folder to the drivers folder.
 
-.. _driver-doc-mks_pi_pc:
+.. _drivers-doc-mks_pi_pc:
 
 ********************
 The mks_pi_pc module

@@ -4,7 +4,7 @@
    If you wish to add more content e.g. usage examples please also move the file from the
    drivers-autogen-only folder to the drivers folder.
 
-.. _driver-doc-mks_925_pirani:
+.. _drivers-doc-mks_925_pirani:
 
 *************************
 The mks_925_pirani module

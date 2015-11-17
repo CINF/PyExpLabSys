@@ -4,7 +4,7 @@
    If you wish to add more content e.g. usage examples please also move the file from the
    drivers-autogen-only folder to the drivers folder.
 
-.. _driver-doc-brooks_s_protocol:
+.. _drivers-doc-brooks_s_protocol:
 
 ****************************
 The brooks_s_protocol module

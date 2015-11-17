@@ -4,7 +4,7 @@
    If you wish to add more content e.g. usage examples please also move the file from the
    drivers-autogen-only folder to the drivers folder.
 
-.. _driver-doc-keithley_2700:
+.. _drivers-doc-keithley_2700:
 
 ************************
 The keithley_2700 module
