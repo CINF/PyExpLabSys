@@ -16,7 +16,7 @@ RST_TEMPLATE = \
    If you wish to add more content e.g. usage examples please also move the file from the
    {autogen_only_name} folder to the drivers folder.
 
-.. _driver-doc-{modulename}:
+.. _drivers-doc-{modulename}:
 
 ****{stars}*******
 The {modulename} module
