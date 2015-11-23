@@ -46,4 +46,6 @@ four_d_systems module
 
 .. automodule:: PyExpLabSys.drivers.four_d_systems
    :members:
+   :member-order: bysource
+   :show-inheritance:
    :private-members:

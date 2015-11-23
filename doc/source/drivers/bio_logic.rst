@@ -320,6 +320,5 @@ bio_logic API
 .. automodule:: PyExpLabSys.drivers.bio_logic
     :members:
     :member-order: bysource
-    :special-members:
     :private-members:
     :show-inheritance:

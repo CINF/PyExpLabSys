@@ -78,13 +78,9 @@ plotters module
 ---------------
 
 .. automodule:: PyExpLabSys.common.plotters
-
-DataLogger class
-----------------
-
-.. autoclass:: PyExpLabSys.common.plotters.DataPlotter
-    :members:
-    :special-members:
+   :members:
+   :member-order: bysource
+   :show-inheritance:
 
 The qwt backend
 ===============
@@ -93,13 +89,9 @@ plotters_backend_qwt
 --------------------
 
 .. automodule:: PyExpLabSys.common.plotters_backend_qwt
-
-QwtPlot
--------
-
-.. autoclass:: PyExpLabSys.common.plotters_backend_qwt.QwtPlot
-    :members:
-    :special-members:
+   :members:
+   :member-order: bysource
+   :show-inheritance:
 
 .. _colors-section:
 

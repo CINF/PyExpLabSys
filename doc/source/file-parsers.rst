@@ -17,6 +17,5 @@ Specs File Format
 .. automodule:: PyExpLabSys.file_parsers.specs
     :members:
     :member-order: bysource
-    :special-members:
     :show-inheritance:
 

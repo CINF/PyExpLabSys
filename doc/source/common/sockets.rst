@@ -662,5 +662,4 @@ Auto-generated module documentation
 .. automodule:: PyExpLabSys.common.sockets
     :members:
     :member-order: bysource
-    :special-members:
     :show-inheritance:
