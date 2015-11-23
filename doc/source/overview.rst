@@ -24,3 +24,9 @@ Module Overview
 ===============
 
 .. include:: py3_stat.inc
+
+.. rubric:: Footnotes
+
+.. [#inferred] For these modules the Python 2/3 status is not
+	       indicated directly in the source code file and so the
+	       status is inferred.
