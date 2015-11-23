@@ -1,3 +1,4 @@
+.. _common-doc-plotters:
 
 ************************************
 The plotters module plotter backends

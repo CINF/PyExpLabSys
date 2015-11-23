@@ -1,3 +1,4 @@
+.. _common-doc-loggers:
 
 ******************
 The loggers module

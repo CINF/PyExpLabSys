@@ -1,3 +1,5 @@
+.. _common-doc-sockets:
+
 ******************
 The sockets module
 ******************
