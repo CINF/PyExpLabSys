@@ -136,8 +136,8 @@ Labels and References
    Section to Cross-Reference
    --------------------------
 
-   References to its own section: ``:ref:`my-reference-label``` or ``:ref:`Link title
-   <my-reference-label>```
+   References to its own section: :ref:`my-reference-label` or :ref:`Link title
+   <my-reference-label>``
 
 
 Source code blocks
