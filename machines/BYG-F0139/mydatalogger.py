@@ -29,14 +29,14 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
+logging.basicConfig(filename="logger_mydatalogger.txt", level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
-class RunningMean(object):
-    def __init__(length):
-        self.list = list(length)
 
 class WaterTemperatureReader(threading.Thread):
     """ Temperature reader """
     def __init__(self,):
+        logging.info('WaterTemperatureReader class started')
         threading.Thread.__init__(self)
         self.chlist = {'tabs_guard_temperature_inlet': 0,
                    'tabs_guard_temperature_outlet': 1,
@@ -92,14 +92,18 @@ class WaterTemperatureReader(threading.Thread):
                     self.DATA[key +'temperature_delta'] = v['diff']
                     self.DATA[key +'water_flow'] = v['flow']
                 else:
+                    logging.warn('Does not get 4 values from MV302')
                     self.DATA[key +'temperature_inlet'] = None
                     self.DATA[key +'temperature_outlet'] = None
                     self.DATA[key +'temperature_delta'] = None
                     self.DATA[key +'water_flow'] = None
                 self.ttl = 500
             except IndexError:
-                print("av")
+                logging.warn('IndexError')
+                #print("av")
+                pass
             except ValueError, TypeError:
+                logging.warn('ValueError, TypeError')
                 self.DATA[key +'temperature_inlet'] = None
                 self.DATA[key +'temperature_outlet'] = None
                 self.DATA[key +'temperature_delta'] = None
@@ -109,17 +113,24 @@ class WaterTemperatureReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            self.update_values()
+            try:
+                self.update_values()
+            except:
+                logging.warn('except, all')
             time.sleep(2)
         self.quit = True
             
     def stop(self,):
         self.quit = True
-        self.MC302device.close()
+        try:
+            self.MC302device.close()
+        except:
+            logging.warn('Except portNotOpenError, proberly closed by other temperature reader')
 
 class TemperatureReader(threading.Thread):
     """ Temperature reader """
     def __init__(self, codenames):
+        logging.info('TemperatureReader class started')
         threading.Thread.__init__(self)
         """self.SYSTEMS = {}
         for sy in ['tabs_guard', 'tabs_floor', 'tabs_ceiling', 'tabs_cooling', 'tabs_ice', 'tabs_room']:
@@ -139,8 +150,8 @@ class TemperatureReader(threading.Thread):
         self.OldValue['tabs_cooling_temperature_inlet'] = None
         
         self.OffSet = {}
-        self.OffSet['tabs_guard_temperature_control'] = 23.5-34.8 # 0.62
-        self.OffSet['tabs_room_temperature_control'] = 27.0-28.3 #1.32
+        self.OffSet['tabs_room_temperature_control'] = 27.0-34.8 # 0.62
+        self.OffSet['tabs_guard_temperature_control'] = 23.5-28.3 #1.32
         #self.OffSet['tabs_ceiling_temperature_inlet'] = 0.30
         self.OffSet['tabs_cooling_temperature_inlet'] = 0 #-0.49
         
@@ -149,8 +160,8 @@ class TemperatureReader(threading.Thread):
         self.OmegaCommAdd['tabs_room_temperature_control'] = 1
         
         self.OmegaDict = {}
-        self.OmegaDict['tabs_guard_temperature_control'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0', 9600, comm_stnd='rs485', address = 1)
-        self.OmegaDict['tabs_room_temperature_control'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0', 9600, comm_stnd='rs485', address = 1)
+        self.OmegaDict['tabs_room_temperature_control'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0', 9600, comm_stnd='rs485', address = 1)
+        self.OmegaDict['tabs_guard_temperature_control'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0', 9600, comm_stnd='rs485', address = 1)
         self.OmegaDict['tabs_cooling_temperature_inlet'] = omega_CNi32.ISeries('/dev/serial/by-id/usb-OMEGA_ENGINEERING_12.34-if00', 9600, comm_stnd='rs232')
         
         self.SYSTEMS = {}
@@ -216,10 +227,12 @@ class TemperatureReader(threading.Thread):
                     pass
                 self.ttl = 50
             except IndexError:
-                print("av")
+                logging.warn('IndexError')
             except ValueError:
+                logging.warn('ValueError')
                 self.SYSTEMS[key] = None
             except TypeError:
+                logging.warn('TypeError')
                 self.SYSTEMS[key] = None
         #print(self.temperatures)
 
@@ -243,6 +256,7 @@ class TemperatureReader(threading.Thread):
 class MainDatalogger(threading.Thread):
     """ Temperature reader """
     def __init__(self,):
+        logging.info('MainDatalogger class started')
         threading.Thread.__init__(self)
         #from datalogger import TemperatureReader
         self.quit = False
@@ -307,16 +321,16 @@ class MainDatalogger(threading.Thread):
                 for name in self.loggers.keys():
                     v = self.loggers[name].read_value()
                     #livesocket.set_point_now(name, v)
-                    self.PullSocket.set_point_now(name, v)
-                    
-                    if self.loggers[name].read_trigged() and v != None:
-                        if __name__ == '__main__':
-                            print('Log: ', i, name, v)
-                        self.db_logger.enqueue_point_now(name, v)
-                        self.loggers[name].clear_trigged()
-                    else:
-                        if __name__ == '__main__':
-                            print('STA: ', i, name, v)
+                    if v != None and v != 0:
+                        self.PullSocket.set_point_now(name, v)
+                        if self.loggers[name].read_trigged():
+                            if __name__ == '__main__':
+                                print('Log: ', i, name, v)
+                            self.db_logger.enqueue_point_now(name, v)
+                            self.loggers[name].clear_trigged()
+                        else:
+                            if __name__ == '__main__':
+                                print('STA: ', i, name, v)
             except (KeyboardInterrupt, SystemExit):
                 pass
                 #self.omega_temperature.close()
@@ -343,5 +357,5 @@ if __name__ == '__main__':
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
             MDL.quit = True
-    #print('END')
+    print('END')
     

@@ -6,8 +6,12 @@ from __future__ import print_function
 import sys
 sys.path.insert(1, '/home/pi/PyExpLabSys')
 import time
+import logging
 from PyExpLabSys.drivers.mbus import MBus 
 
+
+logging.basicConfig(filename="logger_pykamtest.txt", level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 # Value Information Field
 VIF = { 0x05: {'subject': 'Energi', 'unit': 'kWh', 'size': 100},
@@ -72,13 +76,15 @@ DIF = { 0x01: {'subject': 'address', 'description': '8 bit binary, Current Value
 class kamstrup(object):
 
     def __init__(self, serial_port = "/dev/cuaU0",):
+        logging.info('kamstrup class started')
         self.comm = MBus('serial', device=serial_port)
         self.DATA = {}
 
     def read_data(self, ID = 254):
         self.comm.write_ShortFrame(CF=0x5b, AF=ID)
         userdata = self.comm.read()
-        if len(userdata) > 12:
+        logging.info('MC302, userdata: {}'.format(userdata))
+        if userdata != None and len(userdata) > 12:
             data_header = userdata[0:12]
             data = userdata[12:]
         else:
@@ -90,7 +96,9 @@ class kamstrup(object):
             return None
         n = 0
         #print('DATA out: ', len(userdata))
-        while n < len(userdata):# and n < 80:
+        while n < len(userdata)-2:# and n < 80:
+            remaining = len(userdata[n:])
+            n_ori = n
             error = False
             while userdata[n] == 0x00:
                 n += 1
@@ -102,32 +110,47 @@ class kamstrup(object):
                 pass
             else:
                 #print('error: dif: ', n, _dif)
+                logging.warn('setting error : {}  becaurse DIF is not registeres : '.format(True, _dif))
                 error = True
             _vif = userdata[n+1]
             if _vif in VIF:
                 #print(VIF[_vif])
                 pass
             else:
+                logging.warn('setting error : {}  becaurse VIF is not registeres : '.format(True, _vif))
                 #print('error: vif: ', n, _vif)
-                error =True
-            if error == False:
+                error = True
+            if error == False and remaining > 2+DIF[_dif]['length']:
                 _values = userdata[n+2:n+2+DIF[_dif]['length']]
                 v = DIF[_dif]['fun'](_values) * VIF[_vif]['size']
-                self.DATA[_vif] = {'value': v, 'time': time.time(), 'name':VIF[_vif]['subject']}
-                #print(VIF[_vif]['subject'], ' V: ', v)
+                #print(v)
+                self.DATA[_vif] = {'value': None, 'time': time.time(), 'name':VIF[_vif]['subject']}
                 n += 2+DIF[_dif]['length']
+                try:
+                    self.DATA[_vif]['value'] = float(v)
+                    #print(VIF[_vif]['subject'], ' V: ', v)
+                except:
+                    logging.warn('Cant conver to float {}'.format(v))
+                    self.DATA[_vif]['value'] = None    
             else:
+                logging.warn('error already exist n: {}'.format(n))
                 #print(userdata[n-8:n+8])
                 #print('dif: ', _dif, ' vif: ', _vif)
                 if _dif in DIF:
                     n += 2+DIF[_dif]['length']
                 else:
                     n += 6
+            if n_ori == n:
+                n += 1
+                
         return self.DATA
     
     def read_water_temperature(self,ID):
         raw_data = self.read_data(ID=ID)
-        con_data = self.convert_data(raw_data)
+        try:
+            con_data = self.convert_data(raw_data)
+        except:
+            logging.warn('failed to convert data from MC302')
         result = {'inlet': None,
                   'outlet': None,
                   'diff': None,
@@ -141,7 +164,11 @@ class kamstrup(object):
             result['diff'] = self.DATA[0x61]['value']
             result['flow'] = self.DATA[0x3b]['value']
         except:
-            pass    
+            logging.warn('DATA is is not registered')
+            result['inlet'] = None
+            result['outlet'] = None
+            result['diff'] = None
+            result['flow'] = None
         return result
                     
     def run(self,):
@@ -155,7 +182,15 @@ if __name__ == "__main__":
     #R = MC302.read_data(ID = 13)
     #d = MC302.convert_data(R)
     for i in range(10):
-        print(MC302.read_water_temperature(13)['flow'])#, MC302.read_water_temperature(14), MC302.read_water_temperature(15))
-        print(MC302.read_water_temperature(14)['flow'])
-        print(MC302.read_water_temperature(15)['flow'])
+        print(MC302.read_water_temperature(13)['inlet'])#, MC302.read_water_temperature(14), MC302.read_water_temperature(15))
+        print(MC302.read_water_temperature(14)['inlet'])
+        print(MC302.read_water_temperature(15)['inlet'])
         time.sleep(2)
+    #print(MC302.comm.write_ShortFrame(CF=0x5b, AF=13))
+    #alldata = MC302.comm.read()
+    #print(alldata)
+    #userdata = MC302.read_data(ID=13)
+    #print(userdata)
+    #D = MC302.convert_data(userdata)
+    #print(MC302.DATA[0x59]['value'])
+    

@@ -29,6 +29,9 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
+logging.basicConfig(filename="logger_mymultiplexer.txt", level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
+
 # this list consist of codenames for a measurement, and the channel number on the multiplxer
 Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up101
                   'tabs_ceiling_temperature_supply_x03': 102, # Tref_up102
@@ -110,6 +113,7 @@ convertor_channel_list['tabs_room_heatflow_ceilingcenter'] = lambda x: (x * 10**
 class MultiplexReader(threading.Thread):
     """ Temperature reader """
     def __init__(self, codenames):
+        logging.info('MultiplexReader class started')
         self.codenames = codenames
         threading.Thread.__init__(self)
         port = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
@@ -146,7 +150,7 @@ class MultiplexReader(threading.Thread):
             #print(values)
             self.ttl = 1000
         except:
-            print('Cant connect to agilent')
+            logging.warn('Connection error to agilent')
             response = None
         if response != None:
             for ch, value in zip(chs, values):
@@ -175,6 +179,7 @@ class MultiplexReader(threading.Thread):
 class MainMultilogger(threading.Thread):
     """ Temperature reader """
     def __init__(self,):
+        logging.info('MainMultilogger class started')
         threading.Thread.__init__(self)
         #from datalogger import TemperatureReader
         self.quit = False
