@@ -67,6 +67,10 @@ from .system_status import SystemStatus
 # Instantiate a global system status object
 SYSTEM_STATUS = SystemStatus()
 
+# Indicate Python 2/3
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
 
 def bool_translate(string):
     """Returns boolean value from strings 'True' or 'False'"""

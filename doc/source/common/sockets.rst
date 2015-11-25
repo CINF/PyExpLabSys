@@ -1,3 +1,5 @@
+.. _common-doc-sockets:
+
 ******************
 The sockets module
 ******************
@@ -522,8 +524,8 @@ format the arguments in manually:
 
 The complete and running example of both server and client for this example can
 be downloaded in these two files: :download:`server
-<_static/laser_control_server.py>`, :download:`client
-<_static/laser_control_client.py>`.
+<../_static/laser_control_server.py>`, :download:`client
+<../_static/laser_control_client.py>`.
 
 Command examples
 ^^^^^^^^^^^^^^^^
@@ -660,5 +662,4 @@ Auto-generated module documentation
 .. automodule:: PyExpLabSys.common.sockets
     :members:
     :member-order: bysource
-    :special-members:
     :show-inheritance:

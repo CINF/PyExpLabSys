@@ -1,3 +1,5 @@
+.. _drivers-doc-four_d_systems:
+
 *********************
 The 4d Systems module
 *********************
@@ -44,4 +46,6 @@ four_d_systems module
 
 .. automodule:: PyExpLabSys.drivers.four_d_systems
    :members:
+   :member-order: bysource
+   :show-inheritance:
    :private-members:

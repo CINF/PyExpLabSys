@@ -1,3 +1,5 @@
+.. _drivers-doc-bio_logic:
+
 ********************
 The bio_logic module
 ********************
@@ -306,7 +308,7 @@ should look, to figure out what the data layout is, when it receives data from
 this technique. If the new technique is implemented in stand alone code, this
 will need to be hacked (see the attached example).
 
-In :download:`this file<_static/bio_logic_out_of_module_technique.py>` is a
+In :download:`this file<../_static/bio_logic_out_of_module_technique.py>` is a
 complete (re)implementation of the OCV technique as it would look if it was
 developed outside of the module.
 
@@ -318,6 +320,5 @@ bio_logic API
 .. automodule:: PyExpLabSys.drivers.bio_logic
     :members:
     :member-order: bysource
-    :special-members:
     :private-members:
     :show-inheritance:

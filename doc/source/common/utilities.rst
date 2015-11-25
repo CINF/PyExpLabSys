@@ -1,3 +1,4 @@
+.. _common-doc-utilities:
 
 ********************
 The utilities module

@@ -39,7 +39,7 @@ class OmronReader(threading.Thread):
         while not self.quit:
             pressures = []
             self.ttl = 50
-            for i in range(0, 100):
+            for _ in range(0, 100):
                 pressure = self.omron.read_pressure()
                 pressures.append(pressure)
             self.pressure = sum(pressures) / len(pressures)
@@ -86,6 +86,6 @@ while omron_reader.isAlive():
         livesocket.set_point_now(name, v)
         socket.set_point_now(name, v)
         if loggers[name].read_trigged():
-            print v
+            print(v)
             db_logger.enqueue_point_now(name, v)
             loggers[name].clear_trigged()

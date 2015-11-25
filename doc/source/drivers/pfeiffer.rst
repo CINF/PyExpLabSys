@@ -1,18 +1,21 @@
+.. _drivers-doc-pfeiffer:
+
 *******************
 The pfeiffer module
 *******************
 
 The pfeiffer module contains drivers for equipment from Pfeiffer
-Vacuum. At present the module contains drivers for the TPG 261 and
-TPG 262 pressure measurement and control units.
+Vacuum. At present the module contains drivers for the :class:`TPG 261
+<.TPG261>` and :class:`TPG 262 <.TPG262>` pressure measurement and
+control units.
 
 TPG 26x
 =======
 
 The TPG 261 and TPG 262 has the same communications protocol and
 therefore the driver has been implemented as a common driver in the
-:py:class:`.TPG26x` class, which the :py:class:`.TPG261` and
-:py:class:`.TPG262` classes inherit from, as illustrated below.
+:class:`.TPG26x` class, which the :class:`.TPG261` and
+:class:`.TPG262` classes inherit from, as illustrated below.
 
 .. inheritance-diagram:: PyExpLabSys.drivers.pfeiffer 
 
@@ -44,26 +47,6 @@ pfeiffer module
 ---------------
 
 .. automodule:: PyExpLabSys.drivers.pfeiffer
-
-TPG26x class
-------------
-
-.. autoclass:: PyExpLabSys.drivers.pfeiffer.TPG26x
-    :members:
-    :special-members:
-
-TPG261 class
-------------
-
-.. autoclass:: PyExpLabSys.drivers.pfeiffer.TPG261
-    :members:
-    :special-members:
-    :show-inheritance:
-
-TPG262 class
-------------
-
-.. autoclass:: PyExpLabSys.drivers.pfeiffer.TPG262
-    :members:
-    :special-members:
-    :show-inheritance:
+   :members:
+   :member-order: bysource
+   :show-inheritance:

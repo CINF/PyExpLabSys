@@ -2,7 +2,7 @@ import serial
 import time
 
 class NGC2D_comm():
-    def __init__(self,device=port):
+    def __init__(self, device):
         self.f = serial.Serial(
             port=device,
             #port='/dev/ttyUSB1',

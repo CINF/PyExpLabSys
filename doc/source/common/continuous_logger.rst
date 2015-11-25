@@ -1,3 +1,4 @@
+.. _common-doc-loggers:
 
 ******************
 The loggers module
@@ -79,5 +80,4 @@ Auto-generated module documentation
 .. automodule:: PyExpLabSys.common.loggers
     :members:
     :member-order: bysource
-    :special-members:
     :show-inheritance:
