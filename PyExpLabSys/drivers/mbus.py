@@ -101,9 +101,8 @@ class MBus(object):
             print('error: wrong stopbyte')
         #print(error)
         if error == True:
-            return None
-        else:
-            return userdata
+            userdata = None
+        return userdata
         
     def write_ShortFrame(self, CF, AF):
         checksum = (CF + AF) % 256

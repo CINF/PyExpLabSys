@@ -10,7 +10,7 @@ sys.path.insert(1, '/home/pi/PyExpLabSys')
 
 import threading
 import time
-#import logging
+import logging
 import socket
 import json
 from PyExpLabSys.common.loggers import ContinuousLogger
@@ -27,8 +27,9 @@ from PyExpLabSys.auxiliary.pid import PID
 #import PyExpLabSys.drivers.omega_cni as omega_CNi32
 #import PyExpLabSys.drivers.kampstrup as kampstrup
 
-#logging.basicConfig(filename="logger.txt", level=logging.ERROR)
-#logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(filename="logger_mypid.txt", level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
+
 
 import SocketServer
 SocketServer.UDPServer.allow_reuse_address = True
@@ -98,6 +99,7 @@ def Safety(SYSTEMS):
 class PidTemperatureControl(threading.Thread):
     """ Temperature reader """
     def __init__(self, codenames):
+        logging.info('PidTemperatureControl class started')
         threading.Thread.__init__(self)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(3)
@@ -151,9 +153,10 @@ class PidTemperatureControl(threading.Thread):
                         self.SYSTEMS[key] = value[1]
                 except:
                     self.SYSTEMS[key] = None
+                    logging.warn('Cant calculate time difference')
             #print(self.temperatures)
         except socket.timeout:
-            pass
+            logging.warn('Socket timeout')
         return self.SYSTEMS
         
     def update_setpoints(self,):
@@ -175,9 +178,10 @@ class PidTemperatureControl(threading.Thread):
                         self.SYSTEMS[key] = value[1]
                 except:
                     self.SYSTEMS[key] = None
+                    logging.warn('Cant calculate time difference')
                 #print(self.SYSTEMS[sy][me])
         except socket.timeout:
-            pass
+            logging.warn('Socket timeout')
         self.SYSTEMS = Safety(self.SYSTEMS)
         return self.SYSTEMS
     
@@ -262,6 +266,7 @@ class PidTemperatureControl(threading.Thread):
 class MainPID(threading.Thread):
     """ pid controller """
     def __init__(self,):
+        logging.info('MainPID class started')
         threading.Thread.__init__(self)
         #from datalogger import TemperatureReader
         self.quit = False

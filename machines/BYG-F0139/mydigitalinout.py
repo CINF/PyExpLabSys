@@ -11,7 +11,7 @@ sys.path.insert(1, '/home/pi/PyExpLabSys')
 
 import threading
 import time
-#import logging
+import logging
 import socket
 import json
 from PyExpLabSys.common.loggers import ContinuousLogger
@@ -30,8 +30,8 @@ from PyExpLabSys.drivers.cpx400dp import CPX400DPDriver
 #import PyExpLabSys.drivers.omega_cni as omega_CNi32
 #import PyExpLabSys.drivers.kampstrup as kampstrup
 
-#logging.basicConfig(filename="logger.txt", level=logging.ERROR)
-#logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(filename="logger_mydgitalinout.txt", level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 import random
@@ -61,6 +61,7 @@ class FloatToDigital(object):
 class ValveControl(threading.Thread):
     """ Temperature reader """
     def __init__(self, codenames):
+        logging.info('ValveControl class started')
         threading.Thread.__init__(self)
         self.quit = False
         self.codenames = codenames
@@ -101,6 +102,7 @@ class ValveControl(threading.Thread):
                     else:
                         self.SYSTEMS[key] = value[1]
                 except:
+                    logging.warn('except: cant calculate time difference')
                     pass
                     #self.SYSTEMS[sy][me] = None
         except socket.timeout:
@@ -125,6 +127,7 @@ class ValveControl(threading.Thread):
                         self.SYSTEMS[key] = value[1]
                 except:
                     #self.SYSTEMS[key] = None
+                    logging.warn('except: cant calculate time difference')
                     pass
         except socket.timeout:
             pass
@@ -200,8 +203,8 @@ class ValveControl(threading.Thread):
 
             self.ttl = 50
         except:
-            #print('hardware error')
-            pass
+            logging.warn('except: cant write channels')
+            
         try:
             for key in self.omegaAO.keys():
                 v = 10.*self.SYSTEMS[key]
@@ -210,7 +213,7 @@ class ValveControl(threading.Thread):
                 self.ttl = 50
                 #print(key, v)
         except:
-            pass
+            logging.warn('except: cant set values')
 
     def run(self):
         while not self.quit:
@@ -234,6 +237,7 @@ class ValveControl(threading.Thread):
 class MainDGIO(threading.Thread):
     """ Temperature reader """
     def __init__(self):
+        logging.info('MainDGIO class started')
         threading.Thread.__init__(self)
         #from digitalinot import ValveControl
         self.quit = False
