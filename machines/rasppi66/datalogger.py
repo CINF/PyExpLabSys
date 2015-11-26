@@ -83,6 +83,7 @@ while omron_reader.isAlive():
     time.sleep(1)
     for name in codenames:
         v = loggers[name].read_value()
+        print(v)
         livesocket.set_point_now(name, v)
         socket.set_point_now(name, v)
         if loggers[name].read_trigged():
