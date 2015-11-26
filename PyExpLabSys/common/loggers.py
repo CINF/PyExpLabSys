@@ -5,7 +5,10 @@ implement queues to contain the data before of loading to the database to
 ensure against network or server problems.
 """
 
-import Queue
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 import threading
 import time
 import logging
@@ -141,7 +144,7 @@ class ContinuousLogger(threading.Thread):
         self._reconnect_waittime = reconnect_waittime
         self._cursor = None
         self._connection = None
-        self.data_queue = Queue.Queue()
+        self.data_queue = queue.Queue()
         LOGGER.debug('CL: instance attributes initialized')
         # Dict used to translate code_names to measurement numbers
         self._codename_translation = {}
@@ -222,7 +225,7 @@ class ContinuousLogger(threading.Thread):
                     self.data_queue.put(point)
                     LOGGER.debug('CL: Point could not be sent. Re-queued')
                     self._reinit_connection()
-            except Queue.Empty:
+            except queue.Empty:
                 pass
         # When we stop the logger
         self._connection.close()
