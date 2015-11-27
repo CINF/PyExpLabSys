@@ -1,20 +1,23 @@
-
+from __future__ import print_function
 import os
-from PyExpLabSys.file_parsers.chemstation import Report
+from PyExpLabSys.file_parsers.chemstation import Sequence
 
 # This is the measurement path, should be generated somehow
-folderpath = '/home/kenni/Dokumenter/chemstation parser/January2015/def_GC 2015-01-13 11-16-24'
+basefolder = '/home/kenni/Dokumenter/chemstation parser'
+
+sequence_identifyer = 'sequence.acaml'
+
+sequencefolders = []
+
+for root, dirs, files in os.walk(basefolder):
+   if sequence_identifyer in files:
+       sequencefolders.append(root)
+       
+sequences = []
+for sequencefolder in sequencefolders:
+     sequences.append(Sequence(sequencefolder))
+     break
+
+        
 
 
-# Look for injection folders (they are the ones that start with NV)
-injections = []
-for item in os.listdir(folderpath):
-    if item.startswith('NV'):
-        injections.append(item)
-injections.sort()
-
-# Parse all the Report.TXT files in the injections folders
-for injection in injections:
-    reportpath = os.path.join(folderpath, injection, 'Report.TXT')
-    report = Report(reportpath)
-    print(report.measurements)
