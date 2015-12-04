@@ -310,7 +310,7 @@ class PizzaCore(object):
             # (297L, 'kenni', datetime.datetime(2015, 11, 20, 8, 56, 17), -50.0)
 
             timestamp = transaction[2]
-            if timestamp.hour >= 11:
+            if timestamp.hour >= 11 and transaction[3] < 0:
                 status += 'Uh oh ---> {2:%H:%M:%S}  {1: <10} '\
                           '{3: >7.2f}\n'.format(*transaction)
             else:
@@ -322,6 +322,8 @@ class PizzaCore(object):
             'SELECT sum(amount) FROM pizza_transactions WHERE date(time) = date(now())'
         )
         todays_sum = self.cursor.fetchone()[0]
+        if todays_sum is None:
+            todays_sum = 0
         status += '\nTodays sum....................: '\
                   '{: >7.2f}\n'.format(todays_sum)
         status += '</pre>'
