@@ -263,7 +263,7 @@ class ContinuousDataSaver(object):
             password (str): The password for ``username`` in the database
             measurement_codenames (sequence): A sequence of measurement codenames that this
                 logger will send data to. These codenames can be given here, to initialize
-                them at the time of initialization of later by the use of the
+                them at the time of initialization or later by the use of the
                 :meth:`add_continuous_measurement` method.
 
         .. note:: The codenames are the 'official' codenames defined in the database for
@@ -278,7 +278,6 @@ class ContinuousDataSaver(object):
         # Initialize instance variables
         self.continuous_data_table = continuous_data_table
         self.sql_saver = SqlSaver(username, password)
-        self.sql_saver.start()
         self.username = username
         self.password = password
 
@@ -346,6 +345,11 @@ class ContinuousDataSaver(object):
         query = ('INSERT INTO {} (type, time, value) VALUES (%s, FROM_UNIXTIME(%s), %s);')
         query = query.format(self.continuous_data_table)
         self.sql_saver.enqueue_query(query, (measurement_number, unixtime, value))
+
+    def start(self):
+        """Starts the underlying SqlSaver"""
+        CDS_LOG.info('start called')
+        self.sql_saver.start()
 
     def stop(self):
         """Stop the ContiniousDataSaver
