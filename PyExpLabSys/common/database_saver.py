@@ -92,7 +92,6 @@ class DataSetSaver(object):
         self.measurements_table = measurements_table
         self.xy_values_table = xy_values_table
         self.sql_saver = SqlSaver(username, password)
-        self.sql_saver.start()
 
         # Initialize queries
         self.insert_measurement_query = 'INSERT INTO {} ({{}}) values ({{}})'\
@@ -101,6 +100,11 @@ class DataSetSaver(object):
             .format(xy_values_table)
         self.insert_batch_query = 'INSERT INTO {} (measurement, x, y) values {{}}'\
             .format(xy_values_table)
+
+        # Init local database connection
+        self.connection = MySQLdb.connect(host=self.host, user=username,
+                                          passwd=password, db=self.database)
+        self.cursor = self.connection.cursor()
 
         # Initialize measurement ids
         self.measurement_ids = {}
@@ -138,7 +142,7 @@ class DataSetSaver(object):
                 # Else, that value is just a value with default place holder
                 real_value, value_format_string = value, '%s'
 
-            column_names.append(column_name)
+            column_names.append('`' + column_name + '`')
             values.append(real_value)
             value_format_strings.append(value_format_string)
 
@@ -149,10 +153,8 @@ class DataSetSaver(object):
         query = self.insert_measurement_query.format(column_string, value_marker_string)
 
         # Make the insert and save the measurement_table id for use in saving the data
-        cursor = self.sql_saver.cnxn.cursor()
-        cursor.execute(query, values)
-        self.measurement_ids[codename] = cursor.lastrowid
-        cursor.close()
+        self.cursor.execute(query, values)
+        self.measurement_ids[codename] = self.cursor.lastrowid
         DSS_LOG.debug('Measurement codenamed: \'%s\' added', codename)
 
     def save_point(self, codename, point):
@@ -217,6 +219,13 @@ class DataSetSaver(object):
             query = self.insert_batch_query.format(value_marker_string)
             self.sql_saver.enqueue_query(query, values)
 
+    def start(self):
+        """Start the DataSetSaver
+
+        And the underlying :class:`PyExpLabSys.common.sql_saver.SqlSaver`.
+        """
+        self.sql_saver.start()
+
     def stop(self):
         """Stop the MeasurementSaver
 
@@ -224,13 +233,10 @@ class DataSetSaver(object):
         instance nicely.
         """
         DSS_LOG.info('stop called')
+        self.cursor.close()
+        self.connection.close()
         self.sql_saver.stop()
         DSS_LOG.debug('stopped')
-
-    @property
-    def connection(self):
-        """Return the connection of the underlying SqlSaver instance"""
-        return self.sql_saver.cnxn
 
 
 CDS_LOG = logging.getLogger(__name__ + '.ContinuousDataSaver')
@@ -360,11 +366,6 @@ class ContinuousDataSaver(object):
         CDS_LOG.info('stop called')
         self.sql_saver.stop()
         CDS_LOG.debug('stop finished')
-
-    @property
-    def connection(self):
-        """Return the connection of the underlying SqlSaver instance"""
-        return self.sql_saver.cnxn
 
 
 SQL_SAVER_LOG = logging.getLogger(__name__ + '.SqlSaver')
