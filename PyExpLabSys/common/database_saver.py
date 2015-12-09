@@ -17,10 +17,18 @@ except ImportError:
 
 import MySQLdb
 
+# Mark this module as supporting Python 2 and 3
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
+# Database constants
+#: Hostname of the database server
+HOSTNAME = 'servcinf'
+#: Database name
+DATABASE = 'cinfdata'
+
 # Used for check of valid, un-escaped column names, to prevent injection
 COLUMN_NAME = re.compile(r'^[0-9a-zA-Z$_]*$')
-
-
 # namedtuple used for custom column formatting, see MeasurementSaver.__init__
 CustomColumn = namedtuple('CustomColumn', ['value', 'format_string'])
 
@@ -29,12 +37,22 @@ CustomColumn = namedtuple('CustomColumn', ['value', 'format_string'])
 DSS_LOG = logging.getLogger(__name__ + '.MeasurementSaver')
 DSS_LOG.addHandler(logging.NullHandler())
 
-
 class DataSetSaver(object):
-    """A class to save a measurement"""
+    """A class to save a measurement
 
-    host = 'servcinf'
-    database = 'cinfdata'
+    Attributes:
+        measurement_ids (dict): Mapping of codenames to measurements ids
+        measurements_table (str): The measurements tables
+        xy_values_table (str): The x, y values tables
+        sql_saver (:class:`SqlSaver`): The SqlSaver used to save points
+        insert_measurement_query (str): The query used to insert a measurement
+        insert_point_query (str): The query used to insert a point
+        insert_batch_query (str): The query used to insert a batch of points
+        connection (MySQLdb.connection): The database connection used to register new
+            measurements
+        cursor (MySQLdb.cursor): The database cursor used to register new measurements
+
+    """
 
     def __init__(self, measurements_table, xy_values_table, username, password,
                  measurement_specs=None):
@@ -102,8 +120,8 @@ class DataSetSaver(object):
             .format(xy_values_table)
 
         # Init local database connection
-        self.connection = MySQLdb.connect(host=self.host, user=username,
-                                          passwd=password, db=self.database)
+        self.connection = MySQLdb.connect(host=HOSTNAME, user=username,
+                                          passwd=password, db=DATABASE)
         self.cursor = self.connection.cursor()
 
         # Initialize measurement ids
@@ -249,16 +267,9 @@ class ContinuousDataSaver(object):
     Continuous measurements are measurements of a single parameters as a function of
     datetime. The class can ONLY be used with the new layout of tables for continous data,
     where there is only one table per setup, as apposed to the old layout where there was
-    one table per measurement type per setup. The class sends data to the ``cinfdata``
-    database at host ``servcinf``.
-
-    :var host: Database host, value is ``servcinf``.
-    :var database: Database name, value is ``cinfdata``.
-
+    one table per measurement type per setup. The class sends data to the hostname and
+    database named in :data:`.HOSTNAME` and :data:`.DATABASE` respectively.
     """
-
-    host = 'servcinf'
-    database = 'cinfdata'
 
     def __init__(self, continuous_data_table, username, password, measurement_codenames=None):
         """Initialize the continous logger
@@ -287,6 +298,11 @@ class ContinuousDataSaver(object):
         self.username = username
         self.password = password
 
+        # Init local database connection
+        self.connection = MySQLdb.connect(host=HOSTNAME, user=username,
+                                          passwd=password, db=DATABASE)
+        self.cursor = self.connection.cursor()
+
         # Dict used to translate code_names to measurement numbers
         self.codename_translation = {}
         if measurement_codenames is not None:
@@ -305,10 +321,8 @@ class ContinuousDataSaver(object):
         """
         CDS_LOG.info('Add measurements for codename \'%s\'', codename)
         query = 'SELECT id FROM dateplots_descriptions WHERE codename=\'{}\''.format(codename)
-        cursor = self.connection.cursor()
-        cursor.execute(query)
-        results = cursor.fetchall()
-        cursor.close()
+        self.cursor.execute(query)
+        results = self.cursor.fetchall()
         if len(results) != 1:
             message = 'Measurement code name \'{}\' does not have exactly one entry in '\
                       'dateplots_descriptions'.format(codename)
@@ -348,7 +362,7 @@ class ContinuousDataSaver(object):
         # Save the point
         CDS_LOG.debug('Save point (%s, %s) for codename: %s', unixtime, value, codename)
         measurement_number = self.codename_translation[codename]
-        query = ('INSERT INTO {} (type, time, value) VALUES (%s, FROM_UNIXTIME(%s), %s);')
+        query = 'INSERT INTO {} (type, time, value) VALUES (%s, FROM_UNIXTIME(%s), %s);'
         query = query.format(self.continuous_data_table)
         self.sql_saver.enqueue_query(query, (measurement_number, unixtime, value))
 
@@ -371,27 +385,23 @@ class ContinuousDataSaver(object):
 SQL_SAVER_LOG = logging.getLogger(__name__ + '.SqlSaver')
 SQL_SAVER_LOG.addHandler(logging.NullHandler())
 
-
 class SqlSaver(threading.Thread):
-    """The SqlSaver class administers a queue from which it makes the SQL inserts
-
-    Attributes:
-        queue (Queue.queue): The queue the queries and qeury arguments are stored in. See
-            note below.
-        commits (int): The number of commits the saver has performed
-        commit_time (float): The timespan the last commit took
-        cnxn (MySQLdb.connection): The MySQLdb database connection
-        cursor (MySQLdb.cursor): The MySQLdb database cursor
+    """The SqlSaver class administers a queue from which it executes SQL queries
 
     .. note:: In general queries are added to the queue via the
         :meth:enqueue_query`` method. If it is desired to add elements manually, remember
         that they must be on the form of a ``(query, query_args)`` tuple. (These are the
         arguments to the execute method on the cursor object)
 
-    """
+    Attributes:
+        queue (Queue.queue): The queue the queries and qeury arguments are stored in. See
+            note below.
+        commits (int): The number of commits the saver has performed
+        commit_time (float): The timespan the last commit took
+        connection (MySQLdb.connection): The MySQLdb database connection
+        cursor (MySQLdb.cursor): The MySQLdb database cursor
 
-    hostname = 'servcinf'
-    database = 'cinfdata'
+    """
 
     def __init__(self, username, password, queue=None):
         """Initialize local variables
@@ -423,9 +433,9 @@ class SqlSaver(threading.Thread):
 
         # Initialize database connection
         SQL_SAVER_LOG.debug('Open connection to MySQL database')
-        self.cnxn = MySQLdb.connect(host=self.hostname, user=username,
-                                    passwd=password, db=self.database)
-        self.cursor = self.cnxn.cursor()
+        self.connection = MySQLdb.connect(host=HOSTNAME, user=username,
+                                          passwd=password, db=DATABASE)
+        self.cursor = self.connection.cursor()
         SQL_SAVER_LOG.debug('Connection opened, init done')
 
     def stop(self):
@@ -463,18 +473,25 @@ class SqlSaver(threading.Thread):
                 try:
                     self.cursor.execute(query, args=args)
                     success = True
+                    SQL_SAVER_LOG.debug('Executed query \'%s\' with args: %s', query, args)
                 except MySQLdb.OperationalError: # Failed to perfom commit
+                    SQL_SAVER_LOG.error(
+                        'Executing a query raised an MySQLdb.OperationalError. Make new '
+                        'database connection and retry in 5 seconds.'
+                    )
                     time.sleep(5)
                     try:
-                        self.cnxn = MySQLdb.connect(host=self.hostname, user=self.username,
-                                                    passwd=self.password, db=self.database)
-                        self.cursor = self.cnxn.cursor()
+                        self.connection = MySQLdb.connect(
+                            host=HOSTNAME, user=self.username, passwd=self.password,
+                            db=DATABASE
+                        )
+                        self.cursor = self.connection.cursor()
                     except MySQLdb.OperationalError: # Failed to re-connect
                         pass
 
-            self.cnxn.commit()
+            self.connection.commit()
             self.commits += 1
             self.commit_time = time.time() - start
 
-        self.cnxn.close()
+        self.connection.close()
         SQL_SAVER_LOG.debug('run stopped')
