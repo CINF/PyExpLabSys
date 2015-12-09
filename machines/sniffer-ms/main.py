@@ -14,12 +14,14 @@ from PyQt4 import QtGui, QtCore
 from ubd.pyqt import loader
 from flow_temp_core import FlowTempCore
 
+# Dict of codenames pointing towards UI widget variables
 CODENAMES_TO_WIDGETS = {
     '21984878': 'value0',
     '21984877': 'value1',
     '21984876': 'value2',
     '21984879': 'value3',
 }
+# Dict of UI widget variables pointing towards codenames
 WIDGETS_TO_CODENAMES = {}
 for key, value in CODENAMES_TO_WIDGETS.items():
     widget_name = 'setpoint' + value[-1]
