@@ -1,6 +1,6 @@
 # pylint: disable=too-many-arguments,too-many-instance-attributes
 
-"""This module contains modules for saving data to a database"""
+"""Classes for saving coninuous data and data sets to a database"""
 
 
 from __future__ import unicode_literals, division, print_function
@@ -48,9 +48,9 @@ class DataSetSaver(object):
         insert_measurement_query (str): The query used to insert a measurement
         insert_point_query (str): The query used to insert a point
         insert_batch_query (str): The query used to insert a batch of points
-        connection (MySQLdb.connection): The database connection used to register new
+        connection (MySQLdb connection): The database connection used to register new
             measurements
-        cursor (MySQLdb.cursor): The database cursor used to register new measurements
+        cursor (MySQLdb cursor): The database cursor used to register new measurements
 
     """
 
@@ -91,7 +91,7 @@ class DataSetSaver(object):
             ]
 
         The most common use for this is the one shown above, where the ``time`` column is
-        of type timestamp and the time value (e.g. in M2_timestamp) is a unix
+        of type timestamp and the time value (e.g. in ``M2_timestamp``) is a unix
         timestamp. The unix timestamp is converted to a SQL timestamp with the
         ``FROM_UNIXTIME`` SQL function.
 
@@ -240,14 +240,14 @@ class DataSetSaver(object):
     def start(self):
         """Start the DataSetSaver
 
-        And the underlying :class:`PyExpLabSys.common.sql_saver.SqlSaver`.
+        And the underlying :class:`.SqlSaver`.
         """
         self.sql_saver.start()
 
     def stop(self):
         """Stop the MeasurementSaver
 
-        And shut down the underlying :class:`PyExpLabSys.common.sql_saver.SqlSaver`
+        And shut down the underlying :class:`.SqlSaver`
         instance nicely.
         """
         DSS_LOG.info('stop called')
@@ -367,14 +367,14 @@ class ContinuousDataSaver(object):
         self.sql_saver.enqueue_query(query, (measurement_number, unixtime, value))
 
     def start(self):
-        """Starts the underlying SqlSaver"""
+        """Starts the underlying :class:`.SqlSaver`"""
         CDS_LOG.info('start called')
         self.sql_saver.start()
 
     def stop(self):
         """Stop the ContiniousDataSaver
 
-        And shut down the underlying :class:`PyExpLabSys.common.sql_saver.SqlSaver`
+        And shut down the underlying :class:`.SqlSaver`
         instance nicely.
         """
         CDS_LOG.info('stop called')
@@ -389,17 +389,17 @@ class SqlSaver(threading.Thread):
     """The SqlSaver class administers a queue from which it executes SQL queries
 
     .. note:: In general queries are added to the queue via the
-        :meth:enqueue_query`` method. If it is desired to add elements manually, remember
+        :meth:`.enqueue_query` method. If it is desired to add elements manually, remember
         that they must be on the form of a ``(query, query_args)`` tuple. (These are the
         arguments to the execute method on the cursor object)
 
     Attributes:
-        queue (Queue.queue): The queue the queries and qeury arguments are stored in. See
+        queue (Queue.Queue): The queue the queries and qeury arguments are stored in. See
             note below.
         commits (int): The number of commits the saver has performed
         commit_time (float): The timespan the last commit took
-        connection (MySQLdb.connection): The MySQLdb database connection
-        cursor (MySQLdb.cursor): The MySQLdb database cursor
+        connection (MySQLdb connection): The MySQLdb database connection
+        cursor (MySQLdb cursor): The MySQLdb database cursor
 
     """
 
@@ -409,8 +409,8 @@ class SqlSaver(threading.Thread):
         Args:
             username (str): The username for the MySQL database
             password (str): The password for the MySQL database
-            queue (Queue.queue): A custom queue to use. If it is left out, a new
-                :py:class:`Queue.queue` object will be used.
+            queue (Queue.Queue): A custom queue to use. If it is left out, a new
+                :py:class:`Queue.Queue` object will be used.
         """
 
         SQL_SAVER_LOG.info('Init with username: %s, password: ***** and queue: %s',
@@ -461,7 +461,7 @@ class SqlSaver(threading.Thread):
         self.queue.put((query, query_args))
 
     def run(self):
-        """Execute SQL inserts from the queue untill stopped"""
+        """Execute SQL inserts from the queue until stopped"""
         SQL_SAVER_LOG.info('run started')
         while True:
             start = time.time()
