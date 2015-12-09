@@ -23,7 +23,11 @@ STATUSES = {
     PYTHON2_AND_3: 'Python 2 and 3',
 }
 ENCODING = re.compile(r'coding[:=]\s*([-\w.]+)')
-COMMENT = re.compile(r'^"""(.*?)"""|^\'\'\'(.*?)\'\'\'', re.S)
+# Regular expressions for finding the module docstring, in order of decreasing likelyhood
+COMMENT = [re.compile(r'\n"""(.*?)"""', re.S),
+           re.compile(r'^"""(.*?)"""', re.S),
+           re.compile(r'\n\'\'\'(.*?)\'\'\'', re.S),
+           re.compile(r'^\'\'\'(.*?)\'\'\'', re.S),]
 INFERRED_REFERENCE = '[#inferred]_'
 NO_DESCRIPTION = 'NO DESCRIPTION'
 
@@ -60,10 +64,12 @@ def single_file_description(filepath):
     # Extract the first line from the module comment
     with codecs.open(filepath, encoding=encoding) as file_:
         content = file_.read()
-        search = COMMENT.search(content)
-        if search:
-            comment = search.group(1).strip()
-            description = comment.split('\n\n')[0].replace('\n', ' ')
+        for COMMENT_RE in COMMENT:
+            search = COMMENT_RE.search(content)
+            if search:
+                comment = search.group(1).strip()
+                description = comment.split('\n\n')[0].replace('\n', ' ')
+                break
         else:
             description = NO_DESCRIPTION
 
