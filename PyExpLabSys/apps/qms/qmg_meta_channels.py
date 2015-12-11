@@ -91,7 +91,7 @@ class udp_meta_channel(threading.Thread):
                     query += 'set measurement="'
                     query += str(channel['id']) + '", x="' + sqltime
                     query += '", y="' + str(value) + '"'
-                    self.qms.sqlqueue.put(query)
+                    self.qms.sqlqueue.put((query, None))
 
             time_spend = time.time() - t_channel_start
             if time_spend < self.update_interval:

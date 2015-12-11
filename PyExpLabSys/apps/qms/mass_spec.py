@@ -3,7 +3,7 @@ import os
 import sys
 import time
 import Queue
-import PyExpLabSys.common.sql_saver as sql_saver
+import PyExpLabSys.common.database_saver as database_saver
 import PyExpLabSys.drivers.pfeiffer_qmg420 as qmg420
 import PyExpLabSys.drivers.pfeiffer_qmg422 as qmg422
 import PyExpLabSys.apps.qms.qms as ms
@@ -21,11 +21,12 @@ class MassSpec(object):
     """ User interface to mass spec code """
     def __init__(self):
         sql_queue = Queue.Queue()
-        self.data_saver = sql_saver.SqlSaver(sql_queue, settings.username)
+        self.data_saver = database_saver.SqlSaver(settings.username, settings.username, sql_queue)
         self.data_saver.start()
         if settings.qmg == '420':
             self.qmg = qmg420.qmg_420(settings.port)
         if settings.qmg == '422':
+            print settings.port
             self.qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
         self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
                           credentials=settings.username)
@@ -37,10 +38,10 @@ class MassSpec(object):
     def __del__(self):
         self.printer.stop()
 
-    def sem_and_filament(self, turn_on=False):
+    def sem_and_filament(self, turn_on=False, voltage=1800):
         """ Turn on and off the mas spec """
         if turn_on is True:
-            self.qmg.sem_status(voltage=1800, turn_on=True)
+            self.qmg.sem_status(voltage=voltage, turn_on=True)
             self.qmg.emission_status(current=0.1, turn_on=True)
         else:
             self.qmg.sem_status(voltage=1800, turn_off=True)
@@ -67,14 +68,14 @@ class MassSpec(object):
 
     def mass_scan(self, start_mass=0, scan_width=50):
         """ Perform mass scan """
-        self.qms.mass_scan(start_mass, scan_width, comment='Background scan', amp_range=-11)
+        self.qms.mass_scan(start_mass, scan_width, comment='Background scan', amp_range=-9)
         time.sleep(1)
 
-
-        
 if __name__ == '__main__':
     MS = MassSpec()
-    MS.leak_search()
-    #MS.mass_scan(10, 5)
-    #MS.mass_time_scan()
-    #MS.mass_scan(10, 5)
+    #MS.sem_and_filament(turn_on=True, voltage=2800)
+    #MS.leak_search()
+    #MS.mass_scan(0, 50)
+    MS.mass_time_scan()
+
+

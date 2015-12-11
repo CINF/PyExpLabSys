@@ -237,7 +237,7 @@ class QMS(object):
                     query += '", x="' + sqltime + '", y="' + str(value) + '"'
                 self.channel_list[channel]['value'] = str(value)
                 if no_save is False:
-                    self.sqlqueue.put(query)
+                    self.sqlqueue.put((query, None))
                 time.sleep(0.25)
             time.sleep(0.1)
         self.operating_mode = "Idling"
@@ -290,7 +290,7 @@ class QMS(object):
                         new_query += ', y = ' + str((int(samples[i])/10000.0) *
                                                     (10**amp_range))
 
-                self.sqlqueue.put(new_query)
+                self.sqlqueue.put((new_query, None))
         samples = self.qmg.get_multiple_samples(number_of_samples%100)
         for i in range(0, len(samples)):
             j += 1
@@ -304,7 +304,7 @@ class QMS(object):
                     new_query += ', y = ' + str((int(samples[i])/10000.0) * 
                                                 (10**amp_range))
 
-            self.sqlqueue.put(new_query)
+            self.sqlqueue.put((new_query, None))
         self.current_action = 'Emptying Queue'
         while not self.sqlqueue.empty():
             self.measurement_runtime = time.time()-start_time
