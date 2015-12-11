@@ -414,3 +414,12 @@ if __name__ == '__main__':
     print qmg.read_voltages()
     print qmg.detector_status()
     print qmg.comm('SMR')
+    print '---'
+    print 'DTY: ' + qmg.comm('DTY') # Signal source, 0: Faraday, 1: SEM
+    print 'DSE: ' + qmg.comm('SHV') # SEM Voltage
+    print 'ECU: ' + qmg.comm('ECU')
+    print 'SEM: ' + qmg.comm('SEM') # SEM Voltage
+    print 'SQA: ' + qmg.comm('SQA') # Type of analyzer, 0: 125, 1: 400, 4:200
+    print 'SMR: ' + qmg.comm('SMR') # Mass-range, this needs to go in a config-file
+    print 'SDT: ' + qmg.comm('SDT') # Detector type
+    print 'SIT: ' + qmg.comm('SIT') # Ion source
