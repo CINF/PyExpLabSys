@@ -5,9 +5,12 @@ from __future__ import print_function
 
 import time
 import threading
-import socket
+#import socket
 import json
+import socket
+import SocketServer
 from Queue import Queue
+from collections import Counter
 
 # Used for logging output from twisted, see commented out lines below
 #from twisted.python import log
@@ -17,14 +20,83 @@ from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, 
 from PyExpLabSys.common.utilities import get_logger
 LOG = get_logger('ws-server', level='debug', file_log=True, file_max_bytes=10485760)
 
-WEBSOCKET_IDS = set()  # Used only to count open connections
-
+# Used only to count open connections
+WEBSOCKET_IDS = set()
 # Dictionary to keep track of subscriptions, keys are host:codename values is a set of
 # websocket connections
 SUBSCRIPTIONS = {}
 
 # Data queue
 DATA_QUEUE = Queue()
+
+# Counter for performance metrics
+COUNTER = Counter()
+
+
+### Load measurement
+class LoadMonitor(threading.Thread):
+    """Class that monitors the load on the websocket server"""
+
+    def __init__(self):
+        super(LoadMonitor, self).__init__()
+        self.daemon = True
+        self._stop = False
+
+    def run(self):
+        """Something something every second"""
+        while not self._stop:
+            time.sleep(1)
+            for key in ['received']:
+                try:
+                    amount = COUNTER.pop(key)
+                except KeyError:
+                    amount = 0
+                print(key, amount, 'per second')
+
+
+    def stop(self):
+        """Stop the Load Monitor"""
+        self._stop = True
+        while self.isActive():
+            time.sleep(0.01)
+        
+
+
+### Receive Data Part
+class ThreadingUDPServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
+    """Threding UDP Server"""
+
+
+class ReceiveDataUDPHandler(SocketServer.BaseRequestHandler):
+    """UDP Handler for receiving data"""
+
+    def handle(self):
+        data = self.request[0].strip()
+        socket = self.request[1]
+        COUNTER['received'] += 1
+        socket.sendto('OK', self.client_address)
+
+
+class ReceiveDataUDPServer(threading.Thread):
+    """Thread the runs the main UDP Server"""
+
+    def __init__(self):
+        super(ReceiveDataUDPServer, self).__init__()
+        self.daemon = True
+        host, port = "", 9767
+        self.server = ThreadingUDPServer((host, port), ReceiveDataUDPHandler)
+
+    def run(self):
+        """Run method"""
+        self.server.serve_forever()
+
+    def stop(self):
+        """Stop the UDP server"""
+        LOG.info('UDP server stop called')
+        self.server.stop()
+        while self.isActive():
+            time.sleep(0.01)
+        LOG.info('UDP server stopped')
 
 
 class DataSender(threading.Thread):
@@ -42,7 +114,6 @@ class DataSender(threading.Thread):
             for con in WEBSOCKET_CONNECTIONS:
                 con.sendMessage(str(passed))
             time.sleep(0.1)
-    
 
 
 class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
@@ -85,7 +156,16 @@ def main():
     #log.startLogging(sys.stdout)
     # Create context factor with key and certificate
 
+    udp_server = ReceiveDataUDPServer()
+    udp_server.start()
 
+    load_monitor = LoadMonitor()
+    load_monitor.start()
+    try:
+        time.sleep(1E6)
+    except KeyboardInterrupt:
+        udp_server.stop()
+        load_monitor.stop()
 
 
     ####### SSL IMPLEMENTATION
