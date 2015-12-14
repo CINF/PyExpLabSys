@@ -118,6 +118,7 @@ class DataSetSaver(object):
             .format(xy_values_table)
         self.insert_batch_query = 'INSERT INTO {} (measurement, x, y) values {{}}'\
             .format(xy_values_table)
+        self.select_distict_query = 'SELECT DISTINCT {{}} from {}'.format(measurements_table)
 
         # Init local database connection
         self.connection = MySQLdb.connect(host=HOSTNAME, user=username,
@@ -236,6 +237,20 @@ class DataSetSaver(object):
             value_marker_string = ', '.join(['(%s, %s, %s)'] * number_of_values)
             query = self.insert_batch_query.format(value_marker_string)
             self.sql_saver.enqueue_query(query, values)
+
+    def get_unique_values_from_measurements(self, column):  # pylint: disable=invalid-name
+        """Return a set of unique column values from the measurements database
+
+        This is commonly used in fileparsers to identify the files already uploaded
+
+        Args:
+            column (str): The column specification to extract values from. This can be
+                just a column name e.g. "time", but it is also allowed to contain SQL
+                processing e.g. UNIX_TIMESTAMP(time). The value of column will be
+                formatted directly into the query.
+        """
+        self.cursor.execute(self.select_distict_query.format(column))
+        return set(self.cursor.fetchall())
 
     def start(self):
         """Start the DataSetSaver
