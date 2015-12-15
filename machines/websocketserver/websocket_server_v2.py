@@ -5,9 +5,7 @@ from __future__ import print_function
 
 import time
 import threading
-#import socket
 import json
-import socket
 import SocketServer
 from Queue import Queue
 from collections import Counter
@@ -22,12 +20,16 @@ LOG = get_logger('ws-server', level='debug', file_log=True, file_max_bytes=10485
 
 # Used only to count open connections
 WEBSOCKET_IDS = set()
+
 # Dictionary to keep track of subscriptions, keys are host:codename values is a set of
 # websocket connections
 SUBSCRIPTIONS = {}
 
 # Data queue
 DATA_QUEUE = Queue()
+
+# Data sets
+DATA_SETS = {}
 
 # Counter for performance metrics
 COUNTER = Counter()
@@ -46,20 +48,18 @@ class LoadMonitor(threading.Thread):
         """Something something every second"""
         while not self._stop:
             time.sleep(1)
-            for key in ['received']:
+            for key in ['received', 'received_bytes']:
                 try:
                     amount = COUNTER.pop(key)
                 except KeyError:
                     amount = 0
                 print(key, amount, 'per second')
 
-
     def stop(self):
         """Stop the Load Monitor"""
         self._stop = True
         while self.isActive():
             time.sleep(0.01)
-        
 
 
 ### Receive Data Part
@@ -71,9 +71,19 @@ class ReceiveDataUDPHandler(SocketServer.BaseRequestHandler):
     """UDP Handler for receiving data"""
 
     def handle(self):
-        data = self.request[0].strip()
+        raw = self.request[0].strip()
         socket = self.request[1]
-        COUNTER['received'] += 1
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            error = 'ERROR: Could not decode \'{}\' as json'.format(raw)
+            COUNTER['json_decode_error'] += 1
+            socket.sendto(error, self.client_address)
+
+        COUNTER['received_n'] += 1
+        COUNTER['received_bytes'] += len(raw)
+        DATA_QUEUE.put(data)
+
         socket.sendto('OK', self.client_address)
 
 
