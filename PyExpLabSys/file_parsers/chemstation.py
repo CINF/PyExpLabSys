@@ -1,6 +1,6 @@
 """File parser for Chemstation files"""
 
-from __future__ import print_function , unicode_literals
+from __future__ import print_function, unicode_literals
 from collections import defaultdict
 
 import codecs
@@ -15,30 +15,40 @@ from xml.etree import ElementTree
 # () denotes a group that we want to capture
 # [] denotes a group of characters to match
 # * repeats the previous group if character
-TABLE_RE = r'^ *([0-9]*) *([0-9\.]*)([A-Z ]*)([0-9\.]*) *([0-9e\.]*) *([0-9e\.]*) *([a-zA-Z0-9\?]*)$'
+TABLE_RE = (r'^ *([0-9]*) *([0-9\.]*)([A-Z ]*)([0-9\.]*) *([0-9e\.]*) *([0-9e\.]*) '
+            r'*([a-zA-Z0-9\?]*)$')
+
 
 class Sequence(object):
     """The Sequence class for the Chemstation data format"""
+
     def __init__(self, sequence_dir_path):
         self.injections = []
         self.sequence_dir_path = sequence_dir_path
         self.metadata = {}
         self._parse()
+        if len(self.injections) == 0:
+            raise ValueError('No injections in sequence: {}'.format(self.sequence_dir_path))
         self._parse_metadata()
-        
+
     def _parse_metadata(self):
-        """
-        """
-        self.metadata['start_time'] = self.injections[0].sequence_start
+        """Parse metadata"""
+        # Pull the method name out of the sequence.acaml file
         xml_file = ElementTree.parse(os.path.join(self.sequence_dir_path, 'sequence.acaml'))
         root = xml_file.getroot()
-        print(root.findall('.//{urn:schemas-agilent-com:acaml15}Method'))
-        # FIXME HERE HERE HER
-        
+        method = root.findall('.//{urn:schemas-agilent-com:acaml15}Method')[0]
+        method_name = method.find('{urn:schemas-agilent-com:acaml15}Name').text
+        self.metadata['method_name'] = method_name
+
+        # Add metadata from first injection to sequence metadata
+        first_injection = self.injections[0]
+        self.metadata['sample_name'] = first_injection.metadata['sample_name']
+        self.metadata['sequence_start'] = first_injection.metadata['sequence_start']
 
     def _parse(self):
         """Parse the sequence"""
         sequence_dircontent = os.listdir(self.sequence_dir_path)
+        # Put the injection folders in order
         sequence_dircontent.sort()
         for filename in sequence_dircontent:
             injection_fullpath = os.path.join(self.sequence_dir_path, filename)
@@ -47,27 +57,28 @@ class Sequence(object):
             if not "Report.TXT" in os.listdir(injection_fullpath):
                 continue
             self.injections.append(Injection(injection_fullpath))
-        
+
     def __repr__(self):
         """Change of list name"""
-        return "<sequence object at {}>".format(self.sequence_dir_path)
-        
+        return "<Sequence object at {}>".format(self.sequence_dir_path)
+
     def full_sequence_dataset(self):
         """Generate molecule ('PeakName') specific dataset"""
         data = defaultdict(list)
-        start_time = self.injections[0].unixtime
+        start_time = self.injections[0].metadata['unixtime']
         for injection in self.injections:
-            elapsed_time = injection.unixtime - start_time
+            elapsed_time = injection.metadata['unixtime'] - start_time
             for measurement in injection.measurements:
                 label = self.generate_data_label(measurement)
                 data[label].append([elapsed_time, measurement['Area']])
         return data
-                    
-    def generate_data_label(self, measurement):
+
+    @staticmethod
+    def generate_data_label(measurement):
         """Return a label for a measurement
-        
+
         For known molecule measurement gets detector-PeakName as label. For unnamed peaks
-        label will be Unnamed and 0.01bin RetTime 
+        label will be Unnamed and 0.01bin RetTime
         """
         if measurement['PeakName'] == '?':
             lower = math.floor(measurement['RetTime'] * 100.0) / 100.0
@@ -76,45 +87,54 @@ class Sequence(object):
         else:
             # **measurement  turns into PeakName=..., detector=..., Type=...
             return '{detector}-{PeakName}'.format(**measurement)
-            
+
+
 class Injection(object):
-    """The Injection class for the Chemstation data format"""
+    """The Injection class for the Chemstation data format
+
+    Params:
+        measurements (list): List of measurement lines from the report
+        metadata (dict): Dict of metadata
+        report_filepath (str): The filepath of the report for the injection
+    """
 
     def __init__(self, injection_dirpath):
         self.report_filepath = os.path.join(injection_dirpath, "Report.TXT")
-        self.measurements = []  
-        self.unixtime = None
-        self.sequence_start = None
+        self.measurements = []
+        self.metadata = {}
         self._parse_header()
         self._parse_file()
-        
+
     def _parse_header(self):
-        """Parse a header of Report.TXT file 
-            
-        Splitting file in two to get injection time in header 
+        """Parse a header of Report.TXT file
+
+        Extract information about: sample name, injection date and sequence start
         """
         with codecs.open(self.report_filepath, encoding='UTF16') as file_:
             for line in file_:
                 if 'Area Percent Report' in line:
                     break
-                elif line.startswith('Injection Date'): 
+                elif line.startswith('Sample Name'):
+                    sample_part = line.split(':')[1].strip()
+                    self.metadata['sample_name'] = sample_part
+                elif line.startswith('Injection Date'):
                     date_part = line.split(' : ')[1]
                     date_part = date_part.replace('Inj', '')
                     date_part = date_part.strip()
                     timestamp = time.strptime(date_part, '%d-%b-%y %I:%M:%S %p')
-                    self.unixtime = time.mktime(timestamp)
+                    self.metadata['unixtime'] = time.mktime(timestamp)
                 elif line.startswith('Last changed'):
+                    if 'sequence_start' in self.metadata:
+                        continue
                     date_part = line.split(' : ')[1]
                     date_part = date_part.split('by')[0].strip()
-                    self.sequence_start = time.strptime(date_part, '%d-%b-%y %I:%M:%S %p')
+                    self.metadata['sequence_start'] = \
+                        time.strptime(date_part, '%d-%b-%y %I:%M:%S %p')
 
     def _parse_file(self):
         """Parse a single Report.TXT file
 
         This file represents the results of a single injection
-
-        MORE TO FOLLOW FIXME
-
         """
         # detector id and table open used during scanning of file
         detector = None
@@ -151,8 +171,8 @@ class Injection(object):
         2  10.872         0.0000    0.00000  0.00000 CH4
         3  12.071         0.0000    0.00000  0.00000 CO2
         4  12.718 BB      0.4140  816.84735 1.000e2  ?
-        
-        Dictionary is returned where the keys are the headers: 
+
+        Dictionary is returned where the keys are the headers:
         'Peak', 'RetTime', 'Type', 'Width', 'Area', 'Area%' , 'PeakName'
         """
         line = line.strip()
@@ -161,9 +181,9 @@ class Injection(object):
         if match is None:
             print('PROBLEMS WITH THE REGULAR EXPRESSION')
         groups = match.groups()
-        if len(groups) < 7 :
+        if len(groups) < 7:
             raise SystemExit()
-        headers = ['Peak', 'RetTime', 'Type', 'Width', 'Area', 'Area%' , 'PeakName']  # Etc
+        headers = ['Peak', 'RetTime', 'Type', 'Width', 'Area', 'Area%', 'PeakName']  # Etc
         content_dict = dict(zip(headers, groups))
         for header in content_dict.keys():
             if header in ['RetTime', 'Width', 'Area', 'Area%']:
@@ -172,6 +192,5 @@ class Injection(object):
                 content_dict[header] = int(content_dict[header])
             else:
                 content_dict[header] = content_dict[header].strip()
-                        
+
         return content_dict
-            
