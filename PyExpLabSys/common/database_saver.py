@@ -250,7 +250,7 @@ class DataSetSaver(object):
                 formatted directly into the query.
         """
         self.cursor.execute(self.select_distict_query.format(column))
-        return set(self.cursor.fetchall())
+        return set(item[0] for item in self.cursor.fetchall())
 
     def start(self):
         """Start the DataSetSaver
