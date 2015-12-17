@@ -40,7 +40,7 @@ for root, dirs, files in os.walk(basefolder):
             x,y = zip(*data)
             data_set_saver.add_measurement(codename, data_set_metadata)
             data_set_saver.save_points_batch(codename, x, y)
-        print('... UPLOADED')
+        print(' ... UPLOADED')
         #upload file    
 
 data_set_saver.stop()
