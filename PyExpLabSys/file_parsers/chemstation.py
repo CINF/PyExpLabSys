@@ -83,10 +83,10 @@ class Sequence(object):
         if measurement['PeakName'] == '?':
             lower = math.floor(measurement['RetTime'] * 100.0) / 100.0
             upper = math.ceil(measurement['RetTime'] * 100.0) / 100.0
-            return 'Unnamed {:.2f}-{:.2f}'.format(lower, upper)
+            return '{detector}  - ? {:.2f}-{:.2f}'.format(lower, upper, **measurement)
         else:
             # **measurement  turns into PeakName=..., detector=..., Type=...
-            return '{detector}-{PeakName}'.format(**measurement)
+            return '{detector}  - {PeakName}'.format(**measurement)
 
 
 class Injection(object):
