@@ -15,7 +15,7 @@ already_uploaded = data_set_saver.get_unique_values_from_measurements('relative_
 print('Fetched relative paths for {} known sequences'.format(len(already_uploaded)))
 
 # This is the measurement path, should be generated somehow
-basefolder = '/home/kenni/Dokumenter/chemstation parser'
+basefolder = '/home/cinf/Desktop/Shared_folder'
 sequence_identifyer = 'sequence.acaml'
 
 for root, dirs, files in os.walk(basefolder):
@@ -26,7 +26,14 @@ for root, dirs, files in os.walk(basefolder):
             continue
 
         print('Found new sequence for upload: {}'.format(relative_path), end='')
-        sequence = Sequence(root)
+        try:
+            sequence = Sequence(root)
+        except ValueError as exception:
+            if exception.args[0].startswith('No injections in sequence'):
+                print(' ... No injections in this sequence')
+                continue
+            else:
+                raise exception
         metadata = sequence.metadata.copy()
         metadata['relative_path'] = relative_path
         metadata['time'] = CustomColumn(time.mktime(metadata.pop('sequence_start')), 'FROM_UNIXTIME(%s)')
