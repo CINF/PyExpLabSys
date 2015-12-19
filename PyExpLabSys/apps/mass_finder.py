@@ -1,4 +1,6 @@
 import math
+import time
+import matplotlib.pyplot as plt
 from itertools import product
 
 elements = {}
@@ -42,15 +44,35 @@ class MassCalculator(object):
         for element in element_list:
              index_list.append(range(0, len(self.elements[element]['isotopes'])))
 
+        t = 0
         for index in product(*index_list):
+            t += 1
+        print(t)
+        print(element_list)
+        for index in product(*index_list):
+            print(index)
             propability = 1
             mass = 0
+            # BUG!!! Identical atomic configurations er treated as separate and thus the numbers does not add up!!!
             for i in range(0, len(element_list)):
                 current_isotope = self.elements[element_list[i]]['isotopes'][index[i]]
-                propability *= current_isotope[0]
-                mass += current_isotope[1]
-            spectrum.append((propability, mass))
-        return spectrum
+                propability = propability * current_isotope[0]
+                mass = mass + current_isotope[1]
+                if propability < 1e-9:
+                    break
+            print(propability)
+            if propability > 1e-9:
+                spectrum.append((propability, mass))
+        mass_axis = [m[1] for m in spectrum]
+        intensity_axis = [i[0] for i in spectrum]
+
+        fig = plt.figure()
+        axis = fig.add_subplot(1, 1, 1)
+        axis.plot(mass_axis, intensity_axis, 'bo')
+        axis.set_yscale('log')
+        plt.show()
+
+        return sorted(spectrum, reverse=True)
 
     def elemental_combinations(self, target_mass, element_list=None):
         """ Find all molecular combination with a highest peak close
@@ -86,8 +108,13 @@ class MassCalculator(object):
 
 
 ms = MassCalculator(elements)
+print(ms.isotope_spectrum(['C'] + ['H']*2))
 
-#print ms.isotope_spectrum(['C', 'O', 'Cl'])
+#print(ms.isotope_spectrum(['C']*12 + ['H']*8 + ['S']))
 
-print(ms.elemental_combinations(85))
+#t = time.time()
+#ms.isotope_spectrum(['C']*12 + ['H']*8 + ['S'])
+#ms.isotope_spectrum(['C']*14 + ['H']*14 + ['S'])
+#print(time.time() - t)
+#print(ms.elemental_combinations(85))
 
