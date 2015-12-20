@@ -18,7 +18,17 @@ MEASUREMENT_TABLE = 'measurements_tof'
 XY_VALUES_TABLE= 'xy_values_tof'
 NORMALISATION_FIELD = 'tof_iterations'
 
-def fit_peak(time, peaks, data, ax=None):
+def gaussian(x, amp, cen, wid):
+    return amp * math.e ** (-1 * ((x - cen) ** 2) / wid)
+    
+def double_gaussian(x, amp, cen, wid, amp2, cen2):
+    peak1 = gaussian(x, amp, cen, wid)
+    peak2 = gaussian(x, amp2, cen2, wid)
+    return peak1 + peak2
+
+
+def fit_peak_lm(flight_times, data, ax=None):
+    time = np.mean(flight_times)
     center = np.where(Data[:,0] > time)[0][0]
     Start = center - 125 #Display range
     End = center + 125
@@ -29,34 +39,49 @@ def fit_peak(time, peaks, data, ax=None):
     background = np.mean(Y_values[center-3*PEAK_FIT_WIDTH:center-2*PEAK_FIT_WIDTH])
     print('Background: ' + str(background))
 
-    fit_width = PEAK_FIT_WIDTH + PEAK_FIT_WIDTH * (peaks-1) * 0.5
+    fit_width = PEAK_FIT_WIDTH + PEAK_FIT_WIDTH * (len(flight_times)-1) * 0.5
     #Fitting range
     x_values = X_values[center-fit_width:center+fit_width]
     y_values = Y_values[center-fit_width:center+fit_width]
 
-    if peaks == 1:
-        fitfunc = lambda p, x: p[0]*math.e ** (-1 * ((x - time - p[2]) ** 2) / p[1])
-        p0 = [max(Y_values)-2, 0.00001, 0] # Initial guess for the parameters
-    if peaks == 2:
-        fitfunc = lambda p, x: p[0]*math.e ** (-1 * ((x - time - p[2]) ** 2) / p[1])
-        p0 = [max(Y_values)-2, 0.00001, 0] # Initial guess for the parameters
-        
-        #fitfunc = lambda p, x: p[0]*math.e ** (-1 * ((x - time - p[2]) ** 2) / p[1]) + p[3]*math.e ** (-1 * ((x - time - p[4]) ** 2) / p[5])
-        #p0 = [max(Y_values)-2, 0.00001, 0, max(Y_values)-2, 0.00001, 0.02] # Initial guess for the parameters
-    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
+    if len(flight_times) == 1:
+        gmod = Model(gaussian)
+        result = gmod.fit(Y_values, x=X_values, amp=max(Y_values),
+                          cen=flight_times[0], wid=0.000002)
 
-    try:
-        p1, success = optimize.leastsq(errfunc, p0[:], args=(x_values, y_values-background),maxfev=10000) 
-    except: # Fit failed
-        p1 = p0
-        success = 0
-    usefull = (p1[0] > 1.5) and (p1[1] < 1e-3) and (success==1) # Only use the values if fit succeeded and peak has decent height
-    area_fit = math.sqrt(math.pi)*p1[0] * math.sqrt(p1[1])
+    if len(flight_times) == 2:
+        center1 = np.where(Data[:,0] > flight_times[0])[0][0]
+        max1 = max(Data[center1-10:center1+10, 1])
+
+        center2 = np.where(Data[:,0] > flight_times[1])[0][0]
+        max2 = max(Data[center2-10:center2+10, 1])
     
+        gmod = Model(double_gaussian)
+        result = gmod.fit(Y_values, x=X_values, amp=max1, cen=flight_times[0],
+                          amp2=max2, cen2=flight_times[1], wid=0.000002)
+
+
+    #usefull = (p1[0] > 1.5) and (p1[1] < 1e-3) and (result.success) # Only use the values if fit succeeded and peak has decent height
+    usefull = result.success
+    
+    amp = result.params['amp'].value
+    wid = result.params['wid'].value
+    cen = result.params['cen'].value
+    if len(flight_times) == 2:
+        amp2 = result.params['amp2'].value
+        cen2 = result.params['cen2'].value
+
+    p1 = [amp, wid, 0]
+    area_fit = math.sqrt(math.pi)*amp * math.sqrt(wid)
+
     area_count = np.sum(Y_values) - background*len(Y_values)
     if ax is not None:
         ax.plot(X_values, Y_values, 'k-')
-        ax.plot(X_values, fitfunc(p1, X_values)+background, 'r-')
+        if len(flight_times) == 1:
+            ax.plot(X_values, gaussian(X_values, amp, cen, wid)+background, 'r-')
+        if len(flight_times) == 2:
+            ax.plot(X_values, double_gaussian(X_values, amp, cen, amp2, cen2, wid)+background, 'r-')
+
         ax.axvline(X_values[center-fit_width])
         ax.axvline(X_values[center+fit_width])
         ax.annotate(str(time), xy=(.05,.85), xycoords='axes fraction',fontsize=8)
@@ -64,55 +89,7 @@ def fit_peak(time, peaks, data, ax=None):
         ax.annotate("Count Area: {0:.0f}".format(area_count), xy=(.05,.75), xycoords='axes fraction',fontsize=8)
         ax.annotate("Usefull: " + str(usefull), xy=(.05,.7), xycoords='axes fraction',fontsize=8)
         #plt.show()
-    return usefull, p1, area_count
-
-def fit_peak_lm(time, peaks, data, ax=None):
-    center = np.where(Data[:,0] > time)[0][0]
-    Start = center - 125 #Display range
-    End = center + 125
-    X_values = Data[Start:End,0]
-    Y_values = Data[Start:End,1]
-    center = np.where(Y_values == max(Y_values))[0][0]
-
-    background = np.mean(Y_values[center-3*PEAK_FIT_WIDTH:center-2*PEAK_FIT_WIDTH])
-    print('Background: ' + str(background))
-
-    fit_width = PEAK_FIT_WIDTH + PEAK_FIT_WIDTH * (peaks-1) * 0.5
-    #Fitting range
-    x_values = X_values[center-fit_width:center+fit_width]
-    y_values = Y_values[center-fit_width:center+fit_width]
-
-    if peaks == 1:
-        fitfunc = lambda p, x: p[0]*math.e ** (-1 * ((x - time - p[2]) ** 2) / p[1])
-        p0 = [max(Y_values)-2, 0.00001, 0] # Initial guess for the parameters
-    if peaks == 2:
-        fitfunc = lambda p, x: p[0]*math.e ** (-1 * ((x - time - p[2]) ** 2) / p[1])
-        p0 = [max(Y_values)-2, 0.00001, 0] # Initial guess for the parameters
-        
-        #fitfunc = lambda p, x: p[0]*math.e ** (-1 * ((x - time - p[2]) ** 2) / p[1]) + p[3]*math.e ** (-1 * ((x - time - p[4]) ** 2) / p[5])
-        #p0 = [max(Y_values)-2, 0.00001, 0, max(Y_values)-2, 0.00001, 0.02] # Initial guess for the parameters
-    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
-
-    try:
-        p1, success = optimize.leastsq(errfunc, p0[:], args=(x_values, y_values-background),maxfev=10000) 
-    except: # Fit failed
-        p1 = p0
-        success = 0
-    usefull = (p1[0] > 1.5) and (p1[1] < 1e-3) and (success==1) # Only use the values if fit succeeded and peak has decent height
-    area_fit = math.sqrt(math.pi)*p1[0] * math.sqrt(p1[1])
-    
-    area_count = np.sum(Y_values) - background*len(Y_values)
-    if ax is not None:
-        ax.plot(X_values, Y_values, 'k-')
-        ax.plot(X_values, fitfunc(p1, X_values)+background, 'r-')
-        ax.axvline(X_values[center-fit_width])
-        ax.axvline(X_values[center+fit_width])
-        ax.annotate(str(time), xy=(.05,.85), xycoords='axes fraction',fontsize=8)
-        ax.annotate("Fit Area: {0:.0f}".format(area_fit*2500), xy=(.05,.8), xycoords='axes fraction',fontsize=8)
-        ax.annotate("Count Area: {0:.0f}".format(area_count), xy=(.05,.75), xycoords='axes fraction',fontsize=8)
-        ax.annotate("Usefull: " + str(usefull), xy=(.05,.7), xycoords='axes fraction',fontsize=8)
-        #plt.show()
-    return usefull, p1, area_count
+    return usefull, p1, 0
 
 
 db = mysql.connector.connect(host="servcinf-sql.fysik.dtu.dk", user="cinf_reader",passwd = "cinf_reader", db = "cinfdata")
@@ -124,17 +101,15 @@ spectrum_numbers = range(4160, 4161)
 x_values = {}
 x_values['M4'] = {}
 x_values['M4']['flighttime'] = [5.53]
-x_values['M4']['peaks'] = 1
 x_values['M4']['names'] = ['He']
-"""
+
 x_values['11.46'] = {}
-x_values['11.46']['flighttime'] = [11.44, 11.46]
+x_values['11.46']['flighttime'] = [11.455, 11.468]
 x_values['11.46']['names'] = ['11.46-low', '11.46-high']
 
 x_values['11.82'] = {}
 x_values['11.82']['flighttime'] = [11.81, 11.83]
 x_values['11.82']['names'] = ['11.82-low', '11.82-high']
-"""
 #Todo: Also include fit-information such as exact peak position
 
 #x_values = [5.53, 11.82, 39.81]
@@ -190,7 +165,7 @@ for spectrum_number in spectrum_numbers:
         if i == 1:
             axis.text(0,1.2,'Spectrum id: ' + str(spectrum_number),fontsize=12,transform = axis.transAxes)
             axis.text(0,1.1,'Sweeps: {0:.2e}'.format(spectrum_info[2]),fontsize=12,transform = axis.transAxes)
-        usefull, p1, count = fit_peak(x_values[x]['flighttime'], x_values[x]['peaks'], Data, axis)
+        usefull, p1, count = fit_peak_lm(x_values[x]['flighttime'],  Data, axis)
         area = math.sqrt(math.pi)*p1[0] * math.sqrt(p1[1])
         if usefull:
             x_values[x]['peak_area'].append(area * 2500 / spectrum_info[2])
