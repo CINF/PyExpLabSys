@@ -8,6 +8,26 @@ class RampReader():
         lines = file.readlines()
         file.close()
 
+        while True:
+            found = False
+            for i in range(0, len(lines)):
+                if lines[i].lower().find('include') > -1:
+                    found = True
+                    break
+            if found:
+                print(i)
+                include_name = lines[i].strip().split(';')[1]
+                file = open('test_ramps/' + include_name + '.txt', 'r')
+                include_lines = file.readlines()
+                file.close()
+                lines.remove(lines[i])
+                for j in range(0, len(include_lines)):
+                    lines.insert(i + j, include_lines[j])
+            else:
+                break    
+
+        print(lines)
+        
         lines = self.remove_lines_and_comments(lines)
 
         keys = []
@@ -20,7 +40,7 @@ class RampReader():
                 current_values[key] = (0, False)
         params = []
         params.append(current_values)
-
+        
         for line in lines:
             row = line.split(';')
             param = row[0].lower()
@@ -45,6 +65,8 @@ class RampReader():
 
         #Mark empty lines and comments
         for i in range(0, len(lines)):
+            if lines[i].find('#') > 0:
+                lines[i] = lines[i][0:lines[i].find('#')]
             if lines[i][0] in ['\n','#']:
                 lines[i] = ''
             lines[i] = lines[i].strip() #Remove LF, CR and spaces from all lines
@@ -101,6 +123,7 @@ class RampReader():
 
 
 
+#reader = RampReader(filename='test_ramps/flows.txt')
 reader = RampReader()
 print('----')
 print(reader.plot_file())
