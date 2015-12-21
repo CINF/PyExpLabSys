@@ -6,26 +6,32 @@ from itertools import product
 elements = {}
 
 elements['H'] = {}
+elements['H']['bonds'] = 1 # ????
 elements['H']['isotopes'] = [(0.999885, 0.999885),
                              (0.000115, 2.0141017778)]
 
 elements['C'] = {}
+elements['C']['bonds'] = 4 # ????
 elements['C']['isotopes'] = [(0.9893, 12.0),
                              (0.0107, 13.0033548378)]
 
 elements['O'] = {}
+elements['O']['bonds'] = 2 # ????
 elements['O']['isotopes'] = [(0.99757, 15.99491461956),
                              (0.00038, 16.99913170),
                              (0.00205, 17.9991610)]
 
 elements['Al'] = {}
+elements['Al']['bonds'] = 3 # ????
 elements['Al']['isotopes'] = [(1, 26.9815386)]
 
 elements['Cl'] = {}
+elements['Cl']['bonds'] = 1 # ???
 elements['Cl']['isotopes'] = [(0.7576, 34.96885268),
                               (0.2424, 36.96590259)]
 
 elements['S'] = {}
+elements['S']['bonds'] = 2 # ????
 elements['S']['isotopes'] = [(0.9493, 31.97207100),
                              (0.0076, 32.97145876),
                              (0.0429, 33.96786690),
@@ -95,11 +101,17 @@ class MassCalculator(object):
         candidates = []
         for index in product(*range_lists):
             weight = 0
+            bonds = 0
             for i in range(0, len(element_list)):
                 element_weight = index[i] * self.elements[element_list[i]]['isotopes'][0][1]
                 weight += element_weight
-
-            if (weight > target_mass - 0.5) and (weight < target_mass + 0.5):
+                bonds += index[i] * self.elements[element_list[i]]['bonds']
+                if weight > target_mass + 1:
+                    break
+                
+            weight_ok = (weight > target_mass - 0.5) and (weight < target_mass + 0.5)
+            bonds_ok =  bonds >= (2 * sum(index))
+            if weight_ok and bonds_ok:
                 candidate = {}
                 for i in range(0, len(element_list)):
                     if index[i] > 0:
@@ -110,10 +122,13 @@ class MassCalculator(object):
 
 if __name__ == '__main__':
     ms = MassCalculator(elements)
-    spectrum = ms.isotope_spectrum(['C']*12 + ['H']*8 + ['S'])
-    for s in spectrum:
-        print(s)
+    #spectrum = ms.isotope_spectrum(['C']*12 + ['H']*8 + ['S'])
+    #for s in spectrum:
+    #    print(s)
 
+    candidates = ms.elemental_combinations(184)
+    for c in candidates:
+        print(c)
+    print(len(candidates))
 
-#print(ms.elemental_combinations(85))
 
