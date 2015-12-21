@@ -3,7 +3,7 @@ import numpy as np
 from operator import itemgetter
 
 class RampReader():
-    def __init__(self, filename='temp_ramp.txt'):
+    def __init__(self, filename='test_ramps/temp_ramp.txt'):
         file = open(filename, 'r')
         lines = file.readlines()
         file.close()
@@ -37,7 +37,7 @@ class RampReader():
                 current_values[param] = (value, ramp)
         # Sort according to the time key
         self.params = sorted(params, key=itemgetter('time'))
-        print self.params
+        print(self.params)
 
 
     def remove_lines_and_comments(self, lines):
@@ -72,7 +72,7 @@ class RampReader():
     def plot_file(self):
         time_range = np.arange(0, self.params[-1]['time'][0], 0.1)
         plots = {}
-        keys = self.params[0].keys()
+        keys = list(self.params[0].keys()) # List of all keywords in ramp-file
         for key in keys:
             plots[key] = []
 
@@ -94,9 +94,9 @@ class RampReader():
         axis.legend(plot_lines, labels)
         
         axis.set_ylabel('Value')
-        #axis2.set_ylabel('Temperature')
+        axis2.set_ylabel('Temperature')
         axis.set_xlabel('Time')
-        #axis.legend(loc='upper left')
+        axis.legend(loc='upper left')
         plt.show()
 
 
