@@ -134,7 +134,7 @@ class ContinuousLogger(threading.Thread):
             'PyExpLabSys.common.loggers.ContinuousLogger class is deprecated. Please '\
             'instead use the PyExpLabSys.common.database_saver.ContinuousDataSaver class '\
             'instead.'
-        print deprecation_warning
+        print(deprecation_warning)
         LOGGER.info('CL: __init__ called')
         # Initialize thread
         super(ContinuousLogger, self).__init__()
