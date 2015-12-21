@@ -44,25 +44,26 @@ class MassCalculator(object):
         for element in element_list:
              index_list.append(range(0, len(self.elements[element]['isotopes'])))
 
-        t = 0
+        #Todo: There must be an optimization to be gained from not treating
+        #identical atoms seperately...
         for index in product(*index_list):
-            t += 1
-        print(t)
-        print(element_list)
-        for index in product(*index_list):
-            print(index)
             propability = 1
             mass = 0
-            # BUG!!! Identical atomic configurations er treated as separate and thus the numbers does not add up!!!
             for i in range(0, len(element_list)):
                 current_isotope = self.elements[element_list[i]]['isotopes'][index[i]]
                 propability = propability * current_isotope[0]
                 mass = mass + current_isotope[1]
                 if propability < 1e-9:
                     break
-            print(propability)
-            if propability > 1e-9:
-                spectrum.append((propability, mass))
+
+            if propability > 1e-9: # This could properly be written slightly more clever...
+                mass_list = [x[1] for x in spectrum]
+                if mass in mass_list:
+                    for i in range(0, len(spectrum)):
+                        if spectrum[i][1] == mass:
+                            spectrum[i] = (spectrum[i][0] + propability, mass)
+                else:
+                    spectrum.append((propability, mass))
         mass_axis = [m[1] for m in spectrum]
         intensity_axis = [i[0] for i in spectrum]
 
@@ -107,14 +108,12 @@ class MassCalculator(object):
         return candidates
 
 
-ms = MassCalculator(elements)
-print(ms.isotope_spectrum(['C'] + ['H']*2))
+if __name__ == '__main__':
+    ms = MassCalculator(elements)
+    spectrum = ms.isotope_spectrum(['C']*12 + ['H']*8 + ['S'])
+    for s in spectrum:
+        print(s)
 
-#print(ms.isotope_spectrum(['C']*12 + ['H']*8 + ['S']))
 
-#t = time.time()
-#ms.isotope_spectrum(['C']*12 + ['H']*8 + ['S'])
-#ms.isotope_spectrum(['C']*14 + ['H']*14 + ['S'])
-#print(time.time() - t)
 #print(ms.elemental_combinations(85))
 
