@@ -18,7 +18,7 @@ python2_and_3(__file__)
 # () denotes a group that we want to capture
 # [] denotes a group of characters to match
 # * repeats the previous group if character
-TABLE_RE = (r'^ *([0-9]*) *([0-9\.e-]*)([A-Z ]*)([0-9\.e-]*) *([0-9e\.]*) *([0-9e\.]*) '
+TABLE_RE = (r'^ *([0-9]*) *([0-9\.e-]*)([A-Z ]*)([0-9\.e-]*) *([0-9\.e-]*) *([0-9e\.]*) '
             r'*([a-zA-Z0-9\?]*)$')
 
 
@@ -180,10 +180,10 @@ class Injection(object):
         """
         line = line.strip()
         # Making a regular expression search, returns a match object
-        print(line)
         match = re.match(TABLE_RE, line)
         if match is None:
-            print('PROBLEMS WITH THE REGULAR EXPRESSION')
+            print('PROBLEMS WITH REGULAR EXPRESSION PARSING OF THE FOLLOWING LINE')
+            print(line)
         groups = match.groups()
         if len(groups) < 7:
             raise SystemExit()
