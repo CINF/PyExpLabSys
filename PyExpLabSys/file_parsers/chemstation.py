@@ -216,7 +216,9 @@ INT32 = ENDIAN + 'i'
 
 def parse_utf16_string(file_, encoding='UTF16'):
     """Parse a pascal type UTF16 encoded string from a binary file object"""
+    # First read the expected number of CHARACTERS
     string_length = unpack(UINT8, file_.read(1))[0]
+    # Then read and decode
     parsed = unpack(STRING.format(2 * string_length),
                     file_.read(2 * string_length))
     return parsed[0].decode(encoding)
@@ -225,9 +227,22 @@ def parse_utf16_string(file_, encoding='UTF16'):
 class CHFile(object):
     """Class that implementats the Agilent .ch file format version 179
 
-    .. note:: Not all aspects of the file header is understood, so there may and probably
+    .. warning:: Not all aspects of the file header is understood, so there may and probably
        is information that is not parsed. See the method :meth:`._parse_header_status` for
        an overview of which parts of the header is understood.
+
+    .. note:: Although the fundamental storage of the actual data has change, lots of
+       inspiration for the parsing of the header has been drawn from the parser in the
+       `ImportAgilent.m file <https://github.com/chemplexity/chromatography/blob/dev/
+       Methods/Import/ImportAgilent.m>`_ in the `chemplexity/chromatography project
+       <https://github.com/chemplexity/chromatography>`_ project. All credit for the parts
+       of the header parsing that could be reused goes to the author of that project.
+
+    Attributes:
+        values (numpy.array): The internsity values (y-value) or the spectrum. The unit
+            for the values is given in `metadata['units']`
+        metadata (dict): The extracted metadata
+        filepath (str): The filepath this object was loaded from
 
     """
 
@@ -284,7 +299,7 @@ class CHFile(object):
                 self.metadata[name] = unpack(type_, file_.read(struct.calcsize(type_)))[0]
 
     def _parse_header_status(self):
-        """Documents the state of how many bytes of the header is understood"""
+        """Print known and unknown parts of the header"""
         file_ = open(self.filepath, 'rb')
 
         print('Header parsing status')
@@ -356,5 +371,5 @@ class CHFile(object):
 
     @cached_property
     def times(self):
-        """Return the time values for the data set (x-value)"""
+        """The time values (x-value) for the data set in minutes"""
         return numpy.linspace(self.metadata['start_time'], self.metadata['end_time'], len(self.values))
