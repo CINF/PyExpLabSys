@@ -1,3 +1,4 @@
+# pylint: disable=too-few-public-methods,no-member
 """File parser for Chemstation files"""
 
 from __future__ import print_function, unicode_literals, division
@@ -331,14 +332,17 @@ class CHFile(object):
 
                 # Print out the position, type, name and value of the known value
                 print('Known field at {: >4},'.format(current_position), end=' ')
-                name, position, type_ = knowns[current_position]
+                name, _, type_ = knowns[current_position]
                 if type_ == 'x-time':
-                    print('x-time, "{: <19}'.format(name + '"'), unpack(ENDIAN + 'f', file_.read(4))[0] / 60000)
+                    print('x-time, "{: <19}'.format(name + '"'),
+                          unpack(ENDIAN + 'f', file_.read(4))[0] / 60000)
                 elif type_ == 'utf16':
-                    print(' utf16, "{: <19}'.format(name + '"'), parse_utf16_string(file_))
+                    print(' utf16, "{: <19}'.format(name + '"'),
+                          parse_utf16_string(file_))
                 else:
                     size = struct.calcsize(type_)
-                    print('{: >6}, "{: <19}'.format(type_, name + '"'), unpack(type_, file_.read(size))[0])
+                    print('{: >6}, "{: <19}'.format(type_, name + '"'),
+                          unpack(type_, file_.read(size))[0])
             else:  # We do not know about a data field at this position If we have already
                 # collected 4 zero bytes, assume that we are done with this unkonw field,
                 # print and reset
@@ -350,7 +354,8 @@ class CHFile(object):
                 # Read one byte and save it
                 one_byte = file_.read(1)
                 if unknown_bytes == b'':
-                    # Only start a new collection of unknown bytes, if this byte is not a zero byte
+                    # Only start a new collection of unknown bytes, if this byte is not a
+                    # zero byte
                     if one_byte != b'\x00':
                         unknown_bytes = one_byte
                         unknown_start = file_.tell() - 1
@@ -372,4 +377,5 @@ class CHFile(object):
     @cached_property
     def times(self):
         """The time values (x-value) for the data set in minutes"""
-        return numpy.linspace(self.metadata['start_time'], self.metadata['end_time'], len(self.values))
+        return numpy.linspace(self.metadata['start_time'], self.metadata['end_time'],
+                              len(self.values))
