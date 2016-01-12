@@ -144,11 +144,12 @@ class Injection(object):
                     sample_part = line.split(':')[1].strip()
                     self.metadata['sample_name'] = sample_part
                 elif line.startswith('Injection Date'):
-                    date_part = line.split(' : ')[1]
+                    date_part, injection_part = line.split(' : ')[1: 3]
                     date_part = date_part.replace('Inj', '')
                     date_part = date_part.strip()
                     timestamp = time.strptime(date_part, '%d-%b-%y %I:%M:%S %p')
                     self.metadata['unixtime'] = time.mktime(timestamp)
+                    self.metadata['injection_number'] = int(injection_part.strip())
                 elif line.startswith('Last changed'):
                     if 'sequence_start' in self.metadata:
                         continue
