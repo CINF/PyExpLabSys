@@ -124,12 +124,15 @@ class Injection(object):
         report_filepath (str): The filepath of the report for the injection
     """
 
-    def __init__(self, injection_dirpath):
+    def __init__(self, injection_dirpath, load_raw_spectra=True):
         self.report_filepath = os.path.join(injection_dirpath, "Report.TXT")
         self.measurements = []
         self.metadata = {}
         self._parse_header()
         self._parse_file()
+        self.raw_files = {}
+        if load_raw_spectra:
+            self._load_raw_spectra(injection_dirpath)
 
     def _parse_header(self):
         """Parse a header of Report.TXT file
@@ -222,6 +225,13 @@ class Injection(object):
                 content_dict[header] = content_dict[header].strip()
 
         return content_dict
+
+    def _load_raw_spectra(self, injection_dirpath):
+        """Load all the raw spectra (.ch-files) associated with this injection"""
+        for file_ in os.listdir(injection_dirpath):
+            if os.path.splitext(file_)[1] == '.ch':
+                filepath = os.path.join(injection_dirpath, file_)
+                self.raw_files[file_] = CHFile(filepath)    
 
 
 # Constants used for binary file parsing
