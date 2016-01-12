@@ -1,6 +1,9 @@
 from __future__ import print_function
 import os
 import time
+import logging
+# logging.basicConfig(level=logging.DEBUG)  # Comment in for more logging output
+from collections import defaultdict
 from PyExpLabSys.file_parsers.chemstation import Sequence
 from PyExpLabSys.common.database_saver import DataSetSaver
 from PyExpLabSys.common.database_saver import CustomColumn
@@ -20,12 +23,13 @@ sequence_identifyer = 'sequence.acaml'
 
 for root, dirs, files in os.walk(basefolder):
     if sequence_identifyer in files:
-        #check if file is known
+        # Check if file is known
         relative_path = root.replace(basefolder, '').strip(os.sep)
         if relative_path in already_uploaded:
             continue
 
-        print('Found new sequence for upload: {}'.format(relative_path), end='')
+        # Load the sequence
+        print('Found new sequence for upload: {} '.format(relative_path))
         try:
             sequence = Sequence(root)
         except ValueError as exception:
@@ -34,23 +38,61 @@ for root, dirs, files in os.walk(basefolder):
                 continue
             else:
                 raise exception
+
+        # Upload the sequence summary data
         metadata = sequence.metadata.copy()
         metadata['relative_path'] = relative_path
         metadata['time'] = CustomColumn(time.mktime(metadata.pop('sequence_start')), 'FROM_UNIXTIME(%s)')
-        metadata['type'] = 14
+        metadata['type'] = 20
         data_set = sequence.full_sequence_dataset() 
         
-        for label,data in data_set.items():
+        for label, data in data_set.items():
             data_set_metadata = metadata.copy()
             data_set_metadata['label'] = label  
             codename = relative_path+label
-            x,y = zip(*data)
+            x, y = zip(*data)
             data_set_saver.add_measurement(codename, data_set_metadata)
             data_set_saver.save_points_batch(codename, x, y)
-        print(' ... UPLOADED')
-        #upload file    
+        print('   Summary datasets uploaded........: {}'.format(len(data_set)))
 
+        # Upload the raw spectra
+        raw_spectra = defaultdict(list)
+        for injection in sequence.injections:
+            for detector_name, rawfile in injection.raw_files.items():
+                raw_spectra[detector_name].append((injection.metadata['injection_number'], rawfile))
+
+        for detector, spectra in raw_spectra.items():
+            for injection, spectrum in spectra:
+                metadata_translation = (
+                    ('sample', 'sample_name'),
+                    ('method', 'method_name'),
+                    ('units', 'unit'),
+                    ('detector', 'detector'),
+                )
+                metadata_raw = {new: spectrum.metadata[orig] for orig, new in metadata_translation}
+                metadata_raw.update({
+                    'relative_path': relative_path,
+                    'injection': injection,
+                    'label': detector.split('.')[0] + ' Inj. ' + str(injection),
+                    'type': 21,
+                    'time': CustomColumn(time.mktime(spectrum.metadata['datetime']), 'FROM_UNIXTIME(%s)'),
+                })
+
+                codename = metadata_raw['relative_path'] + metadata_raw['label']
+                data_set_saver.add_measurement(codename, metadata_raw)
+                data_set_saver.save_points_batch(codename, spectrum.times, spectrum.values)
+
+            print('   Uploaded raw spectra for {: <8}: {}'.format(detector, len(spectra)))
+            data_set_saver.wait_for_queue_to_empty()
+
+
+        print('   DONE')
+
+
+# Enable logging at this point to show the user that they are waiting for the saver to save information
+logging.basicConfig(level=logging.INFO)
 data_set_saver.stop()
+print('ALL DONE')
        
 
 
