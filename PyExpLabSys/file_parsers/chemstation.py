@@ -278,6 +278,8 @@ class CHFile(object):
     # Fields is a table of name, offset and type. Types 'x-time' and 'utf16' are specially
     # handled, the rest are format arguments for struct unpack
     fields = (
+        ('sequence_line_or_injection', 252, UINT16),
+        ('injection_or_sequence_line', 256, UINT16),
         ('start_time', 282, 'x-time'),
         ('end_time', 286, 'x-time'),
         ('version_string', 326, 'utf16'),
@@ -326,6 +328,9 @@ class CHFile(object):
                 self.metadata[name] = unpack(ENDIAN + 'f', file_.read(4))[0] / 60000
             else:
                 self.metadata[name] = unpack(type_, file_.read(struct.calcsize(type_)))[0]
+
+        # Convert date
+        self.metadata['datetime'] = time.strptime(self.metadata['date'], '%d-%b-%y, %H:%M:%S')
 
     def _parse_header_status(self):
         """Print known and unknown parts of the header"""
