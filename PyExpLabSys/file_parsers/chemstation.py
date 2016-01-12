@@ -75,27 +75,44 @@ class Sequence(object):
         """Generate molecule ('PeakName') specific dataset"""
         data = defaultdict(list)
         start_time = self.injections[0].metadata['unixtime']
+
         for injection in self.injections:
             elapsed_time = injection.metadata['unixtime'] - start_time
+            # Unknowns is used to sum up unknown values for a detector
+            unknowns = defaultdict(float)
+
             for measurement in injection.measurements:
-                label = self.generate_data_label(measurement)
-                data[label].append([elapsed_time, measurement['Area']])
+                label = self._generate_label(data, measurement)
+                # If it is a unknown peak, add the area
+                if label.endswith('?'):
+                    unknowns[label] += measurement['Area']
+                else:
+                    data[label].append([elapsed_time, measurement['Area']])
+
+            # Add the summed unknown values for this injection
+            for key, value in unknowns.items():
+                data[key].append([elapsed_time, value])
+
         return data
 
-    @staticmethod
-    def generate_data_label(measurement):
-        """Return a label for a measurement
-
-        For known molecule measurement gets detector-PeakName as label. For unnamed peaks
-        label will be Unnamed and 0.01bin RetTime
-        """
+    def _generate_label(self, data, measurement):
+        """Generate a label"""
+        # Base label e.g: "FID1 A  - CH4" or "TCD3 C  - ?"
+        label = '{detector}  - {PeakName}'.format(**measurement)
         if measurement['PeakName'] == '?':
-            lower = math.floor(measurement['RetTime'] * 100.0) / 100.0
-            upper = math.ceil(measurement['RetTime'] * 100.0) / 100.0
-            return '{detector}  - ? {:.2f}-{:.2f}'.format(lower, upper, **measurement)
-        else:
-            # **measurement  turns into PeakName=..., detector=..., Type=...
-            return '{detector}  - {PeakName}'.format(**measurement)
+            return label
+
+        # Check whether we already have a label for this detector, molecule
+        for existing_label in data:
+            # Existing label is something like: "FID2 B  - CO2 (12.071)"
+            # Extract the base label part from that
+            existing_base_label = existing_label.split('(')[0].rstrip()
+            if existing_base_label == label:
+                return existing_label
+
+        # For an known peak that we do not alread know about, add the retention time to
+        # the label
+        return '{} ({})'.format(label, measurement['RetTime'])
 
 
 class Injection(object):
