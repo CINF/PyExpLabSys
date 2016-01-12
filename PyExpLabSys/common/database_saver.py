@@ -455,6 +455,7 @@ class SqlSaver(threading.Thread):
         self.password = password
         self.commits = 0
         self.commit_time = 0
+        self._stop_called = False  # Only used to modify logging output
 
         # Set queue or initialize a new one
         if queue is None:
@@ -471,8 +472,10 @@ class SqlSaver(threading.Thread):
 
     def stop(self):
         """Add stop word to queue to exit the loop when the queue is empty"""
-        SQL_SAVER_LOG.info('stop called')
+        SQL_SAVER_LOG.info('stop called. Wait for %s elements remaining in the queue to '
+                           'be sent to the database', self.queue.qsize())
         self.queue.put(('STOP', None))
+        self._stop_called = True
         # Make sure to wait untill it is closed down to return, otherwise we are going to
         # tear down the environment around it
         while self.isAlive():
@@ -488,7 +491,7 @@ class SqlSaver(threading.Thread):
                 to be formatted into the query. ``query`` and ``query_args`` in combination
                 are the arguments to cursor.execute.
         """
-        SQL_SAVER_LOG.debug('Enqueue query \'%s\' with args: %s', query, query_args)
+        SQL_SAVER_LOG.debug('Enqueue query\n\'%.70s...\'\nwith args: %.60s...', query, query_args)
         self.queue.put((query, query_args))
 
     def run(self):
@@ -497,14 +500,24 @@ class SqlSaver(threading.Thread):
         while True:
             start = time.time()
             query, args = self.queue.get()
+
+            # If stop has been called this log output is elavated to info level, because
+            # if not the user os waiting without information and may think that the
+            # process hangs
+            if self._stop_called:
+                SQL_SAVER_LOG.info('Dequeued element, %s remaining', self.queue.qsize())
+            else:
+                SQL_SAVER_LOG.debug('Dequeued element, %s remaining', self.queue.qsize())
+
             if query == 'STOP': # Magic key-word to stop Sql Saver
                 break
+
             success = False
             while not success:
                 try:
                     self.cursor.execute(query, args=args)
                     success = True
-                    SQL_SAVER_LOG.debug('Executed query \'%s\' with args: %s', query, args)
+                    SQL_SAVER_LOG.debug('Executed query\n\'%.70s\'\nwith args: %.60s', query, args)
                 except MySQLdb.OperationalError: # Failed to perfom commit
                     SQL_SAVER_LOG.error(
                         'Executing a query raised an MySQLdb.OperationalError. Make new '
