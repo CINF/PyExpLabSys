@@ -194,14 +194,22 @@ class DataSetSaver(object):
         query_args.extend(point)
         self.sql_saver.enqueue_query(self.insert_point_query, query_args)
 
-    def save_points_batch(self, codename, x_values, y_values, batchsize=100):
+    def save_points_batch(self, codename, x_values, y_values, batchsize=1000):
         """Save a number points for the same codename in batches
 
         Args:
             codename (str): The codename for the measurement to save the points for
             x_values (sequence): A sequence of x values
             y_values (sequence): A sequence of y values
-            batchsize (int): The number of points to send in the same batch
+            batchsize (int): The number of points to send in the same batch. Defaults to
+                1000, see the warning below before changing it
+
+        .. warning:: The batchsize is ultimately limited by the max package size that the
+           MySQL server will receive. The default is 1MB. Each point amounts to around 60
+           bytes in the final query. Rounding this up to 100, means that the limit is
+           ~10000 points. This means that the default of 1000 should be safe and that if
+           it is changed by the user, expect problems if exceeding the lower 10000ths.
+
         """
         DSS_LOG.debug('For codename \'%s\' save %s points in batches of %s',
                       codename, len(x_values), batchsize)
@@ -270,6 +278,14 @@ class DataSetSaver(object):
         self.connection.close()
         self.sql_saver.stop()
         DSS_LOG.debug('stopped')
+
+    def wait_for_queue_to_empty(self):
+        """Wait for the query queue in the SqlSaver to empty
+
+        This purpose of this method is to avoid usgin too much memory when uploading large
+        amount of data.
+        """
+        self.sql_saver.wait_for_queue_to_empty()
 
 
 CDS_LOG = logging.getLogger(__name__ + '.ContinuousDataSaver')
@@ -510,3 +526,12 @@ class SqlSaver(threading.Thread):
 
         self.connection.close()
         SQL_SAVER_LOG.debug('run stopped')
+
+    def wait_for_queue_to_empty(self):
+        """Wait for the queue to empty
+
+        This purpose of this method is to avoid using too much memory when uploading large
+        amount of data.
+        """
+        while self.queue.qsize() > 0:
+            time.sleep(0.01)
