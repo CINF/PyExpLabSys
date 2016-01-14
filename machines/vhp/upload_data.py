@@ -7,10 +7,12 @@ from collections import defaultdict
 from PyExpLabSys.file_parsers.chemstation import Sequence
 from PyExpLabSys.common.database_saver import DataSetSaver
 from PyExpLabSys.common.database_saver import CustomColumn
+import credentials
 
 
 # Instantiate the data set saver
-data_set_saver = DataSetSaver('measurements_dummy','xy_values_dummy','dummy','dummy')
+data_set_saver = DataSetSaver('measurements_vhp_setup', 'xy_values_vhp_setup',
+                              credentials.USERNAME, credentials.PASSWORD)
 data_set_saver.start()
 
 # Get the set of aleady uploaded files
@@ -44,6 +46,10 @@ for root, dirs, files in os.walk(basefolder):
         metadata['relative_path'] = relative_path
         metadata['time'] = CustomColumn(time.mktime(metadata.pop('sequence_start')), 'FROM_UNIXTIME(%s)')
         metadata['type'] = 20
+        # We don't use these columns, but they are setup in the database without default
+        # values, so to avoid warnings we fill them in
+        metadata['sem_voltage'] = 0.0
+        metadata['preamp_range'] = 0.0
         data_set = sequence.full_sequence_dataset() 
         
         for label, data in data_set.items():
@@ -78,13 +84,17 @@ for root, dirs, files in os.walk(basefolder):
                     'time': CustomColumn(time.mktime(spectrum.metadata['datetime']), 'FROM_UNIXTIME(%s)'),
                 })
 
+                # We don't use these columns, but they are setup in the database without default
+                # values, so to avoid warnings we fill them in
+                metadata_raw['sem_voltage'] = 0.0
+                metadata_raw['preamp_range'] = 0.0
+
                 codename = metadata_raw['relative_path'] + metadata_raw['label']
                 data_set_saver.add_measurement(codename, metadata_raw)
                 data_set_saver.save_points_batch(codename, spectrum.times, spectrum.values)
 
             print('   Uploaded raw spectra for {: <8}: {}'.format(detector, len(spectra)))
             data_set_saver.wait_for_queue_to_empty()
-
 
         print('   DONE')
 
