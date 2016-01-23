@@ -30,8 +30,8 @@ from PyExpLabSys.drivers.cpx400dp import CPX400DPDriver
 #import PyExpLabSys.drivers.omega_cni as omega_CNi32
 #import PyExpLabSys.drivers.kampstrup as kampstrup
 
-logging.basicConfig(filename="logger_mydgitalinout.txt", level=logging.INFO)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename="logger_mydgitalinout.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
 
 
 import random
@@ -314,3 +314,14 @@ if __name__ == '__main__':
             DGIO.quit = True
     print('END')
     
+    #codenames = ['tabs_guard_valve_heating',
+    #                 'tabs_floor_valve_heating',
+    #                 'tabs_ceiling_valve_heating',
+    #                 'tabs_guard_valve_cooling',
+    #                 'tabs_floor_valve_cooling',
+    #                 'tabs_ceiling_valve_cooling',
+    #                 'tabs_cooling_valve_cooling',
+    #                 ]
+    #VC = ValveControl(codenames)
+    #VC.omegaAO['tabs_cooling_valve_cooling'].set_value(0)
+    #VC.omegaAO['tabs_cooling_valve_cooling'].get_value()
