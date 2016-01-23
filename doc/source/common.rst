@@ -10,7 +10,8 @@ of the other categories like ``drivers`` and ``parsers``.
 .. that is below this level, which is contained in the files below.
 .. toctree::
     :maxdepth: 4
-    
+
+    common/database_saver.rst
     common/continuous_logger.rst
     common/plotters.rst
     common/sockets.rst

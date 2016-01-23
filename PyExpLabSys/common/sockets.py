@@ -1268,7 +1268,7 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
            socket servers.
         """
         # pylint: disable=attribute-defined-outside-init
-        command = self.request[0]
+        command = self.request[0].decode('ascii')
         self.port = self.server.server_address[1]
         sock = self.request[1]
         LUHLOG.debug('Request \'{}\' received from {} on port {}'
@@ -1293,7 +1293,7 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
         else:
             data = UNKNOWN_COMMAND
 
-        sock.sendto(data, self.client_address)
+        sock.sendto(data.encode('ascii'), self.client_address)
         LUHLOG.debug('Sent back: \'{}\''.format(data))
 
 
