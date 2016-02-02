@@ -192,7 +192,7 @@ if __name__ == "__main__":
         status_string += host[6] + "|"
         status_string += host[7] + "|"
         status_string += str(host[8]) + "|"
-        status_string += host[9] + "|"
+        status_string += str(host[9]) + "|"
         status_string += host[10]
         status_string += "\n"
     print(status_string)
