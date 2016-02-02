@@ -18,6 +18,21 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(1, os.path.join(os.path.abspath('.'), '..', '..'))
 
+# If we are on read the docs, generate the overview. This is normally
+# done by the make file, but that does not get executed on read the docs
+if os.environ.get('READTHEDOCS', None) == 'True':
+    print 'Generating: overview.rst'
+    # Add the dir of conf.py temporarily
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    sys.path.append(this_dir)
+
+    # Import generate function and execute
+    from generate_py3_stat import generate_py3_stat
+    generate_py3_stat()
+
+    # Pop this dir of import path again
+    sys.path.pop()
+
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -100,7 +115,8 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+if not (os.environ.get('READTHEDOCS', None) == 'True'):
+    html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -253,3 +269,13 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+
+# Make sure we always document __init__
+def skip(app, what, name, obj, skip, options):
+    if name == "__init__":
+        return False
+    return skip
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)

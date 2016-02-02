@@ -36,6 +36,7 @@ class HIH6130(object):
         temp_calibrated = (temp * 165.0 / (2**14-1)) - 40
         return(hum_calibrated, temp_calibrated)
 
-    
-HIH  = HIH6130()
-print HIH.read_values()
+
+if __name__ == '__main__':
+    HIH  = HIH6130()
+    print(HIH.read_values())

@@ -17,7 +17,7 @@ class Multical302(object):
     """Driver for the Kamstrup Multical 302"""
 
     def __init__(self, port):
-        self.comm = minimalmodbus.Instrument(port, 0)#, minimalmodbus.MODE_ASCII)
+        self.comm = minimalmodbus.Instrument(port, 14)#, minimalmodbus.MODE_ASCII)
         self.comm.serial.baudrate = 2400
         self.comm.serial.parity = serial.PARITY_NONE#EVEN
         self.comm.serial.timeout = 0.5
@@ -84,7 +84,8 @@ class Multical302(object):
         return result
 
 if __name__ == '__main__':
-    port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
+    #port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
+    port = '/dev/serial/by-id/usb-Silicon_Labs_Kamstrup_M-Bus_Master_MultiPort_250D_131751521-if00-port0'
     multical = Multical302(port)
     #multical.read_value('Temp1')
     multical.read_temp()

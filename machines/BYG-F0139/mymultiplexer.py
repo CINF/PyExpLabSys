@@ -29,6 +29,10 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
+logging.basicConfig(filename="logger_mymultiplexer.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
+
+# this list consist of codenames for a measurement, and the channel number on the multiplxer
 Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up101
                   'tabs_ceiling_temperature_supply_x03': 102, # Tref_up102
                   'tabs_floor_thermopile_supplyreturn_x05': 103, # DT_low103
@@ -54,14 +58,14 @@ Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up
                   
                   #'None': 201
                   'tabs_room_temperature_operative110': 202, # Top2_room_1.1m
-                  #'None': 203,
+                  'tabs_room_temperature_surface_panelupper': 203,
                   'tabs_room_temperature_surfacewallnorth': 204, # Tsur2_room_wall2
                   'tabs_room_temperature_aircenter170': 205, # Tair4_room_1.7m
                   'tabs_room_temperature_aircenter060': 206, # Tair2_room_0.6m
                   'tabs_room_temperature_surface_wallsouth': 207, # Tsur1_room_wall1
                   'tabs_room_temperature_surface_ceilingcenter': 208, # Tsur4_room_ceiling1
-                  #'None': 209,
-                  #'None': 210,
+                  'tabs_ventilation_temperature_inlet': 209,
+                  'tabs_ventilation_temperature_outlet': 210,
                   'tabs_room_temperature_surface_ceilingnearjunction': 211, # Tsur5_room_ceiling2
                   #'None': 212,
                   'tabs_room_temperature_air345': 213, # air_room_0.1mTOP
@@ -97,21 +101,30 @@ Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up
                   #'None': 321,
                   #'None': 322,
                   }
+convertor_channel_list = Setting_channel_list.copy()
+for key in convertor_channel_list.keys():
+    convertor_channel_list[key] = lambda x: x
+    
+convertor_channel_list['tabs_room_heatflow_floorcenter'] = lambda x: (x * 10**6 * 3.1546)/0.18
+convertor_channel_list['tabs_room_heatflow_ceilingnearjunction'] = lambda x: (x * 10**6 * 3.1546)/0.18
+convertor_channel_list['tabs_room_heatflow_ceilingjunction'] = lambda x: (x * 10**6 * 3.1546)/0.18
+convertor_channel_list['tabs_room_heatflow_ceilingcenter'] = lambda x: (x * 10**6 * 3.1546)/0.17
 
 class MultiplexReader(threading.Thread):
     """ Temperature reader """
     def __init__(self, codenames):
+        logging.info('MultiplexReader class started')
         self.codenames = codenames
         threading.Thread.__init__(self)
         port = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
         self.Agilent = Agilent.Agilent34970ADriver(port = port)
         self.DATA = {}
         for key in self.codenames:
-            self.DATA[key] = 0.0
+            self.DATA[key] = None
         self.chnumbers = self.Agilent.read_scan_list()
         self.named_channel_list = Setting_channel_list
         self.quit = False
-        self.ttl = 20
+        self.ttl = 1000
 
     def value(self, channel):
         """ Read the pressure """
@@ -135,28 +148,24 @@ class MultiplexReader(threading.Thread):
             #print(chs)
             values = response[0::4]
             #print(values)
-            self.ttl = 100
+            self.ttl = 1000
         except:
-            print('Cant connect to agilent')
+            logging.warn('Connection error to agilent')
             response = None
         if response != None:
             for ch, value in zip(chs, values):
                 #print(ch, value)
                 if ch in self.named_channel_list.values():
-                    for k, v in self.named_channel_list.items():
+                    for codename, v in self.named_channel_list.items():
                         if ch == v:
-                            codename = k
+                            self.DATA[codename] = convertor_channel_list[codename](value)
                             break
-                    if False and codename in ['tabs_ceiling_temperature_delta', 'tabs_floor_temperature_delta']:
-                        self.DATA[codename] = TC_Calculator(value*1000, No=3, tctype='K')
-                    else:
-                        self.DATA[codename] = value
-                    #print(codename, self.DATA[codename])
+        return None
 
     def run(self):
         while not self.quit:            
             self.update_values()
-            time.sleep(20)
+            time.sleep(60)
             
     def stop(self,):
         self.quit = True
@@ -170,6 +179,7 @@ class MultiplexReader(threading.Thread):
 class MainMultilogger(threading.Thread):
     """ Temperature reader """
     def __init__(self,):
+        logging.info('MainMultilogger class started')
         threading.Thread.__init__(self)
         #from datalogger import TemperatureReader
         self.quit = False
@@ -192,6 +202,7 @@ class MainMultilogger(threading.Thread):
                           
                           ]"""
         self.multiplex_reader = MultiplexReader(self.codenames)
+        self.multiplex_reader.daemon = True
         self.multiplex_reader.start()
         #omega_temperature.update_values()
         
@@ -200,7 +211,7 @@ class MainMultilogger(threading.Thread):
         chlist = Setting_channel_list
         self.loggers = {}
         for key in self.codenames:
-            self.loggers[key] = ValueLogger(self.multiplex_reader, comp_val = 0.5, maximumtime=600,
+            self.loggers[key] = ValueLogger(self.multiplex_reader, comp_val = 0.5, maximumtime=300,
                                             comp_type = 'lin', channel = chlist[key])
             self.loggers[key].start()
         
@@ -224,7 +235,7 @@ class MainMultilogger(threading.Thread):
                     #livesocket.set_point_now(name, v)
                     self.PullSocket.set_point_now(name, v)
                     #print(i, name, v)
-                    if self.loggers[name].read_trigged() and abs(v) < 9.9E+5:
+                    if self.loggers[name].read_trigged() and abs(v) < 9.9E+5 and v != None:
                         if __name__ == '__main__':
                             print('Log: ', i, name, v)
                         #print(name, v)
@@ -236,6 +247,8 @@ class MainMultilogger(threading.Thread):
                 #self.omega_temperature.close()
                 #report error and proceed
             i += 1
+        self.stop()
+        
     def stop(self):
         self.quit = True
         self.multiplex_reader.stop()
@@ -253,6 +266,6 @@ if __name__ == '__main__':
         try:
             time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
-            MML.stop()
+            MML.quit = True
     #print('END')
     

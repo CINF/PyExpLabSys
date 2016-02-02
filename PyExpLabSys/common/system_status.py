@@ -205,7 +205,7 @@ class SystemStatus(object):
         """Return the temperature of a Raspberry Pi"""
         #Firmware bug in Broadcom chip craches raspberry pi when reading temperature
         #and using i2c at the same time
-        if os.path.exists('/dev/i2c-1'):
+        if os.path.exists('/dev/i2c-0') or os.path.exists('/dev/i2c-1'):
             return None
         # Get temperature string
         try:

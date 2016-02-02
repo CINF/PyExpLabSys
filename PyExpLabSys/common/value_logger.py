@@ -56,7 +56,7 @@ class ValueLogger(threading.Thread):
                                        < self.value
                                        < self.last['val'] *
                                        (1 + self.compare['val']))
-            except UnboundLocalError:
+            except (UnboundLocalError, TypeError):
                 #Happens when value is not yes ready from reader
                 val_trigged = False
                 time_trigged = False

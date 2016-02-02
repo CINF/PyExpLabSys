@@ -23,6 +23,9 @@
     <!-- Micro-reactor NG temperature -->
     <socket>rasppi12:8000</socket>
 
+    <!-- Micro-reactor NG mass spec -->
+    <socket>cinf-microreactorNG-ms:8000</socket>
+
     <!-- Self -->
     <socket>localhost:8000</socket>
 
@@ -33,6 +36,9 @@
     <!-- old micro reactor, Temperature of sample measured with TC -->
     <!-- mr_sample_tc_temperature -->
     <socket>rasppi12:8000</socket>
+
+    <!-- old micro-reactor mass spec -->
+    <socket>cinf-microreactor-ms:8000</socket>
 
     <!-- Old micro-reactor pressure in buffer volume (mr_buffer_pressure) AND micro-reactor NG pressure in buffer volume microreactorng_pressure_buffer -->
     <!-- mr_buffer_pressure, microreactorng_pressure_buffer -->
@@ -107,5 +113,8 @@
 
     <!-- b312 Temperature and ventilation pressure -->
     <socket>rasppi66:8000</socket>
+
+    <!-- Liveplot as mass-spec data for leak searching -->
+    <socket>cinf-volvo:8000</socket>
 
 </sockets>

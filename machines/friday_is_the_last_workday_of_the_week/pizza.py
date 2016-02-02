@@ -40,7 +40,7 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
         self.active_on_logged_in = (
             'btn_deposite', 'btn_withdraw', 'btn_logout',
             'label_amount', 'label_history', 'label_balance',
-            'text_history', 'spinbox_amount',
+            'spinbox_amount',
         )
         self.inactive_on_logged_in = (
             'label_enter_username', 'lineedit_username', 'btn_login',
@@ -48,8 +48,8 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
 
         # First time setup
         self.set_logged_in(False)
-        self.greeting = 'Please log in'
-        self.text_history.setPlainText(self.greeting)
+        self.text_history.setPlainText('')
+        self.text_history.appendHtml(self.pizza_core.format_todays_status())
 
         # Setup timeout updater
         self.timeout = 20
@@ -102,7 +102,8 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
         self.login_time = None
         self.lcd_timeout.display(0)
         self.pizza_core.logout()
-        self.text_history.setPlainText(self.greeting)
+        self.text_history.setPlainText('')
+        self.text_history.appendHtml(self.pizza_core.format_todays_status())
         self.set_balance(0)
         self.spinbox_amount.setValue(0)
         self.set_logged_in(False)
@@ -286,6 +287,49 @@ class PizzaCore(object):
         except self.dbmodule.Error:
             return False
 
+    def format_todays_status(self):
+        """Get the transactions of the day"""
+        status = '<h1> Ready to log in </h1>'
+
+        status += '<br><h1>Pizza box status</h1>'
+
+        # Add sum of all time
+        self.cursor.execute(
+            'SELECT sum(amount) FROM pizza_transactions'
+        )
+        all_time_sum = self.cursor.fetchone()[0]
+        status += '<p>All time sum (money box balance): <b>{}</b></p>'.format(all_time_sum)
+        status += '<br><h2>Todays transactions:</h2>'
+        status += '<pre>'
+        self.cursor.execute(
+            'SELECT * FROM pizza_transactions '
+            'WHERE date(time) = date(now()) ORDER BY TIME DESC'
+        )
+        for transaction in self.cursor.fetchall():
+            # A status looks like:
+            # (297L, 'kenni', datetime.datetime(2015, 11, 20, 8, 56, 17), -50.0)
+
+            timestamp = transaction[2]
+            if timestamp.hour >= 11 and transaction[3] < 0:
+                status += 'Uh oh ---> {2:%H:%M:%S}  {1: <10} '\
+                          '{3: >7.2f}\n'.format(*transaction)
+            else:
+                status += '           {2:%H:%M:%S}  {1: <10} '\
+                          '{3: >7.2f}\n'.format(*transaction)
+
+
+        self.cursor.execute(
+            'SELECT sum(amount) FROM pizza_transactions WHERE date(time) = date(now())'
+        )
+        todays_sum = self.cursor.fetchone()[0]
+        if todays_sum is None:
+            todays_sum = 0
+        status += '\nTodays sum....................: '\
+                  '{: >7.2f}\n'.format(todays_sum)
+        status += '</pre>'
+
+        return status
+
 
 class InvalidUsername(Exception):
     """Exception used when attempting to log an invalid user in"""
@@ -302,7 +346,7 @@ def main():
 def test():
     """Test function"""
     core = PizzaCore()
-    print(core.login('kenni'))
+    core.format_todays_status()
 
 
 if __name__ == '__main__':

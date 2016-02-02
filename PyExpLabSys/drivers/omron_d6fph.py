@@ -1,4 +1,4 @@
-"Hint for implementation found at http://forum.arduino.cc/index.php?topic=285116.0 """
+"""Hint for implementation found at http://forum.arduino.cc/index.php?topic=285116.0 """
 
 import smbus
 import time
@@ -42,7 +42,9 @@ class OmronD6fph(object):
         value = self.read_value([0xD0, 0x61, 0x2C])
         temperature = (value - 10214) / 37.39
         return temperature
-    
-OMRON = OmronD6fph()
-print(OMRON.read_pressure())
-print(OMRON.read_temperature())
+
+
+if __name__ == '__main__':    
+    OMRON = OmronD6fph()
+    print(OMRON.read_pressure())
+    print(OMRON.read_temperature())

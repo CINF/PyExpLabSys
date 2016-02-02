@@ -27,6 +27,19 @@ def new():
     data = {}
     try:
         data['barcode'] = read_barcode()
+
+        # Check if in database, the database query will return and empty tuple
+        # if it does not know about the beer, therefore, we check for an
+        # IndexError and let it proceed, if it occours. If no exception is
+        # raised, the beer is known and we return
+        try:
+            BAR_DATABASE.get_item(data['barcode'])
+        except IndexError:
+            pass
+        else:
+            print 'Beer already exist in database. Update instead!'
+            return
+        
         message = 'type price: '
         data['price'] = input_with_type(message, int)
         message = 'type name of beer: '
