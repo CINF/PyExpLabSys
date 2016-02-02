@@ -9,6 +9,9 @@ import PyExpLabSys.drivers.pfeiffer_qmg422 as qmg422
 import PyExpLabSys.apps.qms.qms as ms
 import PyExpLabSys.apps.qms.qmg_status_output as qmg_status_output
 import PyExpLabSys.apps.qms.qmg_meta_channels as qmg_meta_channels
+from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
@@ -27,8 +30,12 @@ class MassSpec(object):
             self.qmg = qmg420.qmg_420(settings.port)
         if settings.qmg == '422':
             self.qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
+
+        livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'], 1)
+        livesocket.start()
+
         self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
-                          credentials=settings.username)
+                          credentials=settings.username, livesocket=livesocket)
         self.qmg.reverse_range = settings.reverse_range
         self.printer = qmg_status_output.qms_status_output(self.qms,
                                                            sql_saver_instance=self.data_saver)
@@ -74,7 +81,9 @@ class MassSpec(object):
         
 if __name__ == '__main__':
     MS = MassSpec()
+    #MS.sem_and_filament(True)
+    #time.sleep(10)
     MS.leak_search()
-    #MS.mass_scan(10, 5)
+    #MS.mass_scan(0, 50)
     #MS.mass_time_scan()
     #MS.mass_scan(10, 5)
