@@ -259,10 +259,10 @@ def main():
     pcc.daemon = True
     pcc.start()
 
-    heater = HeaterClass(P, Pullsocket, PS)
+    heater = HeaterClass(pcc, Pullsocket, PS)
     heater.start()
 
-    tui = CursesTui(H)
+    tui = CursesTui(heater)
     tui.daemon = True
     tui.start()
 
