@@ -39,4 +39,4 @@ class HIH6130(object):
 
 if __name__ == '__main__':
     HIH  = HIH6130()
-    print HIH.read_values()
+    print(HIH.read_values())

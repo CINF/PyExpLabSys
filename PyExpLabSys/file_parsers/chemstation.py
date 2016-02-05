@@ -1,6 +1,7 @@
+# pylint: disable=too-few-public-methods,no-member
 """File parser for Chemstation files"""
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function, unicode_literals, division
 from collections import defaultdict
 
 import codecs
@@ -8,8 +9,13 @@ import re
 import os
 import time
 import math
+import struct
+from struct import unpack
 from xml.etree import ElementTree
 
+import numpy
+
+from PyExpLabSys.thirdparty.cached_property import cached_property
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
@@ -18,7 +24,7 @@ python2_and_3(__file__)
 # () denotes a group that we want to capture
 # [] denotes a group of characters to match
 # * repeats the previous group if character
-TABLE_RE = (r'^ *([0-9]*) *([0-9\.e-]*)([A-Z ]*)([0-9\.e-]*) *([0-9e\.]*) *([0-9e\.]*) '
+TABLE_RE = (r'^ *([0-9]*) *([0-9\.e-]*)([A-Z ]*)([0-9\.e-]*) *([0-9\.e-]*) *([0-9e\.]*) '
             r'*([a-zA-Z0-9\?]*)$')
 
 
@@ -69,27 +75,44 @@ class Sequence(object):
         """Generate molecule ('PeakName') specific dataset"""
         data = defaultdict(list)
         start_time = self.injections[0].metadata['unixtime']
+
         for injection in self.injections:
             elapsed_time = injection.metadata['unixtime'] - start_time
+            # Unknowns is used to sum up unknown values for a detector
+            unknowns = defaultdict(float)
+
             for measurement in injection.measurements:
-                label = self.generate_data_label(measurement)
-                data[label].append([elapsed_time, measurement['Area']])
+                label = self._generate_label(data, measurement)
+                # If it is a unknown peak, add the area
+                if label.endswith('?'):
+                    unknowns[label] += measurement['Area']
+                else:
+                    data[label].append([elapsed_time, measurement['Area']])
+
+            # Add the summed unknown values for this injection
+            for key, value in unknowns.items():
+                data[key].append([elapsed_time, value])
+
         return data
 
-    @staticmethod
-    def generate_data_label(measurement):
-        """Return a label for a measurement
-
-        For known molecule measurement gets detector-PeakName as label. For unnamed peaks
-        label will be Unnamed and 0.01bin RetTime
-        """
+    def _generate_label(self, data, measurement):
+        """Generate a label"""
+        # Base label e.g: "FID1 A  - CH4" or "TCD3 C  - ?"
+        label = '{detector}  - {PeakName}'.format(**measurement)
         if measurement['PeakName'] == '?':
-            lower = math.floor(measurement['RetTime'] * 100.0) / 100.0
-            upper = math.ceil(measurement['RetTime'] * 100.0) / 100.0
-            return '{detector}  - ? {:.2f}-{:.2f}'.format(lower, upper, **measurement)
-        else:
-            # **measurement  turns into PeakName=..., detector=..., Type=...
-            return '{detector}  - {PeakName}'.format(**measurement)
+            return label
+
+        # Check whether we already have a label for this detector, molecule
+        for existing_label in data:
+            # Existing label is something like: "FID2 B  - CO2 (12.071)"
+            # Extract the base label part from that
+            existing_base_label = existing_label.split('(')[0].rstrip()
+            if existing_base_label == label:
+                return existing_label
+
+        # For an known peak that we do not alread know about, add the retention time to
+        # the label
+        return '{} ({})'.format(label, measurement['RetTime'])
 
 
 class Injection(object):
@@ -101,12 +124,15 @@ class Injection(object):
         report_filepath (str): The filepath of the report for the injection
     """
 
-    def __init__(self, injection_dirpath):
+    def __init__(self, injection_dirpath, load_raw_spectra=True):
         self.report_filepath = os.path.join(injection_dirpath, "Report.TXT")
         self.measurements = []
         self.metadata = {}
         self._parse_header()
         self._parse_file()
+        self.raw_files = {}
+        if load_raw_spectra:
+            self._load_raw_spectra(injection_dirpath)
 
     def _parse_header(self):
         """Parse a header of Report.TXT file
@@ -121,11 +147,12 @@ class Injection(object):
                     sample_part = line.split(':')[1].strip()
                     self.metadata['sample_name'] = sample_part
                 elif line.startswith('Injection Date'):
-                    date_part = line.split(' : ')[1]
+                    date_part, injection_part = line.split(' : ')[1: 3]
                     date_part = date_part.replace('Inj', '')
                     date_part = date_part.strip()
                     timestamp = time.strptime(date_part, '%d-%b-%y %I:%M:%S %p')
                     self.metadata['unixtime'] = time.mktime(timestamp)
+                    self.metadata['injection_number'] = int(injection_part.strip())
                 elif line.startswith('Last changed'):
                     if 'sequence_start' in self.metadata:
                         continue
@@ -180,10 +207,10 @@ class Injection(object):
         """
         line = line.strip()
         # Making a regular expression search, returns a match object
-        print(line)
         match = re.match(TABLE_RE, line)
         if match is None:
-            print('PROBLEMS WITH THE REGULAR EXPRESSION')
+            print('PROBLEMS WITH REGULAR EXPRESSION PARSING OF THE FOLLOWING LINE')
+            print(line)
         groups = match.groups()
         if len(groups) < 7:
             raise SystemExit()
@@ -198,3 +225,190 @@ class Injection(object):
                 content_dict[header] = content_dict[header].strip()
 
         return content_dict
+
+    def _load_raw_spectra(self, injection_dirpath):
+        """Load all the raw spectra (.ch-files) associated with this injection"""
+        for file_ in os.listdir(injection_dirpath):
+            if os.path.splitext(file_)[1] == '.ch':
+                filepath = os.path.join(injection_dirpath, file_)
+                self.raw_files[file_] = CHFile(filepath)    
+
+
+# Constants used for binary file parsing
+ENDIAN = '>'
+STRING = ENDIAN + '{}s'
+UINT8 = ENDIAN + 'B'
+UINT16 = ENDIAN + 'H'
+INT16 = ENDIAN + 'h'
+INT32 = ENDIAN + 'i'
+
+
+def parse_utf16_string(file_, encoding='UTF16'):
+    """Parse a pascal type UTF16 encoded string from a binary file object"""
+    # First read the expected number of CHARACTERS
+    string_length = unpack(UINT8, file_.read(1))[0]
+    # Then read and decode
+    parsed = unpack(STRING.format(2 * string_length),
+                    file_.read(2 * string_length))
+    return parsed[0].decode(encoding)
+
+
+class CHFile(object):
+    """Class that implementats the Agilent .ch file format version 179
+
+    .. warning:: Not all aspects of the file header is understood, so there may and probably
+       is information that is not parsed. See the method :meth:`._parse_header_status` for
+       an overview of which parts of the header is understood.
+
+    .. note:: Although the fundamental storage of the actual data has change, lots of
+       inspiration for the parsing of the header has been drawn from the parser in the
+       `ImportAgilent.m file <https://github.com/chemplexity/chromatography/blob/dev/
+       Methods/Import/ImportAgilent.m>`_ in the `chemplexity/chromatography project
+       <https://github.com/chemplexity/chromatography>`_ project. All credit for the parts
+       of the header parsing that could be reused goes to the author of that project.
+
+    Attributes:
+        values (numpy.array): The internsity values (y-value) or the spectrum. The unit
+            for the values is given in `metadata['units']`
+        metadata (dict): The extracted metadata
+        filepath (str): The filepath this object was loaded from
+
+    """
+
+    # Fields is a table of name, offset and type. Types 'x-time' and 'utf16' are specially
+    # handled, the rest are format arguments for struct unpack
+    fields = (
+        ('sequence_line_or_injection', 252, UINT16),
+        ('injection_or_sequence_line', 256, UINT16),
+        ('start_time', 282, 'x-time'),
+        ('end_time', 286, 'x-time'),
+        ('version_string', 326, 'utf16'),
+        ('description', 347, 'utf16'),
+        ('sample', 858, 'utf16'),
+        ('operator', 1880, 'utf16'),
+        ('date', 2391, 'utf16'),
+        ('inlet', 2492, 'utf16'),
+        ('instrument', 2533, 'utf16'),
+        ('method', 2574, 'utf16'),
+        ('software version', 3601, 'utf16'),
+        ('software name', 3089, 'utf16'),
+        ('software revision', 3802, 'utf16'),
+        ('units', 4172, 'utf16'),
+        ('detector', 4213, 'utf16'),
+        ('yscaling', 4732, ENDIAN + 'd')
+    )
+    # The start position of the data
+    data_start = 6144
+    # The versions of the file format supported by this implementation
+    supported_versions = {179}
+
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.metadata = {}
+        with open(self.filepath, 'rb') as file_:
+            self._parse_header(file_)
+            self.values = self._parse_data(file_)
+
+    def _parse_header(self, file_):
+        """Parse the header"""
+        # Parse and check version
+        length = unpack(UINT8, file_.read(1))[0]
+        parsed = unpack(STRING.format(length), file_.read(length))
+        version = int(parsed[0])
+        if not version in self.supported_versions:
+            raise ValueError('Unsupported file version {}'.format(version))
+        self.metadata['magic_number_version'] = version
+
+        # Parse all metadata fields
+        for name, offset, type_ in self.fields:
+            file_.seek(offset)
+            if type_ == 'utf16':
+                self.metadata[name] = parse_utf16_string(file_)
+            elif type_ == 'x-time':
+                self.metadata[name] = unpack(ENDIAN + 'f', file_.read(4))[0] / 60000
+            else:
+                self.metadata[name] = unpack(type_, file_.read(struct.calcsize(type_)))[0]
+
+        # Convert date
+        self.metadata['datetime'] = time.strptime(self.metadata['date'], '%d-%b-%y, %H:%M:%S')
+
+    def _parse_header_status(self):
+        """Print known and unknown parts of the header"""
+        file_ = open(self.filepath, 'rb')
+
+        print('Header parsing status')
+        # Map positions to fields for all the known fields
+        knowns = {item[1]: item for item in self.fields}
+        # A couple of places has a \x01 byte before a string, these we simply skip
+        skips = {325, 3600}
+        # Jump to after the magic number version
+        file_.seek(4)
+
+        # Initialize variables for unknown bytes
+        unknown_start = None
+        unknown_bytes = b''
+        # While we have not yet reached the data
+        while file_.tell() < self.data_start:
+            current_position = file_.tell()
+            # Just continue on skip bytes
+            if current_position in skips:
+                file_.read(1)
+                continue
+
+            # If we know about a data field that starts at this point
+            if current_position in knowns:
+                # If we have collected unknown bytes, print them out and reset
+                if unknown_bytes != b'':
+                    print('Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00')))
+                    unknown_bytes = b''
+                    unknown_start = None
+
+                # Print out the position, type, name and value of the known value
+                print('Known field at {: >4},'.format(current_position), end=' ')
+                name, _, type_ = knowns[current_position]
+                if type_ == 'x-time':
+                    print('x-time, "{: <19}'.format(name + '"'),
+                          unpack(ENDIAN + 'f', file_.read(4))[0] / 60000)
+                elif type_ == 'utf16':
+                    print(' utf16, "{: <19}'.format(name + '"'),
+                          parse_utf16_string(file_))
+                else:
+                    size = struct.calcsize(type_)
+                    print('{: >6}, "{: <19}'.format(type_, name + '"'),
+                          unpack(type_, file_.read(size))[0])
+            else:  # We do not know about a data field at this position If we have already
+                # collected 4 zero bytes, assume that we are done with this unkonw field,
+                # print and reset
+                if unknown_bytes[-4:] == b'\x00\x00\x00\x00':
+                    print('Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00')))
+                    unknown_bytes = b''
+                    unknown_start = None
+
+                # Read one byte and save it
+                one_byte = file_.read(1)
+                if unknown_bytes == b'':
+                    # Only start a new collection of unknown bytes, if this byte is not a
+                    # zero byte
+                    if one_byte != b'\x00':
+                        unknown_bytes = one_byte
+                        unknown_start = file_.tell() - 1
+                else:
+                    unknown_bytes += one_byte
+
+        file_.close()
+
+    def _parse_data(self, file_):
+        """Parse the data"""
+        # Go to the end of the file and calculate how many points 8 byte floats there are
+        file_.seek(0, 2)
+        n_points = (file_.tell() - self.data_start) // 8
+
+        # Read the data into a numpy array
+        file_.seek(self.data_start)
+        return numpy.fromfile(file_, dtype='<d', count=n_points) * self.metadata['yscaling']
+
+    @cached_property
+    def times(self):
+        """The time values (x-value) for the data set in minutes"""
+        return numpy.linspace(self.metadata['start_time'], self.metadata['end_time'],
+                              len(self.values))

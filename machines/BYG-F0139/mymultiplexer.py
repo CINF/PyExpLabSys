@@ -29,8 +29,8 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
-logging.basicConfig(filename="logger_mymultiplexer.txt", level=logging.INFO)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename="logger_mymultiplexer.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
 
 # this list consist of codenames for a measurement, and the channel number on the multiplxer
 Setting_channel_list = {'tabs_ceiling_thermopile_supplyreturn_x02': 101, # DT_up101

@@ -205,13 +205,16 @@ class SystemStatus(object):
         """Return the temperature of a Raspberry Pi"""
         #Firmware bug in Broadcom chip craches raspberry pi when reading temperature
         #and using i2c at the same time
-        if os.path.exists('/dev/i2c-1'):
+        if os.path.exists('/dev/i2c-0') or os.path.exists('/dev/i2c-1'):
             return None
         # Get temperature string
-        try:
-            temp_str = subprocess.check_output(['cat',
-                                                '/sys/class/thermal/thermal_zone0/temp'])
-        except OSError:
+        if os.path.exists('/sys/class/thermal/thermal_zone0/temp'):
+            try:                                    
+                temp_str = subprocess.check_output(['cat',
+                                                    '/sys/class/thermal/thermal_zone0/temp'])
+            except OSError:
+                return None
+        else:
             return None
 
         # Temperature string simply returns temperature in milli-celcius

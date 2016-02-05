@@ -10,8 +10,8 @@ import logging
 from PyExpLabSys.drivers.mbus import MBus 
 
 
-logging.basicConfig(filename="logger_pykamtest.txt", level=logging.INFO)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename="logger_pykamtest.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
 
 # Value Information Field
 VIF = { 0x05: {'subject': 'Energi', 'unit': 'kWh', 'size': 100},

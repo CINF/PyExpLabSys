@@ -5,13 +5,15 @@ import json
 import time
 import pytest
 
-from PyExpLabSys.file_parsers.chemstation import Sequence
+import numpy
+
+from PyExpLabSys.file_parsers.chemstation import Sequence, CHFile
 
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 SEQUENCE_FILE = os.path.join(THIS_FILE_DIR, 'def_GC 2015-01-13 11-16-24')
 DATA_FILE = os.path.join(THIS_FILE_DIR, 'chemstation_data.json')
 INJECTION_METADATA = os.path.join(THIS_FILE_DIR, 'injection_metadata.json')
-
+CHFILE = os.path.join(THIS_FILE_DIR, 'TCD3C.ch')
 
 
 # Sequence metadata
@@ -55,4 +57,18 @@ def test_injection_metadata(sequence):
 
     assert injection_metadata == loaded_metadata
 
+def test_ch_file():
+    """Test the parse ChFile class"""
+    ch_file = CHFile(CHFILE)
+
+    # Check the data (it is primitively "hashed" as the sum of the array)
+    saved_times_sum = 8441.24998112
+    saved_values_sum = -2242.09973958
+    assert numpy.isclose(saved_times_sum, ch_file.times.sum())
+    assert numpy.isclose(saved_values_sum, ch_file.values.sum())
+
+    # Test metadata
+    with open('ch_metadata.json', 'r') as file_:
+        saved_metadata = json.load(file_)
+    assert saved_metadata == ch_file.metadata
     

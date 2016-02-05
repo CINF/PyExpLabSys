@@ -1,9 +1,9 @@
-from scpi import SCPI
-
+from __future__ import print_function
+from PyExpLabSys.drivers.scpi import SCPI
 
 class Agilent34410ADriver(SCPI):
 
-    def __init__(self, interface = 'lan', hostname=''):
+    def __init__(self, interface='lan', hostname=''):
         if interface == 'lan':
             SCPI.__init__(self, interface=interface, hostname=hostname)
 
@@ -14,7 +14,7 @@ class Agilent34410ADriver(SCPI):
         return True
 
     def config_resistance_measurement(self):
-        """ Configures the instrument to measure resistance. """ 
+        """ Configures the instrument to measure resistance. """
         # FIXME: Take parameter to also be able to select 4W
         self.scpi_comm("CONFIGURE:RESISTANCE")
         return True
@@ -34,7 +34,7 @@ class Agilent34410ADriver(SCPI):
             return_value = True
             function_string = "FUNCTION " + "\"" + function + "\""
             self.scpi_comm(function_string)
-        return(return_value)
+        return return_value
 
     def read_configuration(self):
         response = self.scpi_comm("CONFIGURE?")
@@ -44,7 +44,7 @@ class Agilent34410ADriver(SCPI):
         conf_string += "Measurement type: " + conf[0] + "\n"
         conf_string += "Range: " + conf[1] + "\n"
         conf_string += "Resolution: " + conf[2]
-        return(conf_string)
+        return conf_string
 
     def set_auto_input_z(self, auto=False):
         if auto:
@@ -59,4 +59,4 @@ class Agilent34410ADriver(SCPI):
 
 if __name__ == "__main__":
     driver = Agilent34410ADriver()
-    print driver.read()
+    print(driver.read())

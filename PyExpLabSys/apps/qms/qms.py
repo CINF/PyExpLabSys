@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 """ Mass Spec Main program """
 import Queue
 import time
@@ -10,7 +11,7 @@ LOGGER.addHandler(logging.NullHandler())
 
 class QMS(object):
     """ Complete mass spectrometer """
-    def __init__(self, qmg, sqlqueue=None, chamber='dummy', credentials='dummy'):
+    def __init__(self, qmg, sqlqueue=None, chamber='dummy', credentials='dummy', livesocket=None):
         self.qmg = qmg
         if not sqlqueue == None:
             self.sqlqueue = sqlqueue
@@ -20,6 +21,7 @@ class QMS(object):
         self.current_action = 'Idling'
         self.message = ''
         self.autorange = False
+        self.livesocket = livesocket
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
@@ -236,6 +238,8 @@ class QMS(object):
                     query += 'set measurement="' + str(ids[channel])
                     query += '", x="' + sqltime + '", y="' + str(value) + '"'
                 self.channel_list[channel]['value'] = str(value)
+                if self.livesocket is not None:
+                    self.livesocket.set_point_now('qms-value', value)
                 if no_save is False:
                     self.sqlqueue.put((query, None))
                 time.sleep(0.25)

@@ -29,8 +29,8 @@ import credentials
 ContinuousLogger.host = credentials.dbhost
 ContinuousLogger.database = credentials.dbname
 
-logging.basicConfig(filename="logger_mydatalogger.txt", level=logging.INFO)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename="logger_mydatalogger.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
 
 
 class WaterTemperatureReader(threading.Thread):
@@ -348,6 +348,7 @@ class MainDatalogger(threading.Thread):
             self.loggers[key].status['quit'] = True
 
 if __name__ == '__main__':
+    
     MDL = MainDatalogger()
     time.sleep(3)
     MDL.start()
@@ -358,4 +359,9 @@ if __name__ == '__main__':
         except (KeyboardInterrupt, SystemExit):
             MDL.quit = True
     print('END')
+    
+    #omega_temperature = TemperatureReader(['tabs_cooling_temperature_inlet',])
+    #omega_temperature.update_values()
+    #print(omega_temperature.value(3))
+    #omega_temperature.OmegaDict['tabs_cooling_temperature_inlet'].read_temperature()
     

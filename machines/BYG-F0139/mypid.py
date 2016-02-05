@@ -27,8 +27,8 @@ from PyExpLabSys.auxiliary.pid import PID
 #import PyExpLabSys.drivers.omega_cni as omega_CNi32
 #import PyExpLabSys.drivers.kampstrup as kampstrup
 
-logging.basicConfig(filename="logger_mypid.txt", level=logging.INFO)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename="logger_mypid.txt", level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
 
 
 import SocketServer
