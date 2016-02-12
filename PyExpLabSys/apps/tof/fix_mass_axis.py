@@ -61,7 +61,7 @@ def fit_x_axis(fit_values):
 spectrum_number = sys.argv[1]
 print spectrum_number
 
-db = mysql.connector.connect(host="servcinf.fysik.dtu.dk", user="tof",passwd = "tof", db = "cinfdata")
+db = mysql.connector.connect(host="servcinf-sql.fysik.dtu.dk", user="tof",passwd = "tof", db = "cinfdata")
 cursor = db.cursor()
 cursor.execute("SELECT x*1000000,y FROM xy_values_tof where measurement = " + str(spectrum_number))
 Data = np.array(cursor.fetchall())

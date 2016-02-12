@@ -69,7 +69,7 @@ class QMS(object):
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user=self.credentials,
+        cnxn = MySQLdb.connect(host="servcinf-sql", user=self.credentials,
                                passwd=self.credentials, db="cinfdata")
 
         cursor = cnxn.cursor()

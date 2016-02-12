@@ -117,7 +117,7 @@ def lint_file(filepath):
 def report_to_mysql(commit_time, last_commit_hash):
     """Reports the error to mysql"""
     LOG.debug('Report total to MySQL with hall user')
-    con = MySQLdb.connect('servcinf', 'hall', 'hall', 'cinfdata')
+    con = MySQLdb.connect('servcinf-sql', 'hall', 'hall', 'cinfdata')
     cursor = con.cursor()
     query = ('INSERT INTO dateplots_hall (time, type, value) VALUES '
              '(FROM_UNIXTIME(%s), %s, %s)')
@@ -132,7 +132,7 @@ def report_to_mysql(commit_time, last_commit_hash):
     LOG.debug('Total number of errors and lines sent to mysql')
 
     LOG.debug('Report error and file stats to MySQL with pylint user')
-    con = MySQLdb.connect('servcinf', 'pylint', 'pylint', 'cinfdata')
+    con = MySQLdb.connect('servcinf-sql', 'pylint', 'pylint', 'cinfdata')
     cursor = con.cursor()
     query = ('INSERT INTO pylint (time, identifier, isfile, value, commit) '
              'VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s)')
@@ -155,7 +155,7 @@ def report_to_mysql(commit_time, last_commit_hash):
 def get_last_commit_from_db():
     """Returns the last commit from the database"""
     LOG.debug('Get last commit from db with user pylint')
-    con = MySQLdb.connect('servcinf', 'pylint', 'pylint', 'cinfdata')
+    con = MySQLdb.connect('servcinf-sql', 'pylint', 'pylint', 'cinfdata')
     cursor = con.cursor()
     query = "select commit from pylint order by time desc limit 1"
     cursor.execute(query)

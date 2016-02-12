@@ -208,7 +208,7 @@ class PizzaCore(object):
         self.user = None
         self.real_name = None
         connection = dbmodule.connect(
-            host='servcinf',
+            host='servcinf-sql',
             user=credentials.USERNAME,
             passwd=credentials.PASSWORD,
             db='cinfdata',
