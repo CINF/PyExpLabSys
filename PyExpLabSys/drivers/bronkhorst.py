@@ -1,21 +1,26 @@
+""" Driver for Bronkhorst flow controllers, including simple test case """
+from __future__ import print_function
 import serial
 import time
-import threading
+import sys
 
 class Bronkhorst():
-    
+    """ Driver for Bronkhorst flow controllers """
     def __init__(self, port, max_flow):
         self.ser = serial.Serial(port, 38400)
         self.max_setting = max_flow
         time.sleep(0.1)
 
-    def comm(self,command):
-        self.ser.write(command)
+    def comm(self, command):
+        """ Send commands to device and recieve reply """
+        self.ser.write(command.encode('ascii'))
         time.sleep(0.1)
         return_string = self.ser.read(self.ser.inWaiting())
+        return_string = return_string.decode()
         return return_string
 
     def read_setpoint(self):
+        """ Read the current setpoint """
         read_setpoint = ':06800401210121\r\n' # Read setpoint
         response = self.comm(read_setpoint)
         response = int(response[11:], 16)
@@ -59,25 +64,34 @@ class Bronkhorst():
         return response
 
     def read_counter_value(self):
+        """ Read valve counter. Not fully implemented """
         read_counter = ':06030401210141\r\n'
         response = self.comm(read_counter)
         return str(response)
 
     def set_control_mode(self):
+        """ Set the control mode to accept rs232 setpoint """
         set_control = ':058001010412\r\n'
         response = self.comm(set_control)
         return str(response)
 
     def read_serial(self):
+        """ Read the serial number of device """
         read_serial = ':1A8004F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
         error = 0
         while error < 10:
             response = self.comm(read_serial)
             response = response[13:-84]
-            try:
-                response = response.decode('hex')
-            except TypeError:
-                response = ''
+            if sys.version_info[0] < 3: # Python2
+                try:
+                    response = response.decode('hex')
+                except TypeError:
+                    response = ''
+            else: # Python 3
+                try:
+                    response = bytes.fromhex(response).decode('utf-8')
+                except ValueError:
+                    response = ''
             if response == '':
                 error = error + 1
             else:
@@ -85,13 +99,19 @@ class Bronkhorst():
         return str(response)
 
     def read_unit(self):
+        """ Read the flow unit """
         read_capacity = ':1A8004F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
         response = self.comm(read_capacity)
         response = response[77:-26]
-        response = response.decode('hex')
+        try:
+            response = bytes.fromhex(response).decode('utf-8')
+        except AttributeError: # Python2
+            response = response.decode('hex')
+
         return str(response)
 
     def read_capacity(self):
+        """ Read ?? from device """
         read_capacity = ':1A8004F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
         response = self.comm(read_capacity)
         response = response[65:-44]
@@ -100,12 +120,11 @@ class Bronkhorst():
 
         
 if __name__ == '__main__':
-    bh = Bronkhorst('/dev/ttyUSB0', 5)
+    bh = Bronkhorst('/dev/ttyUSB3', 5)
     #print bh.set_setpoint(1.0)
     #time.sleep(1)
-    print bh.read_serial()
-    #print bh.read_unit()
-    #print bh.read_capacity()
-    #print bh.read_counter_value()
-    #print bh.read_setpoint()
-    print bh.read_flow()
+    print(bh.read_serial())
+    print(bh.read_flow())
+    print(bh.read_unit())
+    print(bh.read_capacity())
+    print(bh.read_counter_value())
