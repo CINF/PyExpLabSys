@@ -1,6 +1,6 @@
 """ Pressure and temperature logger """
 # pylint: disable=C0301,R0904, C0103
-
+from __future__ import print_function
 import threading
 import time
 import logging
@@ -59,7 +59,7 @@ class PressureReader(threading.Thread):
             try:
                 self.pressure = press[0]
             except IndexError:
-                print "av"
+                print("av")
                 self.pressure = 0
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
@@ -100,6 +100,6 @@ while pressure.isAlive() and analog_measurement.isAlive():
         socket.set_point_now(name, v)
         livesocket.set_point_now(name, v)
         if loggers[name].read_trigged():
-            print v
+            print(v)
             db_logger.enqueue_point_now(name, v)
             loggers[name].clear_trigged()
