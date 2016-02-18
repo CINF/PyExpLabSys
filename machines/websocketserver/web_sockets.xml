@@ -57,6 +57,9 @@
     <!-- 21984839, 21984838 -->
     <socket>rasppi37:8000</socket>
 
+    <!-- Sniffer analog pressure controller -->
+    <socket>rasppi06:8000</socket>
+
     <!-- sniffer_qms_ion_gauge - Sniffer, Ion Gauge pressure at mass spec
 	 sniffer_qms_roughing - Sniffer, roughing for qms turbo
 	 sniffer_buffer_roughing  - Sniffer, roughing for buffer turbo
