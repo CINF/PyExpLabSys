@@ -1,6 +1,6 @@
 """ Data logger for muffle furnace, chemlab 307 """
 # pylint: disable=C0301,R0904, C0103
-
+from __future__ import print_function
 import threading
 import logging
 import time
@@ -66,6 +66,6 @@ if __name__ == '__main__':
         socket.set_point_now('chemlab307_muffle_furnace', t)
         livesocket.set_point_now('chemlab307_muffle_furnace', t)
         if temp_logger.read_trigged():
-            print t
+            print(t)
             db_logger.enqueue_point_now('chemlab307_muffle_furnace', t)
             temp_logger.clear_trigged()
