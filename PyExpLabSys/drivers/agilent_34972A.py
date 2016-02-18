@@ -1,8 +1,10 @@
-from scpi import SCPI
+""" Driver class for Agilent 34972A multiplexer """
+from __future__ import print_function
+from PyExpLabSys.drivers.scpi import SCPI
 import time
     
 class Agilent34972ADriver(SCPI):
-
+    """ Driver for Agilent 34972A multiplexer """
     def __init__(self, name='microreactor-agilent-34972a'):
         #SCPI.__init__(self,'/dev/usbtmc1','file')
         SCPI.__init__(self, interface='lan', hostname=name)
@@ -62,7 +64,7 @@ class Agilent34972ADriver(SCPI):
 
     def read_scan_interval(self):
         response = self.scpi_comm("TRIG:TIMER?")
-        print response
+        print(response)
 
     def read_scan_list(self):
         """ Return the scan list """
@@ -88,12 +90,12 @@ if __name__ == "__main__":
 
     driver = Agilent34972ADriver()
     #driver = driver.ResetDevice()
-    print driver.read_scan_list()
+    print(driver.read_scan_list())
     #driver.set_integration_time(106,20)
-    print driver.read_configuration()
+    print(driver.read_configuration())
 
     #print driver.read_scan_list()
-    print driver.read_single_scan()
+    print(driver.read_single_scan())
 
     #driver.read_scan()
 
