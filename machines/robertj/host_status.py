@@ -1,32 +1,33 @@
+""" The program will check up status of a list of hosts """
 import subprocess
 import datetime
-import urllib2
 import telnetlib
 import socket
-import signal
 import threading
 import Queue
 import time
 import json
 
-def host_status(host,method=""):
-    up = True
-    
+def host_status(hostname, method=""):
+    """ Report if a host i available on the network """
+    host_is_up = True
+
     if method != 'rdp':
         try:
-            subprocess.check_output(["ping", "-c1", "-W1", host])
-        except subprocess.CalledProcessError, e:
-            up = False
+            subprocess.check_output(["ping", "-c1", "-W1", hostname])
+        except subprocess.CalledProcessError:
+            host_is_up = False
     if method == 'rdp':
         try:
-            f = telnetlib.Telnet(host,3389)
-        except socket.gaierror,e:
-            up = False
-        except socket.error,e:
-            up = False
-    return up
+            _ = telnetlib.Telnet(hostname, 3389)
+        except socket.gaierror:
+            host_is_up = False
+        except socket.error:
+            host_is_up = False
+    return host_is_up
 
-def uptime(host, method, username='pi', password='cinf123'):
+def uptime(hostname, method, username='pi', password='cinf123'):
+    """ Fetch as much information as possible from a host """
     return_value = {}
     return_value['up'] = ''
     return_value['load'] = ''
@@ -35,24 +36,24 @@ def uptime(host, method, username='pi', password='cinf123'):
     return_value['python_version'] = ''
     return_value['model'] = ''
     if method == 'ssh':
-        uptime_string = subprocess.check_output(["sshpass", 
-                                                 "-p", 
+        uptime_string = subprocess.check_output(["sshpass",
+                                                 "-p",
                                                  password,
                                                  "ssh",
                                                  '-o LogLevel=quiet',
                                                  '-oUserKnownHostsFile=/dev/null',
                                                  '-oStrictHostKeyChecking=no',
-                                                 username + "@" + host, 
+                                                 username + "@" + hostname,
                                                  'cat /proc/uptime /proc/loadavg'])
-        uptime = uptime_string.split('\n')[0]
-        up = str(int(float(uptime.split()[0]) / (60*60*24)))
+        uptime_raw = uptime_string.split('\n')[0]
+        uptime_value = str(int(float(uptime_raw.split()[0]) / (60*60*24)))
         load = uptime_string.split('\n')[1].split()[2]
-        return_value['up'] = up
+        return_value['up'] = uptime_value
         return_value['load'] = load
 
     ports = []
-    for i in range(6000, 9999):
-        ports.append(str(i))
+    for port_number in range(6000, 9999):
+        ports.append(str(port_number)) # List of potential interesting ports
     if method in ['socket', 'ls'] + ports:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(0.5)
@@ -65,13 +66,13 @@ def uptime(host, method, username='pi', password='cinf123'):
             port = int(method)
 
         try:
-            sock.sendto('status', (host, port))
+            sock.sendto('status', (hostname, port))
             received = sock.recv(4096)
             status = json.loads(received)
             system_status = status['system_status']
-            up = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
+            uptime_value = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
             load = str(system_status['load_average']['15m'])
-            return_value['up'] = up
+            return_value['up'] = uptime_value
             return_value['load'] = load
         except:
             return_value['up'] = 'Down'
@@ -79,12 +80,12 @@ def uptime(host, method, username='pi', password='cinf123'):
         try:
             model = system_status['rpi_model']
             host_temperature = system_status['rpi_temperature']
-        except (KeyError, UnboundLocalError) as e:
+        except (KeyError, UnboundLocalError):
             model = ''
             host_temperature = ''
         try:
             python_version = system_status['python_version']
-        except (KeyError, UnboundLocalError) as e:
+        except (KeyError, UnboundLocalError):
             python_version = ''
         return_value['model'] = model
         return_value['host_temperature'] = host_temperature
@@ -97,32 +98,26 @@ def uptime(host, method, username='pi', password='cinf123'):
         except  UnboundLocalError:
             git = ''
         return_value['git'] = git
-    """
-    Will need to modify uptime script on these hosts...
-    if method== 'http':
-        f = urllib2.urlopen('http://' + host + '/uptime.php')
-        uptime_string = f.read()
-        f.close()
-    """
     return return_value
 
 
 class CheckHost(threading.Thread):
+    """ Perfom the actual check """
 
     def __init__(self, hosts_queue, results_queue):
         threading.Thread.__init__(self)
-        self.hosts = hosts
+        self.hosts = hosts_queue
         self.results = results_queue
 
     def run(self):
         while not self.hosts.empty():
-            host = hosts.get_nowait()
-            up = host_status(host[0],host[2])
-            if up:
+            host = self.hosts.get_nowait()
+            host_is_up = host_status(host[0], host[2])
+            if host_is_up:
                 if host[1] == 'Raspberry Pi':
-                    uptime_val = uptime(host[0],host[2])
+                    uptime_val = uptime(host[0], host[2])
                 else:
-                    uptime_val = uptime(host[0],host[2], username='cinf')
+                    uptime_val = uptime(host[0], host[2], username='cinf')
             else:
                 uptime_val = {}
                 uptime_val['up'] = ''
@@ -131,7 +126,7 @@ class CheckHost(threading.Thread):
                 uptime_val['host_temperature'] = ''
                 uptime_val['model'] = ''
                 uptime_val['python_version'] = ''
-            self.results.put([host[0], up, uptime_val['up'],
+            self.results.put([host[0], host_is_up, uptime_val['up'],
                               uptime_val['load'], host[3],
                               host[4], host[1],
                               uptime_val['git'],
@@ -140,7 +135,8 @@ class CheckHost(threading.Thread):
                               uptime_val['python_version']])
             self.hosts.task_done()
 
-if __name__ == "__main__":
+def main():
+    """ Main function """
     t = time.time()
     hosts = Queue.Queue()
 
@@ -149,13 +145,13 @@ if __name__ == "__main__":
 
     ok_lines = []
     for line in lines:
-        ok = True
+        line_is_ok = True
         if len(line.strip()) == 0:
-            ok = False            
+            line_is_ok = False
         if line.strip()[0] == '#':
-            ok = False
-        if ok:
-            ok_lines.append(line)    
+            line_is_ok = False
+        if line_is_ok:
+            ok_lines.append(line)
 
     for line in ok_lines:
         host_line = line.strip().split(',')
@@ -196,3 +192,6 @@ if __name__ == "__main__":
         status_string += host[10]
         status_string += "\n"
     print(status_string)
+
+if __name__ == "__main__":
+    main()
