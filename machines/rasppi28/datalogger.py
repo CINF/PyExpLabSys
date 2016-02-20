@@ -62,10 +62,10 @@ time.sleep(2.5)
 
 codenames = ['ps_qms_pressure', 'ps_chamber_pressure']
 loggers = {}
-loggers[codenames[0]] = ValueLogger(pressure, comp_val = 0.1,
+loggers[codenames[0]] = ValueLogger(pressure, comp_val = 0.1, low_comp=1e-11,
                                     comp_type = 'log', channel = 0)
 loggers[codenames[0]].start()
-loggers[codenames[1]] = ValueLogger(pressure, comp_val = 0.1,
+loggers[codenames[1]] = ValueLogger(pressure, comp_val = 0.1, low_comp=1e-11,
                                     comp_type = 'log', channel = 1)
 loggers[codenames[1]].start()
 

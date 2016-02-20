@@ -1,5 +1,5 @@
 # pylint: disable= R0904, C0103
-
+from __future__ import print_function
 import threading
 import time
 import PyExpLabSys.drivers.polyscience_4100 as polyscience_4100
@@ -39,7 +39,7 @@ class ChillerReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            print self.ttl
+            print(self.ttl)
             self.status['temp'] = self.chiller.read_temperature()
             self.status['flow'] = self.chiller.read_flow_rate()
             self.status['temp_amb'] = self.chiller.read_ambient_temperature()
