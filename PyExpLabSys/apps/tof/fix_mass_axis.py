@@ -8,15 +8,15 @@ import mysql.connector
 from scipy import optimize
 import math
 
-PEAK_FIT_WIDTH = 5
+#PEAK_FIT_WIDTH = 5
 
 
 def fit_peak(time, mass, data, fit_values):
     """ Fit a gaussian peak """
     values = {}
     center = np.where(data[:, 0] > fit_values[mass])[0][0]
-    values['x'] = data[center - 50:center + 50, 0]
-    values['y'] = data[center - 50:center + 50, 1]
+    values['x'] = data[center - 75:center + 75, 0]
+    values['y'] = data[center - 75:center + 75, 1]
     center = np.where(values['y'] == max(values['y']))[0][0]
     fitfunc = lambda p, x: p[0]*math.e**(-1*((x-fit_values[mass]-p[2])**2)/p[1])
     errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
@@ -31,13 +31,14 @@ def fit_peak(time, mass, data, fit_values):
     usefull = (p1[0] > 15) and (p1[1] < 1e-3) and (success==1)
     if usefull:
         print(p1)
-    #fig = plt.figure()
-    #ax = fig.add_subplot(1, 1, 1)
-    #ax.plot(X_values, Y_values, 'k-')
-    #ax.plot(X_values, fitfunc(p1, X_values), 'r-')
-    #ax.axvline(X_values[center-PEAK_FIT_WIDTH])
-    #ax.axvline(X_values[center+PEAK_FIT_WIDTH])
-    #plt.show()
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(values['x'], values['y'], 'k-')
+    ax.plot(values['x'], fitfunc(p1, values['x']), 'r-')
+    ax.plot(values['x'], fitfunc(p0, values['x']), 'c-')
+    #ax.axvline(values['x'][center-PEAK_FIT_WIDTH])
+    #ax.axvline(values['x'][center+PEAK_FIT_WIDTH])
+    plt.show()
     return usefull, p1
 
 def x_axis_fit_func(p, time):
@@ -67,11 +68,22 @@ def main():
     data = np.array(cursor.fetchall())
 
     fit_values = {}
-    fit_values[2] = 3.81
+    fit_values[2] = 3.80
     fit_values[4] = 5.53
     fit_values[18] = 12.17
-    fit_values[28] = 15.28
+    fit_values[28] = 15.278
 
+    fit_values = {}
+    fit_values[2.01565] = 3.80
+    fit_values[4.00260] = 5.53
+    fit_values[18.01056] = 12.17
+    fit_values[184.0347] = 39.76
+    for mass in fit_values:
+        usefull, p1_peak = fit_peak(fit_values[mass], mass, data, fit_values)
+        fit_values[mass] = fit_values[mass] + p1_peak[2]
+    p1_x_axis = fit_x_axis(fit_values)
+
+    """
     for mass in fit_values:
         usefull, p1_peak = fit_peak(fit_values[mass], mass, data, fit_values)
         fit_values[mass] = fit_values[mass] + p1_peak[2]
@@ -90,7 +102,7 @@ def main():
         else:
             print('Unusefull mass: ' + str(mass))
             del fit_values[mass]
-
+    """
     fig = plt.figure()
     axis = fig.add_subplot(2, 1, 1)
     axis.plot(fit_values.values(), fit_values.keys() -
@@ -115,5 +127,6 @@ def main():
         print(query)
         cursor.execute(query)
 
+        
 if __name__ == '__main__':
     main()
