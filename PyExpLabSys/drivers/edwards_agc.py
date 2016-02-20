@@ -29,13 +29,35 @@ class EdwardsAGC(object):
         gauge_type = types[type_number]
         return gauge_type
 
+    def read_pressure(self, gauge_number):
+        """ Read the pressure of a gauge """
+        pressure_string = self.comm('?GA ' + str(gauge_number))
+        pressure_value = float(pressure_string)
+        return pressure_value
+
+    def pressure_unit(self, gauge_number):
+        """ Read the unit of a gauge """
+        units = {0: 'mbar', 1: 'torr'}
+        unit_string = self.comm('?NU ' + str(gauge_number))
+        unit_number = int(unit_string)
+        unit = units[unit_number]
+        return unit
+
+    def current_error(self):
+        """ Read the current error code """
+        error_code = self.comm('?SY')
+        return error_code
+    
     def software_version(self):
+        """ Return the software version of the controller """
         return self.comm('?VE')
     
 if __name__ == '__main__':
     E_AGC = EdwardsAGC()
     print(E_AGC.gauge_type(1))
-    print(E_AGC.comm('?GA 1'))
-    print(E_AGC.comm('?GA 2'))
-    print(E_AGC.comm('?GA 3'))
-    print(E_AGC.software_version())
+    print(E_AGC.read_pressure(1))
+    print(E_AGC.read_pressure(2))
+    print(E_AGC.read_pressure(3))
+    print(E_AGC.pressure_unit(1))
+    print(E_AGC.current_error())
+
