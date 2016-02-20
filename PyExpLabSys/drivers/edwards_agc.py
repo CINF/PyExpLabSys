@@ -23,6 +23,7 @@ class EdwardsAGC(object):
     def gauge_type(self, gauge_number):
         """ Return the type of gauge """
         types = {0: 'Not Fitted', 1: '590 CM capacitance manometer',
+                 15: 'Active strain gauge', 5: 'Pirani L low pressure',
                  20: 'Wide range gauge'} # Feel free to fill in....
 
         type_number = int(self.comm('?GV ' + str(gauge_number)))
@@ -54,10 +55,11 @@ class EdwardsAGC(object):
     
 if __name__ == '__main__':
     E_AGC = EdwardsAGC()
-    print(E_AGC.gauge_type(1))
+    print(E_AGC.gauge_type(4))
     print(E_AGC.read_pressure(1))
     print(E_AGC.read_pressure(2))
     print(E_AGC.read_pressure(3))
+    print(E_AGC.read_pressure(4))
     print(E_AGC.pressure_unit(1))
     print(E_AGC.current_error())
 
