@@ -49,8 +49,9 @@ class StahlHV400(object):
         else:
             fraction = float(value) / self.max_voltage
         assert isinstance(channel, int)
-        print(self.comm(self.serial_number + ' CH' + str(channel).zfill(2) +
-                        ' ' + '{0:.6f}'.format(fraction)))
+        self.comm(self.serial_number + ' CH' + str(channel).zfill(2) +
+                  ' ' + '{0:.6f}'.format(fraction))
+        return True # Consider to run check_channel_status
 
     def read_temperature(self):
         """ Read temperature of device """
