@@ -1,7 +1,6 @@
 """ Driver for Stahl HV 400 Ion Optics Supply """
 from __future__ import print_function
 import serial
-from types import IntType # Used for type checking
 
 class StahlHV400(object):
     """ Driver for Stahl HV 400 Ion Optics Supply """
@@ -16,24 +15,31 @@ class StahlHV400(object):
 
     def comm(self, command):
         """ Perform actual communication with instrument """
-        self.serial.write(command + '\r')
-        reply = self.serial.readline()
+        command = command + '\r'
+        command = command.encode('ascii')
+        reply = ''
+        iterations = 0
+        while (len(reply) < 2) and (iterations < 20):
+            self.serial.write(command)
+            reply = self.serial.readline()
+            reply = reply.decode('latin-1')
+            iterations = iterations + 1 # Make sure not to end in infinite lop
         return reply[:-1]
 
     def identify_device(self):
         """ Return the serial number of the device """
-        reply = self.comm('IDN').split(' ')
+        reply = self.comm('IDN')
+        reply = reply.split()
         self.serial_number = reply[0]
         self.max_voltage = int(reply[1])
         self.number_of_channels = int(reply[2])
         self.bipolar = (reply[3][0] == 'b')
-        print(self.bipolar)
         return reply
 
     def query_voltage(self, channel):
         """ Something is all wrong here... """
         reply = self.comm(self.serial_number + ' Q' + str(channel).zfill(2))
-        print(self.serial_number + ' Q' + str(channel).zfill(2))
+        #print(self.serial_number + ' Q' + str(channel).zfill(2))
         return reply
 
     def set_voltage(self, channel, value):
@@ -42,7 +48,7 @@ class StahlHV400(object):
             fraction = float(value) / (2 * self.max_voltage) + 0.5
         else:
             fraction = float(value) / self.max_voltage
-        assert type(channel) is IntType
+        assert isinstance(channel, int)
         print(self.comm(self.serial_number + ' CH' + str(channel).zfill(2) +
                         ' ' + '{0:.6f}'.format(fraction)))
 
@@ -60,5 +66,4 @@ if __name__ == '__main__':
     HV400 = StahlHV400('/dev/ttyUSB0')
     HV400.set_voltage(1, 0)
     print(HV400.read_temperature())
-    print('----')
     print(HV400.query_voltage(1))
