@@ -23,7 +23,7 @@ class AnalogMFC(object):
         for _ in range(0, 10): # Average to minimiza noise
             value += self.daq.read_adc_voltage(1)
         value = value / 10
-        print('Value: ' + str(value))
+        #print('Value: ' + str(value))
         flow = value * self.fullrange / self.voltagespan
         return flow
 
@@ -42,6 +42,10 @@ class FlowControl(threading.Thread):
         self.mfcs = mfcs
         print(mfcs)
         devices = list(self.mfcs.keys())
+        self.values = {}
+        for device in devices:
+            self.values[device] = None
+
         self.pullsocket = DateDataPullSocket('sniffer_pc_control', devices,
                                              timeouts=[3.0] * len(devices))
         self.pullsocket.start()
@@ -54,11 +58,14 @@ class FlowControl(threading.Thread):
         self.livesocket.start()
         self.running = True
 
+    def value(self, device):
+        """ Return the current value of a device """
+        return self.values[device]
+        
     def run(self):
         while self.running:
             time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
-            print(qsize)
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 mfc = list(element.keys())[0]
@@ -67,6 +74,6 @@ class FlowControl(threading.Thread):
 
             for mfc in self.mfcs:
                 flow = self.mfcs[mfc].read_flow()
-                print(mfc + ': ' + str(flow))
+                self.values[mfc] = flow
                 self.pullsocket.set_point_now(mfc, flow)
                 self.livesocket.set_point_now(mfc, flow)
