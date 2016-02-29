@@ -5,7 +5,7 @@ import threading
 class Bronkhorst():
     
     def __init__(self, port, max_flow):
-        self.ser = serial.Serial(port, 38400)
+        self.ser = serial.Serial(port, 38400, timeout=1)
         self.max_setting = max_flow
         time.sleep(0.1)
 
