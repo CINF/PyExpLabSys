@@ -1,6 +1,18 @@
+
+```
+ _____       ______            _           _     _____
+|  __ \     |  ____|          | |         | |   / ____|
+| |__) |   _| |__  __  ___ __ | |     __ _| |__| (___  _   _ ___
+|  ___/ | | |  __| \ \/ / '_ \| |    / _` | '_ \\___ \| | | / __|
+| |   | |_| | |____ >  <| |_) | |___| (_| | |_) |___) | |_| \__ \
+|_|    \__, |______/_/\_\ .__/|______\__,_|_.__/_____/ \__, |___/
+        __/ |           | |                             __/ |
+       |___/            |_|                            |___/
+```
+
 # Python for Experimental Labs System
 
-## About PyExptLabSys
+## About PyExpLabSys
 This project contains various python code useful in experimental labs, such as
 drivers, plotting tools and data-logging.
 

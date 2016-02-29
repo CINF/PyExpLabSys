@@ -1,6 +1,6 @@
 # pylint: disable=C0103
 """This file logs data from the chiller at the thetaprobe"""
-
+from __future__ import print_function
 import time
 import math
 from PyExpLabSys.common.value_logger import ValueLogger

@@ -4,17 +4,19 @@
 
 from random import choice
 import collections
+import os
 
 import numpy as np
 try:
     from PyQt4 import Qt, QtGui, QtCore
     import PyQt4.Qwt5 as Qwt
 except ImportError:
-    print 'DANGER WILL ROBINSON!!!\nPython Qt and Python Qwt could not be '\
-        'imported. The only reason this does not raise an exception is because'\
-        ' it has been disabled for read the docs.'
-    class Qwt:
-        QwtPlot = list
+    # If we are building docs for read the docs, make fake version else re-raise
+    if os.environ.get('READTHEDOCS', None) == 'True':
+        class Qwt:
+            QwtPlot = list
+    else:
+        raise
 
 class Colors:
     """Class that gives plot colors"""

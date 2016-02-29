@@ -20,7 +20,7 @@ from __future__ import division, print_function
 import struct
 try:
     import hid
-except ImportError:
+except ImportError, AttributeError:
     print("Cannot import hid, can be install with pip")
 
 

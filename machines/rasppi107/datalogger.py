@@ -10,9 +10,10 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.xgs600 as xgs600
 import PyExpLabSys.drivers.mks_925_pirani as mks_925_pirani
+import PyExpLabSys.drivers.kjlc_pressure_gauge as kjlc
 import credentials
 
-class MksReader(threading.Thread):
+class PressureReader(threading.Thread):
     """ Sniffer pirani reader """
     def __init__(self, gauge):
         threading.Thread.__init__(self)
@@ -87,34 +88,44 @@ mks_port += 'usb-Prolific_Technology_Inc.'
 mks_port += '_USB-Serial_Controller_D-if00-port0'
 mks_instance = mks_925_pirani.mks_comm(mks_port)
 
+kjlc_port = '/dev/serial/by-id/usb-Prolific_Technology_Inc._'
+kjlc_port += 'USB-Serial_Controller-if00-port0'
+kjlc_instance = kjlc.KJLC300(kjlc_port)
+
 xgs_pressure = XgsReader(xgs_instance)
 xgs_pressure.start()
 
-mks_pressure = MksReader(mks_instance)
+mks_pressure = PressureReader(mks_instance)
 mks_pressure.start()
+
+kjlc_pressure = PressureReader(kjlc_instance)
+kjlc_pressure.start()
 
 time.sleep(2.5)
 
 codenames = ['sniffer_qms_ion_gauge', 'sniffer_qms_roughing',
-             'sniffer_buffer_roughing', 'sniffer_buffer_pressure']
+             'sniffer_buffer_roughing', 'sniffer_buffer_pressure', 
+             'sniffer_inlet_gas_pressure']
 loggers = {}
 loggers[codenames[0]] = ValueLogger(xgs_pressure, comp_val = 0.1,
-                                    comp_type = 'log', channel = 0)
+                                    low_comp=1e-8, comp_type = 'log', channel = 0)
 loggers[codenames[0]].start()
 loggers[codenames[1]] = ValueLogger(xgs_pressure, comp_val = 0.1,
-                                    comp_type = 'log', channel = 1)
+                                    low_comp=1e-3, comp_type = 'log', channel = 1)
 loggers[codenames[1]].start()
 loggers[codenames[2]] = ValueLogger(xgs_pressure, comp_val = 0.1,
-                                    comp_type = 'log', channel = 2)
+                                    low_comp=1e-3, comp_type = 'log', channel = 2)
 loggers[codenames[2]].start()
 loggers[codenames[3]] = ValueLogger(mks_pressure, comp_val = 0.1,
-                                    low_comp=1e-4, comp_type = 'log')
+                                    low_comp=1e-3, comp_type = 'log')
 loggers[codenames[3]].start()
+loggers[codenames[4]] = ValueLogger(kjlc_pressure, comp_val = 3, comp_type = 'lin')
+loggers[codenames[4]].start()
 
 livesocket = LiveSocket('sniffer pressure logger', codenames, 2)
 livesocket.start()
 
-socket = DateDataPullSocket('sniffer pressure', codenames, timeouts=[1.0]*4)
+socket = DateDataPullSocket('sniffer pressure', codenames, timeouts=[1.0]*5)
 socket.start()
 
 db_logger = ContinuousLogger(table='dateplots_sniffer',

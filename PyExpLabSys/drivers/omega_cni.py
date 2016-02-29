@@ -46,12 +46,16 @@ class ISeries(object):
             response from the device.
         :type response_length: int
         """
+        if address == None and self.comm_stnd == 'rs485':
+            address = '1'
 
         LOGGER.debug('command called with {}, {}'.format(command,
                                                          response_length))
         if self.comm_stnd == 'rs485':
             command = '0' + str(address) + command
         comm_string = (self.pre_string + command + self.end_string)
+        #print('Comm string: ' + comm_string)
+        
         self.serial.write(comm_string)
 
         if response_length is not None:
@@ -63,6 +67,12 @@ class ISeries(object):
             # executed in 0.5 seconds
             time.sleep(0.5)
         response = self.serial.read(self.serial.inWaiting())
+        #print('Response: ' + response)
+        if len(response) > 15:
+            response2 = []
+            for el in response:
+                response2.append(ord(el))
+            #print('RES2: ' + str(response2))
         # Strip \r from responseRemove the echo response from the device
         LOGGER.debug('comand return {}'.format(response[:-1]))
         if response[0:len(command)] == command:
@@ -72,6 +82,7 @@ class ISeries(object):
     def reset_device(self, address=None):
         """Reset the device"""
         command = 'Z02'
+        print('Reseting device')
         return self.command(command, address=address)
 
     def identify_device(self, address=None):
@@ -91,10 +102,15 @@ class ISeries(object):
                 error = 0
             except ValueError:
                 error = error + 1
-                print 'AAA'
+                #print('AAA')
                 response = None
                 LOGGER.debug('read_temperature return {}'.format(response))
         return response
+
+    def set_reading_format(self, address=None):
+        """Set temperature readout format"""
+        LOGGER.debug('set_reading_format called')
+        command = 'R08'
 
     def close(self):
         """Close the connection to the device"""
@@ -116,11 +132,18 @@ class CNi3244_C24(ISeries):
 
 if __name__ == '__main__':
     # This port name should be chages to a local port to do a local test
-    port = 'usb-FTDI_USB-RS485_Cable_FTWGGPAS-if00-port0'
-    omega = ISeries('/dev/serial/by-id/' + port, 9600, comm_stnd='rs485')
-    print omega.identify_device(1)
-    print omega.identify_device(2)
-
-    print omega.read_temperature(1)
-    print omega.read_temperature(2)
+    port = '/dev/serial/by-id/' +'usb-FTDI_USB-RS232_Cable_FTWR5F6W-if00-port0'
+    port = '/dev/ttyACM2'
+    port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0'
+    port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
+    omega = ISeries(port, 9600, comm_stnd='rs485')
+    #print omega.identify_device(1)
+    #print omega.identify_device(2)
+    #print(omega.command('W0705')) # 100Ohm 392.3 (3 W)
+    #print(omega.command('R07')) # 100Ohm 392.3 (3 W)
+    #time.sleep(2)
+    #print(omega.reset_device())
+    #time.sleep(3)
+    print(omega.read_temperature())
+    #print omega.read_temperature(2)
 

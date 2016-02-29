@@ -17,12 +17,12 @@ class SCPI:
             if self.interface == 'lan':
                 self.f = telnetlib.Telnet(hostname, tcp_port)
             self.debug = False
-        except Exception,e:
+        except Exception as e:
             self.debug = True
             #print "Debug mode: " + str(e)
 
     def scpi_comm(self, command, expect_return=False):
-        #print self.f.xonxoff
+        """ Implements actual communication with SCPI instrument """
         return_string = ""
         if self.debug:
             return str(random.random())
@@ -31,35 +31,41 @@ class SCPI:
             self.f.write(command)
             time.sleep(0.02)
             self.f.close()
-            time.sleep(0.1)
+            time.sleep(0.05)
             if command.find('?') > -1:
                 self.f = open(self.device, 'r')
                 return_string = self.f.readline()
                 self.f.close()
+        command_text = command + '\n'
         if self.interface == 'serial':
-            self.f.write(command + '\n')
+            self.f.write(command_text.encode('ascii'))
             if command.endswith('?') or (expect_return is True):
-                return_string = self.f.readline()
+                return_string = self.f.readline().decode()
         if self.interface == 'lan':
-            self.f.write(command + '\n')
-            if command.find('?') > -1:
-                return_string = self.f.read_until(chr(10),2)
+            self.f.write(command_text.encode('ascii'))
+            #self.f.write(command + '\n')
+            if (command.find('?') > -1) or (expect_return is True):
+                return_string = self.f.read_until(chr(10).encode('ascii'), 2).decode()
         return return_string
     
     def read_software_version(self, short=False):
+        """ Read version string from device """
         version_string = self.scpi_comm("*IDN?")
         version_string = version_string.strip()
-        return(version_string)    
+        return version_string
 
     def reset_device(self):
+        """ Rest device """
         self.scpi_comm("*RST")
-        return(True)
+        return True
 
     def device_clear(self):
+        """ Stop current operation """
         self.scpi_comm("*abort")
-        return(True)
+        return True
 
     def clear_error_queue(self):
+        """ Clear error queue """
         error = self.scpi_comm("*ESR?")
         self.scpi_comm("*cls")
-        return(error)
+        return error

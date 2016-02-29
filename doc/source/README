@@ -1,0 +1,5 @@
+To generate the docs go back to the "PyExpLabSys/doc" level and execute:
+
+  make html
+
+Generating the docs require Sphinx and the Napoleon Sphinx extension.

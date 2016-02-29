@@ -1,13 +1,17 @@
+# pylint: disable=E1101
+""" Mass Spec Main program """
 import Queue
 import time
-#import matplotlib.pyplot as plt
 import MySQLdb
 import logging
 
-class qms(object):
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
+
+class QMS(object):
     """ Complete mass spectrometer """
-    def __init__(self, qmg, sqlqueue=None, chamber='dummy',
-                 credentials='dummy', loglevel=logging.ERROR):
+    def __init__(self, qmg, sqlqueue=None, chamber='dummy', credentials='dummy', livesocket=None):
         self.qmg = qmg
         if not sqlqueue == None:
             self.sqlqueue = sqlqueue
@@ -17,22 +21,14 @@ class qms(object):
         self.current_action = 'Idling'
         self.message = ''
         self.autorange = False
+        self.livesocket = livesocket
         self.current_timestamp = "None"
         self.measurement_runtime = 0
         self.stop = False
         self.chamber = chamber
         self.credentials = credentials
         self.channel_list = {}
-        
-        #Clear log file
-        with open('qms.txt', 'w'):
-            pass
-        logging.basicConfig(filename="qms.txt", level=logging.INFO,
-                            format='%(asctime)s %(message)s')
-        logging.info("Program started. Log level: " + str(loglevel))
-        # logging.basicConfig(level=logging.INFO)
-        logging.basicConfig(level=logging.DEBUG)
-        
+        LOGGER.info("Program started. Log level: " + str(LOGGER.getEffectiveLevel()))
 
     def communication_mode(self, computer_control=False):
         """ Set communication for computer control """
@@ -73,7 +69,7 @@ class qms(object):
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user=self.credentials,
+        cnxn = MySQLdb.connect(host="servcinf-sql", user=self.credentials,
                                passwd=self.credentials, db="cinfdata")
 
         cursor = cnxn.cursor()
@@ -96,7 +92,7 @@ class qms(object):
         query += preamp_range + '", time="' + timestamp + '", type="'
         query += str(measurement_type) + '"' + ', comment="' + comment + '"'
         query += ', timestep=' + str(timestep) + ', actual_mass=' + str(mass)
-        logging.error(query)
+        LOGGER.error(query)
         cursor.execute(query)
         cnxn.commit()
         
@@ -123,7 +119,7 @@ class qms(object):
             if (len(line) > 0) and (not line[0] == '#'):
                 data_lines.append(line)
 
-        ms = 1
+        ms_count = 1
         meta = 1
         for line in data_lines:
             items = line.split(':')
@@ -142,9 +138,9 @@ class qms(object):
                 speed = int(params[params.index('speed') + 1])
                 mass = params[params.index('mass') + 1]
                 amp_range = int(params[params.index('amp_range') + 1])
-                channel_list['ms'][ms] = {'masslabel':label, 'speed':speed,
-                                          'mass':mass, 'amp_range':amp_range}
-                ms += 1
+                channel_list['ms'][ms_count] = {'masslabel':label, 'speed':speed,
+                                                'mass':mass, 'amp_range':amp_range}
+                ms_count += 1
 
             if key == 'meta_channel':
                 params = items[1].split(',')
@@ -178,7 +174,7 @@ class qms(object):
 
         comment = channel_list[0]['comment']
         self.autorange = channel_list[0]['autorange']
-        logging.info('Autorange: ' + str(self.autorange))
+        LOGGER.info('Autorange: ' + str(self.autorange))
         #Check for qmg-version 422 will do hardware autorange!
 
         for i in range(1, len(channel_list)):
@@ -194,10 +190,10 @@ class qms(object):
             else:
                 ids[i] = i
         ids[0] = timestamp
-        logging.error(ids)
+        LOGGER.error(ids)
         return ids
         
-    def mass_time(self, ms_channel_list, timestamp):
+    def mass_time(self, ms_channel_list, timestamp, no_save=False):
         """ Perfom a mass-time scan """
         self.operating_mode = "Mass Time"
         self.stop = False
@@ -205,8 +201,7 @@ class qms(object):
         self.qmg.mass_time(number_of_channels)
 
         start_time = time.time()
-        ids = self.create_ms_channellist(ms_channel_list,
-                                         timestamp, no_save=False)
+        ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=no_save)
         self.current_timestamp = ids[0]
         
         while self.stop == False:
@@ -225,7 +220,7 @@ class qms(object):
                         value = float(value)
                     except ValueError:
                         value = -1
-                        logging.error('Value error, could not convert to float')
+                        LOGGER.error('Value error, could not convert to float')
                     if self.qmg.type == '422' and self.qmg.reverse_range is True:
                         amp_range = ms_channel_list[channel]['amp_range']
                         if amp_range in (-9, -10):
@@ -233,17 +228,20 @@ class qms(object):
                         if amp_range in (-11, -12):
                             value = value / 100.0
                     if self.qmg.type == '420':
-                        logging.error('Value: ' + str(value))
-                        logging.error(ms_channel_list[channel]['amp_range'])
+                        LOGGER.error('Value: ' + str(value))
+                        LOGGER.error(ms_channel_list[channel]['amp_range'])
                         range_val = 10**ms_channel_list[channel]['amp_range']
                         value = value * range_val
-                        logging.error('Range-value: ' + str(value))
+                        LOGGER.error('Range-value: ' + str(value))
                     query = 'insert into '
                     query += 'xy_values_' + self.chamber + ' '
                     query += 'set measurement="' + str(ids[channel])
                     query += '", x="' + sqltime + '", y="' + str(value) + '"'
                 self.channel_list[channel]['value'] = str(value)
-                self.sqlqueue.put(query)
+                if self.livesocket is not None:
+                    self.livesocket.set_point_now('qms-value', value)
+                if no_save is False:
+                    self.sqlqueue.put((query, None))
                 time.sleep(0.25)
             time.sleep(0.1)
         self.operating_mode = "Idling"
@@ -255,7 +253,7 @@ class qms(object):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         self.operating_mode = 'Mass-scan'
         sql_id = self.create_mysql_measurement(0, timestamp, 'Mass Scan',
-                                               comment = comment, amp_range=amp_range,
+                                               comment=comment, amp_range=amp_range,
                                                measurement_type=4)
         self.message = 'ID number: ' + str(sql_id) + '. Scanning from '
         self.message += str(first_mass) + ' to '
@@ -296,7 +294,7 @@ class qms(object):
                         new_query += ', y = ' + str((int(samples[i])/10000.0) *
                                                     (10**amp_range))
 
-                self.sqlqueue.put(new_query)
+                self.sqlqueue.put((new_query, None))
         samples = self.qmg.get_multiple_samples(number_of_samples%100)
         for i in range(0, len(samples)):
             j += 1
@@ -310,7 +308,7 @@ class qms(object):
                     new_query += ', y = ' + str((int(samples[i])/10000.0) * 
                                                 (10**amp_range))
 
-            self.sqlqueue.put(new_query)
+            self.sqlqueue.put((new_query, None))
         self.current_action = 'Emptying Queue'
         while not self.sqlqueue.empty():
             self.measurement_runtime = time.time()-start_time

@@ -393,9 +393,9 @@ class Region(object):
     'information_names' class variable.
 
     Some useful ones are:
-    * **name**: The name of the region
-    * **region**: Contains information like, dwell_time, analysis_method,
-        scan_delta, excitation_energy etc.
+     * **name**: The name of the region
+     * **region**: Contains information like, dwell_time, analysis_method,
+       scan_delta, excitation_energy etc.
 
     All auxiliary information is also available from the 'info'
     attribute.

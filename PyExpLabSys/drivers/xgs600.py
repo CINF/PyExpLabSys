@@ -1,21 +1,24 @@
+""" Driver class for XGS600 gauge controll """
+from __future__ import print_function
 import serial
 import time
 
 
 class XGS600Driver():
+    """ Driver for XGS600 gauge controller """
     def __init__(self, port='/dev/ttyUSB1'):
-        self.f = serial.Serial(port)
+        self.serial = serial.Serial(port)
 
     def xgs_comm(self, command):
         """ Implements basic communication """
-        self.f.read(self.f.inWaiting()) # Clear waiting characters
+        self.serial.read(self.serial.inWaiting()) # Clear waiting characters
         comm = "#00" + command + "\r"
-        self.f.write(comm)
+        self.serial.write(comm.encode('ascii'))
         time.sleep(0.25)
-        number_of_bytes = self.f.inWaiting()
-        complete_string = self.f.read(number_of_bytes)
+        number_of_bytes = self.serial.inWaiting()
+        complete_string = self.serial.read(number_of_bytes).decode()
         complete_string = complete_string.replace('>', '').replace('\r', '')
-        return(complete_string)
+        return complete_string
 
     def read_all_pressures(self):
         """ Read pressure from all sensors """
@@ -38,24 +41,24 @@ class XGS600Driver():
             else:
                 time.sleep(0.2)
                 error = error +1
-        return(pressures)
+        return pressures
 
 
     def list_all_gauges(self):
         """ List all installed gauge cards """
         gauge_string = self.xgs_comm("01")
         gauges = ""
-        for n in range(0, len(gauge_string), 2):
-            gauge = gauge_string[n:n+2]
+        for gauge_number in range(0, len(gauge_string), 2):
+            gauge = gauge_string[gauge_number:gauge_number+2]
             if gauge == "10":
-                gauges = gauges + str(n/2) + ": Hot Filament Gauge\n"
+                gauges = gauges + str(gauge_number/2) + ": Hot Filament Gauge\n"
             if gauge == "FE":
-                gauges = gauges + str(n/2) + ": Empty Slot\n"
+                gauges = gauges + str(gauge_number/2) + ": Empty Slot\n"
             if gauge == "40":
-                gauges = gauges + str(n/2) + ": Convection Board\n"
+                gauges = gauges + str(gauge_number/2) + ": Convection Board\n"
             if gauge == "3A":
-                gauges = gauges + str(n/2) + ": Inverted Magnetron Board\n"
-        return(gauges)
+                gauges = gauges + str(gauge_number/2) + ": Inverted Magnetron Board\n"
+        return gauges
 
     def read_pressure(self, gauge_id):
         """ Read the pressure from a specific gauge """
@@ -64,14 +67,15 @@ class XGS600Driver():
             val = float(pressure)
         except ValueError:
             val = -1.0
-        return(val)
+        return val
 
     def filament_lit(self, gauge_id):
         """ Report if the filament of a given gauge is lid """
         filament = self.xgs_comm('34' + gauge_id) 
-        return(int(filament))
+        return int(filament)
 
     def emission_status(self, gauge_id):
+        """ Read the status of the emission for a given gauge """
         status = self.xgs_comm('32' + gauge_id)
         emission = status == '01'
         return emission
@@ -92,8 +96,9 @@ class XGS600Driver():
         return self.emission_status(gauge_id)
 
     def read_software_version(self):
+        """ Read gauge controller firmware version """
         gauge_string = self.xgs_comm("05")
-        return(gauge_string)
+        return gauge_string
 
     def read_pressure_unit(self):
         """ Read which pressure unit is used """
@@ -109,15 +114,5 @@ class XGS600Driver():
 
 
 if __name__ == '__main__':
-    xgs = XGS600Driver()
-    for i in range(0, 20):
-        print xgs.read_all_pressures()
-    #print xgs.read_pressure_unit()
-
-    #xgs.set_emission_on('I1',1)
-    #time.sleep(0.2)
-    #print xgs.read_pressure('I1')
-    #time.sleep(0.2)
-    #print xgs.emission_status('I1')
-    #print xgs.read_pressure('I1')
-
+    XGS = XGS600Driver()
+    print(XGS.read_all_pressures())

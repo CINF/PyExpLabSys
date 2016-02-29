@@ -1,4 +1,4 @@
-# pylint: disable=too-many-arguments,too-many-lines
+# pylint: disable=too-many-arguments,too-many-lines,import-error
 # -*- coding: utf-8 -*-
 """The sockets module contains various implementations of UDP socket servers
 (at present 4 in total) for transmission of data over the network. The
@@ -41,12 +41,23 @@ Presently the module contains the following socket servers:
  what is happening.
 """
 
+from __future__ import print_function, unicode_literals
+
+import sys
 import threading
 import socket
-import SocketServer
+try:
+    import SocketServer
+except ImportError:
+    # SocketServer was renamed in Python3
+    import socketserver as SocketServer
 import time
 import json
-import Queue
+try:
+    import Queue
+except ImportError:
+    # Queue was renamed to queueu in Python 3
+    import queue as Queue
 import logging
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -55,6 +66,10 @@ from .utilities import call_spec_string
 from .system_status import SystemStatus
 # Instantiate a global system status object
 SYSTEM_STATUS = SystemStatus()
+
+# Indicate Python 2/3
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 
 def bool_translate(string):
@@ -67,7 +82,12 @@ def bool_translate(string):
 
 
 def socket_server_status():
-    """Returns the status of all socket servers"""
+    """Returns the status of all socket servers
+
+    Returns:
+        dict: Dict with port to status dict mapping. The status dict has the following keys:
+            name, type, status (with str values) and since_last_activity with float value.
+    """
     status_dict = {}
     for port, data in DATA.items():
         if data['activity']['check_activity']:
@@ -132,7 +152,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
          * **status** (*str*): Return the system status and status for all
            socket servers.
         """
-        command = self.request[0]
+        command = self.request[0].decode('ascii')
         # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
         sock = self.request[1]
@@ -145,7 +165,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
             # The "name" and "status" commands are also handled here
             data = self._all_values(command)
 
-        sock.sendto(data, self.client_address)
+        sock.sendto(data.encode('ascii'), self.client_address)
         PULLUHLOG.debug('Sent back \'{}\' to {}'
                         .format(data, self.client_address))
 
@@ -166,7 +186,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
                 out = OLD_DATA
             else:
                 out = '{},{}'.format(*DATA[self.port]['data'][name])
-        # Return a json encoded string
+
         elif command == 'json' and name in DATA[self.port]['data']:
             if self._old_data(name):
                 out = json.dumps(OLD_DATA)
@@ -421,7 +441,9 @@ class CommonDataPullSocket(threading.Thread):
         # environment before we are done if this is the last thread
         time.sleep(0.1)
         # Delete the data, to allow forming another socket on this port
+        #print(DATA)
         del DATA[self.port]
+        #print(DATA)
         CDPULLSLOG.info('Stopped')
 
     def poke(self):
@@ -592,8 +614,10 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
          * **name** (*str*): Return the name of the PushSocket server
          * **status** (*str*): Return the system status and status for all
            socket servers.
+         * **commands** (*str*): Return a json encoded list of commands. The returns value is
+           is prefixed with :data:`.PUSH_RET` and '#' so e.g. 'RET#actual_date'
         """
-        request = self.request[0]
+        request = self.request[0].decode('ascii')
         PUSHUHLOG.debug('Request \'{}\'received'.format(request))
         # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
@@ -602,6 +626,9 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         # Parse the request and call the appropriate helper methods
         if request == 'name':
             return_value = '{}#{}'.format(PUSH_RET, DATA[self.port]['name'])
+        elif request == 'commands':
+            commands = ['json_wn#', 'raw_wn#', 'name', 'status', 'commands']
+            return_value = '{}#{}'.format(PUSH_RET, json.dumps(commands))
         elif request == 'status':
             return_value = json.dumps({
                 'system_status': SYSTEM_STATUS.complete_status(),
@@ -622,10 +649,10 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             # Several of the helper methods will raise ValueError on wrong
             # input
             except ValueError as exception:
-                return_value = '{}#{}'.format(PUSH_ERROR, exception.message)
+                return_value = '{}#{}'.format(PUSH_ERROR, str(exception))
 
         PUSHUHLOG.debug('Send back: {}'.format(return_value))
-        sock.sendto(return_value, self.client_address)
+        sock.sendto(return_value.encode('ascii'), self.client_address)
 
     def _raw_with_names(self, data):
         """Adds raw data to the queue"""
@@ -658,7 +685,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 )
             except ValueError as exception:
                 message = 'Unable to convert values to \'{}\'. Error is: {}'\
-                    .format(data_type, exception.message)
+                    .format(data_type, str(exception))
                 PUSHUHLOG.error('{}'.format(message))
                 raise ValueError(message)
             # Remove list for length 1 data
@@ -732,7 +759,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                     out = '{}#{}'.format(PUSH_ERROR, message)
             # pylint: disable=broad-except
             except Exception as exception:  # Catch anything it might raise
-                out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+                out = '{}#{}'.format(PUSH_EXCEP, str(exception))
         else:
             # Return the ACK message with the interpreted data
             out = '{}#{}'.format(PUSH_ACK, data)
@@ -754,7 +781,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         try:
             out = '{}#{}'.format(PUSH_RET, json.dumps(value))
         except TypeError as exception:
-            out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+            out = '{}#{}'.format(PUSH_EXCEP, str(exception))
         return out
 
     @staticmethod
@@ -768,12 +795,12 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             (str): The request return value
         """
-        PUSHUHLOG.debug('Format return string: {}'.format(value))
+        PUSHUHLOG.debug('Format return string: %s', value)
         try:
             out = '{}#{}'.format(PUSH_RET, str(value))
         # pylint: disable=broad-except
         except Exception as exception:  # Have no idea, maybe attribute error
-            out = '{}#{}'.format(PUSH_EXCEP, exception.message)
+            out = '{}#{}'.format(PUSH_EXCEP, str(exception))
         return out
 
     def _format_return_raw(self, argument):
@@ -818,7 +845,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         # pylint: disable=broad-except
         except Exception as exception:
             message = 'Raw conversion failed with message'
-            out = '{}#{}:{}'.format(PUSH_EXCEP, message, exception.message)
+            out = '{}#{}:{}'.format(PUSH_EXCEP, message, str(exception))
 
         return out
 
@@ -836,7 +863,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         # corner cases
         for key, value in argument.items():
             if isinstance(value, list) and len(value) > 0:
-                # Check all values in list are of some type
+                # Check all values in list are of same type
                 types = [type(element) for element in value]
                 element_type = types[0]
                 if types != len(types) * [element_type]:
@@ -854,15 +881,22 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 element_type = type(value)
                 value_string = str(value)
 
+            # Convert element_type to string
+            if element_type != '':
+                element_type = element_type.__name__  # pylint: disable=maybe-no-member
+            # We always call it str
+            if sys.version_info[0] == 2 and element_type == 'unicode':
+                element_type = 'str'
             # Check that the element type makes sense for raw conversion
-            if element_type not in [int, float, bool, str]:
+            if element_type not in ['int', 'float', 'bool', 'str']:
                 message = 'With return format raw, the item type can '\
                     'only be one of \'int\', \'float\', \'bool\' and '\
-                    '\'str\''
+                    '\'str\'. Object: \'{}\' is of type: {}'.format(
+                        value, element_type)
                 raise TypeError(message)
 
             # pylint: disable=maybe-no-member
-            item_str = '{}:{}:{}'.format(str(key), element_type.__name__,
+            item_str = '{}:{}:{}'.format(str(key), element_type,
                                          value_string)
             items.append(item_str)
 
@@ -890,13 +924,14 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         element_type = types[0]
         if types != len(types) * [element_type]:
             message = 'With return format raw on a list of lists, all values '\
-                ' in list must have same type'
+                ' in list must have same type. Types are: {}'.format(types)
             raise ValueError(message)
 
         # Check that the element type makes sense for raw conversion
         if element_type not in [int, float, bool, str]:
             message = 'With return format raw, the item type can only be one '\
-                'of \'int\', \'float\', \'bool\' and \'str\''
+                'of \'int\', \'float\', \'bool\' and \'str\'. The type is: {}'\
+                    .format(element_type)
             raise TypeError(message)
 
         return '{}#{}:{}'.format(PUSH_RET, element_type.__name__,
@@ -968,9 +1003,10 @@ class DataPushSocket(threading.Thread):
                    sent back looks like: ``'1.0,42.0&1.5,45.6&2.0,47.0'``,
                    where '&' separates the inner lists and ',' the points in
                    those lists
-                 * ``'string'`` in which case the callback must return a
-                   string and it will be passed through as is.
-
+                 * ``'string'`` in which the string representation of the value the
+                   call back returns will be sent back. NOTE: These string
+                   representations may differ between Python 2 and 3, so do not parse
+                   them
 
         """
         DPUSHSLOG.info('Initialize with: {}'.format(call_spec_string()))
@@ -1027,9 +1063,8 @@ class DataPushSocket(threading.Thread):
             content['callback'] = callback
             content['return_format'] = return_format
         else:
-            message = 'Unknown action \'{}\'. Must be one of: {}'.\
-                format(action, ['store_last', 'enqueue', 'callback_async',
-                                'callback_direct'])
+            message = 'Unknown action \'{}\'. Must be one of: [\'store_last\', \'enqueue\', '\
+                      '\'callback_async\', \'callback_direct\']'.format(action)
             raise ValueError(message)
 
         # Setup server
@@ -1079,7 +1114,7 @@ class DataPushSocket(threading.Thread):
         """Gets the queue, returns None if ``action`` is ``'store_last'`` or
         ``'callback_direct'``
         """
-        DPUSHSLOG.info('DPS: queue property used')
+        DPUSHSLOG.debug('DPS: queue property used')
         return DATA[self.port].get('queue')
 
     @property
@@ -1233,7 +1268,7 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
            socket servers.
         """
         # pylint: disable=attribute-defined-outside-init
-        command = self.request[0]
+        command = self.request[0].decode('ascii')
         self.port = self.server.server_address[1]
         sock = self.request[1]
         LUHLOG.debug('Request \'{}\' received from {} on port {}'
@@ -1258,7 +1293,7 @@ class LiveUDPHandler(SocketServer.BaseRequestHandler):
         else:
             data = UNKNOWN_COMMAND
 
-        sock.sendto(data, self.client_address)
+        sock.sendto(data.encode('ascii'), self.client_address)
         LUHLOG.debug('Sent back: \'{}\''.format(data))
 
 
@@ -1408,3 +1443,27 @@ DATA = {}
 #: The dict that transforms strings to convertion functions
 TYPE_FROM_STRING = {'int': int, 'float': float, 'str': str,
                     'bool': bool_translate}
+
+
+def run_module():
+    """This functions sets"""
+    def push_callback(incoming):
+        """Calback function for the push socket"""
+        print('Push socket got:', incoming)
+
+    push_socket = DataPushSocket(
+        'module_test_push_socket', action='callback_direct', callback=push_callback
+    )
+    push_socket.start()
+    print('Started DataPushSocket on port 8500 with name "module_test_push_socket"')
+
+    try:
+        time.sleep(1E7)
+    except KeyboardInterrupt:
+        push_socket.stop()
+        print('Stopped DataPushSocket on port 8500 with name "module_test_push_socket"')
+        time.sleep(2)
+
+
+if __name__ == '__main__':
+    run_module()
