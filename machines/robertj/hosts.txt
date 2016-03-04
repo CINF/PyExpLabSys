@@ -3,25 +3,26 @@
  rasppi02,  Raspberry Pi, socket, Hall, Cooling water pressure
  rasppi04,  Raspberry Pi, socket, Volvo, pressure readout
  rasppi05,  Raspberry Pi, socket, &micro;-reactorNG, temperature control
+ rasppi06,  Raspberry Pi, socket, sniffer, analog pressure controller
  rasppi07,  Raspberry Pi, socket, &micro;-reactor, Ion gauge readout
  rasppi08,  Raspberry Pi, socket, Old CS, TC and pressure readout
  rasppi12,  Raspberry Pi, socket, &micro;-reactors, TC-readout
  rasppi13,  Raspberry Pi, socket, STM312, Pressure controller
  rasppi14,  Raspberry Pi, socket, Hall, UPS status
  rasppi15,  Raspberry Pi, ls,     Hall, Gasmonitor
- rasppi16,  Raspberry Pi, socket, &micro;-reactorNG, Flows Control
+ rasppi16,  Raspberry Pi, socket, &micro;-reactor NG, Flow Control
  rasppi17,  Raspberry Pi, socket, &micro;-reactor, Valve Control box
  rasppi18,  Raspberry Pi, ssh,    STM312, Mass Spec
  rasppi19,  Raspberry Pi, socket, STM312, Temperature control
  rasppi20,  Raspberry Pi, ls,     PS, Chiller
- rasppi21,  Raspberry Pi, socket, Sputterchamber, QCM and Chiller
+ rasppi21,  Raspberry Pi, ls, Sputterchamber, QCM and Chiller
  rasppi22,  Raspberry Pi, socket, STM312, Bakeout control box
  rasppi24,  Raspberry Pi, socket, &micro;-reactor, Flow control - bronkhorst
  rasppi25,  Raspberry Pi, ls,     Thetaprobe, Datalogger
  rasppi26,  Raspberry Pi, socket, &micro;-reactor, analog flow controller
- rasppi27,  Raspberry Pi, ssh,    &micro;-reactor, Massspec
  rasppi28,  Raspberry Pi, socket, PS, Pressure readout + turbo control
  rasppi29,  Raspberry Pi, socket, Palle, Valve control
+ rasppi30,  Raspberry Pi, socket, Tower, Backeout Control
  rasppi31,  Raspberry Pi, socket, STM312, X-ray gun
  rasppi33,  Raspberry Pi, ssh,    VHP-setup, Valve control
  rasppi34,  Raspberry Pi, ls,     b307, Gas Alarm
@@ -29,11 +30,8 @@
  rasppi36,  Raspberry Pi, socket, &micro;-reactors, Pressure readout
  rasppi37,  Raspberry Pi, socket, &micro;-reactors, MKS MFCs
  rasppi39,  Raspberry Pi, ssh,    PS, Mass Spec High pressure cell
- rasppi40,  Raspberry Pi, ssh,    Coupled Reactor, Valve Control box
- rasppi41,  Raspberry Pi, ssh,    Coupled reactor, Temperature measurement
  rasppi43,  Raspberry Pi, socket, VHP-setup, Pressure and temperature
  rasppi44,  Raspberry Pi, socket, &micro;-reactorNG, Valve Control box
- rasppi46,  Raspberry Pi, ssh,    Coupled Reactor, Brooks MFCs
  rasppi47,  Raspberry Pi, socket, Furnace Room, Temperature Control
  rasppi48,  Raspberry Pi, socket, Palle, Backeout Control
  rasppi49,  Raspberry Pi, socket, TOF, emission control
@@ -48,20 +46,22 @@
  rasppi59,  Raspberry Pi, socket, STM312, Magic Box
  rasppi60,  Raspberry Pi, ls,     XRD, Chiller
  rasppi61,  Raspberry Pi, socket, Hall, Cooling water temperature
- rasppi62,  Raspberry Pi, socket, Palle, Analog Flow control
  rasppi64,  Raspberry Pi, ls,     Chemlab b312, Picture Logbook
  rasppi65,  Raspberry Pi, ssh,    STM312, QMG420 test machine
+ rasppi66,  Raspberry Pi, socket, Hall, Ventilation pressure + hall temperature
+ rasppi68,  Raspberry Pi, socket, TOF, Livesocket display
+ rasppi74,  Raspberry Pi, socket, TOF, Voltage control
  rasppi100, Raspberry Pi, socket, &micro;-reactor, Turbo controller
  rasppi103, Raspberry Pi, socket, Palle, Temperature control
  rasppi103, Raspberry Pi, 9001,   Palle, Temperature reader
  rasppi104, Raspberry Pi, socket, Chemlab b312, Sample storage
- rasppi105, Raspberry Pi, socket, Omicron, RTD reader
+ rasppi106, Raspberry Pi, socket, b309 CVD, QCMs
  rasppi107, Raspberry Pi, socket, Sniffer, Pressure readout
  rasppi109, Raspberry Pi, ls,     TOF, Pressure
- rasppi110, Raspberry Pi, ssh,    TOF, Mass spec
- rasppi111, Raspberry Pi, ssh,    Sniffer, Mass spec
+ rasppi110, Raspberry Pi, socket, XRD, Pressure readout
+ rasppi111, Raspberry Pi, socket, &micro;-reactor, Temperature control 
  rasppi112, Raspberry Pi, 9000,   b309 CVD, MAI cell
  rasppi112, Raspberry Pi, 9001,   b309 CVD, Effusion cell logger
  rasppi112, Raspberry Pi, 9002,   b309 CVD, DCA cell
- cinf-microreactorng-ms,  Ubuntu, ssh,    &micro;-reactorNG, Mass Spec
- cinf-microreactor-ms,    Ubuntu, ssh,    &micro;-reactor, Mass Spec
+ cinf-microreactorng-ms,  Ubuntu, ls,    &micro;-reactorNG, Mass Spec
+ cinf-microreactor-ms,    Ubuntu, ls,    &micro;-reactor, Mass Spec
