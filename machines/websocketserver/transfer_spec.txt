@@ -6,11 +6,9 @@ Transfer data to server
 
 The data transferred to the server will be in form of json.
 
-There should be two kinds of data (others might be added in the long run):
+There should be one kinds of data (others might be added in the long run):
 
  * Continuous data
- * Data sets (spectra)
-
 
 Continuous data
 ---------------
@@ -25,8 +23,9 @@ EXAMPLE: {'host': 'rasppi111', 'data': {...}}
 
 NOTE: The type of the data (as set for Data sets) is implicit for continunous data.
 
-The value dict is a mapping of codenames to value, where a value is a list of unix
-timestamp and a float for the value:
+The value dict is a mapping of codenames to value, where a value is a
+list of x and y values as floats (most of the time the x values are
+unix timestamps):
 
 EXAMPLE: {
     'codename1': [1450096534.070234, 0.3636318999681013],
@@ -44,8 +43,22 @@ EXAMPLE: {
 }
 
 
-Data sets
----------
+
+
+
+
+
+
+
+
+
+
+
+Data sets (POSTPONED)
+---------------------
+
+SUPPORT FOR DATA SETS IS POSTPONED INDEFINITELY. SIMPLE SUPPORT FOR
+DATA SETS CAN BE EMULATED AS CONTINUOUS DATA.
 
 For data sets registration will be necessary, because the data will be saved until next
 spectrum on the server, and in order to register when a new spectrum starts. The data will
