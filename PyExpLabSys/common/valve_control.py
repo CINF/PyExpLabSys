@@ -4,7 +4,7 @@
 This module implements the necessary interface to control
 a valve box using standard gpio commands
 """
-
+from __future__ import print_function
 import time
 import threading
 import wiringpi2 as wp
@@ -30,7 +30,7 @@ class ValveControl(threading.Thread):
         while self.running:
             time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
-            print qsize
+            print(qsize)
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 valve = element.keys()[0]
