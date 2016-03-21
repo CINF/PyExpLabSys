@@ -1,4 +1,5 @@
-# pylint: disable=C0301,R0904, C0103
+""" Driver for Omega D6400 daq card """
+from __future__ import print_function
 import minimalmodbus
 import time
 import logging
@@ -9,7 +10,7 @@ class OmegaD6400():
         self.instrument = minimalmodbus.Instrument(port, address)
         self.instrument.serial.baudrate = 9600
         self.instrument.serial.timeout = 1.0  # Default setting leads to comm-errors
-        print self.instrument.serial
+        print(self.instrument.serial)
         self.ranges = [0] * 8
         for i in range(1, 8):
             self.ranges[i] = {}
@@ -19,9 +20,10 @@ class OmegaD6400():
         self.ranges[1]['fullrange'] = '10'
 
         for i in range(1, 8):
-            print i
-            self.update_range_and_function(i, fullrange=self.ranges[i]['fullrange'], action=self.ranges[i]['action'])
-            print '!'
+            print(i)
+            self.update_range_and_function(i, fullrange=self.ranges[i]['fullrange'],
+                                           action=self.ranges[i]['action'])
+            print('!')
 
     def comm(self, command, value=None):
         """ Communicates with the device """
@@ -58,18 +60,19 @@ class OmegaD6400():
         if self.ranges[channel]['action'] == 'tc':
             scale = 1.0 * 2 ** 16 / 1400
             value = (reply/scale) - 150
-        return(value)
+        return value
 
-    def read_address(self, new_address = None):
+    def read_address(self, new_address=None):
         """ Read the RS485 address of the device """
         old_address = self.comm(0)
         return(old_address)
 
 
     def write_enable(self):
+        """ Enable changes to setup values """
         self.comm(240, 2)
         time.sleep(0.8)
-        return(True)
+        return True
 
     def range_codes(self, fullrange=0, action=None):
         """ Returns the code corresponding to a given range
@@ -105,7 +108,7 @@ class OmegaD6400():
             self.write_enable()
             code = self.range_codes(fullrange, action)
             self.comm(95 + channel, code)
-            print '##'
+            print('##')
             time.sleep(0.1)
             self.ranges[channel]['action'] = action
             self.ranges[channel]['fullrange'] = fullrange
@@ -113,37 +116,5 @@ class OmegaD6400():
 
 if __name__ == '__main__':
     omega = OmegaD6400(1, port='/dev/ttyUSB1')
-
-    """
-    omega.update_range_and_function(1, action='voltage', fullrange='10')
-    omega.update_range_and_function(2, action='voltage', fullrange='10')
-    omega.update_range_and_function(3, action='voltage', fullrange='10')
-    omega.update_range_and_function(4, action='voltage', fullrange='10')
-    omega.update_range_and_function(5, action='voltage', fullrange='10')
-    omega.update_range_and_function(6, action='voltage', fullrange='10')
-    omega.update_range_and_function(7, action='voltage', fullrange='10')
-    for klaf in range(0, 100):
-        print omega.read_value(1)
-        print omega.read_value(2)
-        print omega.read_value(3)
-        print omega.read_value(4)
-        print omega.read_value(5)
-        print omega.read_value(6)
-        print omega.read_value(7)
-        print '--------------'
-        time.sleep(2)
-    """
     omega.update_range_and_function(1, action='tc', fullrange='K')
-    #omega.update_range_and_function(2, action='tc', fullrange='K')
-    #omega.update_range_and_function(3, action='tc', fullrange='K')
-    #omega.update_range_and_function(4, action='tc', fullrange='K')
-    #omega.update_range_and_function(5, action='tc', fullrange='K')
-    #omega.update_range_and_function(6, action='tc', fullrange='K')
-    #omega.update_range_and_function(7, action='tc', fullrange='K')
-    print omega.read_value(1)
-    #print omega.read_value(2)
-    #print omega.read_value(3)
-    #print omega.read_value(4)
-    #print omega.read_value(5)
-    #print omega.read_value(6)
-    #print omega.read_value(7)
+    print(omega.read_value(1))
