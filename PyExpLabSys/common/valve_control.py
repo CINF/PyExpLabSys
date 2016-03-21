@@ -1,5 +1,3 @@
-# pylint: disable=R0913,W0142,C0103 
-
 """
 This module implements the necessary interface to control
 a valve box using standard gpio commands
@@ -7,7 +5,7 @@ a valve box using standard gpio commands
 from __future__ import print_function
 import time
 import threading
-import wiringpi2 as wp
+import wiringpi as wp
 
 class ValveControl(threading.Thread):
     """ Keeps status of all valves """
