@@ -2,6 +2,9 @@
     <!-- thetaprobe -->
     <socket>rasppi25:8000</socket>
 
+    <!-- thetaprobe pvci -->
+    <socket>rasppi71:8000</socket>
+
     <!-- Volvo pressure (volvo_pressure) and sample temperature (volvo_temperature) -->
     <socket>rasppi04:8000</socket>
 
@@ -66,7 +69,7 @@
 	 sniffer_buffer_pressure  - Sniffer, buffer pirani pressure -->
     <socket>rasppi107:8000</socket>
 
-    <!-- MicroreactorNG flow controllers -->
+    <!-- XRD flow controllers -->
     <socket>rasppi16:8000</socket>
 
     <!-- Parrallel screening pressure read out -->
@@ -92,9 +95,6 @@
 
     <!-- Sputterchamber chiller + qcm -->
     <socket>rasppi21:8000</socket>
-
-    <!-- Chiller Parallel screening -->
-    <socket>rasppi20:8000</socket>
 
     <!-- Bakeout control box Palle -->
     <socket>rasppi48:8000</socket>

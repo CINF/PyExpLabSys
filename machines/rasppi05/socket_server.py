@@ -33,7 +33,7 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data, self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "130.225.87.214", 9999 #rasppi05
+    HOST, PORT = "10.54.7.5", 9999 #rasppi05
 
     setpoint = -998
     rtd_val = -888

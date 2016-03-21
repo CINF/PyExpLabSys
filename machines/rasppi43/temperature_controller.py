@@ -133,7 +133,7 @@ class PowerCalculatorClass(threading.Thread):
         self.pid = PID.PID()
         self.pid.pid_p = 1
         self.pid.pid_i = 0.00075
-        self.pid.p_max = 60
+        self.pid.p_max = 70
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -181,10 +181,11 @@ class PowerCalculatorClass(threading.Thread):
 
 class HeaterClass(threading.Thread):
     """ Do the actual heating """
-    def __init__(self, power_calculator, pullsocket, ps, ps_isotech):
+    def __init__(self, power_calculator, pullsocket, ps, ps2, ps_isotech):
         threading.Thread.__init__(self)
         self.pc = power_calculator
         self.heater = ps
+        self.heater2 = ps2
         self.heater_isotech = ps_isotech
         self.heater.output_status(True)
         self.heater_isotech.set_output_voltage(0)
@@ -203,9 +204,11 @@ class HeaterClass(threading.Thread):
             if self.voltage < 10:
                 self.heater_isotech.set_output_voltage(self.voltage*2)
                 self.heater.set_voltage(0)
+                self.heater2.set_voltage(0)
             else:
                 self.heater_isotech.set_output_voltage(2 * 10)
                 self.heater.set_voltage(self.voltage-10)
+                self.heater2.set_voltage(self.voltage-10)
             self.actual_voltage = self.heater.read_actual_voltage()
             self.actual_current = self.heater.read_actual_current()
             time.sleep(0.5)
@@ -213,6 +216,7 @@ class HeaterClass(threading.Thread):
         self.heater.output_status(False)
 
 CPX = cpx.CPX400DPDriver(1, device='/dev/ttyACM0', interface='serial')
+CPX2 = cpx.CPX400DPDriver(2, device='/dev/ttyACM0', interface='serial')
 ISOTECH = ips.IPS('/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0')
 
 Pullsocket = DateDataPullSocket('vhp_temp_control',
@@ -228,7 +232,7 @@ P = PowerCalculatorClass(Pullsocket, Pushsocket)
 P.daemon = True
 P.start()
 
-H = HeaterClass(P, Pullsocket, CPX, ISOTECH)
+H = HeaterClass(P, Pullsocket, CPX, CPX2, ISOTECH)
 H.start()
 
 T = CursesTui(H, CPX)

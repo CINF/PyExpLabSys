@@ -1,4 +1,5 @@
 # pylint: disable=R0913,W0142,C0103
+#import SocketServer
 
 """ Temperature controller """
 import time
@@ -12,6 +13,8 @@ import PyExpLabSys.drivers.agilent_34410A as dmm
 import PyExpLabSys.auxiliary.rtd_calculator as rtd_calculator
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.utilities import get_logger
+LOG = get_logger('mytemp', file_log=True)
 
 
 class CursesTui(threading.Thread):
@@ -42,7 +45,7 @@ class CursesTui(threading.Thread):
             self.screen.addstr(10, 2, "Actual Voltage: {0:.2f} ".format(val))
             val = self.hc.pc.pid.setpoint
             self.screen.addstr(11, 2, "PID-setpint: {0:.2f}C  ".format(val))
-            val = self.hc.pc.pid.IntErr
+            val = self.hc.pc.pid.int_err
             self.screen.addstr(12, 2, "PID-error: {0:.3f} ".format(val))
             val = time.time() - self.start_time
             self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
@@ -63,6 +66,7 @@ class CursesTui(threading.Thread):
             self.screen.refresh()
             time.sleep(0.2)
         self.stop()
+        LOG.info('TUI ended')
 
     def stop(self):
         """ Clean up console """
@@ -108,10 +112,10 @@ class PowerCalculatorClass(threading.Thread):
         self.pushsocket = pushsocket
         self.power = 0
         self.setpoint = -900
-        self.pid = PID.PID()
-        self.pid.Kp = 0.20
-        self.pid.Ki = 0.05
-        self.pid.Pmax = 45
+        self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        #self.pid.Kp = 0.20
+        #self.pid.Ki = 0.05
+        #self.pid.Pmax = 45
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -128,7 +132,7 @@ class PowerCalculatorClass(threading.Thread):
         if ramp > 0:
             setpoint = self.ramp_calculator(time.time()-ramp)
         self.setpoint = setpoint
-        self.pid.UpdateSetpoint(setpoint)
+        self.pid.update_setpoint(setpoint)
         self.pullsocket.set_point_now('setpoint', setpoint)
         return setpoint
 
@@ -163,7 +167,7 @@ class PowerCalculatorClass(threading.Thread):
         while not self.quit:
             self.temperature = self.value_reader.value()
             self.pullsocket.set_point_now('temperature', self.temperature)
-            self.power = self.pid.WantedPower(self.temperature)
+            self.power = self.pid.wanted_power(self.temperature)
 
             #  Handle the setpoint from the network
             try:
@@ -215,11 +219,14 @@ class HeaterClass(threading.Thread):
         while not self.quit:
             self.voltage = self.pc.read_power()
             self.pullsocket.set_point_now('voltage', self.voltage)
-            for i in range(1, 3):
-                self.ps[i].set_voltage(self.voltage)
+            self.ps[1].set_voltage(self.voltage)
+            self.ps[2].set_voltage(self.voltage*0.5)
             time.sleep(0.25)
-        self.ps.set_voltage(0)
-        self.ps.output_status(False)
+        for i in range(1, 3):
+            self.ps[i].set_voltage(0)
+            LOG.info('%s set voltage', i)
+            self.ps[i].output_status(False)
+            LOG.info('%s output status', i)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.settimeout(1)
@@ -240,7 +247,7 @@ PS = {}
 for k in range(1, 3):
     PS[k] = cpx.CPX400DPDriver(k, interface='lan',
                                hostname='cinf-microreactorng-heating-ps',
-                               tcp_port = 9221)
+                               tcp_port=9221)
     PS[k].set_voltage(0)
     PS[k].output_status(True)
 
@@ -264,4 +271,5 @@ H.start()
 T = CursesTui(H)
 T.daemon = True
 T.start()
+LOG.info('script ended')
 
