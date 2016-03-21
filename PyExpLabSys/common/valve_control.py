@@ -31,7 +31,7 @@ class ValveControl(threading.Thread):
             print(qsize)
             while qsize > 0:
                 element = self.pushsocket.queue.get()
-                valve = element.keys()[0]
+                valve = list(element.keys())[0]
                 wp.digitalWrite(int(valve)-1, element[valve])
                 qsize = self.pushsocket.queue.qsize()
 
