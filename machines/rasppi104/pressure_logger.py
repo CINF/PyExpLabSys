@@ -1,4 +1,5 @@
 """ Pressure logger for sample storage """
+from __future__ import print_function
 import threading
 import logging
 import time
@@ -6,7 +7,8 @@ from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
-from  ABElectronics_ADCPi import ADCPi
+from  ABE_ADCPi import ADCPi
+from ABE_helpers import ABEHelpers
 import credentials
 
 class PressureReader(threading.Thread):
@@ -23,7 +25,7 @@ class PressureReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            voltage = self.adc.readVoltage(1) * 8 / 5
+            voltage = self.adc.read_voltage(1) * 8 / 5
             pressure = 10**(voltage - 5)
             self.pressure = pressure
 
@@ -32,7 +34,9 @@ def main():
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
-    adc_instance = ADCPi(0x68, 0x69, 18)
+    i2c_helper = ABEHelpers()
+    bus = i2c_helper.get_smbus()
+    adc_instance = ADCPi(bus, 0x68, 0x69, 18)
 
     pressurereader = PressureReader(adc_instance)
     pressurereader.daemon = True
@@ -41,7 +45,7 @@ def main():
     codenames = ['chemlab312_sample_storage_pressure']
     loggers = {}
     for i in range(0, 1):
-        loggers[codenames[i]] = ValueLogger(pressurereader, comp_val = 0.05, comp_type='log')
+        loggers[codenames[i]] = ValueLogger(pressurereader, comp_val=0.05, comp_type='log')
         loggers[codenames[i]].start()
     socket = DateDataPullSocket('chemlab312_sample_storage',
                                 codenames, timeouts=[2.0])
@@ -65,7 +69,7 @@ def main():
             socket.set_point_now(name, value)
             live_socket.set_point_now(name, value)
             if loggers[name].read_trigged():
-                print value
+                print(value)
                 db_logger.save_point_now(name, value)
                 loggers[name].clear_trigged()
 
