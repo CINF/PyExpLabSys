@@ -34,7 +34,7 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(5 + i, 2, channel_string.format(self.ioc.voltages[lens]))
 
             val = self.ioc.pushsocket.queue.qsize()
-            self.screen.addstr(14, 2, "queue size: {0:.0f}s".format(val))
+            self.screen.addstr(14, 2, "queue size: {0:.0f}".format(val))
 
             val = time.time() - self.start_time
             self.screen.addstr(15, 2, "Run time: {0:.0f}s".format(val))

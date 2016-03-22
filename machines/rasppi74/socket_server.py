@@ -1,15 +1,13 @@
-#import sys
+""" Read voltages from the Time-of-Flight and expose to network """
 import SocketServer
 import threading
 import time
 
 import PyExpLabSys.drivers.agilent_34972A as multiplexer
-import sys
-import ReadTofVoltages
-#sys.path.append('../')
-
+import read_tof_voltages
 
 class SlowProcess(threading.Thread):
+    """ Perfom a slow operation without blocking the network """
     def __init__(self):
         threading.Thread.__init__(self)
         self.bias_string = ''
@@ -18,11 +16,12 @@ class SlowProcess(threading.Thread):
         self.recent_update = -1
 
     def update_bias_string(self):
-        self.bias_string = ReadTofVoltages.read_voltages()
+        """ Call helper to update actual voltages """
+        self.bias_string = read_tof_voltages.read_voltages()
 
     def run(self):
         while self.running:
-            if self.update:
+            if self.update: # Force an update of bias values
                 self.update_bias_string()
                 time.sleep(0.1)
                 self.recent_update = 20
@@ -30,12 +29,12 @@ class SlowProcess(threading.Thread):
             else:
                 self.recent_update = self.recent_update - 1
                 time.sleep(1)
-            if self.recent_update < 0:
+            if self.recent_update < 0: # If not updated recently, do not trust store values
                 self.bias_string = ''
         
 
 class MyUDPHandler(SocketServer.BaseRequestHandler):
-
+    """ Handle request to read or update store bias values """
     def handle(self):
         global bias
         global pec
@@ -75,29 +74,30 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             val = float(recieved_data[len(command)+1:].strip())
             bias = val
             data = "ok"
-            print val
-            print 'set_bias'
+            print(val)
+            print('set_bias')
 
         command = 'aps' #Ask pause status
         if recieved_data[0:len(command)] == command:
             data = str(slow_handler.update)
-            print data
+            print(data)
 
         socket.sendto(data, self.client_address)
 
-if __name__ == "__main__":
-    HOST, PORT = '10.54.7.109', 9696 #rasppi109
 
-    bias     = -1
+if __name__ == "__main__":
+    host, port = '10.54.7.74', 9696 # rasppi74
+
+    bias = -1
     pec = False
     agilent = multiplexer.Agilent34972ADriver(name='tof-agilent-34972a')
-
+    
     slow_handler = SlowProcess()
     slow_handler.start()
 
-    server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
+    server = SocketServer.UDPServer((host, port), MyUDPHandler)
     try:
         server.serve_forever()
     except:
         slow_handler.running = False
-        print 'Test'
+        print('Test')
