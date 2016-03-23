@@ -177,6 +177,9 @@ def create_module_link(status):
 
 def write_statuses(statuses):
     """Write the Python 3 statistics out to a restructured text file"""
+    import os.path
+    print('FILE ALREADY EXISTS:', os.path.isfile(PY3STATPATH))
+
     # Generate links
     for status in statuses:
         status['module_link'] = create_module_link(status)
