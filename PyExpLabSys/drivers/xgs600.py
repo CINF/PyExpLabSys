@@ -2,7 +2,8 @@
 from __future__ import print_function
 import serial
 import time
-
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class XGS600Driver():
     """ Driver for XGS600 gauge controller """

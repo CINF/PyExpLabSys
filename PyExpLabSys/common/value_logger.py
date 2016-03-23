@@ -1,5 +1,7 @@
 import threading
 import time
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class ValueLogger(threading.Thread):
     """ Read a continuously updated values and decides
