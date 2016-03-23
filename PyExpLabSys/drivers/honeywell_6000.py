@@ -1,7 +1,8 @@
 """ Driver for HIH6000 class temperature and humidity sensors """
-# pylint: disable=R0903
 import smbus
 import time
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class HIH6130(object):
     """ Class for reading pressure and temperature from
@@ -38,5 +39,5 @@ class HIH6130(object):
 
 
 if __name__ == '__main__':
-    HIH  = HIH6130()
+    HIH = HIH6130()
     print(HIH.read_values())
