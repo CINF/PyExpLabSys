@@ -74,6 +74,7 @@ class CursesTui(threading.Thread):
         self.screen.keypad(0)
         curses.echo()
         curses.endwin()
+        time.sleep(0.5)
 
 class RtdReader(threading.Thread):
     """ Read resistance of RTD and calculate temperature """
@@ -92,13 +93,19 @@ class RtdReader(threading.Thread):
 
     def value(self):
         """ Return current value of reader """
-        return(self.temperature)
+        return self.temperature
 
     def run(self):
         while not self.quit:
             time.sleep(0.1)
             rtd_value = self.rtd_reader.read()
             self.temperature = self.rtd_calc.find_temperature(rtd_value)
+        self.stop()
+
+    def stop(self):
+        """ Clean up """
+        while self.isAlive():
+            time.sleep(0.2)
 
 
 
@@ -203,6 +210,15 @@ class PowerCalculatorClass(threading.Thread):
             if t > 0:
                 self.update_setpoint(ramp=t)
             time.sleep(1)
+        self.stop()
+
+    def stop(self):
+        """ Clean up """
+        time.sleep(0.5)
+        pass
+        #while self.isAlive():
+        #    print('!!!')
+        #    time.sleep(0.2)
 
 
 class HeaterClass(threading.Thread):
@@ -216,6 +232,7 @@ class HeaterClass(threading.Thread):
         self.quit = False
 
     def run(self):
+        print('hc')
         while not self.quit:
             self.voltage = self.pc.read_power()
             self.pullsocket.set_point_now('voltage', self.voltage)
@@ -227,6 +244,15 @@ class HeaterClass(threading.Thread):
             LOG.info('%s set voltage', i)
             self.ps[i].output_status(False)
             LOG.info('%s output status', i)
+        self.stop()
+
+    def stop(self):
+        """ Clean up """
+        time.sleep(0.5)
+        #while self.isAlive():
+        #    print('!!!!')
+        #    time.sleep(0.2)
+
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.settimeout(1)
@@ -239,7 +265,7 @@ try:
 except:
     print('Could not find rasppi12')
     exit()
-
+rtd_reader.daemon = True
 rtd_reader.start()
 time.sleep(1)
 
@@ -269,7 +295,7 @@ H = HeaterClass(P, Pullsocket, PS)
 H.start()
 
 T = CursesTui(H)
-T.daemon = True
+#T.daemon = True
 T.start()
 LOG.info('script ended')
 
