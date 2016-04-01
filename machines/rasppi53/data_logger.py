@@ -17,14 +17,14 @@ class PressureReader(threading.Thread):
     def __init__(self, xgs_instance):
         threading.Thread.__init__(self)
         self.xgs = xgs_instance
-        self.chamberpressure = -9999
+        self.containment = -9999
         self.bufferpressure = -9999
         self.quit = False
 
     def value(self, channel):
         """ Return the value of the reader """
         if channel == 0:
-            value = self.chamberpressure
+            value = self.containment
         if channel == 1:
             value = self.bufferpressure
         return value
@@ -34,7 +34,7 @@ class PressureReader(threading.Thread):
             time.sleep(1)
             try:
                 pressures = self.xgs.read_all_pressures()
-                self.chamberpressure = pressures[0]
+                self.containment = pressures[0]
                 self.bufferpressure = pressures[1]
             except IndexError:
                 print('Av')
@@ -92,23 +92,23 @@ def main():
     time.sleep(2)
 
     reactor_logger = ValueLogger(reactor_reader, comp_val=5)
-    chamber_logger = ValueLogger(reader, comp_val=0.1, comp_type='log',
-                                 channel=0, low_comp=1e-3)
     buffer_logger = ValueLogger(reader, comp_val=0.1, comp_type='log',
-                                channel=1, low_comp=1e-3)
-    chamber_logger.start()
+                                channel=0, low_comp=1e-3)
+    containment_logger = ValueLogger(reader, comp_val=0.1, comp_type='log',
+                                     channel=1, low_comp=1e-3)
     buffer_logger.start()
+    containment_logger.start()
     reactor_logger.start()
 
     socket = DateDataPullSocket('mgw',
-                                ['chamber_pressure', 'buffer_pressure'],
+                                ['containment_pressure', 'buffer_pressure'],
                                 timeouts=[1.0, 1.0])
     socket.start()
 
-    livesocket = LiveSocket('mgw', ['chamber_pressure', 'buffer_pressure'], 2)
+    livesocket = LiveSocket('mgw', ['containment_pressure', 'buffer_pressure'], 2)
     livesocket.start()
 
-    codenames = ['mgw_pressure_chamber', 'mgw_pressure_buffer', 'mgw_reactor_pressure']
+    codenames = ['mgw_pressure_containment', 'mgw_pressure_buffer', 'mgw_reactor_pressure']
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_mgw',
                                     username=credentials.user,
                                     password=credentials.passwd,
@@ -118,12 +118,12 @@ def main():
 
     while reader.isAlive():
         time.sleep(0.2)
-        p_chamber = chamber_logger.read_value()
+        p_containment = containment_logger.read_value()
         p_buffer = buffer_logger.read_value()
         p_reactor = reactor_logger.read_value()
-        socket.set_point_now('chamber_pressure', p_chamber)
+        socket.set_point_now('containment_pressure', p_containment)
         socket.set_point_now('buffer_pressure', p_buffer)
-        livesocket.set_point_now('chamber_pressure', p_chamber)
+        livesocket.set_point_now('containment_pressure', p_containment)
         livesocket.set_point_now('buffer_pressure', p_buffer)
 
         if reactor_logger.read_trigged():
@@ -131,10 +131,10 @@ def main():
             db_logger.save_point_now('mgw_reactor_pressure', p_reactor)
             reactor_logger.clear_trigged()
 
-        if chamber_logger.read_trigged():
-            print(p_chamber)
-            db_logger.save_point_now('mgw_pressure_chamber', p_chamber)
-            chamber_logger.clear_trigged()
+        if containment_logger.read_trigged():
+            print(p_containment)
+            db_logger.save_point_now('mgw_pressure_containment', p_containment)
+            containment_logger.clear_trigged()
 
         if buffer_logger.read_trigged():
             print(p_buffer)
