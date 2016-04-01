@@ -60,7 +60,7 @@ def main():
     for i in range(0, len(codenames)):
         loggers[codenames[i]] = ValueLogger(reader, comp_val=0.25, channel=i)
         loggers[codenames[i]].start()
-    socket = DateDataPullSocket('Sputterchamber QCM', codenames, port=9001,
+    socket = DateDataPullSocket('Sputterchamber QCM', codenames, port=9000,
                                 timeouts=[5.0] * len(codenames))
     socket.start()
 
