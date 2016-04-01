@@ -1,5 +1,10 @@
 """ Driver for HIH6000 class temperature and humidity sensors """
-import smbus
+import os
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+    pass
+else:
+    import smbus
 import time
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
