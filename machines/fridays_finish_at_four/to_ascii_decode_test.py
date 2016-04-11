@@ -9,7 +9,7 @@ from PyExpLabSys.drivers.four_d_systems import to_ascii_utf8
 
 def main():
     """Run the decoding steps"""
-    con = MySQLdb.connect('servcinf', 'fridays', 'fridays', 'cinfdata',
+    con = MySQLdb.connect('servcinf-sql', 'fridays', 'fridays', 'cinfdata',
                           charset='utf8', use_unicode=False)
     cursor = con.cursor()
 

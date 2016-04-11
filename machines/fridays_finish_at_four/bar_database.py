@@ -17,7 +17,7 @@ class BarDatabase(object):
     of utf8 but does not convert to unicode, it lets the utf8 encoded strings through.
 
     """
-    def __init__(self, host='servcinf', port=3306, use_unicode=False):
+    def __init__(self, host='servcinf-sql', port=3306, use_unicode=False):
         self.connection = MySQLdb.connect(host=host, user='fridays',
                                           passwd='fridays', db='cinfdata',
                                           port=port, charset='utf8',
@@ -182,7 +182,7 @@ def module_test():
     """Run the module test"""
     try:
         # Assume office PC and just try and connect to db
-        database = BarDatabase("servcinf", 3306)
+        database = BarDatabase("servcinf-sql", 3306)
         through_tunnel = False
     except MySQLdb.OperationalError:
         # If not, try and create a tunnel
