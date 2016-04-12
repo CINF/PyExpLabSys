@@ -1,5 +1,6 @@
 """ Simple driver for Keithley SMU """
 import time
+import logging
 from scpi import SCPI
 
 class KeithleySMU(SCPI):
@@ -7,8 +8,7 @@ class KeithleySMU(SCPI):
 
     def __init__(self, interface, hostname='', device=''):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device)
-            self.f.baudrate = 19200
+            SCPI.__init__(self, interface=interface, device=device, baudrate=19200)
             self.f.timeout = 5
         if interface == 'lan':
             SCPI.__init__(self, interface=interface, hostname=hostname)
@@ -26,23 +26,45 @@ class KeithleySMU(SCPI):
         """ Read the measured current """
         self.scpi_comm('reading = smu' + self.channel_names[channel] + '.measure.i()')
         self.scpi_comm('*TRG')
-        finished = False
-        while not finished:
-            try:
-                current = float(self.scpi_comm('print(reading)', True))
-                finished = True
-            except ValueError:
-                pass
+        current_string = self.scpi_comm('print(reading)', True)
+        try:
+            current = float(current_string)
+        except (ValueError, TypeError):
+            current = None
+            logging.error('Current string: ' + str(current_string))
         return current
 
     def read_voltage(self, channel=1):
         """ Read the measured voltage """
         self.scpi_comm('reading = smu' + self.channel_names[channel] + '.measure.v()')
         self.scpi_comm('*TRG')
-        return(float(self.scpi_comm('print(reading)', True)))
+        voltage_string = self.scpi_comm('print(reading)', True)
+        try:
+            voltage = float(voltage_string)
+        except (ValueError, TypeError):
+            voltage = None
+            logging.error('Voltage string: ' + str(voltage_string))
+        return(voltage)
 
 if __name__ == '__main__':
-    smu = KeithleySMU()
+    smu = KeithleySMU(interface='serial',
+                      device='/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0')
+    print smu
+    time.sleep(1)
     print smu.read_software_version()
-    print smu.read_current()
-    print smu.read_voltage()
+    error = 0
+    i = 0
+    while error < 5000:
+        i = i + 1
+        smu = KeithleySMU(interface='serial', device='/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0')
+        print i
+        current = smu.read_current() 
+        if current is not None:
+            print('Current: ' + str(current) + 'Error: ' + str(error))
+        else:
+            error = error + 1
+            logging.error('Error: ' + str(error))
+            time.sleep(0.1)
+            smu = KeithleySMU(interface='serial', device='/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0')
+            logging.error(smu)
+ 

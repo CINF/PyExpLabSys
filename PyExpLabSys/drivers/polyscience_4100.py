@@ -1,5 +1,7 @@
 """ Driver and test case for Polyscience 4100 """
 import serial
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class Polyscience_4100():
     """ Driver for Polyscience 4100 chiller """

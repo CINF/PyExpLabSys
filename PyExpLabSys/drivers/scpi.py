@@ -5,7 +5,7 @@ import telnetlib
 
 class SCPI:
 
-    def __init__(self, interface, device='', tcp_port=5025, hostname=''):
+    def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600):
         self.device = device
         self.interface = interface
         try:
@@ -13,7 +13,8 @@ class SCPI:
                 self.f = open(self.device, 'w')
                 self.f.close()
             if self.interface == 'serial':
-                self.f = serial.Serial(self.device, 9600, timeout=1, xonxoff=True)
+                print(self.device)
+                self.f = serial.Serial(self.device, baudrate, timeout=1, xonxoff=True)
             if self.interface == 'lan':
                 self.f = telnetlib.Telnet(hostname, tcp_port)
             self.debug = False

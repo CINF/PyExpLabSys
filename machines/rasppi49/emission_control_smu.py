@@ -15,6 +15,8 @@ import credentials
 LOGGER = get_logger('Emission', level='info', file_log=True,
                     file_name='emission_log.txt', terminal_log=False)
 
+LOGGER.error('Start')
+
 class EmissionControl(threading.Thread):
     """ Control the emission of a filament. """
     def __init__(self):
@@ -22,7 +24,7 @@ class EmissionControl(threading.Thread):
         channels = ['setpoint', 'emission', 'ionenergy']
         self.datasocket = DateDataPullSocket('emission_tof', channels,
                                              timeouts=[999999, 1.0, 999999999])
-        self.datasocket.start()
+        self.datasocket.start() 
         self.pushsocket = DataPushSocket('tof-emission-push_control', action='enqueue')
         self.pushsocket.start()
         self.livesocket = LiveSocket('tof-emission', channels, 1)
@@ -30,14 +32,17 @@ class EmissionControl(threading.Thread):
         self.measured_voltage = 0
         self.filament = {}
         port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F952E5-if00'
-        self.filament['device'] = CPX.CPX400DPDriver(1, device=port)
+        self.filament['device'] = CPX.CPX400DPDriver(1, interface='serial', device=port)
         self.filament['voltage'] = 0
         self.filament['current'] = 0
         self.filament['idle_voltage'] = 1.7
-        self.filament['device'].set_current_limit(4.8)
+        self.filament['device'].set_current_limit(7)
         self.filament['device'].output_status(True)
         self.bias = {}
-        self.bias['device'] = smu.KeithleySMU(interface='lan', hostname='10.54.6.168')
+        self.keithley_port = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+        #self.bias['device'] = smu.KeithleySMU(interface='lan', hostname='10.54.6.168')
+        self.bias['device'] = smu.KeithleySMU(interface='serial', device=self.keithley_port)
+        #LOGGER.info(self.bias['device'].f)
         self.bias['grid_voltage'] = 0
         self.bias['grid_current'] = 0
         self.bias['device'].output_state(True)
@@ -80,7 +85,18 @@ class EmissionControl(threading.Thread):
 
     def read_emission_current(self):
         """ Read the grid current as measured by power supply """
-        return self.bias['device'].read_current() * 1000
+        emission_current = self.bias['device'].read_current()
+        if emission_current is None:
+            self.bias['device'] = smu.KeithleySMU(
+                interface='serial',
+                device=self.keithley_port,
+                )
+            time.sleep(0.1)
+            emission_current = self.value()
+            LOGGER.error('Emission current not read correctly - reset device')
+        else:
+            emission_current = emission_current * 1000
+        return emission_current
 
     def read_grid_current(self):
         """ Read the actual emission current """
@@ -127,7 +143,7 @@ if __name__ == '__main__':
     #ec.set_bias(35)
     ec.start()
 
-    logger = ValueLogger(ec, comp_val = 1, comp_type='log')
+    logger = ValueLogger(ec, comp_val = 0.01, comp_type='log')
     logger.start()
 
     CODENAMES = ['tof_emission_value']

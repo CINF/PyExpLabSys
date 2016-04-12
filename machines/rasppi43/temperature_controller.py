@@ -142,6 +142,7 @@ class HeaterClass(threading.Thread):
         self.heater2 = ps2
         self.heater_isotech = ps_isotech
         self.heater.output_status(True)
+        self.heater2.output_status(True)
         self.heater_isotech.set_output_voltage(0)
         self.heater_isotech.set_relay_status(True)
         self.pullsocket = pullsocket
@@ -167,7 +168,9 @@ class HeaterClass(threading.Thread):
             self.actual_current = self.heater.read_actual_current()
             time.sleep(0.5)
         self.heater.set_voltage(0)
+        self.heater2.set_voltage(0)
         self.heater.output_status(False)
+        self.heater2.output_status(False)
 
 def main():
     """ Main function """

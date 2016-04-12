@@ -17,9 +17,12 @@ class InficonSQM160(object):
         length = chr(len(command) + 34)
         crc = self.crc_calc(length + command)
         command = '!' + length + command + crc[0] + crc[1]
+        command_bytes = bytearray()
+        for i in range(0, len(command)):
+            command_bytes.append(ord(command[i]))
         error = 0
         while (error > -1) and (error < 20):
-            self.serial.write(command)
+            self.serial.write(command_bytes)
             time.sleep(0.1)
             reply = self.serial.read(self.serial.inWaiting())
             crc = self.crc_calc(reply[1:-2])
@@ -40,7 +43,6 @@ class InficonSQM160(object):
         command_string = []
         for i in range(0, len(input_string)):
             command_string.append(ord(input_string[i]))
-
         crc = int('3fff', 16)
         mask = int('2001', 16)
         for command in command_string:
@@ -97,8 +99,8 @@ if __name__ == "__main__":
     INFICON = InficonSQM160()
     print(INFICON.show_version())
 
-    #print(inficon.rate(1))
-    #print(inficon.thickness(1))
-    #print(inficon.frequency(1))
-    #print(inficon.CrystalLife(1))
-    #print(inficon.show_film_parameters(1))
+    print(INFICON.rate(1))
+    print(INFICON.thickness(1))
+    print(INFICON.frequency(1))
+    print(INFICON.crystal_life(1))
+
