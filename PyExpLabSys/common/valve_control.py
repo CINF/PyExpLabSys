@@ -6,6 +6,8 @@ from __future__ import print_function
 import time
 import threading
 import wiringpi as wp
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class ValveControl(threading.Thread):
     """ Keeps status of all valves """
