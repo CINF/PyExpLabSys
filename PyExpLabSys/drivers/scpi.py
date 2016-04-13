@@ -1,10 +1,14 @@
+""" Implementation of SCPI standard """
+from __future__ import print_function
 import time
 import serial
 import random
 import telnetlib
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
-class SCPI:
-
+class SCPI(object):
+    """ Driver for scpi communication """
     def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600):
         self.device = device
         self.interface = interface
@@ -13,14 +17,13 @@ class SCPI:
                 self.f = open(self.device, 'w')
                 self.f.close()
             if self.interface == 'serial':
-                print(self.device)
                 self.f = serial.Serial(self.device, baudrate, timeout=1, xonxoff=True)
             if self.interface == 'lan':
                 self.f = telnetlib.Telnet(hostname, tcp_port)
             self.debug = False
         except Exception as e:
             self.debug = True
-            #print "Debug mode: " + str(e)
+            print("Debug mode: " + str(e))
 
     def scpi_comm(self, command, expect_return=False):
         """ Implements actual communication with SCPI instrument """
@@ -48,8 +51,8 @@ class SCPI:
             if (command.find('?') > -1) or (expect_return is True):
                 return_string = self.f.read_until(chr(10).encode('ascii'), 2).decode()
         return return_string
-    
-    def read_software_version(self, short=False):
+
+    def read_software_version(self):
         """ Read version string from device """
         version_string = self.scpi_comm("*IDN?")
         version_string = version_string.strip()

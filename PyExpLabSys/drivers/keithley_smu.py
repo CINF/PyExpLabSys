@@ -1,7 +1,10 @@
 """ Simple driver for Keithley SMU """
+from __future__ import print_function
 import time
 import logging
-from scpi import SCPI
+from PyExpLabSys.drivers.scpi import SCPI
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class KeithleySMU(SCPI):
     """ Simple driver for Keithley SMU """
@@ -44,27 +47,14 @@ class KeithleySMU(SCPI):
         except (ValueError, TypeError):
             voltage = None
             logging.error('Voltage string: ' + str(voltage_string))
-        return(voltage)
+        return voltage
 
 if __name__ == '__main__':
-    smu = KeithleySMU(interface='serial',
-                      device='/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0')
-    print smu
+    PORT = '/dev/serial/by-id/'
+    PORT += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+
+    SMU = KeithleySMU(interface='serial', device=PORT)
+    print(SMU)
     time.sleep(1)
-    print smu.read_software_version()
-    error = 0
-    i = 0
-    while error < 5000:
-        i = i + 1
-        smu = KeithleySMU(interface='serial', device='/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0')
-        print i
-        current = smu.read_current() 
-        if current is not None:
-            print('Current: ' + str(current) + 'Error: ' + str(error))
-        else:
-            error = error + 1
-            logging.error('Error: ' + str(error))
-            time.sleep(0.1)
-            smu = KeithleySMU(interface='serial', device='/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0')
-            logging.error(smu)
- 
+    print(SMU.read_software_version())
+    print(SMU.read_current())
