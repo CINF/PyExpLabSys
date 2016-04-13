@@ -53,7 +53,7 @@ logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 ports = '/dev/serial/by-id/'
 ports += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
-ports = '/dev/ttyUSB0'
+ports = '/dev/ttyUSB1'
 xgs_instance = xgs600.XGS600Driver(ports)
 print xgs_instance.read_all_pressures()
 
@@ -65,7 +65,7 @@ time.sleep(2.5)
 codenames = ['tof_iongauge_ft', 'tof_iongauge_main', 'tof_pirani_roughing']
 loggers = {}
 loggers[codenames[0]] = ValueLogger(pressure, comp_val = 0.1,
-                                    comp_type = 'log', channel = 0)
+                                    low_comp=1e-11, comp_type = 'log', channel = 0)
 loggers[codenames[0]].start()
 loggers[codenames[1]] = ValueLogger(pressure, comp_val = 0.1,
                                     comp_type = 'log', channel = 1)
