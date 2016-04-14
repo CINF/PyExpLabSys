@@ -1,6 +1,5 @@
 """ Data logger for the mobile gas wall """
-# pylint: disable=C0301,R0904, C0103
-
+from __future__ import print_function
 import threading
 import logging
 import time
@@ -10,7 +9,7 @@ import PyExpLabSys.drivers.agilent_34410A as dmm
 import PyExpLabSys.drivers.omega_D6400 as D6400
 import PyExpLabSys.auxiliary.rtd_calculator as rtd_calculator
 from PyExpLabSys.common.value_logger import ValueLogger
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 import credentials
 
@@ -39,7 +38,7 @@ class TemperatureReader(threading.Thread):
 
     def value(self, channel):
         """ Return temperature of wanted channel """
-        return(self.temperatures[channel])
+        return self.temperatures[channel]
 
     def run(self):
         while not self.quit:
@@ -62,7 +61,7 @@ class TcReader(threading.Thread):
     def value(self):
         """ Return current value of reader """
         if self.temperature < 1500:
-            return(self.temperature)
+            return self.temperature
 
     def run(self):
         while not self.quit:
@@ -84,7 +83,7 @@ class RtdReader(threading.Thread):
 
     def value(self):
         """ Return current value of reader """
-        return(self.temperature)
+        return self.temperature
 
     def run(self):
         while not self.quit:
@@ -92,7 +91,8 @@ class RtdReader(threading.Thread):
             rtd_value = self.rtd_reader.read()
             self.temperature = self.rtd_calc.find_temperature(rtd_value)
 
-if __name__ == '__main__':
+def main():
+    """ Main fnuction """
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
@@ -119,47 +119,39 @@ if __name__ == '__main__':
                   'mgw_omega_temp_ch14']
 
     measurements = {}
-    print '--'
     measurements[0] = TcReader(ports[0])
     measurements[0].start()
-    print '--'
     measurements[1] = RtdReader(ports[1], measurements[0].value())
     measurements[1].start()
-    print '--'
     measurements[2] = TemperatureReader(ports[2])
     measurements[2].start()
     measurements[3] = TemperatureReader(ports[3])
     measurements[3].start()
 
     loggers = {}
-    loggers[code_names[0]] = ValueLogger(measurements[0], comp_val = 1.5, comp_type = 'lin')
+    loggers[code_names[0]] = ValueLogger(measurements[0], comp_val=1.5, comp_type='lin')
     loggers[code_names[0]].start()
-    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val = 1.5, comp_type = 'lin')
+    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val=1.5, comp_type='lin')
     loggers[code_names[1]].start()
     for i in range(2, 9):
-        loggers[code_names[i]] = ValueLogger(measurements[2],
-                                             comp_val = 0.2,
-                                             comp_type = 'lin',
-                                             channel = i-1)
+        loggers[code_names[i]] = ValueLogger(measurements[2], comp_val=0.5,
+                                             comp_type='lin', channel=i-1)
         loggers[code_names[i]].start()
     for i in range(9, 16):
-        loggers[code_names[i]] = ValueLogger(measurements[3],
-                                             comp_val = 0.2,
-                                             comp_type = 'lin',
-                                             channel = i-8)
+        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=0.5,
+                                             comp_type='lin', channel=i-8)
         loggers[code_names[i]].start()
 
     datasocket = DateDataPullSocket('mgw_temp', code_names, timeouts=[2.0] * 16, port=9001)
     datasocket.start()
 
-    db_logger = ContinuousLogger(table='dateplots_mgw',
-                                 username=credentials.user,
-                                 password=credentials.passwd,
-                                 measurement_codenames=code_names)
+    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_mgw',
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=code_names)
 
     db_logger.start()
     time.sleep(5)
-    values = {}
     while True:
         time.sleep(1)
         for name in code_names:
@@ -167,5 +159,8 @@ if __name__ == '__main__':
             datasocket.set_point_now(name, value)
             if loggers[name].read_trigged():
                 print(name + ': ' + str(value))
-                #db_logger.enqueue_point_now(name, value)
+                db_logger.save_point_now(name, value)
                 loggers[name].clear_trigged()
+
+if __name__ == '__main__':
+    main()
