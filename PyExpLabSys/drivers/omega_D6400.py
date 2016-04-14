@@ -3,9 +3,11 @@ from __future__ import print_function
 import minimalmodbus
 import time
 import logging
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
-
-class OmegaD6400():
+class OmegaD6400(object):
+    """ Driver for Omega D6400 daq card """
     def __init__(self, address=1, port='/dev/ttyUSB0'):
         self.instrument = minimalmodbus.Instrument(port, address)
         self.instrument.serial.baudrate = 9600
@@ -65,7 +67,7 @@ class OmegaD6400():
     def read_address(self, new_address=None):
         """ Read the RS485 address of the device """
         old_address = self.comm(0)
-        return(old_address)
+        return old_address
 
 
     def write_enable(self):
@@ -101,9 +103,10 @@ class OmegaD6400():
             code = codes[action][fullrange]
         if action in ('disable', 'current'):
             code = codes[action]
-        return(code)
+        return code
 
     def update_range_and_function(self, channel, fullrange=None, action=None):
+        """ Set the range and measurement type for a channel """
         if not action is None:
             self.write_enable()
             code = self.range_codes(fullrange, action)
@@ -112,9 +115,10 @@ class OmegaD6400():
             time.sleep(0.1)
             self.ranges[channel]['action'] = action
             self.ranges[channel]['fullrange'] = fullrange
-        return(self.comm(95 + channel))
+        return self.comm(95 + channel)
 
 if __name__ == '__main__':
-    omega = OmegaD6400(1, port='/dev/ttyUSB1')
-    omega.update_range_and_function(1, action='tc', fullrange='K')
-    print(omega.read_value(1))
+    OMEGA = OmegaD6400(1, port='/dev/ttyUSB1')
+    OMEGA.update_range_and_function(1, action='tc', fullrange='K')
+    print('***')
+    print(OMEGA.read_value(1))
