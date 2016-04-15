@@ -30,7 +30,6 @@ class EmissionControl(threading.Thread):
         self.pushsocket.start()
         self.livesocket = LiveSocket('tof-emission', channels, 1)
         self.livesocket.start()
-        self.measured_voltage = 0
         self.filament = {}
         port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F952E5-if00'
         self.filament['device'] = CPX.CPX400DPDriver(1, interface='serial', device=port)
@@ -120,6 +119,9 @@ class EmissionControl(threading.Thread):
                 if param == 'setpoint':
                     value = element[param]
                     self.update_setpoint(value)
+                if param == 'bias':
+                    value = element[param]
+                    self.set_bias(value)
                 qsize = self.pushsocket.queue.qsize()
 
             self.emission_current = self.read_emission_current()
@@ -131,6 +133,7 @@ class EmissionControl(threading.Thread):
             self.filament['current'] = self.read_filament_current()
             self.bias['grid_voltage'] = self.read_grid_voltage()
             self.bias['grid_current'] = self.read_grid_current()
+            self.datasocket.set_point_now('ionenergy', self.bias['grid_voltage'])
             self.datasocket.set_point_now('emission', self.emission_current)
             self.livesocket.set_point_now('emission', self.emission_current)
             self.looptime = time.time() - start_time
@@ -142,7 +145,7 @@ class EmissionControl(threading.Thread):
 def main():
     """ Main function """
     emission_control = EmissionControl()
-    #ec.set_bias(35)
+    emission_control.set_bias(38)
     emission_control.start()
 
     logger = ValueLogger(emission_control, comp_val=0.01, comp_type='log')
