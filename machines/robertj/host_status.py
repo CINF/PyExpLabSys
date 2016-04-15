@@ -7,6 +7,7 @@ import threading
 import Queue
 import time
 import json
+import pickle
 
 def host_status(hostname, method=""):
     """ Report if a host i available on the network """
@@ -98,8 +99,19 @@ def uptime(hostname, method, username='pi', password='cinf123'):
         except  UnboundLocalError:
             git = ''
         return_value['git'] = git
-    return return_value
 
+        # If host has been determined to be down, we attempt to load from cache
+        if return_value['up'] == 'Down':
+            try:
+                host_cache = pickle.load(open('/srv/http/cache/' + hostname + '.p', 'rb'))
+                return_value['git'] = host_cache['git']
+                return_value['model'] = host_cache['model']
+                return_value['python_version'] = host_cache['python_version']
+            except IOError:
+                pass
+        else: # Update cache
+            pickle.dump(return_value, open('/srv/http/cache/' + hostname + '.p', 'wb'))
+    return return_value
 
 class CheckHost(threading.Thread):
     """ Perfom the actual check """
@@ -146,9 +158,9 @@ def main():
     ok_lines = []
     for line in lines:
         line_is_ok = True
-        if len(line.strip()) == 0:
+        if len(line.strip()) == 0: # Empty line
             line_is_ok = False
-        if line.strip()[0] == '#':
+        if line.strip()[0] == '#': # Comment line
             line_is_ok = False
         if line_is_ok:
             ok_lines.append(line)
