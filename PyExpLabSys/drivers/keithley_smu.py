@@ -49,12 +49,18 @@ class KeithleySMU(SCPI):
             logging.error('Voltage string: ' + str(voltage_string))
         return voltage
 
+    def set_voltage(self, voltage, channel=1):
+        """ Set the desired voltage """
+        self.scpi_comm('smu' + self.channel_names[channel] +
+                       '.source.levelv = ' + str(voltage))
 if __name__ == '__main__':
     PORT = '/dev/serial/by-id/'
     PORT += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
 
     SMU = KeithleySMU(interface='serial', device=PORT)
     print(SMU)
+    SMU.set_voltage(0.24)
     time.sleep(1)
     print(SMU.read_software_version())
     print(SMU.read_current())
+    print(SMU.read_voltage())
