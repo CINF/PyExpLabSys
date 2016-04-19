@@ -36,7 +36,7 @@ Thus the whole thing will look like this:
 
 EXAMPLE: {
     'host': 'rasppi111',
-    'value': {
+    'data': {
         'codename1': [1450096534.070234, 0.3636318999681013],
         'codename2': [1450096535.456789, 0.8636541299681013],
     }
@@ -46,7 +46,7 @@ Values, which should just be put into tables can also be strings:
 
 EXAMPLE: {
     'host': 'rasppi111',
-    'value': {
+    'data': {
         'ion_gauge_status': [1450096534.070234, 'running'],
         'emmission_current_mA': [1450096535.456789, 5],
     }
@@ -56,7 +56,7 @@ Finally, it is possible to request a reset, by replacing the entire value list w
 
 EXAMPLE: {
     'host': 'rasppi111',
-    'value': {
+    'data': {
         'codename1': 'RESET',
         'codename2': 'RESET',
     }
