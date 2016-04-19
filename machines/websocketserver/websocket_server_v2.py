@@ -16,7 +16,7 @@ from twisted.internet import reactor, ssl
 from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
 
 from PyExpLabSys.common.utilities import get_logger
-LOG = get_logger('ws-server', level='debug', file_log=True, file_max_bytes=10485760)
+LOG = get_logger('ws-server2', level='debug', file_log=True, file_max_bytes=10485760)
 
 # Used only to count open connections
 WEBSOCKET_IDS = set()
@@ -61,7 +61,7 @@ class LoadMonitor(threading.Thread):
                 'websocket_count': (now, len(WEBSOCKET_IDS)),
             }
 
-            # TODO add these data items to data queue and add thread count
+            # TODO add thread count
 
             for key in ['received_n', 'sent_n', 'json_decode_error']:
                 try:
@@ -213,6 +213,7 @@ class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
         action = data.get('action')
         if action == 'subscribe':
             # Send last data before making the subscription
+            LOG.info('Got subscription: %s', data)
             last_messages = defaultdict(dict)
             for subscription in data['subscriptions']:
                 host, codename = subscription.split(':')
@@ -227,7 +228,7 @@ class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
             for subscription in data['subscriptions']:
                 SUBSCRIPTIONS[subscription].add(self)
         else:
-            log.error('wshandler: Unknown action: %s', action)
+            LOG.error('wshandler: Unknown action: %s', action)
 
     def send_data(self, data):
         """json encode the message before sending it"""
