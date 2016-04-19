@@ -1248,7 +1248,7 @@ class LiveSocket(object):
 
     """
 
-    def __init__(self, name, codenames, live_server=('kenni', 9767),
+    def __init__(self, name, codenames, live_server=('cinf-wsserver', 9767),
                  no_internal_data_pull_socket=False, internal_data_pull_socket_port=8000):
         """Intialize the LiveSocket
 
