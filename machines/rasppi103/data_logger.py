@@ -131,14 +131,14 @@ def main():
     loggers = {}
     loggers[code_names[0]] = ValueLogger(measurements[0], comp_val=1.5, comp_type='lin')
     loggers[code_names[0]].start()
-    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val=1.5, comp_type='lin')
+    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val=0.5, comp_type='lin')
     loggers[code_names[1]].start()
     for i in range(2, 9):
-        loggers[code_names[i]] = ValueLogger(measurements[2], comp_val=0.5,
+        loggers[code_names[i]] = ValueLogger(measurements[2], comp_val=1.0,
                                              comp_type='lin', channel=i-1)
         loggers[code_names[i]].start()
     for i in range(9, 16):
-        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=0.5,
+        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=1.0,
                                              comp_type='lin', channel=i-8)
         loggers[code_names[i]].start()
 

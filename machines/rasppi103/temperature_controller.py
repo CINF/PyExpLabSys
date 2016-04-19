@@ -91,7 +91,7 @@ class PowerCalculatorClass(threading.Thread):
 
     def read_power(self):
         """ Return the calculated wanted power """
-        return(self.power)
+        return self.power
 
     def update_setpoint(self, setpoint=None, ramp=0):
         """ Update the setpoint """
@@ -134,8 +134,8 @@ class PowerCalculatorClass(threading.Thread):
         sp_updatetime = 0
         ramp_updatetime = 0
         while not self.quit:
-            sock.sendto(data_temp, ('localhost', 9001))
-            received = sock.recv(1024)
+            sock.sendto(data_temp.encode('ascii'), ('localhost', 9001))
+            received = sock.recv(1024).decode()
             self.temperature = float(received[received.find(',') + 1:])
             self.power = self.pid.wanted_power(self.temperature)
 
@@ -192,22 +192,21 @@ class HeaterClass(threading.Thread):
             for i in range(1, 3):
                 self.ps[i].set_voltage(self.voltage)
             time.sleep(0.25)
-        self.ps.set_voltage(0)
-        self.ps.output_status(False)
-
+        for i in range(1, 3):
+            self.ps[i].set_voltage(0)
+            self.ps[i].output_status(False)
 
 port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_55126216-if00'
 PS = {}
 for i in range(1, 3):
-    print 'test'
     PS[i] = cpx.CPX400DPDriver(i, interface='lan',
                                hostname='cinf-palle-heating-ps',
-                               tcp_port = 9221)
+                               tcp_port=9221)
     PS[i].set_voltage(0)
     PS[i].output_status(True)
 
 Pullsocket = DateDataPullSocket('mgw_temp_control',
-                                ['setpoint', 'voltage'], 
+                                ['setpoint', 'voltage'],
                                 timeouts=[999999, 3.0],
                                 port=9000)
 Pullsocket.start()
@@ -226,4 +225,3 @@ H.start()
 T = CursesTui(H)
 T.daemon = True
 T.start()
-
