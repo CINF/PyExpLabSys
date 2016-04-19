@@ -1,5 +1,9 @@
+""" PID calculator """
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
 class PID(object):
-    
+    """ PID calculator """
     def __init__(self, pid_p=0.15, pid_i=0.0025, pid_d=0, p_max=54, p_min=0):
         self.setpoint = -9999
         self.pid_p = pid_p
@@ -9,7 +13,7 @@ class PID(object):
         self.p_min = p_min
         self.error = 0
         self.int_err = 0
-        
+
     def integration_contribution(self):
         """ Return the contribution from the i-term """
         return self.pid_i * self.int_err
@@ -41,5 +45,5 @@ class PID(object):
         elif power > self.p_max:
             power = self.p_max
         elif power < self.p_min:
-            power = self.p_min 
+            power = self.p_min
         return power
