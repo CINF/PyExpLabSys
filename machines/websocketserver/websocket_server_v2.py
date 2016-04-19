@@ -1,12 +1,12 @@
 # pylint: disable=C0103,R0904
 """This file implements the central websockets server for servcinf"""
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import time
 import threading
 import json
-import SocketServer
+from SocketServer import BaseRequestHandler, ThreadingUDPServer
 from Queue import Queue
 from collections import Counter, defaultdict
 
@@ -28,11 +28,15 @@ SUBSCRIPTIONS = defaultdict(set)
 # Used to keep track of last values, these will be sent upon subscription. Keys are hostname:codename
 LAST = {}
 
-# Data queue: (time_received, data_items)
+# Data queue: (time_received, data_items, data_len)
 DATA_QUEUE = Queue()
 
-# Counter for performance metrics
+# Counter for performance metrics, keys are: json_decode_error, sent_n, sent_bytes,
+# received_n, received_bytes
 COUNTER = Counter()
+
+# Delivery time
+HANDLE_TIMES = [0]
 
 
 ### Load measurement
@@ -48,12 +52,36 @@ class LoadMonitor(threading.Thread):
         """Something something every second"""
         while not self._stop:
             time.sleep(1)
-            for key in ['received_n', 'received_bytes']:
+            now = time.time()
+            max_internal_handle_time = max(HANDLE_TIMES)
+            del HANDLE_TIMES[:]
+            HANDLE_TIMES.append(0)
+            performance_stats = {
+                'max_internal_handle_time': (now, max_internal_handle_time),
+                'websocket_count': (now, len(WEBSOCKET_IDS)),
+            }
+
+            # TODO add these data items to data queue and add thread count
+
+            for key in ['received_n', 'sent_n', 'json_decode_error']:
                 try:
                     amount = COUNTER.pop(key)
                 except KeyError:
                     amount = 0
-                #print(key, amount, 'per second')
+                performance_stats[key] = (now, amount)
+            
+            for key in ['received_', 'sent_']:
+                try:
+                    amount = COUNTER.pop(key + 'bytes')
+                except KeyError:
+                    amount = 0
+                performance_stats[key + 'kb'] = (now, amount // 1024)
+
+            data = {'host': 'cinf-wsserver', 'data': performance_stats}
+            LOG.debug(performance_stats)
+            DATA_QUEUE.put(
+                (time.time(), data, len(json.dumps(data)))
+            )
 
     def stop(self):
         """Stop the Load Monitor"""
@@ -63,29 +91,22 @@ class LoadMonitor(threading.Thread):
 
 
 ### Receive Data Part
-class ThreadingUDPServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
-    """Threding UDP Server"""
-
-
-class ReceiveDataUDPHandler(SocketServer.BaseRequestHandler):
+class ReceiveDataUDPHandler(BaseRequestHandler):
     """UDP Handler for receiving data"""
 
     def handle(self):
         raw = self.request[0].strip()
-        socket = self.request[1]
-        print(socket)
+        data_length = len(raw)
         try:
             data = json.loads(raw)
         except ValueError:
             error = 'ERROR: Could not decode \'{}\' as json'.format(raw)
+            LOG.error(error)
             COUNTER['json_decode_error'] += 1
-            socket.sendto(error, self.client_address)
 
         COUNTER['received_n'] += 1
-        COUNTER['received_bytes'] += len(raw)
-        DATA_QUEUE.put((time.time(), data))
-
-        socket.sendto('OK', self.client_address)
+        COUNTER['received_bytes'] += data_length
+        DATA_QUEUE.put((time.time(), data, data_length))
 
 
 class ReceiveDataUDPServer(threading.Thread):
@@ -94,6 +115,7 @@ class ReceiveDataUDPServer(threading.Thread):
     def __init__(self):
         super(ReceiveDataUDPServer, self).__init__()
         self.daemon = True
+        # Setup threading UDP server
         host, port = "", 9767
         self.server = ThreadingUDPServer((host, port), ReceiveDataUDPHandler)
 
@@ -111,7 +133,7 @@ class ReceiveDataUDPServer(threading.Thread):
 
 
 class DataSender(threading.Thread):
-    """Send data to websocket connections"""
+    """Thread that sends the data to subscribed websocket connections"""
 
     def __init__(self):
         super(DataSender, self).__init__()
@@ -123,17 +145,22 @@ class DataSender(threading.Thread):
         Pops data of the DATA_QUEUE and send it to the client that have subscribed to it
         """
         while True:
-            time_received, data = DATA_QUEUE.get()
+            time_received, data, data_length = DATA_QUEUE.get()
+
             # Soft stop
             if data == 'STOP':
                 break
 
+            # Get subscribed websockets and send the data packet to them
             receivers = self._get_receivers_and_set_last(data)
 
-            #print('Sending data to', len(receivers), 'receivers')
             for receiver in receivers:
                 receiver.send_data(data)
-            print('Handle time', time.time() - time_received)
+
+            # Log the handle time for statistics purposes
+            HANDLE_TIMES.append(time.time() - time_received)
+            COUNTER['sent_n'] += len(receivers)
+            COUNTER['sent_bytes'] += len(receivers) * data_length
 
     def _get_receivers_and_set_last(self, data):
         """Form the set of connections that should get this data package and set the value
@@ -164,7 +191,6 @@ class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
     def onOpen(self):
         """Log when the connection is opened"""
         WEBSOCKET_IDS.add(self)
-        print(WEBSOCKET_IDS)
         LOG.info('wshandler: Connection opened, count: %s', len(WEBSOCKET_IDS))
 
     def connectionLost(self, reason):
@@ -183,19 +209,29 @@ class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
     def onMessage(self, msg, binary):
         """Parse the command and send response"""
         data = json.loads(msg)
+        print(data['subscriptions'])
         action = data.get('action')
         if action == 'subscribe':
+            # Send last data before making the subscription
+            last_messages = defaultdict(dict)
+            for subscription in data['subscriptions']:
+                host, codename = subscription.split(':')
+                if subscription in LAST:
+                    last_messages[host][codename] = LAST[subscription]
+
+            # Send last data in batches and as regular data
+            for host, data_points in last_messages.items():
+                self.send_data({'host': host, 'data': data_points})
+
+            # Make subscription
             for subscription in data['subscriptions']:
                 SUBSCRIPTIONS[subscription].add(self)
         else:
-            print('BAD')
-        print(SUBSCRIPTIONS)
+            log.error('wshandler: Unknown action: %s', action)
 
     def send_data(self, data):
         """json encode the message before sending it"""
         self.sendMessage(json.dumps(data))
-
-
 
 
 def main():
@@ -205,12 +241,15 @@ def main():
     #log.startLogging(sys.stdout)
     # Create context factor with key and certificate
 
+    # Start UDP server thread
     udp_server = ReceiveDataUDPServer()
     udp_server.start()
 
+    # Start load monitor thread
     load_monitor = LoadMonitor()
     load_monitor.start()
 
+    # Start the data sender thread
     data_sender = DataSender()
     data_sender.start()
 
@@ -227,16 +266,14 @@ def main():
     listenWS(factory, context_factory)
     ######## SSL IMPLEMENTATION END
 
-    #ds = DataSender()
-    #ds.start()
-
     try:
-        print('reactor run')
+        LOG.info('run reactor')
         reactor.run()  # pylint: disable=E1101
     except Exception as exception_:
         LOG.exception(exception_)
         raise exception_
 
+    # Stop all three threads
     udp_server.stop()
     load_monitor.stop()
     data_sender.stop()
@@ -245,5 +282,5 @@ def main():
     #raw_input('All stopped. Press enter to exit')
     print('All stopped. Press enter to exit')
 
-if __name__ == '__main__':
-    main()
+
+main()
