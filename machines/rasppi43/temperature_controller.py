@@ -8,6 +8,12 @@ import PyExpLabSys.drivers.cpx400dp as cpx
 import PyExpLabSys.drivers.isotech_ips as ips
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.utilities import get_logger
+import PyExpLabSys.common.utilities
+PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
+
+LOGGER = get_logger('VHP Temperature control', level='INFO', file_log=True,
+                    file_name='temp_control.log', terminal_log=False)
 
 class CursesTui(threading.Thread):
     """ Text user interface for furnace heating control """
@@ -105,20 +111,36 @@ class PowerCalculatorClass(threading.Thread):
         self.pid.update_setpoint(setpoint)
         self.pullsocket.set_point_now('setpoint', setpoint)
         return setpoint
-
-    def run(self):
+   
+    def runner(self):
+        """ Main thread loop """
         data_temp = 'vhp_T_reactor_outlet#raw'.encode('ascii')
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(1)
+        sock.settimeout(0.2)
+
         while not self.quit:
             self.pullsocket.set_point_now('pid_p', self.pid.proportional_contribution())
             self.pullsocket.set_point_now('pid_i', self.pid.integration_contribution())
             self.pullsocket.set_point_now('pid_e', self.pid.integrated_error())
 
-            sock.sendto(data_temp, ('localhost', 9000))
-            received = sock.recv(1024).decode()
-            self.temperature = float(received[received.find(',') + 1:])
-            self.power = self.pid.wanted_power(self.temperature)
+            error = 5
+            while error > 0:
+                try:
+                    sock.sendto(data_temp, ('localhost', 9000))
+                    received = sock.recv(1024).decode()
+                    break # leave while loop, error will be > 0
+                except socket.timeout:
+                    LOGGER.error('Timeout Error: ' + str(error))
+                    error = error - 1
+                    time.sleep(0.25)
+
+            LOGGER.info('Error value: {:f}'.format(error))
+            if error > 0: # loop ended succesfully
+                self.temperature = float(received[received.find(',') + 1:])
+                self.power = self.pid.wanted_power(self.temperature)
+            else:
+                self.temperature = 9999
+                self.power = 0
 
             #  Handle the setpoint from the network
             try:
@@ -131,6 +153,13 @@ class PowerCalculatorClass(threading.Thread):
             if setpoint is not None:
                 self.update_setpoint(setpoint)
             time.sleep(1)
+
+    def run(self):
+        try:
+            self.runner()
+        except:
+            LOGGER.exception('VHP Power calculator failed')
+            raise
 
 
 class HeaterClass(threading.Thread):
@@ -151,7 +180,8 @@ class HeaterClass(threading.Thread):
         self.actual_current = 0
         self.quit = False
 
-    def run(self):
+    def runner(self):
+        """ Main thread loop """
         time.sleep(0.05)
         while not self.quit:
             self.voltage = self.pc.read_power()
@@ -171,6 +201,13 @@ class HeaterClass(threading.Thread):
         self.heater2.set_voltage(0)
         self.heater.output_status(False)
         self.heater2.output_status(False)
+
+    def run(self):
+        try:
+            self.runner()
+        except:
+            LOGGER.exception('VHP Heater Class failed')
+            raise
 
 def main():
     """ Main function """
@@ -200,4 +237,8 @@ def main():
     tui.start()
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except:
+        LOGGER.exception('Main program failed')
+        raise
