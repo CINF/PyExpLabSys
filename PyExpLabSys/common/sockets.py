@@ -1321,7 +1321,8 @@ class LiveSocket(object):
                 self._internal_pull_socket.set_point(key, value)
 
         # Send the data to the live socket proxy
-        self.socket.sendto(json.dumps({'host': self.hostname, 'data': data}), (self.host, self.port))
+        dump = json.dumps({'host': self.hostname, 'data': data})
+        self.socket.sendto(dump.encode('utf-8'), (self.host, self.port))
 
     def set_batch_now(self, data):
         """Set a batch of point now
