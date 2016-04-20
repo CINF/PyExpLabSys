@@ -48,7 +48,7 @@ def main():
                                 ['n5_argon_pressure'], timeouts=[1.0])
     socket.start()
 
-    live_socket = LiveSocket('hall_n5_argon_pressure', ['n5_argon_pressure'], 2)
+    live_socket = LiveSocket('hall_n5_argon_pressure', ['n5_argon_pressure'])
     live_socket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_hall',
