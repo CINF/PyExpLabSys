@@ -27,13 +27,9 @@ Presently the module contains the following socket servers:
    last value for each codename. It also has the option to, for each received
    data set, to put them in a queue (that the user can then empty) or to call
    a callback function with the received data as en argument.
- * **LiveSocket** (:class:`.LiveSocket`) This socket is a special pull socket
-   used only for serving
-   data to the a live socket server. The idea is that these can be used to live
-   stream data to web-pages. (UNDER DEVELOPMENT, DON'T USE).
-
-.. warning :: The LiveSocket is still under development, which means that its
- interface is likely to change. Do not include it in critical code just yet.
+ * **LiveSocket** (:class:`.LiveSocket`) This socket is used only for serving
+   data to the a live socket server. It also is not actuallya socket server
+   like the others, but it has a similar interface.
 
 .. note:: The module variable :data:`.DATA` is a dict shared for all socket
  servers started from this module. It contains all the data, queues, settings
@@ -1235,106 +1231,122 @@ class PortStillReserved(Exception):
         super(PortStillReserved, self).__init__(message)
 
 
-LUHLOG = logging.getLogger(__name__ + '.LiveUDPHandler')
-LUHLOG.addHandler(logging.NullHandler())
-
-
-class LiveUDPHandler(SocketServer.BaseRequestHandler):
-    """Request handler for the :class:`.DateDataSocket` and
-    :class:`.DateDataSocket` sockets
-    """
-
-    def handle(self):
-        """Returns data corresponding to the request
-
-        All data is returned as json strings even though the command names does
-        not indicate it.
-
-        The handler understands the following commands:
-
-        **COMMANDS**
-
-         * **data** (*str*): Returns all values as a list of points (which in
-           themselves are lists) e.g: ``[[x1, y1], [x2, y2]]``), contained in a
-           :py:mod:`json` string. The order of the points is the same order the
-           codenames was given to the :meth:`.LiveSocket.__init__` method in
-           and is returned by the ``codenames`` command.
-         * **codenames** (*str*): Returns a list of the codenames contained in
-           a :py:mod:`json` string
-         * **sane_interval** (*str*): Returns the sane interval with which new
-           data can be expected to be available
-         * **name** (*str*): Returns the name of the socket server
-         * **status** (*str*): Returns the system status and status for all
-           socket servers.
-        """
-        # pylint: disable=attribute-defined-outside-init
-        command = self.request[0].decode('ascii')
-        self.port = self.server.server_address[1]
-        sock = self.request[1]
-        LUHLOG.debug('Request \'{}\' received from {} on port {}'
-                     .format(command, self.client_address, self.port))
-
-        if command == 'data':
-            points = []
-            for codename in DATA[self.port]['codenames']:
-                points.append(DATA[self.port]['data'][codename])
-            data = json.dumps(points)
-        elif command == 'codenames':
-            data = json.dumps(DATA[self.port]['codenames'])
-        elif command == 'sane_interval':
-            data = json.dumps(DATA[self.port]['sane_interval'])
-        elif command == 'name':
-            data = json.dumps(DATA[self.port]['name'])
-        elif command == 'status':
-            data = json.dumps({
-                'system_status': SYSTEM_STATUS.complete_status(),
-                'socket_server_status': socket_server_status()
-            })
-        else:
-            data = UNKNOWN_COMMAND
-
-        sock.sendto(data.encode('ascii'), self.client_address)
-        LUHLOG.debug('Sent back: \'{}\''.format(data))
-
-
 LSLOG = logging.getLogger(__name__ + '.LiveSocket')
 LSLOG.addHandler(logging.NullHandler())
 
 
-class LiveSocket(CommonDataPullSocket):
-    """This class implements a Live Socket"""
+class LiveSocket(object):
+    """This class implements a Live Socket
 
-    def __init__(self, name, codenames, sane_interval, port=8000,
-                 default_x=0, default_y=47, timeouts=None, check_activity=True,
-                 activity_timeout=900, poke_on_set=True):
+    As of version 2 LiveSocket there are a few new features to note:
 
-        LSLOG.info('Initialize with: {}'.format(call_spec_string()))
-        super(LiveSocket, self).__init__(
-            name, codenames, port, default_x, default_y, timeouts=None,
-            check_activity=check_activity, activity_timeout=activity_timeout,
-            init_timeouts=False, handler_class=LiveUDPHandler,
-        )
-        # Set the type and the the sane_interval
-        DATA[port]['type'] = 'live'
-        DATA[port]['sane_interval'] = sane_interval
+     1. There is now support for values of any json-able object. The values can of course
+        only be shown in a graph if they are numbers, but all other types can be shown in
+        a table.
+     2. There is now support for generic xy data. Simply use :meth:`.set_point` or
+        :meth:`set_batch` and give it x, y values.
 
-        # Initialize the last served data
-        DATA[port]['last_served'] = {}
-        for codename in codenames:
-            DATA[port]['last_served'][codename] = (default_x, default_y)
-        LSLOG.debug('Initilized')
-        # Init poke_on_set
-        self.poke_on_set = poke_on_set
+    """
+
+    def __init__(self, name, codenames, live_server=('cinf-wsserver', 9767),
+                 no_internal_data_pull_socket=False, internal_data_pull_socket_port=8000):
+        """Intialize the LiveSocket
+
+        Args:
+            name (str): The name of the socket
+            codenames (sequence): The codenames for the different data channels on this
+                LiveSocket
+            live_server (sequence): 2 element sequence of hostname and port for the live
+                server to connect to. Defaults to ('servcinf', 9767).
+            no_internal_data_pull_socket (bool): Whether to not open an internal
+                DataPullSocket. Defaults to False. See note below.
+            internal_data_pull_socket_port (int): Port for the internal DataPullSocket.
+                Defaults to 8000. See note below.
+
+        .. note:: In general, any socket should also work as a status socket. But since
+            the new design of the live socket, it no longers runs a UDP server, as would
+            be required for it to work as a status socket. Therefore, LiveSocket now
+            internally runs a DataPullSocket on port 8000 (that was the old LiveSocket
+            port) to work as a status socket. With default setting, everything should work
+            as before.
+
+        """
+        LSLOG.info('Init')
+        self.codename_set = set(codenames)
+        self.host, self.port = live_server
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.hostname = socket.gethostname()
+
+        # A live socket exposes a DataPullSocket, since we expect to always have access to
+        # the system information, and because, since we have all the information there
+        # anyway, there is not reason not to make it available in a socket
+        if no_internal_data_pull_socket:
+            self._internal_pull_socket = None
+        else:
+            self._internal_pull_socket = DataPullSocket(
+                name, codenames, port=internal_data_pull_socket_port
+            )
+
+    def start(self):
+        """Starts the internal DataPullSocket"""
+        if self._internal_pull_socket:
+            self._internal_pull_socket.start()
+
+    def stop(self):
+        """Stop the internal DataPullSocket"""
+        if self._internal_pull_socket:
+            self._internal_pull_socket.stop()
+
+    def set_batch(self, data):
+        """Set a batch of points now
+
+        Args:
+            data (dict): Batch of data on the form {codename1: (x1, y1), codename2:
+                (x2, y2)}. Note, that for the live socket system, the y values need not
+                be data in the form of a float, it can also be an int, bool or str. This
+                is done to make it possible to also transmit e.g. equipment status to the
+                live pages.
+
+        .. note:: All data is sent to the live socket proxy and onwards to the web browser
+            clients as batches, so if the data is on batch form, might as well send it as
+            such and reduce the number of transmissions.
+
+        """
+        # Set the values on the DataPullSocket
+        for key, value in data.items():
+            if key not in self.codename_set:
+                message = 'The codename: \'{}\' is not registered'.format(key)
+                # FIXME exception
+            if self._internal_pull_socket:
+                self._internal_pull_socket.set_point(key, value)
+
+        # Send the data to the live socket proxy
+        self.socket.sendto(json.dumps({'host': self.hostname, 'data': data}), (self.host, self.port))
+
+    def set_batch_now(self, data):
+        """Set a batch of point now
+
+        Args:
+            data (dict): A mapping of codenames to values without times or x-values (see
+                example below)
+
+        The format for data is::
+
+            {'measurement1': 47.0, 'measurement2': 42.0}
+
+        """
+        now = time.time()
+        self.set_batch({key: (now, value) for key, value in data.items()})
 
     def set_point_now(self, codename, value):
-        """Sets the current y-value for codename using the current time as x
+        """Sets the current value for codename using the current time as x
 
         Args:
             codename (str): Name for the measurement whose current value should
                 be set
-            value (float): y-value
+            value (float, int, bool or str): value
         """
-        self.set_point(codename, (time.time(), value))
+        self.set_batch({codename: (time.time(), value)})
         LSLOG.debug('Added time to value and called set_point')
 
     def set_point(self, codename, point):
@@ -1343,20 +1355,19 @@ class LiveSocket(CommonDataPullSocket):
         Args:
             codename (str): Name for the measurement whose current point should
                 be set
-            point (list or tuple): Current point as a list (or tuple) of 2
-                floats: [x, y]
+            point (list or tuple): Current value "point" as a list (or tuple) of items,
+                the first must be a float, the second can be float, int, bool or str
         """
-        if not codename in DATA[self.port]['codenames']:
-            message = 'Codename \'{}\' not recognized. Use one of: {}'.format(
-                codename,
-                DATA[self.port]['codenames']
-            )
-            raise ValueError(message)
-        DATA[self.port]['data'][codename] = tuple(point)
+        self.set_batch({codename: point})
         LSLOG.debug('Point {} for \'{}\' set'.format(tuple(point), codename))
-        # Poke if required
-        if DATA[self.port]['activity']['check_activity'] and self.poke_on_set:
-            self.poke()
+
+    def reset(self, codenames):
+        """Send the reset signal for codenames
+
+        Args:
+            codenames (list): List of codenames
+        """
+        self.set_batch({codename: 'RESET' for codename in codenames})
 
 
 ### Module variables
@@ -1424,20 +1435,6 @@ PUSH_RET = 'RET'
 #:   'type': 'push',
 #:   'updated': {},
 #:   'updated_time': None}
-#:
-#:For a :class:`LiveSocket` the dict will resemble this example:
-#:
-#: .. code-block:: python
-#:
-#:  {'activity': {'activity_timeout': 900,
-#:                'check_activity': True,
-#:                'last_activity': 1413983209.825589},
-#:   'codenames': ['var1'],
-#:   'data': {'var1': (0, 47)},
-#:   'last_served': {'var1': (0, 47)},
-#:   'name': 'my_live_socket',
-#:   'sane_interval': 0.1,
-#:   'type': 'live'}
 #:
 DATA = {}
 #: The dict that transforms strings to convertion functions
