@@ -105,7 +105,7 @@ def main():
                                 timeouts=[1.0, 1.0])
     socket.start()
 
-    livesocket = LiveSocket('mgw', ['containment_pressure', 'buffer_pressure'], 2)
+    livesocket = LiveSocket('mgw', ['containment_pressure', 'buffer_pressure'])
     livesocket.start()
 
     codenames = ['mgw_pressure_containment', 'mgw_pressure_buffer', 'mgw_reactor_pressure']
