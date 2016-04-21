@@ -144,7 +144,7 @@ class Bakeout(threading.Thread):
         self.setup = settings.setup
         self.dutycycles = [0, 0, 0, 0, 0, 0]
         channels = ['1', '2', '3', '4', '5', '6']
-        self.livesocket = LiveSocket(self.setup + '-bakeout', channels, 1)
+        self.livesocket = LiveSocket(self.setup + '-bakeout', channels)
         self.livesocket.start()
         self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=[2]*6)
         self.pullsocket.start()
