@@ -71,7 +71,7 @@ def main():
     loggers[codenames[2]] = ValueLogger(pressure, comp_val=0.1, comp_type='log', channel=2)
     loggers[codenames[2]].start()
 
-    livesocket = LiveSocket('TOF data logger', codenames, 2)
+    livesocket = LiveSocket('TOF data logger', codenames)
     livesocket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_tof',
