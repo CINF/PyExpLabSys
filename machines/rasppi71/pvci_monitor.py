@@ -41,8 +41,7 @@ def main():
                 'usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
 
     # Start live socket
-    live_socket = LiveSocket('thetaprobe_pvci', list(CODENAME_TRANSLATION.keys()),
-                             sane_interval=0.5)
+    live_socket = LiveSocket('thetaprobe_pvci', list(CODENAME_TRANSLATION.keys()))
     live_socket.start()
 
     # Start database saver
