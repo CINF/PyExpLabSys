@@ -28,7 +28,7 @@ def main():
     LOGGER.info('Initiated and started database logger')
 
     name = 'Thetaprobe pressure load lock and UV gun'
-    livesocket = LiveSocket(name, codenames, 0.2)
+    livesocket = LiveSocket(name, codenames)
     livesocket.start()
 
     loadlock_last = {'value': 1E20, 'time': 0}
