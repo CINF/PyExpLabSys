@@ -28,7 +28,7 @@ class EmissionControl(threading.Thread):
         self.datasocket.start()
         self.pushsocket = DataPushSocket('tof-emission-push_control', action='enqueue')
         self.pushsocket.start()
-        self.livesocket = LiveSocket('tof-emission', channels, 1)
+        self.livesocket = LiveSocket('tof-emission', channels)
         self.livesocket.start()
         self.filament = {}
         port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F952E5-if00'
