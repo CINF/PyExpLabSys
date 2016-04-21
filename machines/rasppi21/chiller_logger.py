@@ -34,7 +34,7 @@ def main():
         loggers[codenames[i]].start()
 
     live_socket_name = 'Sputterchamber chiller'
-    live_socket = LiveSocket(live_socket_name, codenames, 2)
+    live_socket = LiveSocket(live_socket_name, codenames)
     live_socket.start()
     LOG.info('Live socket init and started with name "%s"', live_socket_name)
 
