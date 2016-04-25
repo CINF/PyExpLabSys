@@ -114,7 +114,7 @@ def main():
     loggers[codenames[3]] = ValueLogger(kjlc_pressure, comp_val=0.1, comp_type='lin')
     loggers[codenames[3]].start()
 
-    livesocket = LiveSocket('sniffer pressure logger', codenames, 2)
+    livesocket = LiveSocket('sniffer pressure logger', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket('sniffer pressure', codenames,
