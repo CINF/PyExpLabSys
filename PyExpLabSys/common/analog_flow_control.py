@@ -53,8 +53,7 @@ class FlowControl(threading.Thread):
         self.pushsocket = DataPushSocket(name + '_analog_pc_control', action='enqueue')
         self.pushsocket.start()
 
-        self.livesocket = LiveSocket(name + '_analog_mfc_control',
-                                     devices, 1)
+        self.livesocket = LiveSocket(name + '_analog_mfc_control', devices)
         self.livesocket.start()
         self.running = True
 
@@ -67,6 +66,7 @@ class FlowControl(threading.Thread):
             time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
             while qsize > 0:
+                print('queue-size: ' + str(qsize))
                 element = self.pushsocket.queue.get()
                 mfc = list(element.keys())[0]
                 self.mfcs[mfc].set_flow(element[mfc])
