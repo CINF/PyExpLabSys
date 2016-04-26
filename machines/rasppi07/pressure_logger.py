@@ -51,7 +51,7 @@ def main():
     socket = DateDataPullSocket('Microreactor Ion Gauge', codenames, timeouts=[1.0])
     socket.start()
 
-    live_socket = LiveSocket('Microreactor Ion Gauge', codenames, 2)
+    live_socket = LiveSocket('Microreactor Ion Gauge', codenames)
     live_socket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_microreactor',
