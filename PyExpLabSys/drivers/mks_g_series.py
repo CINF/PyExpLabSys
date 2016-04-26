@@ -82,7 +82,14 @@ class Mks_G_Series():
     def read_flow(self, addr):
         """ Read the flow """
         command = 'FX?'
-        return float(self.comm(command, addr))
+        error = 1
+        while (error > 0) and (error < 50):
+            try:
+                flow = float(self.comm(command, addr))
+                error = -1
+            except ValueError:
+                error = error + 1    
+        return flow
 
     def read_serial_number(self, addr):
         """ Read the serial number of the device """
@@ -91,18 +98,5 @@ class Mks_G_Series():
 
 if __name__ == '__main__':
     mks = Mks_G_Series()
-    print mks.read_serial_number(6)
-    #mks.set_device_address(254, 6)
-    #print mks.set_setpoint(1, 0)
-    #print mks.read_setpoint(2)
-    #while True:
-    #    print mks.read_flow(2)
-    #    time.sleep(0.5)
-    #print mks.read_flow(2)
-    #print mks.read_current_gas_type(1)
-    #print mks.read_device_address(4)
-    #print mks.read_full_scale_range(2)
-
-
     #print mks.read_run_hours(254)
-    #print mks.set_device_address(254,2)
+    #print mks.set_device_address(254,005)

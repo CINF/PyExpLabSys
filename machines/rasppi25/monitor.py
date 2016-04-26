@@ -8,7 +8,7 @@ from PyExpLabSys.common.sockets import LiveSocket
 import credentials
 
 
-LOGGER = get_logger('thetaprobe_pressure_logger', file_log=True)
+LOGGER = get_logger('thetaprobe_pressure_logger')
 
 
 def main():
@@ -19,7 +19,7 @@ def main():
     LOGGER.info('Initiated driver to TPG 262')
 
     # Get a continuous logger
-    codenames = ['thetaprobe_pressure_loadlock', 'thetaprobe_pressure_uvgun']
+    codenames = ['thetaprobe_pressure_loadlock']
     db_logger = ContinuousLogger(table='dateplots_thetaprobe',
                                  username=credentials.USERNAME,
                                  password=credentials.PASSWORD,
@@ -28,11 +28,10 @@ def main():
     LOGGER.info('Initiated and started database logger')
 
     name = 'Thetaprobe pressure load lock and UV gun'
-    livesocket = LiveSocket(name, codenames, 0.2)
+    livesocket = LiveSocket(name, codenames)
     livesocket.start()
 
     loadlock_last = {'value': 1E20, 'time': 0}
-    uvgun_last = {'value': 1E20, 'time': 0}
 
     try:
         while True:
@@ -40,14 +39,12 @@ def main():
             # (value1, (status_code1, status_message1),
             # value2, (status_code2, status_message2))
             try:
-                value_ll, code_ll, value_uv, code_uv = tpg.pressure_gauges()
-            except IOError:
-                LOGGER.info(
-                    'Serial communication failed. Sleep 10 and try again.')
+                value_ll, code_ll = tpg.pressure_gauge(gauge=1)
+            except (IOError, ValueError):
+                LOGGER.info('Serial communication failed. Sleep 10 and try again.')
                 time.sleep(10)
                 continue
             livesocket.set_point_now('thetaprobe_pressure_loadlock', value_ll)
-            livesocket.set_point_now('thetaprobe_pressure_uvgun', value_uv)
 
             ### Load lock
             if code_ll[0] in [0, 1]:  # If measurement is OK or underranged
@@ -59,15 +56,6 @@ def main():
                     loadlock_last['value'] = value_ll
                     loadlock_last['time'] = now_ll
 
-            ### UV gun
-            if code_uv[0] in [0, 1]:  # If measurement is OK or underranged
-                if logging_criteria(value_uv, uvgun_last):
-                    LOGGER.info('Add value {} for UV gun'.format(value_uv))
-                    now_uv = db_logger.enqueue_point_now(
-                        'thetaprobe_pressure_uvgun',
-                        value_uv)
-                    uvgun_last['value'] = value_uv
-                    uvgun_last['time'] = now_uv
     except KeyboardInterrupt:
         LOGGER.info('Keyboard interrupt. Shutting down')
         db_logger.stop()

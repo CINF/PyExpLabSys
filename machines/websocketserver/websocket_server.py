@@ -190,7 +190,7 @@ class UDPConnectionSteward(threading.Thread):
         self.daemon = True
         # Seconds between updating the web socket definitions from the
         # web_sockets.xml file
-        self.update_interval = 300
+        self.update_interval = 90
         # Time interval between checking if it is time for an update
         self.main_interval = 1
         # The UDP definitions are a set of hostname:port strings
@@ -352,7 +352,7 @@ def main():
     # Create context factor with key and certificate
     context_factory = ssl.DefaultOpenSSLContextFactory(
         '/home/kenni/certs/fysik.dtu.dk.key',
-        '/home/kenni/certs/fysik.dtu.dk.crt'
+        '/home/kenni/certs/fysik.dtu.dk-NEW.crt'
     )
     # Form the webserver factory
     factory = WebSocketServerFactory("wss://localhost:9001", debug=True)

@@ -11,7 +11,7 @@ import json
 import select
 import textwrap
 from pprint import pprint
-from PyExpLabSys.common.sockets import UNKNOWN_COMMAND
+from PyExpLabSys.common.sockets import PUSH_ERROR, PUSH_RET, UNKNOWN_COMMAND
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 SOCK.setblocking(0)
 
@@ -170,13 +170,17 @@ def commands_and_codenames(ip_port, timeout=1):
         else:
             raise SocketTimeout()
 
-        if recv == UNKNOWN_COMMAND:
+        if recv in [UNKNOWN_COMMAND, PUSH_ERROR + '#' + UNKNOWN_COMMAND]:
             out.append(None)
+            continue
+
+        push_ret_prefix = PUSH_RET + '#'
+        if recv.startswith(push_ret_prefix):
+            recv = recv[len(push_ret_prefix):]
+        if command == 'name':
+            out.append(recv)
         else:
-            if command == 'name':
-                out.append(recv)
-            else:
-                out.append(json.loads(recv))
+            out.append(json.loads(recv))
 
     return out
 
@@ -193,7 +197,7 @@ class SocketTester(object):
         self.commands = None
         self.codenames = None
 
-    def main(self, line=None):
+    def main(self, line=None):  # pylint: disable=too-many-branches
         """Main method"""
         if colorama is not None:
             colorama.init()
@@ -214,6 +218,7 @@ class SocketTester(object):
                 self.help_()
             elif line.startswith('set '):
                 self.set_(line.split('set ')[1])
+                readline.set_completer(SocketCompleter(self.commands).complete)
             elif line.startswith('set_noauto '):
                 self.set_(line.split('set_noauto ')[1], True)
             elif line == 'unset':

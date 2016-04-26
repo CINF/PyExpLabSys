@@ -171,8 +171,11 @@ class SystemStatus(object):
     @staticmethod
     @works_on('linux2')
     def mac_address():
-        """Return the mac address of eth0"""
-        ifname = b'eth0'
+        """Return the mac address of currently connected interface"""
+        sql_ip = socket.gethostbyname('servcinf-sql')
+        interface_string = subprocess.check_output(['ip', '-o', 'route',
+                                                    'get', sql_ip]).split()
+        ifname = interface_string[4]
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         info = fcntl.ioctl(sock.fileno(), 0x8927, struct.pack(b'256s', ifname[:15]))
         if sys.version < '3':
@@ -200,11 +203,18 @@ class SystemStatus(object):
     @works_on('linux2')
     def rpi_temperature():
         """Return the temperature of a Raspberry Pi"""
+        #Firmware bug in Broadcom chip craches raspberry pi when reading temperature
+        #and using i2c at the same time
+        if os.path.exists('/dev/i2c-0') or os.path.exists('/dev/i2c-1'):
+            return None
         # Get temperature string
-        try:
-            temp_str = subprocess.check_output(['cat',
-                                                '/sys/class/thermal/thermal_zone0/temp'])
-        except OSError:
+        if os.path.exists('/sys/class/thermal/thermal_zone0/temp'):
+            try:                                    
+                temp_str = subprocess.check_output(['cat',
+                                                    '/sys/class/thermal/thermal_zone0/temp'])
+            except OSError:
+                return None
+        else:
             return None
 
         # Temperature string simply returns temperature in milli-celcius

@@ -1,6 +1,5 @@
 import serial
 import time
-import FindSerialPorts
 
 class AK_comm():
 
@@ -76,23 +75,9 @@ class AK_comm():
 
 
 if __name__ == '__main__':
-    ports = FindSerialPorts.find_ports()
-    print ports
-    for p in ports:
-        print p
-        AK = AK_comm('/dev/' + p)
-        id = AK.IdentifyDevice()
-        if not (id == 'Error'):
-            break
+    AK = AK_comm('/dev/ttyUSB0')
 
     print "Concentration: " + str(AK.ReadConcentration())
     print "Temperature: " + str(AK.ReadTemperature())
     print "Raw signal: " + str(AK.ReadUncorrelatedAnalogValue())
     print "Operational hours " + str(AK.ReadOperationalHours())
-
-    #f = serial.Serial('com1',9600,xonxoff=True)
-    #time.sleep(0.1)
-    #f.write(chr(2) + chr(32) + 'AGID K0' + chr(3))
-    #time.sleep(0.2)
-    #print f.inWaiting()
-    #print f.read(f.inWaiting())

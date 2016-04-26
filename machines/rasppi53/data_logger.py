@@ -1,11 +1,10 @@
-# pylint: disable=C0301,R0904, C0103
 """ Data logger for mobile gas wall """
-
+from __future__ import print_function
 import threading
 import logging
 import socket as basic_socket
 import time
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.value_logger import ValueLogger
@@ -18,14 +17,14 @@ class PressureReader(threading.Thread):
     def __init__(self, xgs_instance):
         threading.Thread.__init__(self)
         self.xgs = xgs_instance
-        self.chamberpressure = -9999
+        self.containment = -9999
         self.bufferpressure = -9999
         self.quit = False
 
     def value(self, channel):
         """ Return the value of the reader """
         if channel == 0:
-            value = self.chamberpressure
+            value = self.containment
         if channel == 1:
             value = self.bufferpressure
         return value
@@ -35,10 +34,10 @@ class PressureReader(threading.Thread):
             time.sleep(1)
             try:
                 pressures = self.xgs.read_all_pressures()
-                self.chamberpressure = pressures[0]
+                self.containment = pressures[0]
                 self.bufferpressure = pressures[1]
             except IndexError:
-                print 'Av'
+                print('Av')
 
 class ReactorReader(threading.Thread):
     """ Read reactor pressure from network """
@@ -48,36 +47,39 @@ class ReactorReader(threading.Thread):
         self.quit = False
 
     def value(self):
+        """ Return current nummeric value """
         return self.pressure
 
     def run(self):
         """ Read the pressure """
-        HOST, PORT = "10.54.7.24", 9998
-        data = "read_flow_6 "
-        # Error handling in this script is basically hopeless right now...
+        host, port = "10.54.7.24", 9000
+        data = "M11200362H#raw"
         while not self.quit:
             time.sleep(1)
             error = 1
             while error > 0:
                 try:
                     sock = basic_socket.socket(basic_socket.AF_INET, basic_socket.SOCK_DGRAM)
-                    sock.sendto(data + "\n", (HOST, PORT))
+                    sock.sendto(data.encode('ascii'), (host, port))
                     sock.settimeout(1)
                     received = sock.recv(1024)
+                    received = received.decode()
                     error = 0
-                except: # Timeout
+                except basic_socket.timeout:
                     error = error + 1
+                    time.sleep(0.1)
             try:
-                self.pressure = 1000 * float(received)
+                self.pressure = 1000 * float(received[received.find(',')+1:])
             except ValueError:
                 self.pressure = None
 
-if __name__ == '__main__':
+def main():
+    """ Main function """
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
     port = 'serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0'
     xgs = xgs600.XGS600Driver('/dev/' + port)
-    print xgs.read_all_pressures()
+    print(xgs.read_all_pressures())
 
     reader = PressureReader(xgs)
     reader.daemon = True
@@ -90,51 +92,54 @@ if __name__ == '__main__':
     time.sleep(2)
 
     reactor_logger = ValueLogger(reactor_reader, comp_val=5)
-    chamber_logger = ValueLogger(reader, comp_val = 0.1, comp_type='log', channel = 0)
-    buffer_logger = ValueLogger(reader, comp_val = 0.1, comp_type='log', channel = 1)
-    chamber_logger.start()
+    buffer_logger = ValueLogger(reader, comp_val=0.1, comp_type='log',
+                                channel=0, low_comp=1e-3)
+    containment_logger = ValueLogger(reader, comp_val=0.1, comp_type='log',
+                                     channel=1, low_comp=1e-3)
     buffer_logger.start()
+    containment_logger.start()
     reactor_logger.start()
 
     socket = DateDataPullSocket('mgw',
-                                ['chamber_pressure', 'buffer_pressure'],
+                                ['containment_pressure', 'buffer_pressure'],
                                 timeouts=[1.0, 1.0])
     socket.start()
 
-    livesocket = LiveSocket('mgw', ['chamber_pressure', 'buffer_pressure'], 2)
+    livesocket = LiveSocket('mgw', ['containment_pressure', 'buffer_pressure'])
     livesocket.start()
 
-    db_logger = ContinuousLogger(table='dateplots_mgw',
-                                 username=credentials.user,
-                                 password=credentials.passwd,
-                                 measurement_codenames=['mgw_pressure_chamber',
-                                                        'mgw_pressure_buffer',
-                                                        'mgw_reactor_pressure'])
+    codenames = ['mgw_pressure_containment', 'mgw_pressure_buffer', 'mgw_reactor_pressure']
+    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_mgw',
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=codenames)
     db_logger.start()
     time.sleep(5)
-    while True:
+
+    while reader.isAlive():
         time.sleep(0.2)
-        c = chamber_logger.read_value()
-        b = buffer_logger.read_value()
-        r = reactor_logger.read_value()
-        socket.set_point_now('chamber_pressure', c)
-        socket.set_point_now('buffer_pressure', b)
-        livesocket.set_point_now('chamber_pressure', c)
-        livesocket.set_point_now('buffer_pressure', b)
+        p_containment = containment_logger.read_value()
+        p_buffer = buffer_logger.read_value()
+        p_reactor = reactor_logger.read_value()
+        socket.set_point_now('containment_pressure', p_containment)
+        socket.set_point_now('buffer_pressure', p_buffer)
+        livesocket.set_point_now('containment_pressure', p_containment)
+        livesocket.set_point_now('buffer_pressure', p_buffer)
 
         if reactor_logger.read_trigged():
-            print(r)
-            db_logger.enqueue_point_now('mgw_reactor_pressure', r)
+            print(p_reactor)
+            db_logger.save_point_now('mgw_reactor_pressure', p_reactor)
             reactor_logger.clear_trigged()
 
-        if chamber_logger.read_trigged():
-            print(c)
-            db_logger.enqueue_point_now('mgw_pressure_chamber', c)
-            chamber_logger.clear_trigged()
+        if containment_logger.read_trigged():
+            print(p_containment)
+            db_logger.save_point_now('mgw_pressure_containment', p_containment)
+            containment_logger.clear_trigged()
 
         if buffer_logger.read_trigged():
-            print(b)
-            db_logger.enqueue_point_now('mgw_pressure_buffer', b)
+            print(p_buffer)
+            db_logger.save_point_now('mgw_pressure_buffer', p_buffer)
             buffer_logger.clear_trigged()
 
-
+if __name__ == '__main__':
+    main()

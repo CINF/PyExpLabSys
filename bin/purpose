@@ -17,8 +17,15 @@ def print_machine(machine, purpose, highlight=None):
     """Pretty prints a machine and its purpose"""
     if highlight is not None:
         purpose = purpose.replace(highlight, '\033[1m\033[35m{}\033[0m'.format(highlight))
+        machine = machine.replace(highlight, '\033[1m\033[35m{}\033[0m'.format(highlight))
+
+    # Add to the width of the machine padding, if there is a highligting in machine
+    width = 18
+    if '\033[1m\033[35m' in machine:
+        width = 18 + 13
+
     wrapped = textwrap.wrap(purpose, 60)
-    print('{: <18}{}'.format(machine, wrapped[0]))
+    print('{{: <{}}}{{}}'.format(width).format(machine, wrapped[0]))
     for line in wrapped[1:]:
         print('{: <18}{}'.format('', line))
 
@@ -47,6 +54,6 @@ for machine in machines:
         if len(args) == 0:
             print_machine(machine, purpose)
         else:
-            search = args[0]
-            if search.lower() in purpose.lower():
+            search = args[0].lower()
+            if search in purpose.lower() or search in machine:
                 print_machine(machine, purpose, highlight=search)

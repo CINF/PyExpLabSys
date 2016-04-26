@@ -1,10 +1,13 @@
-from scpi import SCPI
+""" Driver class for Agilent 34972A multiplexer """
+from __future__ import print_function
+from PyExpLabSys.drivers.scpi import SCPI
 import time
-    
-class Agilent34972ADriver(SCPI):
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
-    def __init__(self, name='microreactor-agilent-34972a'):
-        #SCPI.__init__(self,'/dev/usbtmc1','file')
+class Agilent34972ADriver(SCPI):
+    """ Driver for Agilent 34972A multiplexer """
+    def __init__(self, name='volvo-agilent-34972a'):
         SCPI.__init__(self, interface='lan', hostname=name)
 
     def read_single_scan(self):
@@ -24,7 +27,7 @@ class Agilent34972ADriver(SCPI):
         return_values = []
         for val in response:
             return_values.append(float(val))
-        return(return_values)
+        return return_values
 
     def abort_scan(self):
         """ Abort the scan """
@@ -35,9 +38,9 @@ class Agilent34972ADriver(SCPI):
         scan_list = self.read_scan_list()
 
         response = self.scpi_comm("CONFIGURE?")
-        response = response.replace(' ',',')
-        response = response.replace('\"','')
-        response = response.replace('\n','')
+        response = response.replace(' ', ',')
+        response = response.replace('\"', '')
+        response = response.replace('\n', '')
         conf = response.split(',')
 
         response = self.scpi_comm("VOLT:DC:NPLC?")
@@ -53,26 +56,29 @@ class Agilent34972ADriver(SCPI):
             i += 1
         return conf_string
 
-    def set_scan_interval(self,interval):
+    def set_scan_interval(self, interval):
+        """ Set the scan interval """
         self.scpi_comm("TRIG:TIMER  " + str(interval))
 
-    def set_integration_time(self,channel,nplc):
+    def set_integration_time(self, channel, nplc):
+        """ Set integration time """
         comm_string = "VOLT:DC:NPLC  " + str(nplc) + ",(@" + str(channel) + ")"
         self.scpi_comm(comm_string)
 
     def read_scan_interval(self):
+        """ Read the scan interval """
         response = self.scpi_comm("TRIG:TIMER?")
-        print response
+        print(response)
 
     def read_scan_list(self):
         """ Return the scan list """
         response = self.scpi_comm("ROUT:SCAN?")
         response = response.strip()
         start = response.find('@')
-        response =  response[start+1:-1]
+        response = response[start+1:-1]
         return response.split(',')
 
-    def set_scan_list(self,channels):
+    def set_scan_list(self, channels):
         """ Set the scan list """
         comm = "ROUT:SCAN (@"
         for chn in channels:
@@ -80,20 +86,12 @@ class Agilent34972ADriver(SCPI):
         comm = comm[:-1]
         comm += ")"
         self.scpi_comm(comm)
-        return(True)
-
+        return True
 
 
 if __name__ == "__main__":
-
-    driver = Agilent34972ADriver()
-    #driver = driver.ResetDevice()
-    print driver.read_scan_list()
-    #driver.set_integration_time(106,20)
-    print driver.read_configuration()
-
-    #print driver.read_scan_list()
-    print driver.read_single_scan()
-
-    #driver.read_scan()
+    DEVICE = Agilent34972ADriver()
+    print(DEVICE.read_scan_list())
+    print(DEVICE.read_configuration())
+    print(DEVICE.read_single_scan())
 

@@ -17,9 +17,12 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   overview
    common
-   drivers
    file-parsers
+   drivers
+   drivers_autogen_only
+   developer-notes
 
 
 ##################
@@ -29,4 +32,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

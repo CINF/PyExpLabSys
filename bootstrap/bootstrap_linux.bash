@@ -9,19 +9,20 @@
 # apt install packages line 1, general packages
 # NOTE pip is placed here, because right now it pulls in python2.6, which
 # I prefer is complete before installing python packages
-apt1="openssh-server emacs python-pip graphviz screen ntp"
+apt1="openssh-server emacs python-pip graphviz screen ntp libmysqlclient-dev"
 
 # apt install packages line 2, python extensions
-apt2="python-mysqldb python-serial python-colorama"
+apt2="python-mysqldb python-serial python-colorama python3-pip python3-serial python3-colorama"
 
 # apt install packages line 3, code checkers
 apt3="pylint"
 
 # remove selcted packages
-apt_remove="wolfram-engine oracle-java7-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde*"
+apt_remove="wolfram-engine oracle-java7-jdk oracle-java8-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde* libreoffice-common"
 
 # packages to be installe by pip
 pippackages="minimalmodbus"
+pip3packages="minimalmodbus mysqlclient"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
@@ -186,6 +187,18 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
 	echogood "+++++> DONE"
     else
 	echobad "pip not installed, run install step and then re-try pip step"
+    fi
+
+    echo
+    # Test if pip3 is there
+    pip3 --version > /dev/null
+    if [ $? -eq 0 ];then
+	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
+	echoblue "---> $pip3packages"
+	sudo pip3 install -U $pip3packages
+	echogood "+++++> DONE"
+    else
+	echobad "pip3 not installed, run install step and then re-try pip step"
     fi
 fi
 

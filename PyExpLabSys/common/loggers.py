@@ -5,7 +5,10 @@ implement queues to contain the data before of loading to the database to
 ensure against network or server problems.
 """
 
-import Queue
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 import threading
 import time
 import logging
@@ -94,13 +97,13 @@ class ContinuousLogger(threading.Thread):
     ONLY be used with the new layout of tables for continous data, where there
     is only one table per setup, as apposed to the old layout where there was
     one table per measurement type per setup. The class sends data to the
-    ``cinfdata`` database at host ``servcinf``.
+    ``cinfdata`` database at host ``servcinf-sql``.
 
-    :var host: Database host, value is ``servcinf``.
+    :var host: Database host, value is ``servcinf-sql``.
     :var database: Database name, value is ``cinfdata``.
     """
 
-    host = 'servcinf'
+    host = 'servcinf-sql'
     database = 'cinfdata'
 
     def __init__(self, table, username, password, measurement_codenames,
@@ -127,6 +130,11 @@ class ContinuousLogger(threading.Thread):
                 connection or translate the code names
 
         """
+        deprecation_warning = 'DEPRECATION WARNING: The '\
+            'PyExpLabSys.common.loggers.ContinuousLogger class is deprecated. Please '\
+            'instead use the PyExpLabSys.common.database_saver.ContinuousDataSaver class '\
+            'instead.'
+        print(deprecation_warning)
         LOGGER.info('CL: __init__ called')
         # Initialize thread
         super(ContinuousLogger, self).__init__()
@@ -141,7 +149,7 @@ class ContinuousLogger(threading.Thread):
         self._reconnect_waittime = reconnect_waittime
         self._cursor = None
         self._connection = None
-        self.data_queue = Queue.Queue()
+        self.data_queue = queue.Queue()
         LOGGER.debug('CL: instance attributes initialized')
         # Dict used to translate code_names to measurement numbers
         self._codename_translation = {}
@@ -189,6 +197,7 @@ class ContinuousLogger(threading.Thread):
         for codename in measurement_codenames:
             query = 'SELECT id FROM dateplots_descriptions '\
                 'WHERE codename=\'{}\''.format(codename)
+            LOGGER.debug('CL: Query: ' + query)
             self._cursor.execute(query)
             results = self._cursor.fetchall()
             LOGGER.debug('CL: query for {} returned {}'
@@ -221,7 +230,7 @@ class ContinuousLogger(threading.Thread):
                     self.data_queue.put(point)
                     LOGGER.debug('CL: Point could not be sent. Re-queued')
                     self._reinit_connection()
-            except Queue.Empty:
+            except queue.Empty:
                 pass
         # When we stop the logger
         self._connection.close()

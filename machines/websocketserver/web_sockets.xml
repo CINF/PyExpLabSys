@@ -2,6 +2,9 @@
     <!-- thetaprobe -->
     <socket>rasppi25:8000</socket>
 
+    <!-- thetaprobe pvci -->
+    <socket>rasppi71:8000</socket>
+
     <!-- Volvo pressure (volvo_pressure) and sample temperature (volvo_temperature) -->
     <socket>rasppi04:8000</socket>
 
@@ -23,6 +26,9 @@
     <!-- Micro-reactor NG temperature -->
     <socket>rasppi12:8000</socket>
 
+    <!-- Micro-reactor NG mass spec -->
+    <socket>cinf-microreactorNG-ms:8000</socket>
+
     <!-- Self -->
     <socket>localhost:8000</socket>
 
@@ -33,6 +39,9 @@
     <!-- old micro reactor, Temperature of sample measured with TC -->
     <!-- mr_sample_tc_temperature -->
     <socket>rasppi12:8000</socket>
+
+    <!-- old micro-reactor mass spec -->
+    <socket>cinf-microreactor-ms:8000</socket>
 
     <!-- Old micro-reactor pressure in buffer volume (mr_buffer_pressure) AND micro-reactor NG pressure in buffer volume microreactorng_pressure_buffer -->
     <!-- mr_buffer_pressure, microreactorng_pressure_buffer -->
@@ -51,13 +60,16 @@
     <!-- 21984839, 21984838 -->
     <socket>rasppi37:8000</socket>
 
+    <!-- Sniffer analog pressure controller -->
+    <socket>rasppi06:8000</socket>
+
     <!-- sniffer_qms_ion_gauge - Sniffer, Ion Gauge pressure at mass spec
 	 sniffer_qms_roughing - Sniffer, roughing for qms turbo
 	 sniffer_buffer_roughing  - Sniffer, roughing for buffer turbo
 	 sniffer_buffer_pressure  - Sniffer, buffer pirani pressure -->
     <socket>rasppi107:8000</socket>
 
-    <!-- MicroreactorNG flow controllers -->
+    <!-- XRD flow controllers -->
     <socket>rasppi16:8000</socket>
 
     <!-- Parrallel screening pressure read out -->
@@ -65,6 +77,12 @@
 
     <!-- Microreactor Analogue flow controller -->
     <socket>rasppi26:8000</socket>
+
+    <!-- Microreactor Turbo Pump -->
+    <socket>rasppi100:8000</socket>
+
+    <!-- PS Turbo Pump -->
+    <socket>rasppi28:8000</socket>
 
     <!-- UPS logging -->
     <socket>rasppi14:8000</socket>
@@ -78,7 +96,28 @@
     <!-- Sputterchamber chiller + qcm -->
     <socket>rasppi21:8000</socket>
 
-    <!-- Chiller Parallel screening -->
-    <socket>rasppi20:8000</socket>
+    <!-- Bakeout control box Palle -->
+    <socket>rasppi48:8000</socket>
+
+    <!-- Emmission control -->
+    <socket>rasppi49:8000</socket>
+
+    <!-- Palle, Analog MFC -->
+    <socket>rasppi62:8000</socket>
+
+    <!-- b309PVD temperatures -->
+    <socket>rasppi112:8000</socket>
+
+    <!-- b309PVD pressures -->
+    <socket>rasppi51:8000</socket>
+
+    <!-- b309PVD QCMs -->
+    <socket>rasppi106:8000</socket>
+
+    <!-- b312 Temperature and ventilation pressure -->
+    <socket>rasppi66:8000</socket>
+
+    <!-- Liveplot as mass-spec data for leak searching -->
+    <socket>cinf-volvo:8000</socket>
 
 </sockets>

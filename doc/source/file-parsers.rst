@@ -17,6 +17,12 @@ Specs File Format
 .. automodule:: PyExpLabSys.file_parsers.specs
     :members:
     :member-order: bysource
-    :special-members:
     :show-inheritance:
 
+Binary File Formats
+===================
+
+.. automodule:: PyExpLabSys.file_parsers.chemstation
+    :members:
+    :member-order: bysource
+    :show-inheritance:

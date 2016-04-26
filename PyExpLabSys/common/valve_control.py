@@ -1,13 +1,13 @@
-# pylint: disable=R0913,W0142,C0103 
-
 """
 This module implements the necessary interface to control
 a valve box using standard gpio commands
 """
-
+from __future__ import print_function
 import time
 import threading
-import wiringpi2 as wp
+import wiringpi as wp
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class ValveControl(threading.Thread):
     """ Keeps status of all valves """
@@ -30,10 +30,10 @@ class ValveControl(threading.Thread):
         while self.running:
             time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
-            print qsize
+            print(qsize)
             while qsize > 0:
                 element = self.pushsocket.queue.get()
-                valve = element.keys()[0]
+                valve = list(element.keys())[0]
                 wp.digitalWrite(int(valve)-1, element[valve])
                 qsize = self.pushsocket.queue.qsize()
 

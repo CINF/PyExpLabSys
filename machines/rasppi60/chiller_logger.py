@@ -1,6 +1,6 @@
 # pylint: disable=C0103
 """This file logs data from the chiller at the thetaprobe"""
-
+from __future__ import print_function
 import time
 import math
 from PyExpLabSys.common.value_logger import ValueLogger
@@ -20,19 +20,19 @@ def main():
     reader.start()
     LOG.info('ChillerReader started')
 
-    codenames = ['xrd_chiller_temperature', 
-                 'xrd_chiller_flow', 
-                 'xrd_chiller_temperature_ambient', 
-                 'xrd_chiller_pressure', 
+    codenames = ['xrd_chiller_temperature',
+                 'xrd_chiller_flow',
+                 'xrd_chiller_temperature_ambient',
+                 'xrd_chiller_pressure',
                  'xrd_chiller_temperature_setpoint']
     LOG.debug('Using codenames %s', codenames)
     loggers = {}
     for i in range(0, len(codenames)):
-        loggers[codenames[i]] = ValueLogger(reader, comp_val = 0.1, channel = i)
+        loggers[codenames[i]] = ValueLogger(reader, comp_val=0.1, channel=i)
         loggers[codenames[i]].start()
 
     live_socket_name = 'XRD chiller'
-    live_socket = LiveSocket(live_socket_name, codenames, 2)
+    live_socket = LiveSocket(live_socket_name, codenames)
     live_socket.start()
     LOG.info('Live socket init and started with name "%s"', live_socket_name)
 
@@ -42,7 +42,7 @@ def main():
                                  password=credentials.passwd,
                                  measurement_codenames=codenames)
     db_logger.start()
-    LOG.info('ContinuousLogger init and started on table "%s"',  db_table)
+    LOG.info('ContinuousLogger init and started on table "%s"', db_table)
 
     time.sleep(5)
 
