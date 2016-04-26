@@ -48,7 +48,7 @@ Datasocket.start()
 Pushsocket = DataPushSocket('microreactor_mks_push_control', action='enqueue')
 Pushsocket.start()
 
-Livesocket = LiveSocket('microreactor_mks_flows', devices, 1)
+Livesocket = LiveSocket('microreactor_mks_flows', devices)
 Livesocket.start()
 
 i = 0
