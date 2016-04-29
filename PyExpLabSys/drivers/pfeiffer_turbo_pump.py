@@ -1,5 +1,3 @@
-# pylint: disable=C0103,R0904,C0301
-
 """
 Self contained module to run a Pfeiffer turbo pump including fall-back
 text gui and data logging.
@@ -10,7 +8,10 @@ import time
 import curses
 import threading
 import logging
-import sys
+
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
 
 class CursesTui(threading.Thread):
     """ Text gui for controlling the pump """
@@ -36,29 +37,41 @@ class CursesTui(threading.Thread):
             #    self.screen.addstr(3, 30, 'Pump at constant speed')
             self.screen.addstr(4, 2, 'Gas mode: ' + self.turbo.status['gas_mode'] + '      ')
             self.screen.addstr(5, 2, 'Vent mode: ' + self.turbo.status['vent_mode'] + '      ')
-            self.screen.addstr(6, 2, 'Sealing gas: ' + self.turbo.status['sealing_gas'] + '      ')
+            self.screen.addstr(6, 2, 'Sealing gas: ' +
+                               self.turbo.status['sealing_gas'] + '      ')
 
-            self.screen.addstr(8, 2, "Rotation speed: {0:.2f}Hz      ".format(self.turbo.status['rotation_speed']))
-            self.screen.addstr(8, 28, "Setpoint speed: {0:.2f}Hz      ".format(self.turbo.status['set_rotation_speed']))
-            self.screen.addstr(9, 2, "Drive current: {0:.2f}A        ".format(self.turbo.status['drive_current']))
-            self.screen.addstr(10, 2, "Drive power: {0:.0f}W          ".format(self.turbo.status['drive_power']))
+            tmp = "Rotation speed: {0:.2f}Hz      "
+            self.screen.addstr(8, 2, tmp.format(self.turbo.status['rotation_speed']))
+            tmp = "Setpoint speed: {0:.2f}Hz      "
+            self.screen.addstr(8, 28, tmp.format(self.turbo.status['set_rotation_speed']))
+            tmp = "Drive current: {0:.2f}A        "
+            self.screen.addstr(9, 2, .format(self.turbo.status['drive_current']))
+            tmp = "Drive power: {0:.0f}W          "
+            self.screen.addstr(10, 2, .format(self.turbo.status['drive_power']))
 
-            self.screen.addstr(12, 2, "Temperature, Electronics: {0:.0f}C      ".format(self.turbo.status['temp_electronics']))
-            self.screen.addstr(13, 2, "Temperature, Bottom: {0:.0f}C           ".format(self.turbo.status['temp_bottom']))
-            self.screen.addstr(14, 2, "Temperature, Bearings: {0:.0f}C         ".format(self.turbo.status['temp_bearings']))
-            self.screen.addstr(15, 2, "Temperature, Motor: {0:.0f}C            ".format(self.turbo.status['temp_motor']))
+            tmp = "Temperature, Electronics: {0:.0f}C      "
+            self.screen.addstr(12, 2, tmp.format(self.turbo.status['temp_electronics']))
+            tmp = "Temperature, Bottom: {0:.0f}C           "
+            self.screen.addstr(13, 2, tmp.format(self.turbo.status['temp_bottom']))
+            tmp = "Temperature, Bearings: {0:.0f}C         "
+            self.screen.addstr(14, 2, tmp.format(self.turbo.status['temp_bearings']))
+            tmp = "Temperature, Motor: {0:.0f}C            "
+            self.screen.addstr(15, 2, tmp.format(self.turbo.status['temp_motor']))
 
-            self.screen.addstr(18, 2, "Operating hours: {0:.0f} ({1:.1f}days)    ".format(self.turbo.status['operating_hours'], self.turbo.status['operating_hours'] / 24.0))
-            self.screen.addstr(19, 2, "Driver runtime: {0:.1f}s    ".format(self.turbo.status['runtime']))
-            self.screen.addstr(20, 2, 'Port: ' + self.turbo.f.port)
+            tmp = "Operating hours: {0:.0f} ({1:.1f}days)    "
+            hours = self.turbo.status['operating_hours']
+            self.screen.addstr(18, 2, tmp.format(hours, hours / 24.0))
+            tmp = "Driver runtime: {0:.1f}s    "
+            self.screen.addstr(19, 2, tmp.format(self.turbo.status['runtime']))
+            self.screen.addstr(20, 2, 'Port: ' + self.turbo.serial.port)
             self.screen.addstr(21, 2, 'q: quit, u: spin up, d: spin down')
 
-            n = self.screen.getch()
-            if n == ord('q'):
+            char_num = self.screen.getch()
+            if char_num == ord('q'):
                 self.turbo.running = False
-            if n == ord('d'):
+            if char_num == ord('d'):
                 self.turbo.status['spin_down'] = True
-            if n == ord('u'):
+            if char_num == ord('u'):
                 self.turbo.status['spin_up'] = True
 
             self.screen.refresh()
@@ -160,7 +173,7 @@ class TurboLogger(threading.Thread):
 
     def read_value(self):
         """ Read the value of the logger """
-        return(self.value)
+        return self.value
 
     def run(self):
         while not self.quit:
@@ -188,9 +201,9 @@ class TurboDriver(threading.Thread):
         logging.info('Program started.')
         logging.basicConfig(level=logging.INFO)
 
-        self.f = serial.Serial(port, 9600)
-        self.f.stopbits = 2
-        self.f.timeout = 0.1
+        self.serial = serial.Serial(port, 9600)
+        self.serial.stopbits = 2
+        self.serial.timeout = 0.1
         self.adress = adress
         self.status = {}  # Hold parameters to be accessible by gui
         self.status['starttime'] = time.time()
@@ -231,8 +244,10 @@ class TurboDriver(threading.Thread):
             length = str(len(datatype)).zfill(2)
             command = action + command + length + datatype
         crc = self.crc_calc(adress_string + command)
-        self.f.write(adress_string + command + crc + '\r')
-        response = self.f.readline()
+        command = adress_string + command + crc + '\r'
+        LOGGER.debug(command)
+        self.serial.write(command.encode('ascii'))
+        response = self.serial.readline()
         try:
             length = int(response[8:10])
             reply = response[10:10 + length]
@@ -253,8 +268,8 @@ class TurboDriver(threading.Thread):
         :rtype: Str
         """
         crc = 0
-        for s in command:
-            crc += ord(s)
+        for character in command:
+            crc += ord(character)
         crc = crc % 256
         crc_string = str(crc).zfill(3)
         return crc_string
@@ -268,11 +283,7 @@ class TurboDriver(threading.Thread):
         command = '398'
         reply = self.comm(command, True)
         val = int(reply) / 60.0
-        #logging.warn(val)
-        #command = '309'
-        #reply = self.comm(command, True)
-        #logging.warn(reply)
-        return(val)
+        return val
 
     def read_set_rotation_speed(self):
         """ Read the intended rotational speed of the pump
@@ -283,7 +294,7 @@ class TurboDriver(threading.Thread):
         command = '308'
         reply = self.comm(command, True)
         val = int(reply)
-        return(val)
+        return val
 
     def read_operating_hours(self):
         """ Read the number of operating hours
@@ -294,7 +305,7 @@ class TurboDriver(threading.Thread):
         command = '311'
         reply = self.comm(command, True)
         val = int(reply)
-        return(val)
+        return val
 
     def read_gas_mode(self):
         """ Read the gas mode
@@ -311,7 +322,7 @@ class TurboDriver(threading.Thread):
             mode_string = 'Light gasses'
         if mode == 2:
             mode_string = 'Helium'
-        return(mode_string)
+        return mode_string
 
     def read_vent_mode(self):
         """ Read the venting mode
@@ -328,7 +339,7 @@ class TurboDriver(threading.Thread):
             mode_string = 'No Venting'
         if mode == 2:
             mode_string = 'Direct Venting'
-        return(mode_string)
+        return mode_string
 
     def read_sealing_gas(self):
         """ Read whether sealing gas is applied
@@ -343,7 +354,7 @@ class TurboDriver(threading.Thread):
             mode_string = 'No sealing gas'
         if mode == 1:
             mode_string = 'Sealing gas on'
-        return(mode_string)
+        return mode_string
 
     def is_pump_accelerating(self):
         """ Read if pump is accelerating
@@ -353,9 +364,9 @@ class TurboDriver(threading.Thread):
         command = '307'
         reply = self.comm(command, True)
         if int(reply) == 1:
-            return(True)
+            return True
         else:
-            return(False)
+            return False
 
     def turn_pump_on(self, off=False):
         """ Spin the pump up or down
@@ -370,7 +381,7 @@ class TurboDriver(threading.Thread):
         else:
             command = '1001006000000'
         self.comm(command, False)
-        return(True)
+        return True
 
     def read_temperature(self):
         """ Read the various measured temperatures of the pump

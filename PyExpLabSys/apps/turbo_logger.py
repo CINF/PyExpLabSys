@@ -12,7 +12,7 @@ sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
 
 LOGGER = get_logger('Turbo Pump', level='info', file_log=True,
-                    file_name='turbo_log.txt', terminal_log=False)
+                    file_name='turbo.log', terminal_log=False)
 
 def main():
     """ Main loop """
@@ -50,7 +50,7 @@ def main():
         loggers[name].daemon = True
         loggers[name].start()
 
-    livesocket = LiveSocket(settings.name + '-turboreader', codenames, 2)
+    livesocket = LiveSocket(settings.name + '-turboreader', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket(settings.name + '-turboreader', codenames,
