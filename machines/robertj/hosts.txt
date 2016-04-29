@@ -52,6 +52,7 @@
  rasppi66,  Raspberry Pi, socket, Hall, Ventilation pressure + hall temperature
  rasppi68,  Raspberry Pi, socket, TOF, Livesocket display
  rasppi70,  Raspberry Pi, socket, Chemlab b312, Temp + humidity
+ rasppi71,  Raspberry Pi, ls,     Thetaprobe, Main chamber pressure
  rasppi72,  Raspberry Pi, socket, b312, Large office Temp + humidity
  rasppi74,  Raspberry Pi, socket, TOF, Voltage control
  rasppi100, Raspberry Pi, socket, &micro;-reactor, Turbo controller
