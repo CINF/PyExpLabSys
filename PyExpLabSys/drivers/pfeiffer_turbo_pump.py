@@ -45,9 +45,9 @@ class CursesTui(threading.Thread):
             tmp = "Setpoint speed: {0:.2f}Hz      "
             self.screen.addstr(8, 28, tmp.format(self.turbo.status['set_rotation_speed']))
             tmp = "Drive current: {0:.2f}A        "
-            self.screen.addstr(9, 2, .format(self.turbo.status['drive_current']))
+            self.screen.addstr(9, 2, tmp.format(self.turbo.status['drive_current']))
             tmp = "Drive power: {0:.0f}W          "
-            self.screen.addstr(10, 2, .format(self.turbo.status['drive_power']))
+            self.screen.addstr(10, 2, tmp.format(self.turbo.status['drive_power']))
 
             tmp = "Temperature, Electronics: {0:.0f}C      "
             self.screen.addstr(12, 2, tmp.format(self.turbo.status['temp_electronics']))
