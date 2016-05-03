@@ -8,7 +8,10 @@ import os
 import re
 import sys
 import socket
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 import struct
 import threading
 import subprocess
