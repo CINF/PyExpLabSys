@@ -7,7 +7,8 @@ import time
 
 from PyExpLabSys.drivers.omega import CNi3244_C24
 from PyExpLabSys.common.sockets import DateDataPullSocket
-from PyExpLabSys.common.loggers import ContinuousLogger
+#from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.utilities import get_logger
 
 
@@ -37,8 +38,7 @@ def main_measure_loop(cni, socket, db_logger):
             # Log if required
             if now - last_time > TIMEOUT or\
                     abs(current - last_temp) > TEMPERATURE_CHANGE_THRESHOLD:
-                db_logger.enqueue_point_now('tower_temperature_sample',
-                                            current)                
+                db_logger.save_point_now('tower_temperature_sample', current)                
                 LOGGER.info('Value {} sent'.format(current))
                 last_time = now
                 last_temp = current
@@ -49,10 +49,11 @@ def main():
     cni = CNi3244_C24(5)
     socket = DateDataPullSocket(FULL_NAME, [SHORT_NAME], timeouts=1.0)
     socket.start()
-    db_logger = ContinuousLogger(
-        table='dateplots_tower', username='N/A', password='N/A',
+    db_logger = ContinuousDataSaver(
+        continuous_data_table='dateplots_tower',
+        username='tower',
+        password='tower',
         measurement_codenames=[NAME],
-        dsn='servcinf'
     )
     db_logger.start()
     time.sleep(0.1)
