@@ -199,6 +199,28 @@ class PizzaGUI(QtGui.QMainWindow, PizzaApp):
         self.login_time = time.time()
 
 
+def requires_db(function):
+    """Requires db decorator"""
+
+    def inner_function(self, *args, **kwargs):
+        """Inner function"""
+        now = time.time()
+
+        # Only do the connection check, if it has been more than an
+        # hour since the last query
+        if now - self.last_query > 3600:
+            print("Staying alive")
+            try:
+                self.cursor.execute("SELECT * FROM pizza_transactions limit 1")
+            except self.dbmodule.Error:
+                self.init_db()
+
+        self.last_query = now
+        return function(self, *args, **kwargs)
+
+    return inner_function
+
+
 class PizzaCore(object):
     """The core of the pizza app (including db communication)"""
 
@@ -207,7 +229,15 @@ class PizzaCore(object):
         self.dbmodule = dbmodule
         self.user = None
         self.real_name = None
-        connection = dbmodule.connect(
+
+        # Init db connection
+        self.last_query = 0
+        self.cursor = None
+        self.init_db()
+
+    def init_db(self):
+        """Init the database connection"""
+        connection = self.dbmodule.connect(
             host='servcinf-sql',
             user=credentials.USERNAME,
             passwd=credentials.PASSWORD,
@@ -217,6 +247,7 @@ class PizzaCore(object):
         connection.autocommit(True)
         self.cursor = connection.cursor()
 
+    @requires_db
     def login(self, username):
         """Log a user in
 
