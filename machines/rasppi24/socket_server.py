@@ -92,7 +92,7 @@ Datasocket.start()
 
 Pushsocket = DataPushSocket('microreactor_mfc_control', action='enqueue')
 Pushsocket.start()
-Livesocket = LiveSocket('microreactor_mfc_control', devices, 1)
+Livesocket = LiveSocket('microreactor_mfc_control', devices)
 Livesocket.start()
 
 fc = FlowControl(MFCs, Datasocket, Pushsocket, Livesocket)
