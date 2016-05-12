@@ -3,9 +3,15 @@ from __future__ import print_function
 import time
 import serial
 import random
+import logging
 import telnetlib
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
+
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
+
 
 class SCPI(object):
     """ Driver for scpi communication """
@@ -46,10 +52,13 @@ class SCPI(object):
             if command.endswith('?') or (expect_return is True):
                 return_string = self.f.readline().decode()
         if self.interface == 'lan':
+            lan_time = time.time()
             self.f.write(command_text.encode('ascii'))
-            #self.f.write(command + '\n')
             if (command.find('?') > -1) or (expect_return is True):
                 return_string = self.f.read_until(chr(10).encode('ascii'), 2).decode()
+            #time.sleep(0.025)
+            LOGGER.info('lan_time for coomand ' + command_text.strip() +
+                        ': ' + str(time.time() - lan_time))
         return return_string
 
     def read_software_version(self):
