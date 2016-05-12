@@ -52,6 +52,23 @@ class CursesTui(threading.Thread):
             val = time.time() - self.start_time
             self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
 
+            val = self.heater.values['actual_voltage_1']
+            self.screen.addstr(11, 40, "Actual Voltage 1: {0:.2f}V       ".format(val))
+            val = self.heater.values['actual_voltage_2']
+            self.screen.addstr(12, 40, "Actual Voltage 2: {0:.2f}V       ".format(val))
+            val = self.heater.values['actual_current_1'] * 1000
+            self.screen.addstr(13, 40, "Actual Current 1: {0:.0f}mA       ".format(val))
+            val = self.heater.values['actual_current_2'] * 1000
+            self.screen.addstr(14, 40, "Actual Current 2: {0:.0f}mA       ".format(val))
+            power1 = (self.heater.values['actual_voltage_1'] *
+                      self.heater.values['actual_current_1'])
+            self.screen.addstr(15, 40, "Power, heater 1: {0:.3f}W        ".format(power1))
+            power2 = (self.heater.values['actual_voltage_2'] *
+                      self.heater.values['actual_current_2'])
+            self.screen.addstr(16, 40, "Power, heater 1: {0:.3f}W        ".format(power2))
+            self.screen.addstr(17, 40, "Total Power1: {0:.3f}W        ".format(power1 + power2))
+
+            
             key_val = self.screen.getch()
             if key_val == ord('q'):
                 self.heater.quit = True
@@ -227,22 +244,22 @@ class HeaterClass(threading.Thread):
             self.power_supply[1].set_voltage(self.values['wanted_voltage'])
             self.power_supply[2].set_voltage(self.values['wanted_voltage'] * 0.5)
 
-            self.values['acutual_voltage_1'] = self.power_supply[1].read_actual_voltage()
-            LOGGER.info('Voltage 1: ' + str(self.values['acutual_voltage_1']))
+            self.values['actual_voltage_1'] = self.power_supply[1].read_actual_voltage()
+            LOGGER.info('Voltage 1: ' + str(self.values['actual_voltage_1']))
             self.pullsocket.set_point_now('actual_voltage_1',
-                                          self.values['acutual_voltage_1'])
+                                          self.values['actual_voltage_1'])
 
-            self.values['acutual_current_1'] = self.power_supply[1].read_actual_current()
+            self.values['actual_current_1'] = self.power_supply[1].read_actual_current()
             self.pullsocket.set_point_now('actual_current_1',
-                                          self.values['acutual_current_1'])
+                                          self.values['actual_current_1'])
 
-            self.values['acutual_voltage_2'] = self.power_supply[2].read_actual_voltage()
+            self.values['actual_voltage_2'] = self.power_supply[2].read_actual_voltage()
             self.pullsocket.set_point_now('actual_voltage_2',
-                                          self.values['acutual_voltage_2'])
+                                          self.values['actual_voltage_2'])
 
-            self.values['acutual_current_2'] = self.power_supply[2].read_actual_current()
+            self.values['actual_current_2'] = self.power_supply[2].read_actual_current()
             self.pullsocket.set_point_now('actual_current_2',
-                                          self.values['acutual_current_2'])
+                                          self.values['actual_current_2'])
 
         for i in range(1, 3):
             self.power_supply[i].set_voltage(0)
