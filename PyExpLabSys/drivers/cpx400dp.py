@@ -1,6 +1,7 @@
 # pylint: disable=R0913
 """ Driver for CPX400DP power supply """
 from __future__ import print_function
+import time
 from PyExpLabSys.drivers.scpi import SCPI
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
@@ -52,6 +53,7 @@ class CPX400DPDriver(SCPI):
         """Reads the actual output voltage"""
         function_string = 'V' + self.output + 'O?'
         value_string = self.scpi_comm(function_string)
+        time.sleep(0.1) # This might only be necessary on LAN interface
         try:
             value = float(value_string.replace('V', ''))
         except ValueError:
@@ -62,6 +64,7 @@ class CPX400DPDriver(SCPI):
         """Reads the actual output current"""
         function_string = 'I' + self.output + 'O?'
         value_string = self.scpi_comm(function_string)
+        time.sleep(0.1) # This might only be necessary on LAN interface
         try:
             value = float(value_string.replace('A', ''))
         except ValueError:
