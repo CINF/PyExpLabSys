@@ -13,8 +13,10 @@ from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.utilities import get_logger
 import PyExpLabSys.common.utilities
 PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
-LOGGER = get_logger('Microreactor Temperature control', level='INFO', file_log=True,
+LOGGER = get_logger('Microreactor Temperature control', level='WARN', file_log=True,
                     file_name='temp_control.log', terminal_log=False)
 
 class CursesTui(threading.Thread):
@@ -40,7 +42,7 @@ class CursesTui(threading.Thread):
             try:
                 self.screen.addstr(9, 2, "Temeperature: {0:.4f}C  ".format(val))
             except ValueError:
-                self.screen.addstr(9, 2, "Temeperature: -         ".format(val))
+                self.screen.addstr(9, 2, "Temeperature: -         ")
             val = self.heater.values['wanted_voltage']
             self.screen.addstr(10, 2, "Wanted Voltage: {0:.2f} ".format(val))
             val = self.heater.power_calculator.pid.setpoint
@@ -224,19 +226,24 @@ class HeaterClass(threading.Thread):
             self.pullsocket.set_point_now('wanted_voltage', self.values['wanted_voltage'])
             self.power_supply[1].set_voltage(self.values['wanted_voltage'])
             self.power_supply[2].set_voltage(self.values['wanted_voltage'] * 0.5)
+
             self.values['acutual_voltage_1'] = self.power_supply[1].read_actual_voltage()
-            self.pullsocket.set_point_now('acutual_voltage_1',
+            LOGGER.info('Voltage 1: ' + str(self.values['acutual_voltage_1']))
+            self.pullsocket.set_point_now('actual_voltage_1',
                                           self.values['acutual_voltage_1'])
-            self.values['acutual_voltage_2'] = self.power_supply[2].read_actual_voltage()
-            self.pullsocket.set_point_now('acutual_voltage_2',
-                                          self.values['acutual_voltage_2'])
+
             self.values['acutual_current_1'] = self.power_supply[1].read_actual_current()
-            self.pullsocket.set_point_now('acutual_current_1',
+            self.pullsocket.set_point_now('actual_current_1',
                                           self.values['acutual_current_1'])
+
+            self.values['acutual_voltage_2'] = self.power_supply[2].read_actual_voltage()
+            self.pullsocket.set_point_now('actual_voltage_2',
+                                          self.values['acutual_voltage_2'])
+
             self.values['acutual_current_2'] = self.power_supply[2].read_actual_current()
-            self.pullsocket.set_point_now('acutual_current_2',
+            self.pullsocket.set_point_now('actual_current_2',
                                           self.values['acutual_current_2'])
-            time.sleep(0.1)
+
         for i in range(1, 3):
             self.power_supply[i].set_voltage(0)
             LOGGER.info('%s set voltage', i)
@@ -253,8 +260,11 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(1)
     try:
-        sock.sendto('microreactorng_temp_sample#raw', ('rasppi12', 9000))
+        network_adress = 'rasppi12'
+        command = 'microreactorng_temp_sample#raw'.encode()
+        sock.sendto(command, (network_adress, 9000))
         received = sock.recv(1024)
+        received = received.decode('ascii')
         start_temp = float(received[received.find(',') + 1:])
         agilent_hostname = 'microreactor-agilent-34410A'
         rtd_reader = RtdReader(agilent_hostname, start_temp)
