@@ -5,7 +5,7 @@ Overview
 This page contains different overviews of the PyExpLabSys archive and
 can work as an etry point for a new user.
 
-Section :ref:`project_overview` contains a short listing of the
+Section :ref:`project_overview` contains a short explanation of the
 different components that PyExpLabSys consist of and the source code
 and documentation entries that are relevant for that part.
 
@@ -38,7 +38,8 @@ just the manufacturer.
 The documentation for the drivers are divided into two sections
 :ref:`drivers` and :ref:`drivers_autogen_only`. The latter is the
 group for which there is only API documentation auto generated from
-the source code and the former are the drivers that has more specific documentation with example usage etc.
+the source code and the former are the drivers that has more specific
+documentation with example usage etc.
 
 File parsers
 ------------
@@ -51,20 +52,51 @@ folder and the documentation is in the :ref:`file-parsers` section.
 Database Savers
 ---------------
 
-TODO
+The database savers are some of the more frequently used classes in
+PyExpLabSys. Quite simply, the abstract away: The database layout, the
+SQL and the queuing of data ofloading (to prevent loosing data in the
+event of data loss). The source code for the database savers are in
+`database_saver
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/common/database_saver.py>`_
+module in the `common
+<https://github.com/CINF/PyExpLabSys/tree/master/PyExpLabSys/common>`_
+sub-package. The documentation is located at
+:ref:`common-doc-database_saver`.
 
 Sockets
 -------
 
-TODO
+The sockets are another set of very important and highly used classes
+in PyExpLabSys. Most of the sockets are socket servers, which mean
+that they accept UDP requests and serves (or acceepts) data. These are
+essentially as network variables, by either exposing a measurement on
+the network or accepting input. A final type of socket is the
+LiveSocket which is used to live stream data to a live streaming proxy
+server. Furthermore, all sockets also expose system (health)
+information to the network. The code for the sockets are found in the
+`sockets
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/common/sockets.py>`_
+module in the `common
+<https://github.com/CINF/PyExpLabSys/tree/master/PyExpLabSys/common>`_
+sub-package. The documentation is located at
+:ref:`common-doc-sockets`.
 
 Apps
 ----
 
-TODO
+The apps are a set of general programs used by multiple setups. TODO more Robert.
 
 Misc.
 -----
+
+Besides from the items listed above PyExpLabSys contains a number of
+little helpers. The :py:mod:`PyExpLabSys.common.utilities` (`code
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/common/utilities.py>`_,
+:ref:`doc <common-doc-utilities>`) module contains a convenience
+function to get a logger, that is configured that way that we prefer,
+including email notification of anything warning level or above.
+
+
 
 .. _py3_support:
 
