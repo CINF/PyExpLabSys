@@ -61,6 +61,9 @@ for root, dirs, files in os.walk(basefolder):
             data_set_saver.save_points_batch(codename, x, y)
         print('   Summary datasets uploaded........: {}'.format(len(data_set)))
 
+        # Do not uploade raw data right now, since we have database troubles
+        continue
+
         # Upload the raw spectra
         raw_spectra = defaultdict(list)
         for injection in sequence.injections:
@@ -103,6 +106,4 @@ for root, dirs, files in os.walk(basefolder):
 logging.basicConfig(level=logging.INFO)
 data_set_saver.stop()
 print('ALL DONE')
-       
-
 
