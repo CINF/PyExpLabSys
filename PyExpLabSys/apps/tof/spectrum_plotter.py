@@ -11,12 +11,13 @@ import math
 from lmfit import Model
 from matplotlib.backends.backend_pdf import PdfPages
 
-PEAK_FIT_WIDTH = 25
+PEAK_FIT_WIDTH = 50
 DATEPLOT_TABLE = 'dateplots_mgw'
-DATEPLOT_TYPE = 273
+#DATEPLOT_TYPE = 273
+DATEPLOT_TYPE = 141
 MEASUREMENT_TABLE = 'measurements_tof'
 XY_VALUES_TABLE = 'xy_values_tof'
-#NORMALISATION_FIELD = 'tof_iterations'
+NORMALISATION_FIELD = 'tof_iterations'
 
 def gaussian(x, amp, cen, wid):
     """ Gaussian function for fitting """
@@ -32,29 +33,32 @@ def fit_peak(flight_times, data, axis=None):
     """ Fit a peak using lmfit """
     index = {}
     #Find index for 'center' time
+    print('Flight times: ' + str(flight_times))
     index['center'] = np.where(data[:, 0] > np.mean(flight_times))[0][0]
-    index['start'] = index['center'] - 100 #Display range
-    index['end'] = index['center'] + 100
+    print('Index center: ' + str(index['center']))
+    index['start'] = index['center'] - 150 #Display range
+    index['end'] = index['center'] + 150
     values = {}
     values['x'] = data[index['start']:index['end'], 0]
     values['y'] = data[index['start']:index['end'], 1]
     center = np.where(values['y'] == max(values['y']))[0][0]
-
+    center = np.where(values['x'] > np.mean(flight_times))[0][0]
     background = np.mean(values['y'][center-3*PEAK_FIT_WIDTH:center-2*PEAK_FIT_WIDTH])
     print('Background: ' + str(background))
     #TODO: Background should be fitted, lmfit can do this
 
-    fit_width = PEAK_FIT_WIDTH + PEAK_FIT_WIDTH * (len(flight_times)-1) * 0.45
+    fit_width = math.ceil(PEAK_FIT_WIDTH + PEAK_FIT_WIDTH * (len(flight_times)-1) * 0.45)
     #Fitting range
     values['x_fit'] = values['x'][center-fit_width:center+fit_width]
     values['y_fit'] = values['y'][center-fit_width:center+fit_width]
-
+    print('Fit width: ' + str(fit_width))
     if len(flight_times) == 1:
         gmod = Model(gaussian)
         result = gmod.fit(values['y_fit'], x=values['x_fit'], amp=max(values['y_fit']),
-                          cen=flight_times[0], wid=0.0000025)
+                          cen=flight_times[0], wid=0.00005)
         fit_results = [(result.params['amp'].value, result.params['wid'].value,
                         result.params['cen'].value)]
+        print(result.params['wid'].value)
 
     if len(flight_times) == 2:
         center1 = np.where(data[:, 0] > flight_times[0])[0][0]
@@ -69,7 +73,7 @@ def fit_peak(flight_times, data, axis=None):
                         result.params['cen'].value),
                        (result.params['amp'].value, result.params['wid'].value,
                         result.params['cen'].value)]
-    usefull = result.success
+    usefull = result.success and result.params['wid'].value < 1e-3
 
     if axis is not None:
         axis.plot(values['x'], values['y'], 'k-')
@@ -88,16 +92,20 @@ def fit_peak(flight_times, data, axis=None):
                                       result.params['cen2'].value,
                                       result.params['wid2'].value) + background, 'r-')
 
-        error_sum = (values['y_fit'] - result.init_fit + background)
+        error_sum = (values['y_fit'] - result.init_fit + background)        
         rms_error = math.sqrt(np.sum(error_sum**2))
-        axis.axvline(values['x'][center-fit_width])
-        axis.axvline(values['x'][center+fit_width])
+        count_sum = np.sum(values['y_fit']-background)
+        try:
+            axis.axvline(values['x'][center-fit_width])
+            axis.axvline(values['x'][center+fit_width])
+        except IndexError:
+            pass
         #axis.annotate(str(time), xy=(.05, .85), xycoords='axes fraction', fontsize=8)
         axis.annotate("Usefull: " + str(usefull), xy=(.05, .7),
                       xycoords='axes fraction', fontsize=8)
         axis.tick_params(direction='in', length=2, width=1, colors='k',
                          labelsize=6, axis='both', pad=1)
-    return usefull, fit_results, rms_error
+    return usefull, fit_results, rms_error, count_sum
 
 
 def get_data(spectrum_number, cursor):
@@ -156,9 +164,11 @@ def main(fit_info, spectrum_numbers):
 
     for x_value in fit_info:
         fit_info[x_value]['peak_area'] = {}
+        fit_info[x_value]['count_sum'] = {}
         fit_info[x_value]['errors'] = {}
         for name in fit_info[x_value]['names']:
             fit_info[x_value]['peak_area'][name] = []
+            fit_info[x_value]['count_sum'][name] = []
             fit_info[x_value]['errors'][name] = []
 
     pdf_file = PdfPages('multipage.pdf')
@@ -172,13 +182,13 @@ def main(fit_info, spectrum_numbers):
         pdffig = plt.figure()
         for x in fit_info:
             i = i + 1
-            axis = pdffig.add_subplot(2, 2, i)
+            axis = pdffig.add_subplot(3, 3, i)
             if i == 1:
                 axis.text(0, 1.2, 'Spectrum id: ' + str(spectrum_number),
                           fontsize=12, transform=axis.transAxes)
                 axis.text(0, 1.1, 'Sweeps: {0:.2e}'.format(spectrum_info[2]),
                           fontsize=12, transform=axis.transAxes)
-            usefull, results, rms_error = fit_peak(fit_info[x]['flighttime'], data, axis)
+            usefull, results, rms_error, count_sum = fit_peak(fit_info[x]['flighttime'], data, axis)
             # fit_peak will do the actual plotting of the data and fit
 
             for name_index in range(0, len(fit_info[x]['names'])):
@@ -189,14 +199,17 @@ def main(fit_info, spectrum_numbers):
                 except ValueError:
                     usefull = False
                     print('Error from ' + name +': ' + str(results[name_index][1]))
+                fitted_area = area * 2500 / spectrum_info[2]
+                count_area = count_sum / spectrum_info[2]
+                fit_info[x]['count_sum'][name].append(count_area)
                 if usefull:
-                    fit_info[x]['peak_area'][name].append(area * 2500 / spectrum_info[2])
-                    #fit_info[x]['errors'][name].append(math.sqrt(area * 2500) /
-                    #                                   spectrum_info[2])
-                    fit_info[x]['errors'][name].append(rms_error)
+                    fit_info[x]['peak_area'][name].append(fitted_area)
+                    error_bar = abs(fitted_area - count_area)
+                    fit_info[x]['errors'][name].append(error_bar)
+                    #fit_info[x]['errors'][name].append(rms_error / spectrum_info[2])
                 else:
-                    fit_info[x]['peak_area'][name].append(None)
-                    fit_info[x]['errors'][name].append(None)
+                    fit_info[x]['peak_area'][name].append(0)
+                    fit_info[x]['errors'][name].append(abs(count_area))
 
         timestamps.append(spectrum_info[1])
         plt.savefig(pdf_file, format='pdf')
@@ -212,9 +225,13 @@ def main(fit_info, spectrum_numbers):
         for i in range(0, len(fit_info[x]['names'])):
             name = fit_info[x]['names'][i]
             try:
+                #axis.plot(timestamps, fit_info[x]['peak_area'][name],
+                #          linestyle='-', marker='o', label=str(x))
                 axis.errorbar(timestamps, fit_info[x]['peak_area'][name], linestyle='-',
                               marker='o', label=fit_info[x]['names'][i],
                               yerr=fit_info[x]['errors'][name])
+                #axis.plot(timestamps, fit_info[x]['count_sum'][name],
+                #          linestyle='-', marker='.', label=str(x))
             except TypeError: # Cannot plot errorbars on plots with missing points
                 axis.plot(timestamps, fit_info[x]['peak_area'][name],
                           linestyle='-', marker='o', label=str(x))
@@ -234,6 +251,29 @@ def main(fit_info, spectrum_numbers):
 
 if __name__ == '__main__':
     FIT_INFO = {}
+    
+    FIT_INFO['M2'] = {}
+    FIT_INFO['M2']['flighttime'] = [3.8]
+    FIT_INFO['M2']['names'] = ['H2']
+
+    FIT_INFO['M4'] = {}
+    FIT_INFO['M4']['flighttime'] = [5.519]
+    FIT_INFO['M4']['names'] = ['He']
+
+    FIT_INFO['M34'] = {}
+    FIT_INFO['M34']['flighttime'] = [16.85]
+    FIT_INFO['M34']['names'] = ['H2S']
+
+    
+    FIT_INFO['M154'] = {}
+    FIT_INFO['M154']['flighttime'] = [36.34]
+    FIT_INFO['M154']['names'] = ['BiPhe']
+
+    FIT_INFO['M184'] = {}
+    FIT_INFO['M184']['flighttime'] = [39.75]
+    FIT_INFO['M184']['names'] = ['DBT']
+
+    """
     FIT_INFO['M4'] = {}
     FIT_INFO['M4']['flighttime'] = [5.53]
     FIT_INFO['M4']['names'] = ['He']
@@ -249,9 +289,10 @@ if __name__ == '__main__':
     FIT_INFO['26.78'] = {}
     FIT_INFO['26.78']['flighttime'] = [26.78]
     FIT_INFO['26.78']['names'] = ['26.78']
-
+    """
     #Todo: Also include fit-information such as exact peak position
-
-    SPECTRUM_NUMBERS = range(4160, 4165)
+    SPECTRUM_NUMBERS = range(5164, 5209)
+    #SPECTRUM_NUMBERS = range(5230, 5309)
+    #SPECTRUM_NUMBERS = range(5166, 5167)
 
     main(FIT_INFO, SPECTRUM_NUMBERS)
