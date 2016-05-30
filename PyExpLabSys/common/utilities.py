@@ -12,9 +12,9 @@ from logging.handlers import RotatingFileHandler, SMTPHandler
 
 
 #: The email list warning emails are sent to
-WARNING_EMAIL = 'pyexplabsys-warning@fysik.dtu.dk'
+WARNING_EMAIL = 'FYS-list-CINF-FM@fysik.dtu.dk'
 #: The email list error emails are sent to
-ERROR_EMAIL = 'pyexplabsys-error@fysik.dtu.dk'
+ERROR_EMAIL = 'FYS-list-CINF-FM@fysik.dtu.dk'
 #: The email host used to send emails on logged warnings and errors
 MAIL_HOST = 'mail.fysik.dtu.dk'
 
