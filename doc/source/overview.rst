@@ -134,8 +134,33 @@ sub-package. The documentation is located at
 Apps
 ----
 
-The apps are a set of general programs used by multiple setups. TODO
-Robert.
+The apps section contains stand alone programs which can be used directly
+and not only as service functions of larger programs. Typically the apps
+sports text based guis and several apps also have ambitions for graphical
+guis.
+Notable examples of apps are:
+`socket supervisor
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/apps/socket_supervisor.py>`_
+This very simple app continously probes a port (typically a `socket
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/common/sockets.py>`_)
+and reports back if the socket is running correctly.
+
+`Mass Spectrometer
+<https://github.com/CINF/PyExpLabSys/tree/master/PyExpLabSys/apps/qms>`_
+Controls a number of Pfeiffer mass spectrometers. The app includes support
+for an infinite amount of meta-channels wich is pulled in via sockets.
+
+`Picture Logbook
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/apps/picture_logbook.py>`_
+A graphical logbook system based on a barcode reader and a camera. The user of the
+equipment logs in before use and out after use. A picture of the equipment is acquired
+at login and logout. Also contains support for an external screen wich shows the currently
+logged in user.
+
+`Turbo pump controler
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/apps/turbo_logger.py>`_
+Logs and controls Pfeiffer turbo pumps. A number of important parameters are shown
+in a terminal and the values are also availble as live sockets.
 
 Misc.
 -----
