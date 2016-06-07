@@ -5,6 +5,14 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)  # Comment in for more logging output
 from collections import defaultdict
 from PyExpLabSys.file_parsers.chemstation import Sequence
+
+### REMOVE after database move is complete
+
+from PyExpLabSys.common import database_saver
+database_saver.HOSTNAME = 'cinfsql'
+
+### REMOVE after database move is complete
+
 from PyExpLabSys.common.database_saver import DataSetSaver
 from PyExpLabSys.common.database_saver import CustomColumn
 import credentials
