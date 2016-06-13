@@ -13,10 +13,14 @@ from collections import Counter, defaultdict
 # Used for logging output from twisted, see commented out lines below
 #from twisted.python import log
 from twisted.internet import reactor, ssl
-from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, listenWS
+from autobahn.websocket import (
+    WebSocketServerFactory, WebSocketServerProtocol, listenWS
+)
 
-from PyExpLabSys.common.utilities import get_logger
-LOG = get_logger('ws-server2', level='debug', file_log=True, file_max_bytes=10485760)
+from PyExpLabSys.common import utilities
+utilities.WARNING_EMAIL = 'knielsen@fysik.dtu.dk'
+utilities.ERROR_EMAIL = 'knielsen@fysik.dtu.dk'
+LOG = utilities.get_logger('ws-server2', level='info', file_log=True, file_max_bytes=10485760)
 
 # Used only to count open connections
 WEBSOCKET_IDS = set()
@@ -140,6 +144,14 @@ class DataSender(threading.Thread):
         self.daemon = True
 
     def run(self):
+        """Run main method in exception"""
+        try:
+            self.runner()
+        except:
+            LOG.exception('In data sender')
+            raise
+
+    def runner(self):
         """Main run method
 
         Pops data of the DATA_QUEUE and send it to the client that have subscribed to it
@@ -162,7 +174,8 @@ class DataSender(threading.Thread):
             COUNTER['sent_n'] += len(receivers)
             COUNTER['sent_bytes'] += len(receivers) * data_length
 
-    def _get_receivers_and_set_last(self, data):
+    @staticmethod
+    def _get_receivers_and_set_last(data):
         """Form the set of connections that should get this data package and set the value
         in LAST
         """
@@ -180,7 +193,7 @@ class DataSender(threading.Thread):
 
     def stop(self):
         """Stop the data sender"""
-        DATA_QUEUE.put((None, 'STOP'))
+        DATA_QUEUE.put((None, 'STOP', None))
         while self.isAlive():
             time.sleep(0.01)
 
@@ -188,35 +201,48 @@ class DataSender(threading.Thread):
 class CinfWebSocketHandler(WebSocketServerProtocol):  # pylint: disable=W0232
     """Class that handles a websocket connection"""
 
+    def _log(self, string, *args):
+        """Logger with IP address prefix"""
+        LOG.info('ws (%s): ' + string, self.peer.host, *args)
+
     def onOpen(self):
         """Log when the connection is opened"""
         WEBSOCKET_IDS.add(self)
-        LOG.info('wshandler: Connection opened, count: %s', len(WEBSOCKET_IDS))
+        self._log('Connection opened count: %s', len(WEBSOCKET_IDS))
 
     def connectionLost(self, reason):
         """Log when the connection is lost"""
-        LOG.info('wshandler: Connection lost')
+        self._log('Connection lost')
         WebSocketServerProtocol.connectionLost(self, reason)
 
     def onClose(self, wasClean, code, reason):
         """Log when the connection is closed"""
         try:
             WEBSOCKET_IDS.remove(self)
-            LOG.info('wshandler: Connection closed, count: %s', len(WEBSOCKET_IDS))
+            self._log('Connection closed, count: %s', len(WEBSOCKET_IDS))
         except KeyError:
-            LOG.info('wshandler: Could not close connection, not open, count: %s', len(WEBSOCKET_IDS))
+            self._log('Could not close connection, not open, count: %s', len(WEBSOCKET_IDS))
 
     def onMessage(self, msg, binary):
         """Parse the command and send response"""
         data = json.loads(msg)
-        print(data['subscriptions'])
         action = data.get('action')
         if action == 'subscribe':
             # Send last data before making the subscription
-            LOG.info('Got subscription: %s', data)
+            self._log('Got subscriptions: %s', data)
             last_messages = defaultdict(dict)
             for subscription in data['subscriptions']:
-                host, codename = subscription.split(':')
+                try:
+                    host, codename = subscription.split(':')
+                except ValueError:
+                    message =\
+                        'ERROR: Incorrect subscription format {} from \'{}\'. '\
+                        'Maybe you are trying to connect to version 1 of the '\
+                        'Live Socket Proxy server, whereas I\'m version 2.'
+                    message = message.format(data, self.peer.host)
+                    LOG.warning(message)
+                    self.send_data(message)
+                    return
                 if subscription in LAST:
                     last_messages[host][codename] = LAST[subscription]
 
