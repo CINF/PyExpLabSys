@@ -1,13 +1,21 @@
 <?xml version='1.0' standalone='yes'?>
-<graphs>
-  <graph id="first">
-    <size type="[int]">300, 200</size>
-    <position type="[int]">0, 50</position>
-  </graph>
-  <graph id="second">
-    <size type="[int]">300, 200</size>
-    <position type="[int]">300, 300</position>
-  </graph>
+<figures>
+  <figure id="first">
+    <size type="[int]">400, 400</size>
+    <grid type="[int]">0, 0, 2, 2</grid>
+  </figure>
+  <figure id="second">
+    <size type="[int]">200, 600</size>
+    <grid type="[int]">0, 2, 3, 1</grid> <!-- row, column, rowspan, columnspan or row, column -->
+  </figure>
+  <figure id="third">
+    <size type="[int]">200, 200</size>
+    <grid type="[int]">2, 0</grid> <!-- row, column, rowspan, columnspan or row, column -->
+  </figure>
+  <figure id="fourth">
+    <size type="[int]">200, 200</size>
+    <grid type="[int]">2, 1</grid> <!-- row, column, rowspan, columnspan or row, column -->
+  </figure>
   <global_settings>
   </global_settings>
-</graphs>
+</figures>
