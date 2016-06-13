@@ -41,8 +41,7 @@ class GasAlarmMonitor(object):
 
         # Each value is measured about every 5 sec, so sane interval about 2
         self.live_socket = LiveSocket(name='gas_alarm_307_live',
-                                      codenames=codenames,
-                                      sane_interval=2.0)
+                                      codenames=codenames)
         self.live_socket.start()
         LOGGER.info('Live socket started')
 
