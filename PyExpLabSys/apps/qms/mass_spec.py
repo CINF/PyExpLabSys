@@ -32,7 +32,8 @@ class MassSpec(object):
             print settings.port
             self.qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
 
-        livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'], 1)
+        livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'])
+
         livesocket.start()
 
         self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
@@ -75,7 +76,7 @@ class MassSpec(object):
 
     def mass_scan(self, start_mass=0, scan_width=50):
         """ Perform mass scan """
-        self.qms.mass_scan(start_mass, scan_width, comment='Background scan', amp_range=-9)
+        self.qms.mass_scan(start_mass, scan_width, comment='Background scan', amp_range=0)
         time.sleep(1)
 
 if __name__ == '__main__':
@@ -83,7 +84,8 @@ if __name__ == '__main__':
 
     #MS.sem_and_filament(True)
     #time.sleep(10)
-    MS.leak_search()
-    #MS.mass_scan(0, 50)
-    #MS.mass_time_scan()
+    #MS.leak_search()
+    #MS.mass_scan(0, 80)
+    #MS.qmg.read_voltages()
+    MS.mass_time_scan()
     #MS.mass_scan(10, 5)
