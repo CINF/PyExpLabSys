@@ -113,7 +113,7 @@ class Parse(object):
 
         self.new_data_files = []
         status_msg('Created parser', True)
-        database = MySQLdb.connect(host='servcinf', user=credentials.USER,
+        database = MySQLdb.connect(host='servcinf-sql', user=credentials.USER,
                                    passwd=credentials.PASSWD, db='cinfdata')
         self.cursor = database.cursor()
         status_msg('Created database connection', True)

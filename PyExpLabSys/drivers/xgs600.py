@@ -1,6 +1,9 @@
+""" Driver class for XGS600 gauge controll """
+from __future__ import print_function
 import serial
 import time
-
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class XGS600Driver():
     """ Driver for XGS600 gauge controller """
@@ -11,12 +14,12 @@ class XGS600Driver():
         """ Implements basic communication """
         self.serial.read(self.serial.inWaiting()) # Clear waiting characters
         comm = "#00" + command + "\r"
-        self.serial.write(comm)
+        self.serial.write(comm.encode('ascii'))
         time.sleep(0.25)
         number_of_bytes = self.serial.inWaiting()
-        complete_string = self.serial.read(number_of_bytes)
+        complete_string = self.serial.read(number_of_bytes).decode()
         complete_string = complete_string.replace('>', '').replace('\r', '')
-        return(complete_string)
+        return complete_string
 
     def read_all_pressures(self):
         """ Read pressure from all sensors """
@@ -113,4 +116,4 @@ class XGS600Driver():
 
 if __name__ == '__main__':
     XGS = XGS600Driver()
-    print XGS.read_all_pressures()
+    print(XGS.read_all_pressures())

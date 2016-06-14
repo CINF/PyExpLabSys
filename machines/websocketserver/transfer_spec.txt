@@ -1,0 +1,110 @@
+This file contains the specification of data being transferred to and from the live socket
+relay server. This file was written for version 2 of the server program.
+
+Transfer data to server
+=======================
+
+The data transferred to the server will be in form of json.
+
+There should be one kinds of data (others might be added in the long run):
+
+ * Continuous data
+
+Continuous data
+---------------
+
+Continuous data will be transmitted without any registration, in the form of a dictionary
+with information about items. In parenthises the name of the data field and the type:
+
+ * Name of the host (host, str)
+ * The current values of one or more measurements (data, dict), see below
+
+EXAMPLE: {'host': 'rasppi111', 'data': {...}}
+
+NOTE: The type of the data (as set for Data sets) is implicit for continunous data.
+
+The value dict is a mapping of codenames to value, where a value is a
+list of x and y values as floats (most of the time the x values are
+unix timestamps):
+
+EXAMPLE: {
+    'codename1': [1450096534.070234, 0.3636318999681013],
+    'codename2': [1450096535.456789, 0.8636541299681013],
+}
+
+Thus the whole thing will look like this:
+
+EXAMPLE: {
+    'host': 'rasppi111',
+    'data': {
+        'codename1': [1450096534.070234, 0.3636318999681013],
+        'codename2': [1450096535.456789, 0.8636541299681013],
+    }
+}
+
+Values, which should just be put into tables can also be strings:
+
+EXAMPLE: {
+    'host': 'rasppi111',
+    'data': {
+        'ion_gauge_status': [1450096534.070234, 'running'],
+        'emmission_current_mA': [1450096535.456789, 5],
+    }
+}
+
+Finally, it is possible to request a reset, by replacing the entire value list with the string 'RESET'.
+
+EXAMPLE: {
+    'host': 'rasppi111',
+    'data': {
+        'codename1': 'RESET',
+        'codename2': 'RESET',
+    }
+}
+
+
+
+
+Data sets (POSTPONED)
+---------------------
+
+SUPPORT FOR DATA SETS IS POSTPONED INDEFINITELY. SIMPLE SUPPORT FOR
+DATA SETS CAN BE EMULATED AS CONTINUOUS DATA.
+
+For data sets registration will be necessary, because the data will be saved until next
+spectrum on the server, and in order to register when a new spectrum starts. The data will
+be transmitted in the form of a dict with the following fields. In parenthises the name of
+the data field and the type:
+
+ * Name of the host ('host', str)
+ * Type of the data set ('type', str), (always 'dataset')
+ * Codename of the data sets (NOT LABEL), this is a single codename for this type of data
+   set e.g: 'masstime data'. It must not conflict with the codenames used for continuous
+   data.
+ * The new data ('data', dict/str), see below:
+
+EXAMPLE: {'host': 'rasppi111', 'type', 'dataset', 'codename': 'masstime', 'data': {...}}
+
+The data dict is a mapping of data label (e.g. 'M32') to a list of new values:
+
+EXAMPLE: {
+    'M32': [[0.05, 1.0E-10], [0.1, 2.3E-10]],
+    'M2': [[0.1, 5.6E-9]],
+}
+
+Thus the while thing might look like this:
+
+EXAMPLE: {
+    'host': 'rasppi111',
+    'type', 'dataset',
+    'codename': 'masstime',
+    'data': {
+        'M32': [[0.05, 1.0E-10], [0.1, 2.3E-10]],
+        'M2': [[0.1, 5.6E-9]],
+    }
+}
+
+In order to indicate that a new data sets is about to start, the data dict is replaced
+with a string with the value 'new dataset'.
+
+EXAMPLE: {'host': 'rasppi111', 'type', 'dataset', 'codename': 'masstime', 'data': 'new dataset'}

@@ -10,8 +10,8 @@ PY3_MIN_VERSION = (3, 3)
 
 # Check for valid versions
 VERSION = sys.version_info
-PY2_CHECK = VERSION.major == PY2_MIN_VERSION[0] and VERSION.minor >= PY2_MIN_VERSION[0]
-PY3_CHECK = VERSION.major == PY3_MIN_VERSION[0] and VERSION.minor >= PY3_MIN_VERSION[0]
+PY2_CHECK = VERSION.major == PY2_MIN_VERSION[0] and VERSION.minor >= PY2_MIN_VERSION[1]
+PY3_CHECK = VERSION.major == PY3_MIN_VERSION[0] and VERSION.minor >= PY3_MIN_VERSION[1]
 PY2_OR_3_CHECK = PY2_CHECK or PY3_CHECK
 
 # Warnings texts

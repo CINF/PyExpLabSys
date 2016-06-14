@@ -41,9 +41,8 @@ class CursesTui(threading.Thread):
                 val = self.hc[i].pc.pid.int_err
                 self.screen.addstr(7+10*i, 2, "PID-error: {0:.3f} ".format(val))
 
-
             val = time.time() - self.start_time
-            self.screen.addstr(50, 2, "Runtime: {0:.0f}s".format(val))
+            self.screen.addstr(30, 2, "Runtime: {0:.0f}s".format(val))
 
             n = self.screen.getch()
             if n == ord('q'):

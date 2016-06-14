@@ -18,7 +18,7 @@ apt2="python-mysqldb python-serial python-colorama python3-pip python3-serial py
 apt3="pylint"
 
 # remove selcted packages
-apt_remove="wolfram-engine oracle-java7-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde*"
+apt_remove="wolfram-engine oracle-java7-jdk oracle-java8-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde* libreoffice-common"
 
 # packages to be installe by pip
 pippackages="minimalmodbus"

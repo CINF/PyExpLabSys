@@ -84,7 +84,7 @@ loggers[codenames[1]].start()
 socket = DateDataPullSocket(unichr(0x03BC) + '-reactor NG temperature', codenames, timeouts=[1.0, 1.0])
 socket.start()
 
-livesocket = LiveSocket(unichr(0x03BC) + '-reactors temperatures', codenames, 2)
+livesocket = LiveSocket(unichr(0x03BC) + '-reactors temperatures', codenames)
 livesocket.start()
 
 db_logger = {} 

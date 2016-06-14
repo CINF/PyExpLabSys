@@ -12,9 +12,9 @@ from logging.handlers import RotatingFileHandler, SMTPHandler
 
 
 #: The email list warning emails are sent to
-WARNING_EMAIL = 'pyexplabsys-warning@fysik.dtu.dk'
+WARNING_EMAIL = 'FYS-list-CINF-FM@fysik.dtu.dk'
 #: The email list error emails are sent to
-ERROR_EMAIL = 'pyexplabsys-error@fysik.dtu.dk'
+ERROR_EMAIL = 'FYS-list-CINF-FM@fysik.dtu.dk'
 #: The email host used to send emails on logged warnings and errors
 MAIL_HOST = 'mail.fysik.dtu.dk'
 
@@ -52,8 +52,8 @@ def get_logger(name, level='INFO', terminal_log=True, file_log=False,
         terminal_log (bool): If ``True`` then logging to a terminal will be
             activated. Default is ``True``.
         file_log (bool): If ``True`` then logging to a file, with log rotation,
-        will be activated. If ``file_name`` is not given, then
-        ``name + '.log'`` will be used. Default is ``False``.
+            will be activated. If ``file_name`` is not given, then
+            ``name + '.log'`` will be used. Default is ``False``.
         file_name (str): Optional file name to log to
         file_max_size (int): The maximum size of the log file in bytes. The
             default is ``1048576`` (1MB), which corresponds to roughly 10000

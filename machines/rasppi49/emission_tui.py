@@ -1,3 +1,4 @@
+""" Text gui for emission control """
 import time
 import threading
 import curses
@@ -32,7 +33,7 @@ class CursesTui(threading.Thread):
             string = "Filament power: {0:.2f}W      "
             self.screen.addstr(6, 40, string.format(self.eci.filament['voltage'] *
                                                     self.eci.filament['current']))
-            string = "Grid Voltage: {0:.2f}V       "
+            string = "Grid Voltage: {0:.4f}V       "
             self.screen.addstr(8, 2, string.format(self.eci.bias['grid_voltage']))
             string = "Grid Current: {0:.3f}A       "
             self.screen.addstr(8, 40, string.format(self.eci.bias['grid_current']))
@@ -40,26 +41,23 @@ class CursesTui(threading.Thread):
             self.screen.addstr(12, 2, string.format(self.eci.emission_current))
             string = "Setpoint: {0:.2f}mA"
             self.screen.addstr(12, 40, string.format(self.eci.setpoint))
-            string = "Measured voltage: {0:.4f}mV    "
-            self.screen.addstr(13, 2, string.format(self.eci.measured_voltage * 1000))
             try:
                 string = "Update rate: {0:.1f}Hz    "
                 self.screen.addstr(14, 2, string.format(1 / self.eci.looptime))
             except ZeroDivisionError:
                 pass
 
-            n = self.screen.getch()
-            if n == ord('q'):
+            key_val = self.screen.getch()
+            if key_val == ord('q'):
                 self.eci.running = False
-            if n == ord('i'):
-                #self.eci.setpoint = self.eci.update_setpoint(self.eci.setpoint + 0.1)
+            if key_val == ord('i'):
                 self.eci.update_setpoint(self.eci.setpoint + 0.1)
-            if n == ord('d'):
+            if key_val == ord('d'):
                 #self.eci.setpoint = self.eci.update_setpoint(self.eci.setpoint - 0.1)
                 self.eci.update_setpoint(self.eci.setpoint - 0.1)
-            if n == ord('I'):
+            if key_val == ord('I'):
                 self.eci.update_setpoint(self.eci.setpoint + 0.01)
-            if n == ord('D'):
+            if key_val == ord('D'):
                 self.eci.update_setpoint(self.eci.setpoint - 0.01)
 
             self.screen.refresh()

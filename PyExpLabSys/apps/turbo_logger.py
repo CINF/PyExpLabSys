@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import time
 import sys
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.pfeiffer_turbo_pump as tp
@@ -12,7 +12,7 @@ sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
 
 LOGGER = get_logger('Turbo Pump', level='info', file_log=True,
-                    file_name='turbo_log.txt', terminal_log=False)
+                    file_name='turbo.log', terminal_log=False)
 
 def main():
     """ Main loop """
@@ -50,17 +50,17 @@ def main():
         loggers[name].daemon = True
         loggers[name].start()
 
-    livesocket = LiveSocket(settings.name + '-turboreader', codenames, 2)
+    livesocket = LiveSocket(settings.name + '-turboreader', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket(settings.name + '-turboreader', codenames,
                                 timeouts=[1.0] * len(codenames), port=9000)
     socket.start()
 
-    db_logger = ContinuousLogger(table=settings.table,
-                                 username=settings.user,
-                                 password=settings.passwd,
-                                 measurement_codenames=codenames)
+    db_logger = ContinuousDataSaver(continuous_data_table=settings.table,
+                                    username=settings.user,
+                                    password=settings.passwd,
+                                    measurement_codenames=codenames)
     db_logger.start()
     time.sleep(5)
 
@@ -71,7 +71,7 @@ def main():
             socket.set_point_now(name, value) # Notice, this is the averaged value
             livesocket.set_point_now(name, value) # Notice, this is the averaged value
             if loggers[name].trigged:
-                db_logger.enqueue_point_now(name, value)
+                db_logger.save_point_now(name, value)
                 loggers[name].trigged = False
 
 if __name__ == '__main__':
@@ -79,4 +79,4 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         LOGGER.exception(e)
-        raise(e)
+        raise e

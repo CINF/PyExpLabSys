@@ -1,84 +1,25 @@
-import threading
+""" Control app for analog pressure controller on sniffer setup """
 import time
-from PyExpLabSys.common.sockets import DateDataPullSocket
-from PyExpLabSys.common.sockets import DataPushSocket
-from PyExpLabSys.common.sockets import LiveSocket
-from ABE_ADCDACPi import ADCDACPi
+from PyExpLabSys.common.analog_flow_control import AnalogMFC
+from PyExpLabSys.common.analog_flow_control import FlowControl
 
-class AnalogMFC():
-    def __init__(self, channel, fullrange, voltagespan, daq):
-        self.channel = channel
-        self.fullrange = fullrange
-        self.voltagespan = voltagespan
-        self.daq = daq
+def main():
+    """ Main function """
 
-    def read_flow(self):
-        value = 0
-        for i in range(0, 10):
-            value += self.daq.read_adc_voltage(1)
-        value = value / 10
-        print 'Value: ' + str(value)
-        flow = value * self.fullrange / self.voltagespan
-        return flow
+    mfc = AnalogMFC(1, 2, 1.5)
+    mfcs = {}
+    mfcs['1'] = mfc
 
-    def set_flow(self, flow):
-        voltage = flow *  self.voltagespan / self.fullrange 
-        print 'Voltage: ' + str(voltage)
-        self.daq.set_dac_voltage(1, voltage)
-        return voltage
+    try:
+        micro = chr(0x03BC) # Python 3
+    except ValueError:
+        micro = unichr(0x03BC) # Python 2
 
+    flow_control = FlowControl(mfcs, micro + '-reactor')
+    flow_control.start()
 
-class FlowControl(threading.Thread):
-    """ Keep updated values of the current flow """
-    def __init__(self, mfcs, pullsocket, pushsocket, livesocket):
-        threading.Thread.__init__(self)
-        self.mfcs = mfcs
-        print mfcs
-        self.pullsocket = pullsocket
-        self.pushsocket = pushsocket
-        self.livesocket = livesocket
-        self.running = True
+    while True:
+        time.sleep(0.5)
 
-    def run(self):
-        while self.running:
-            time.sleep(0.1)
-            qsize = self.pushsocket.queue.qsize()
-            print qsize
-            while qsize > 0:
-                element = self.pushsocket.queue.get()
-                mfc = element.keys()[0]
-                self.mfcs[mfc].set_flow(element[mfc])
-                qsize = self.pushsocket.queue.qsize()
-
-            for mfc in self.mfcs:
-                flow =  self.mfcs[mfc].read_flow()
-                print(mfc + ': ' + str(flow))
-                self.pullsocket.set_point_now(mfc, flow)
-                self.livesocket.set_point_now(mfc, flow)
-
-adcdac = ADCDACPi()  # create an instance of ADCDACPi
-adcdac.set_adc_refvoltage(3.3)
-
-devices = ['1']
-MFC = AnalogMFC(1, 2, 1.5, adcdac)
-MFCs = {}
-MFCs['1'] = MFC
-
-Datasocket = DateDataPullSocket('microreactor_mfc_control',
-                                devices,
-                                timeouts=[3.0],
-                                port=9000)
-Datasocket.start()
-
-Pushsocket = DataPushSocket(unichr(0x03BC) + '-reactor_analog_mfc_control',
-                            action='enqueue')
-Pushsocket.start()
-Livesocket = LiveSocket(unichr(0x03BC) + '-reactor_analog_mfc_control',
-                        devices, 1)
-Livesocket.start()
-
-fc = FlowControl(MFCs, Datasocket, Pushsocket, Livesocket)
-fc.start()
-
-while True:
-    time.sleep(0.5)
+if __name__ == '__main__':
+    main()

@@ -352,7 +352,7 @@ def main():
     # Create context factor with key and certificate
     context_factory = ssl.DefaultOpenSSLContextFactory(
         '/home/kenni/certs/fysik.dtu.dk.key',
-        '/home/kenni/certs/fysik.dtu.dk.crt'
+        '/home/kenni/certs/fysik.dtu.dk-NEW.crt'
     )
     # Form the webserver factory
     factory = WebSocketServerFactory("wss://localhost:9001", debug=True)

@@ -24,7 +24,7 @@ class Mks_G_Series():
         checksum = self.checksum(com_string)
         com_string = '@@@@' + com_string + checksum
         self.ser.write(com_string)
-        time.sleep(0.5)
+        time.sleep(0.1)
         reply = self.ser.read(self.ser.inWaiting())
         if len(reply) == 0:
             logging.warn('No such device')
@@ -98,17 +98,5 @@ class Mks_G_Series():
 
 if __name__ == '__main__':
     mks = Mks_G_Series()
-    #print mks.read_serial_number(0)
-    #print mks.set_setpoint(1, 0)
-    #print mks.read_setpoint(2)
-    #while True:
-    #    print mks.read_flow(2)
-    #    time.sleep(0.5)
-    #print mks.read_flow(2)
-    #print mks.read_current_gas_type(1)
-    #print mks.read_device_address()
-    #print mks.read_full_scale_range(2)
-
-
     #print mks.read_run_hours(254)
     #print mks.set_device_address(254,005)

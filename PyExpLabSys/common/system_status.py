@@ -8,7 +8,10 @@ import os
 import re
 import sys
 import socket
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # pylint: disable=invalid-name
 import struct
 import threading
 import subprocess
@@ -171,17 +174,30 @@ class SystemStatus(object):
     @staticmethod
     @works_on('linux2')
     def mac_address():
-        """Return the mac address of currently connected interface"""
-        sql_ip = socket.gethostbyname('servcinf-sql')
-        interface_string = subprocess.check_output(['ip', '-o', 'route',
-                                                    'get', sql_ip]).split()
-        ifname = interface_string[4]
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        info = fcntl.ioctl(sock.fileno(), 0x8927, struct.pack(b'256s', ifname[:15]))
-        if sys.version < '3':
-            return ':'.join(['%02x' % ord(char) for char in info[18:24]])
-        else:
-            return ':'.join(['%02x' % char for char in info[18:24]])
+        """Return the mac address of the currently connected interface"""
+        # This procedure has given us problems in the past, so sorround with try-except
+        try:
+            # Get the IP of servcinf-sql
+            sql_ip = socket.gethostbyname('servcinf-sql')
+            # Get the route for the servcinf-sql ip, it will look like one of these:
+            #10.54.6.26 dev eth0  src 10.54.6.43 \    cache
+            #130.225.86.27 via 10.54.6.1 dev eth0  src 10.54.6.43 \    cache
+            interface_string = subprocess.check_output(
+                ['ip', '-o', 'route', 'get', sql_ip]
+            ).split()
+
+            # The interface name e.g. "eth0" is the first item after "dev"
+            ifname = interface_string[interface_string.index('dev') + 1]
+
+            # Get an infostring for a socket connection of this interface name
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            info = fcntl.ioctl(sock.fileno(), 0x8927, struct.pack(b'256s', ifname[:15]))
+            if sys.version < '3':
+                return ':'.join(['%02x' % ord(char) for char in info[18:24]])
+            else:
+                return ':'.join(['%02x' % char for char in info[18:24]])
+        except:  # pylint: disable=bare-except
+            return 'MAC ADDRESS UNKNOWN'
 
     @staticmethod
     @works_on('linux2')
@@ -209,7 +225,7 @@ class SystemStatus(object):
             return None
         # Get temperature string
         if os.path.exists('/sys/class/thermal/thermal_zone0/temp'):
-            try:                                    
+            try:
                 temp_str = subprocess.check_output(['cat',
                                                     '/sys/class/thermal/thermal_zone0/temp'])
             except OSError:

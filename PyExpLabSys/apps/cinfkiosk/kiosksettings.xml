@@ -1,0 +1,13 @@
+<?xml version='1.0' standalone='yes'?>
+<graphs>
+  <graph id="first">
+    <size type="[int]">300, 200</size>
+    <position type="[int]">0, 50</position>
+  </graph>
+  <graph id="second">
+    <size type="[int]">300, 200</size>
+    <position type="[int]">300, 300</position>
+  </graph>
+  <global_settings>
+  </global_settings>
+</graphs>

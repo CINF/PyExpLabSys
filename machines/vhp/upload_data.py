@@ -5,6 +5,14 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)  # Comment in for more logging output
 from collections import defaultdict
 from PyExpLabSys.file_parsers.chemstation import Sequence
+
+### REMOVE after database move is complete
+
+from PyExpLabSys.common import database_saver
+database_saver.HOSTNAME = 'cinfsql'
+
+### REMOVE after database move is complete
+
 from PyExpLabSys.common.database_saver import DataSetSaver
 from PyExpLabSys.common.database_saver import CustomColumn
 import credentials
@@ -61,6 +69,9 @@ for root, dirs, files in os.walk(basefolder):
             data_set_saver.save_points_batch(codename, x, y)
         print('   Summary datasets uploaded........: {}'.format(len(data_set)))
 
+        # Do not uploade raw data right now, since we have database troubles
+        continue
+
         # Upload the raw spectra
         raw_spectra = defaultdict(list)
         for injection in sequence.injections:
@@ -103,6 +114,4 @@ for root, dirs, files in os.walk(basefolder):
 logging.basicConfig(level=logging.INFO)
 data_set_saver.stop()
 print('ALL DONE')
-       
-
 

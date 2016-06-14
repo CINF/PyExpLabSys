@@ -1,9 +1,10 @@
+""" Emission control for TOF """
 import time
 import threading
 import PyExpLabSys.drivers.cpx400dp as CPX
 import PyExpLabSys.auxiliary.pid as pid
 from PyExpLabSys.common.value_logger import ValueLogger
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
@@ -15,29 +16,33 @@ import credentials
 LOGGER = get_logger('Emission', level='info', file_log=True,
                     file_name='emission_log.txt', terminal_log=False)
 
+LOGGER.error('Start')
+
 class EmissionControl(threading.Thread):
     """ Control the emission of a filament. """
     def __init__(self):
         threading.Thread.__init__(self)
         channels = ['setpoint', 'emission', 'ionenergy']
         self.datasocket = DateDataPullSocket('emission_tof', channels,
-                                             timeouts=[999999, 1.0, 999999999])
+                                             timeouts=[99999999, 1.0, 99999999])
         self.datasocket.start()
         self.pushsocket = DataPushSocket('tof-emission-push_control', action='enqueue')
         self.pushsocket.start()
-        self.livesocket = LiveSocket('tof-emission', channels, 1)
+        self.livesocket = LiveSocket('tof-emission', channels)
         self.livesocket.start()
-        self.measured_voltage = 0
         self.filament = {}
         port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F952E5-if00'
-        self.filament['device'] = CPX.CPX400DPDriver(1, device=port)
+        self.filament['device'] = CPX.CPX400DPDriver(1, interface='serial', device=port)
         self.filament['voltage'] = 0
         self.filament['current'] = 0
         self.filament['idle_voltage'] = 1.7
-        self.filament['device'].set_current_limit(4.8)
+        self.filament['device'].set_current_limit(7)
         self.filament['device'].output_status(True)
         self.bias = {}
-        self.bias['device'] = smu.KeithleySMU(interface='lan', hostname='10.54.6.168')
+        port = '/dev/serial/by-id/'
+        port += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+        self.keithley_port = port
+        self.bias['device'] = smu.KeithleySMU(interface='serial', device=self.keithley_port)
         self.bias['grid_voltage'] = 0
         self.bias['grid_current'] = 0
         self.bias['device'].output_state(True)
@@ -80,7 +85,18 @@ class EmissionControl(threading.Thread):
 
     def read_emission_current(self):
         """ Read the grid current as measured by power supply """
-        return self.bias['device'].read_current() * 1000
+        emission_current = self.bias['device'].read_current()
+        if emission_current is None:
+            self.bias['device'] = smu.KeithleySMU(
+                interface='serial',
+                device=self.keithley_port,
+                )
+            time.sleep(0.1)
+            emission_current = self.value()
+            LOGGER.error('Emission current not read correctly - reset device')
+        else:
+            emission_current = emission_current * 1000
+        return emission_current
 
     def read_grid_current(self):
         """ Read the actual emission current """
@@ -99,14 +115,17 @@ class EmissionControl(threading.Thread):
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 LOGGER.debug('Element: ' + str(element))
-                param = element.keys()[0]
+                param = list(element.keys())[0]
                 if param == 'setpoint':
                     value = element[param]
-                    self.update_setpoint(value) 
+                    self.update_setpoint(value)
+                if param == 'bias':
+                    value = element[param]
+                    self.set_bias(value)
                 qsize = self.pushsocket.queue.qsize()
 
             self.emission_current = self.read_emission_current()
-            self.wanted_voltage = (self.pid.wanted_power(self.emission_current) + 
+            self.wanted_voltage = (self.pid.wanted_power(self.emission_current) +
                                    self.filament['idle_voltage'])
             self.pid.update_setpoint(self.setpoint)
             self.set_filament_voltage(self.wanted_voltage)
@@ -114,6 +133,7 @@ class EmissionControl(threading.Thread):
             self.filament['current'] = self.read_filament_current()
             self.bias['grid_voltage'] = self.read_grid_voltage()
             self.bias['grid_current'] = self.read_grid_current()
+            self.datasocket.set_point_now('ionenergy', self.bias['grid_voltage'])
             self.datasocket.set_point_now('emission', self.emission_current)
             self.livesocket.set_point_now('emission', self.emission_current)
             self.looptime = time.time() - start_time
@@ -122,31 +142,34 @@ class EmissionControl(threading.Thread):
         #self.set_bias(0)
 
 
-if __name__ == '__main__':
-    ec = EmissionControl()
-    #ec.set_bias(35)
-    ec.start()
+def main():
+    """ Main function """
+    emission_control = EmissionControl()
+    emission_control.set_bias(38)
+    emission_control.start()
 
-    logger = ValueLogger(ec, comp_val = 1, comp_type='log')
+    logger = ValueLogger(emission_control, comp_val=0.01, comp_type='log')
     logger.start()
 
-    CODENAMES = ['tof_emission_value']
-    db_logger = ContinuousLogger(table='dateplots_tof',
-                                 username=credentials.user,
-                                 password=credentials.passwd,
-                                 measurement_codenames=CODENAMES)
+    codenames = ['tof_emission_value']
+    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_tof',
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=codenames)
     db_logger.start()
 
-    tui = emission_tui.CursesTui(ec)
+    tui = emission_tui.CursesTui(emission_control)
     tui.daemon = True
     tui.start()
     time.sleep(10)
 
-    while ec.running:
+    while emission_control.running is True:
         time.sleep(1)
         value = logger.read_value()
         if logger.read_trigged():
             LOGGER.debug('Logged value: ' + str(value))
-            db_logger.enqueue_point_now('tof_emission_value', value)
+            db_logger.save_point_now('tof_emission_value', value)
             logger.clear_trigged()
 
+if __name__ == '__main__':
+    main()

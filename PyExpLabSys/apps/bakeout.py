@@ -1,16 +1,22 @@
 """ App to control PW-modulated bakeout boxes """
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 import time
 import sys
 import threading
 import curses
-import wiringpi2 as wp # pylint: disable=F0401
+import wiringpi as wp # pylint: disable=F0401
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 
-sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
+try:
+    sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
+except IndexError:
+    print('You need to give the name of the raspberry pi as an argument')
+    print('This will ensure that the correct settings file will be used')
+    exit()
 import settings # pylint: disable=F0401
 
 LOGGER = get_logger('Bakeout', level='info', file_log=True,
@@ -38,8 +44,8 @@ class CursesTui(threading.Thread):
             tui_string = "Watchdog Timer: {0:.1f}"
             self.screen.addstr(5, 2, tui_string.format(time.time() -
                                                        self.watchdog.timer) + '  ')
-            self.screen.addstr(6, 2, "Watchdog safe: " + 
-                               str(self.watchdog.watchdog_safe) + ' ') 
+            self.screen.addstr(6, 2, "Watchdog safe: " +
+                               str(self.watchdog.watchdog_safe) + ' ')
             self.screen.addstr(8, 2, 'Current channel status:')
             for channel in range(1, 7):
                 if settings.count_from_right:
@@ -78,7 +84,7 @@ class CursesTui(threading.Thread):
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
-        curses.endwin()    
+        curses.endwin()
 
 
 class Watchdog(threading.Thread):
@@ -132,7 +138,7 @@ class Bakeout(threading.Thread):
     """ The actual heater """
     def __init__(self):
         threading.Thread.__init__(self)
-        self.watchdog = Watchdog() 
+        self.watchdog = Watchdog()
         self.watchdog.daemon = True
         self.watchdog.start()
         time.sleep(1)
@@ -144,7 +150,7 @@ class Bakeout(threading.Thread):
         self.setup = settings.setup
         self.dutycycles = [0, 0, 0, 0, 0, 0]
         channels = ['1', '2', '3', '4', '5', '6']
-        self.livesocket = LiveSocket(self.setup + '-bakeout', channels, 1)
+        self.livesocket = LiveSocket(self.setup + '-bakeout', channels)
         self.livesocket.start()
         self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=[2]*6)
         self.pullsocket.start()
@@ -173,7 +179,7 @@ class Bakeout(threading.Thread):
     def modify_dutycycle(self, channel, amount=None, value=None):
         """ Change the dutycycle of a channel """
         if amount is not None:
-            self.dutycycles[channel-1] =  self.dutycycles[channel-1] + amount
+            self.dutycycles[channel-1] = self.dutycycles[channel-1] + amount
         if value is not None:
             self.dutycycles[channel-1] = value
 
@@ -199,7 +205,7 @@ class Bakeout(threading.Thread):
                 LOGGER.debug('Element: ' + str(element))
                 channel = element.keys()[0]
                 value = element[channel]
-                self.modify_dutycycle(int(channel), value=value) 
+                self.modify_dutycycle(int(channel), value=value)
                 qsize = self.pushsocket.queue.qsize()
 
             self.watchdog.reset_ttl()
@@ -234,4 +240,3 @@ if __name__ == '__main__':
 
     while not BAKER.quit:
         time.sleep(1)
-

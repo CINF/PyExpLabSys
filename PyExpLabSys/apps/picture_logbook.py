@@ -20,7 +20,7 @@ class PictureLogbook(object):
     def __init__(self):
         LOGGER.info('Started Picture Logbook')
         self.picaso = PicasouLCD28PTU(serial_device='/dev/ttyUSB0', baudrate=115200,
-                                 debug=True)
+                                      debug=True)
         dev_ = detect_barcode_device()
         LOGGER.info('Barcode device: ' +  dev_)
         self.tbs = ThreadedBarcodeReader(dev_)
@@ -28,11 +28,11 @@ class PictureLogbook(object):
 
         self.setup = settings.setup
 
-        self.livesocket = LiveSocket(self.setup + '-Picture Logbook', ['logged_in_user'], 1)
+        self.livesocket = LiveSocket(self.setup + '-Picture Logbook', ['logged_in_user'])
         self.livesocket.start()
 
         self.force_logout_user = settings.force_logut_user
-        self.camera = cv.CaptureFromCAM(0) 
+        self.camera = cv.CaptureFromCAM(0)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_WIDTH, 320)
         cv.SetCaptureProperty(self.camera, cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
         self.database = MySQLdb.connect(host='servcinf-sql', user='picturelogbook',
@@ -134,7 +134,7 @@ class PictureLogbook(object):
             id_number = self.save_image(image)
             query = 'insert into picture_logbooks set setup = "' + self.setup + '", '
             query += 'user = "' + user + '", pictureid=' + str(id_number) + ', '
-            login = action is 'login'       
+            login = action is 'login'
             query += 'login = ' + str(login)
             LOGGER.info(query)
             cursor = self.database.cursor()
