@@ -84,7 +84,7 @@ def main():
         loggers[name].start()
 
 
-    livesocket = LiveSocket('pvd309 qcm logger', codenames, 2)
+    livesocket = LiveSocket('pvd309 qcm logger', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket('pvd309 qcm', codenames, timeouts=[1.0]*len(codenames))
