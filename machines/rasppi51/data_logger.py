@@ -101,7 +101,7 @@ def main():
                                         low_comp=1e-3, comp_type='log', channel=5)
     loggers[codenames[5]].start()
 
-    livesocket = LiveSocket('pvd309 pressure logger', codenames, 2)
+    livesocket = LiveSocket('pvd309 pressure logger', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket('pvd309 pressure', codenames, timeouts=[1.0]*6)
