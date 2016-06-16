@@ -1,2 +1,9 @@
-python3-pyqt5
-python3-pyqt5.qtopengl
+APT
+libssl-dev
+
+PIP
+pyopenssl
+cryptography
+autobahn
+twisted
+

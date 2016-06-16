@@ -1,21 +1,32 @@
 <?xml version='1.0' standalone='yes'?>
-<figures>
+<kiosk>
+
   <figure id="first">
     <size type="[int]">400, 400</size>
-    <grid type="[int]">0, 0, 2, 2</grid>
+    <grid type="[int]">0, 0, 1, 2</grid>
+    <plot color="#00FF00">
+      <data_channel>rasppi71:thetaprobe_main_chamber_pressure</data_channel>
+    </plot>
+    <title>First</title>
+    <xwindow type="int">600</xwindow>
+    <jump_ahead type="float">0.3</jump_ahead>
   </figure>
+
   <figure id="second">
-    <size type="[int]">200, 600</size>
-    <grid type="[int]">0, 2, 3, 1</grid> <!-- row, column, rowspan, columnspan or row, column -->
+    <size type="[int]">600, 600</size>
+    <grid type="[int]">0, 2, 2, 1</grid>
+    <label position="left">Left label</label>
+    <label position="bottom">Bottom label</label>
   </figure>
+
   <figure id="third">
     <size type="[int]">200, 200</size>
-    <grid type="[int]">2, 0</grid> <!-- row, column, rowspan, columnspan or row, column -->
+    <grid type="[int]">1, 0</grid> <!-- row, column, rowspan, columnspan or row, column -->
   </figure>
+
   <figure id="fourth">
     <size type="[int]">200, 200</size>
-    <grid type="[int]">2, 1</grid> <!-- row, column, rowspan, columnspan or row, column -->
+    <grid type="[int]">1, 1</grid> <!-- row, column, rowspan, columnspan or row, column -->
   </figure>
-  <global_settings>
-  </global_settings>
-</figures>
+
+</kiosk>

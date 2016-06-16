@@ -1,0 +1,29 @@
+<?xml version='1.0' standalone='yes'?>
+<kiosk>
+  
+  <figure id="figure_id">
+    <!-- MANDATORY SECTION -->
+    <size type="[int]">600, 400</size>  <!-- In pixels -->
+    <!-- The grid is specified as:
+           row, col, rowspan, colspan   OR   row, col
+         See the comment below about the layout -->
+    <grid type="[int]">0, 2, 2, 1</grid>
+
+    <!-- PLOT DEFINITION -->
+    <!-- one or more plots, in priciple optional, but not very useful without it -->
+    <plot>
+      <data_channel>rasppi257:test_data_channel</data_channel>  <!-- mandatory -->
+    </plot>
+ 
+    <!-- OPTIONAL SECTION -->
+    <title>MyTitle</title>
+    <!-- One or more labels, position can be "left", "right", "top", "bottom" -->
+    <label position="left">MyLabel</label>
+    <!-- optional; x-axis width in s, default 600 -->
+    <xwindow type="int">3600</xwindow>
+    <!-- optional; how large a fraction of the xwindow to leave empty
+         on the right side when the data reaches max x, default 0.2 -->
+    <jump_ahead type="float">0.3</jump_ahead>
+  </figure>
+
+</kiosk>
