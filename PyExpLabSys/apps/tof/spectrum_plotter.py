@@ -9,11 +9,14 @@ import mysql.connector
 import pickle
 import math
 from lmfit import Model
+from lmfit import Parameters
 from matplotlib.backends.backend_pdf import PdfPages
 
 PEAK_FIT_WIDTH = 25
 DATEPLOT_TABLE = 'dateplots_mgw'
-DATEPLOT_TYPE = 273
+#DATEPLOT_TYPE = 273 # Bubbler
+DATEPLOT_TYPE = 61 # Buffer
+#DATEPLOT_TYPE = 141 # RTD
 MEASUREMENT_TABLE = 'measurements_tof'
 XY_VALUES_TABLE = 'xy_values_tof'
 NORMALISATION_FIELD = 'tof_iterations'
@@ -51,8 +54,16 @@ def fit_peak(flight_times, data, axis=None):
 
     if len(flight_times) == 1:
         gmod = Model(gaussian)
-        result = gmod.fit(values['y_fit'], x=values['x_fit'], amp=max(values['y_fit']),
-                          cen=flight_times[0], wid=0.0000025)
+        print(max(values['y_fit']))
+        parms = gmod.make_params(amp=max(values['y_fit']), cen=flight_times[0], wid=0.0000025)
+        parms['amp'].min = 0
+        parms['amp'].max = 2 * max(values['y_fit'])
+        print(parms['amp'])
+        parms['wid'].min = 0.0000015
+        parms['wid'].max = 0.0000195
+        result = gmod.fit(values['y_fit'], x=values['x_fit'], amp=parms['amp'], cen=parms['cen'], wid=parms['wid'])
+        #result = gmod.fit(values['y_fit'], x=values['x_fit'], amp=max(values['y_fit']),
+        #                  cen=flight_times[0], wid=0.0000025)
         fit_results = [(result.params['amp'].value, result.params['wid'].value,
                         result.params['cen'].value)]
 
@@ -163,12 +174,12 @@ def main(fit_info, spectrum_numbers):
         calculated_temp = find_dateplot_info(spectrum_info, cursor)
         dateplot_values.append(calculated_temp)
 
-        i = 0
+        j = 0
         pdffig = plt.figure()
         for x in fit_info:
-            i = i + 1
-            axis = pdffig.add_subplot(2, 2, i)
-            if i == 1:
+            j = j + 1
+            axis = pdffig.add_subplot(3, 3, j)
+            if j == 1:
                 axis.text(0, 1.2, 'Spectrum id: ' + str(spectrum_number),
                           fontsize=12, transform=axis.transAxes)
                 axis.text(0, 1.1, 'Sweeps: {0:.2e}'.format(spectrum_info[2]),
@@ -231,18 +242,36 @@ def main(fit_info, spectrum_numbers):
 if __name__ == '__main__':
     FIT_INFO = {}
     FIT_INFO['M4'] = {}
-    FIT_INFO['M4']['flighttime'] = [5.53]
+    FIT_INFO['M4']['flighttime'] = [5.52]
     FIT_INFO['M4']['names'] = ['He']
 
-    FIT_INFO['11.46'] = {}
-    FIT_INFO['11.46']['flighttime'] = [11.455, 11.467]
-    FIT_INFO['11.46']['names'] = ['11.46-low', '11.46-high']
+    FIT_INFO['M34'] = {}
+    FIT_INFO['M34']['flighttime'] = [16.86]
+    FIT_INFO['M34']['names'] = ['H2S']
+    
+    FIT_INFO['M154'] = {}
+    FIT_INFO['M154']['flighttime'] = [36.36]
+    FIT_INFO['M154']['names'] = ['BiPhe']
+    
+    FIT_INFO['DBT'] = {}
+    FIT_INFO['DBT']['flighttime'] = [39.774]
+    FIT_INFO['DBT']['names'] = ['DBT']
 
-    FIT_INFO['11.82'] = {}
-    FIT_INFO['11.82']['flighttime'] = [11.81, 11.831]
-    FIT_INFO['11.82']['names'] = ['11.82-low', '11.82-high']
+    """
+    FIT_INFO['21.97'] = {}
+    FIT_INFO['21.97']['flighttime'] = [21.97]
+    FIT_INFO['21.97']['names'] = ['Oil']
+
+    FIT_INFO['24.57'] = {}
+    FIT_INFO['24.57']['flighttime'] = [24.57]
+    FIT_INFO['24.57']['names'] = ['Oil II']
+    """
+    #FIT_INFO['11.82'] = {}
+    #FIT_INFO['11.82']['flighttime'] = [11.81, 11.831]
+    #FIT_INFO['11.82']['names'] = ['11.82-low', '11.82-high']
     #Todo: Also include fit-information such as exact peak position
 
-    SPECTRUM_NUMBERS = range(4160, 4165)
+    SPECTRUM_NUMBERS = range(6110, 6991)
+    #SPECTRUM_NUMBERS = range(6009, 6120)
     
     main(FIT_INFO, SPECTRUM_NUMBERS)
