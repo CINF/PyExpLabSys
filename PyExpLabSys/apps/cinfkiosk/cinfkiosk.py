@@ -2,6 +2,9 @@
 import sys
 import types
 import math
+import argparse
+import platform
+from os import path
 from pprint import pprint
 from time import sleep, time, strftime
 import logging
@@ -39,7 +42,6 @@ from autobahn.twisted.websocket import (
 
 
 ### DEFAULTS
-print(pg.CONFIG_OPTIONS)
 DEFAULTS = {
     'x_window': 600,
     'jump_ahead': 0.2,
@@ -570,6 +572,41 @@ class MyClientProtocol(WebSocketClientProtocol):
 
 
 if __name__ == '__main__':
+    mainlog = logging.getLogger('main')
+
+    description = (
+        "The kiosk app\n"
+        "\n"
+        "For setting of the config file the following prioritization is used:\n"
+        " * --config\n"
+        " * --machine\n"
+        " * Autodetected machine from hostname (platform.node())\n"
+        " * cinfkiosk.xml file under app folder"
+    )
+
+    parser = argparse.ArgumentParser(description=description,
+                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--config", help="The path to the config file. If this is set --machine is ignored.")
+    parser.add_argument("--machine", help="The machine from which to get the config file")
+    parser.add_argument("--disable-old",  default=False, action='store_true',
+                        help="Disable fetching old data from MySQL server (Default False)")
+    args = parser.parse_args()
+    print(args.disable_old)
+
+    # Form config file path
+    autodetect_config = path.join(path.expanduser('~'), 'PyExpLabSys', 'machines',
+                                  platform.node(), 'kiosksettings.xml')
+    if args.config is not None:
+        config = args.config
+    elif args.machine is not None:
+        config = path.join(path.expanduser('~'), 'PyExpLabSys', 'machines', args.machine,
+                           'kiosksettings.xml')
+    elif path.isfile(autodetect_config):
+        config = autodetect_config
+    else:
+        config = 'kiosksettings.xml'
+    mainlog.debug("Using config: %s", config)
+
     factory = WebSocketClientFactory(url="wss://cinf-wsserver.fysik.dtu.dk:9002")
     factory.protocol = MyClientProtocol
 
@@ -586,7 +623,7 @@ if __name__ == '__main__':
     ex = CinfKiosk(
         'kiosksettings.xml',
         screen_geometry=app.desktop().screenGeometry(),
-        include_old_data=False,
+        include_old_data=not args.disable_old,
     )
     ret = app.exec_()
 
