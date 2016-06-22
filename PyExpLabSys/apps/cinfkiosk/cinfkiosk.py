@@ -12,8 +12,6 @@ import xml.etree.ElementTree as ET
 import numpy as np
 from queue import Queue
 
-from matplotlib.ticker import LinearLocator, LogLocator
-
 
 import MySQLdb
 CONN = MySQLdb.connect('servcinf-sql', 'cinf_reader', 'cinf_reader', 'cinfdata')
