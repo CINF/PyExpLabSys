@@ -55,7 +55,7 @@ def main():
                                 timeouts=[1.0])
     socket.start()
 
-    livesocket = LiveSocket('muffle_furnace', ['chemlab307_muffle_furnace'], 2)
+    livesocket = LiveSocket('muffle_furnace', ['chemlab307_muffle_furnace'])
     livesocket.start()
 
     db_logger.start()
