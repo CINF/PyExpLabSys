@@ -1,27 +1,29 @@
 
+from __future__ import division
+
 import sys
 import types
 import math
 import argparse
 import platform
+from functools import partial
 from os import path
 from pprint import pprint
 from time import sleep, time, strftime
 import logging
 import json
 from threading import Thread
-logging.basicConfig(level=logging.DEBUG)
+from collections import defaultdict
+FORMAT = '%(asctime)-15s--%(name)-10s %(levelname)-5s--%(message)s'
+logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 import xml.etree.ElementTree as ET
 import numpy as np
 from queue import Queue
 
-
+# Import database and make connection and cursor
 import MySQLdb
 CONN = MySQLdb.connect('servcinf-sql', 'cinf_reader', 'cinf_reader', 'cinfdata')
 CURSOR = CONN.cursor()
-
-# Message queue for messaging between WebSockets thread and Qt thread
-MESSAGE_QUEUE = Queue()
 
 # Qt imports
 from PyQt4.QtGui import (
@@ -34,11 +36,17 @@ from pyqtgraph import PlotWidget, AxisItem, PlotItem
 
 # Websocket imports
 from twisted.internet import reactor, ssl
+from twisted.internet.protocol import ReconnectingClientFactory
 #from twisted.python import log
 #log.startLogging(sys.stdout)
 from autobahn.twisted.websocket import (
     WebSocketClientProtocol, WebSocketClientFactory, connectWS
 )
+
+# Message queue for messaging between WebSockets thread and Qt thread
+MESSAGE_QUEUE = Queue()
+# Global variables to hold the data subscriptions
+SUBSCRIPTIONS = None
 
 
 ### DEFAULTS
@@ -56,7 +64,35 @@ DEFAULTS = {
     'yformat': '.2f',
     'table_padding': 5,
     'title_size': 26,
+    # Data reduction
+    'x_absolute': 10,
 }
+### DEFAULTS
+
+# Status
+stlog = logging.getLogger('Status')
+STATUS = defaultdict(int)
+class StatusThread(QThread):
+
+    def __init__(self, interval):
+        super(StatusThread, self).__init__()
+        self.interval = interval
+        self.daemon = True
+
+    def run(self):
+        """Main threaded method"""
+        stlog.info("run in status started")
+
+        while True:
+            if len(STATUS) > 0:
+                if 'STOP' in STATUS:
+                    break
+                stlog.debug("##### STATUS START #####")
+                for key in sorted(list(STATUS.keys())):
+                    stlog.debug('%s -> %s per s', key, STATUS.pop(key) / self.interval)
+                stlog.debug("##### STATUS END #####")
+            sleep(self.interval)
+
 
 
 ### XML helpers
@@ -103,6 +139,20 @@ def getcolor(color_def):
         if not color.isValid():
             raise ValueError('Invalid color def {}'.format(color_def))
     return color
+
+
+def log_this_one(last, current, x_absolute=None, y_absolute=None, y_relative=None):
+    """Return true if this point meets the logging criteria"""
+    if y_absolute is not None:
+        if abs(current[1] - last[1]) > y_absolute:
+            return True, 'y_absolute'
+    if y_relative is not None:
+        if abs(current[1] - last[1]) / abs(last[1]) > y_relative:
+            return True, 'y_relative'
+    if x_absolute is not None:
+        if current[0] - last[0] > x_absolute:
+            return True, 'x_absolute'
+    return False, None
 
 
 ## Custom pyqtgraph hacks
@@ -166,6 +216,8 @@ class Cinfpyqtgraph(PlotWidget):
     def __init__(self, parent, xmlconf, background='default', include_old_data=True):
         """Initialize local variables"""
         self.include_old_data = include_old_data
+        self.figure_id = xmlconf.attrib['id']
+
         # Extract title and labels
         title = xmlget(xmlconf, 'title')
         clog.debug('Title: %s', title)
@@ -209,9 +261,19 @@ class Cinfpyqtgraph(PlotWidget):
         clog.debug('x_window: %s, jump_ahead: %s', self.x_window, self.jump_ahead)
         self.set_x_window()
 
+        # Set data reduction variables
+        data_reduction_params = {
+            'x_absolute': xmlget(xmlconf, 'x_absolute'),
+            'y_absolute': xmlget(xmlconf, 'y_absolute'),
+            'y_relative': xmlget(xmlconf, 'y_relative'),
+        }
+        self.log_this_one = partial(log_this_one, **data_reduction_params)
+
         # Form curves
         self.curves = {}
         self.data = {}
+        self.last_points = {}
+        self.has_tmp_point = defaultdict(lambda: False)
         for curve_def in xmlconf.findall('plot'):
             data_channel = curve_def.find('data_channel').text
 
@@ -225,15 +287,20 @@ class Cinfpyqtgraph(PlotWidget):
             if old_data_query is not None and self.include_old_data:
                 CURSOR.execute(old_data_query.format(**{'from': self.current_window[0]}))
                 data = [[], []]
+                last = (0, 0)
                 for point in CURSOR.fetchall():
-                    data[0].append(point[0])
-                    data[1].append(point[1])
+                    log_bool, _ = self.log_this_one(last, point)
+                    if log_bool:
+                        last = point
+                        data[0].append(point[0])
+                        data[1].append(point[1])
                 self.data[data_channel] = data
             else:
                 self.data[data_channel] = [[], []]
 
             # Add the curve
             self.curves[data_channel] = self.plot(*self.data[data_channel], pen=pen)
+            self.last_points[data_channel] = (-1e99, -1E99)
 
             # Check if this curve has a label
             label_def = curve_def.find('label')
@@ -243,16 +310,42 @@ class Cinfpyqtgraph(PlotWidget):
 
     def process_data_batch(self, data):
         host = data['host']
+        had_data_for_this_graph = False
         for codename, value in data['data'].items():
             sub_def = '{}:{}'.format(host, codename)
             curve = self.curves.get(sub_def)
             if curve is not None:
-                self.data[sub_def][0].append(value[0])
-                self.data[sub_def][1].append(value[1])
-                curve.setData(*self.data[sub_def])
+                had_data_for_this_graph = True
                 if value[0] > self.current_window[1]:
                     self.set_x_window()
                     self.shave_data()
+
+                # Ih this should be a permanent point
+                log_bool, log_param = self.log_this_one(self.last_points[sub_def], value)
+                if log_bool:
+                    if log_param == 'x_absolute' and self.has_tmp_point[sub_def]:
+                        self.data[sub_def][0][-1] = value[0]
+                        self.data[sub_def][1][-1] = value[1]
+                    else:
+                        self.data[sub_def][0].append(value[0])
+                        self.data[sub_def][1].append(value[1])
+                    self.last_points[sub_def] = value
+                    self.has_tmp_point[sub_def] = False
+                else:
+                    if self.has_tmp_point[sub_def]:
+                        self.data[sub_def][0][-1] = value[0]
+                        self.data[sub_def][1][-1] = value[1]
+                    else:
+                        self.data[sub_def][0].append(value[0])
+                        self.data[sub_def][1].append(value[1])
+                        self.has_tmp_point[sub_def] = True
+
+                curve.setData(*self.data[sub_def])
+                STATUS['FIGURE PLOT ' + self.figure_id] += sum(
+                    len(d[0]) for d in self.data.values()
+                )
+                STATUS['FIGURE ALL'] += sum(len(d[0]) for d in self.data.values())
+        STATUS['FIGURE BATCH ' + self.figure_id] += int(had_data_for_this_graph)
 
     def set_x_window(self):
         """Set the X-window"""
@@ -412,13 +505,16 @@ class CinfQTable(QTableWidget):
         
 
     def process_data_batch(self, data):
+        widgets_updated = 0
         host = data['host']
         for codename, value in data['data'].items():
             sub_def = '{}:{}'.format(host, codename)
             for dat, widgets in zip(value, (self.x_widgets, self.y_widgets)):
                 widget = widgets.get(sub_def)
                 if widget is not None:
+                    widgets_updated += 1
                     widget.setValue(dat)
+        STATUS['TABLE cells updated'] += widgets_updated
 
 
 
@@ -431,9 +527,9 @@ class AThread(QThread):
         klog.info("run in data thread started")
         cinfkiosk = self.parent()
 
-        MESSAGE_QUEUE.put(cinfkiosk.subscriptions)
-        while MESSAGE_QUEUE.qsize() > 0:
-            sleep(1E-6)
+        #MESSAGE_QUEUE.put(cinfkiosk.subscriptions)
+        #while MESSAGE_QUEUE.qsize() > 0:
+        #    sleep(1E-6)
 
         while True:
             item = MESSAGE_QUEUE.get()
@@ -472,6 +568,8 @@ class CinfKiosk(QWidget):
             u'action': u'subscribe',
             u'subscriptions': data_channels
         }
+        global SUBSCRIPTIONS
+        SUBSCRIPTIONS = self.subscriptions
 
 
         self.data_thread = AThread(self)
@@ -558,12 +656,14 @@ class MyClientProtocol(WebSocketClientProtocol):
         wslog.debug("Server connected: %s", response.peer)
 
     def onOpen(self):
-        subscribe = MESSAGE_QUEUE.get()
-        self.sendMessage(json.dumps(subscribe).encode('ascii'))
+        while SUBSCRIPTIONS is None:
+            sleep(0.1)
+        wslog.debug("Send subscriptions %s", SUBSCRIPTIONS)
+        self.sendMessage(json.dumps(SUBSCRIPTIONS).encode('ascii'))
         wslog.debug("WebSocket connection open.")
 
     def onMessage(self, payload, isBinary):
-
+        STATUS['WEBSOCKET message received'] += 1
         MESSAGE_QUEUE.put(json.loads(payload.decode('utf8')))
         #wslog.debug("Text message received: %s", payload.decode('utf8'))
 
@@ -571,9 +671,24 @@ class MyClientProtocol(WebSocketClientProtocol):
         wslog.debug("WebSocket connection closed: %s", reason)
 
 
+class MyClientFactory(WebSocketClientFactory, ReconnectingClientFactory):
+
+    protocol = MyClientProtocol
+
+    def clientConnectionFailed(self, connector, reason):
+        wslog.debug("Client connection failed .. retrying in 5 s..")
+        sleep(5)
+        self.retry(connector)
+
+    def clientConnectionLost(self, connector, reason):
+        wslog.debug("Client connection failed .. retrying in 5 s..")
+        sleep(5)
+        self.retry(connector)
+
+
 if __name__ == '__main__':
     mainlog = logging.getLogger('main')
-
+    mainlog.info("Program start")
     description = (
         "The kiosk app\n"
         "\n"
@@ -591,7 +706,6 @@ if __name__ == '__main__':
     parser.add_argument("--disable-old",  default=False, action='store_true',
                         help="Disable fetching old data from MySQL server (Default False)")
     args = parser.parse_args()
-    print(args.disable_old)
 
     # Form config file path
     autodetect_config = path.join(path.expanduser('~'), 'PyExpLabSys', 'machines',
@@ -605,10 +719,11 @@ if __name__ == '__main__':
         config = autodetect_config
     else:
         config = 'kiosksettings.xml'
-    mainlog.debug("Using config: %s", config)
+    mainlog.info("Using config: %s", config)
 
-    factory = WebSocketClientFactory(url="wss://cinf-wsserver.fysik.dtu.dk:9002")
-    factory.protocol = MyClientProtocol
+
+    # Start twisted factory with websocket connection
+    factory = MyClientFactory(url="wss://cinf-wsserver.fysik.dtu.dk:9002")
 
     if factory.isSecure:
         contextFactory = ssl.ClientContextFactory()
@@ -617,21 +732,35 @@ if __name__ == '__main__':
 
     connectWS(factory, contextFactory)
     Thread(target=reactor.run, args=(False,)).start()
-    #t = MyThread(reactor)
+    mainlog.info("Twisted factory with websockets started")
 
+    # Status thread
+    status_thread = StatusThread(20)
+    status_thread.start()
+    mainlog.info("Status thread started")
+
+    # Run Qt app
     app = QApplication(sys.argv)
     ex = CinfKiosk(
         'kiosksettings.xml',
         screen_geometry=app.desktop().screenGeometry(),
         include_old_data=not args.disable_old,
     )
+    mainlog.info("Ready to start Qt app")
     ret = app.exec_()
+    mainlog.info("Qt app stopped")
+
+    STATUS['STOP'] = True
 
     # Stop websocket connection and reactor
     WEBSOCKET_CLIENT.sendClose()
+    mainlog.info("Asked websocket client to stop")
     while WEBSOCKET_CLIENT.state != WEBSOCKET_CLIENT.STATE_CLOSED:
         sleep(1E-3)
+    mainlog.info("Websocket client stopped")
     reactor.stop()
+    mainlog.info("Reactor stopped")
+    mainlog.info("Program finished. Bye bye!")
 
     sys.exit(ret)
 
