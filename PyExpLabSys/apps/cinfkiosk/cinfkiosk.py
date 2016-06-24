@@ -2,6 +2,7 @@
 from __future__ import division
 
 import sys
+print(sys.version_info)
 import types
 import math
 import argparse
@@ -31,6 +32,7 @@ from PyQt4.QtGui import (
     QLabel, QPainter
 )
 from PyQt4.QtCore import QTimer, QThread, QTime, QDateTime
+from PyQt4.QtCore import Qt
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget, AxisItem, PlotItem
 
@@ -59,6 +61,7 @@ DEFAULTS = {
     'column_defs': ('color', 'label', 'x', 'y'),
     'column_headers': ('', 'Label', 'Time', 'Value'),
     'column_widths': (None, None, 100, None),  # The last one is ignored
+    'ylogscale': False,
     'xaxis': 'time',
     'xformat': 'HH:mm:ss',
     'yformat': '.2f',
@@ -96,6 +99,7 @@ class StatusThread(QThread):
 
 
 ### XML helpers
+types_ = {'int': int, 'float': float, 'bool': bool}
 def typed(xml):
     """Convert XML value to Python types"""
     type_ = xml.attrib.get('type', None)
@@ -112,7 +116,8 @@ def typed(xml):
             raise ValueError(message.format(xml.text))
 
     # The type function may be within brackets
-    type_func = getattr(__builtins__, type_.strip('[]'))
+    #type_func = getattr(__builtins__, type_.strip('[]'))
+    type_func = types_[type_.strip('[]')]
     if type_.startswith('['):
         return [type_func(value.strip()) for value in xml.text.split(',')]
     else:
@@ -308,9 +313,11 @@ class Cinfpyqtgraph(PlotWidget):
                 table = label_def.attrib['table']
                 parent.tables[table].add_row(data_channel, label_def, curve_def, color)
 
+    #@profile
     def process_data_batch(self, data):
         host = data['host']
         had_data_for_this_graph = False
+        rezoom = False
         for codename, value in data['data'].items():
             sub_def = '{}:{}'.format(host, codename)
             curve = self.curves.get(sub_def)
@@ -319,6 +326,7 @@ class Cinfpyqtgraph(PlotWidget):
                 if value[0] > self.current_window[1]:
                     self.set_x_window()
                     self.shave_data()
+                    rezoom = True
 
                 # Ih this should be a permanent point
                 log_bool, log_param = self.log_this_one(self.last_points[sub_def], value)
@@ -346,6 +354,7 @@ class Cinfpyqtgraph(PlotWidget):
                 )
                 STATUS['FIGURE ALL'] += sum(len(d[0]) for d in self.data.values())
         STATUS['FIGURE BATCH ' + self.figure_id] += int(had_data_for_this_graph)
+        return rezoom
 
     def set_x_window(self):
         """Set the X-window"""
@@ -505,6 +514,7 @@ class CinfQTable(QTableWidget):
         
 
     def process_data_batch(self, data):
+        #tlog.debug('databatch')
         widgets_updated = 0
         host = data['host']
         for codename, value in data['data'].items():
@@ -575,7 +585,15 @@ class CinfKiosk(QWidget):
         self.data_thread = AThread(self)
         #thread.finished.connect(app.exit)
         self.data_thread.start()
+
+        self.last_window_size_change = time()
         #sys.exit(app.exec_())
+
+        #self.timer = QTimer()
+        #self.timer.timeout.connect(self.check_and_repaint)
+        #self.timer.setInterval(1000)
+        #self.timer.start()
+        
         
         
     def init_ui(self):
@@ -631,18 +649,30 @@ class CinfKiosk(QWidget):
 
     def process_data_batch(self, databatch):
         """Receive data"""
+        #klog.debug('data_batch')
         for table in self.tables.values():
             table.process_data_batch(databatch)
+        scale_changed = False
         for fig in self.figures.values():
-            fig.process_data_batch(databatch)
+            #fig.process_data_batch(databatch)
+            scale_changed = scale_changed or fig.process_data_batch(databatch)
+        #print(int(self.windowState()))
+        if scale_changed and time() - self.last_window_size_change > 60:
+            klog.debug("unmax max trick")
+            mini = Qt.WindowStates(0)
+            maxi = Qt.WindowStates(2)
+            self.setWindowState(mini)
+            self.setWindowState(maxi)
+            self.last_window_size_change = time()
+            
+        
 
     def closeEvent(self, event):
         klog.info('close event')
         MESSAGE_QUEUE.put('STOP')
         while self.data_thread.isRunning():
             sleep(1E-6)
-        super(CinfKiosk, self).closeEvent(event)
-        
+        super(CinfKiosk, self).closeEvent(event)        
 
 
 WEBSOCKET_CLIENT = None
@@ -686,7 +716,7 @@ class MyClientFactory(WebSocketClientFactory, ReconnectingClientFactory):
         self.retry(connector)
 
 
-if __name__ == '__main__':
+def main():
     mainlog = logging.getLogger('main')
     mainlog.info("Program start")
     description = (
@@ -764,6 +794,8 @@ if __name__ == '__main__':
 
     sys.exit(ret)
 
+
+main()
 
 ### Graph
 # Modified from https://gist.github.com/friendzis/4e98ebe2cf29c0c2c232
