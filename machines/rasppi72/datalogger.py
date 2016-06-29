@@ -57,7 +57,7 @@ def main():
     loggers[codenames[1]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=2)
     loggers[codenames[1]].start()
 
-    livesocket = LiveSocket('Large Office 312 Air Logger', codenames, 2)
+    livesocket = LiveSocket('Large Office 312 Air Logger', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket('Large Office 312 Air Logger', codenames,
