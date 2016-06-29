@@ -51,7 +51,7 @@ def main():
                                 codenames, timeouts=[2.0])
     socket.start()
 
-    live_socket = LiveSocket('chemlab312_sample_storage', codenames, 2)
+    live_socket = LiveSocket('chemlab312_sample_storage', codenames)
     live_socket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_chemlab312',
