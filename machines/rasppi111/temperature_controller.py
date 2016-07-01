@@ -105,10 +105,10 @@ class PowerCalculatorClass(threading.Thread):
         self.pushsocket = pushsocket
         self.power = 0
         self.setpoint = 9
-        self.pid = PID.PID()
-        self.pid.Kp = 0.20
-        self.pid.Ki = 0.05
-        self.pid.Pmax = 45
+        self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        #self.pid.Kp = 0.20
+        #self.pid.Ki = 0.05
+        #self.pid.Pmax = 45
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -211,8 +211,8 @@ class HeaterClass(threading.Thread):
         while not self.quit:
             self.voltage = self.pc.read_power()
             self.pullsocket.set_point_now('voltage', self.voltage)
-            for i in range(1, 3):
-                self.ps[i].set_voltage(self.voltage)
+            self.ps[1].set_voltage(self.voltage * 2)
+            self.ps[2].set_voltage(self.voltage)
             time.sleep(0.25)
         for i in range(1, 3):
             self.ps[i].set_voltage(0)
