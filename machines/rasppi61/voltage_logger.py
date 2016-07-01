@@ -1,8 +1,9 @@
 # pylint: disable=C0301,R0904, C0103
-
+import os
 import threading
 import logging
 import time
+import subprocess
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import DateDataPullSocket
@@ -32,6 +33,12 @@ class TemperatureReader(threading.Thread):
     def run(self):
         time.sleep(0.1)
         while not self.quit:
+            #temp_str = subprocess.check_output(['cat',
+            #                                    '/sys/class/thermal/thermal_zone0/temp'])
+            temp_str = 0.0
+            temp = float(temp_str) / 1000
+            os.environ['cpu_temperature'] = str(temp)
+            
             temp_hot = 0
             temp_cold = 0
             for _ in range(0, 4): 
@@ -60,7 +67,7 @@ socket = DateDataPullSocket('hall_cooling_water_temp',
                             codenames, timeouts=[2.0, 2.0])
 socket.start()
 
-live_socket = LiveSocket('hall_waterpressure', codenames, 2)
+live_socket = LiveSocket('hall_waterpressure', codenames)
 live_socket.start()
 
 db_logger = ContinuousLogger(table='dateplots_hall',

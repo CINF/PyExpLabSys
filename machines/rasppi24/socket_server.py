@@ -9,6 +9,7 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import LiveSocket
 import credentials
+import credentials_sniffer
 
 class FlowControl(threading.Thread):
     """ Keep updated values of the current flow """
@@ -21,10 +22,14 @@ class FlowControl(threading.Thread):
         self.livesocket = livesocket
         self.running = True
         self.reactor_pressure = float('NaN')
+        self.sniffer_pressure = float('Nan')
 
-    def value(self):
+    def value(self, channel):
         """ Helper function for the reactor logger functionality """
-        return self.reactor_pressure
+        if channel == 1:
+            return self.reactor_pressure
+        if channel == 2:
+            return self.sniffer_pressure
 
     def run(self):
         while self.running:
@@ -45,13 +50,16 @@ class FlowControl(threading.Thread):
                 if mfc == 'M13201551A':
                     print "Pressure: " + str(flow)
                     self.reactor_pressure = flow
+                if mfc == 'M11210022A':
+                    print "Sniffer Pressure: " + str(flow)
+                    self.sniffer_pressure = flow
 
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRR44-if00-port0'
-devices = ['M13201551A', 'M8203814C', 'M11200362F',
+devices = ['M13201551A', 'M11210022A', 'M11200362F',
            'M8203814A', 'M8203814B', 'M11200362B', 'M11200362H']
 ranges = {}
 ranges['M13201551A'] = 5 # Microreactor, pressure controller
-ranges['M8203814C'] = 2.5 #Conrad
+ranges['M11210022A'] = 2.5 #Sniffer
 ranges['M11200362F'] = 1 # Microreactor, flow 2
 ranges['M8203814A'] = 10 # flow 5 (argon calibrated)
 ranges['M8203814B'] = 3 # Microreactor, flow 1 (argon calibrated)
@@ -70,8 +78,6 @@ for i in range(0, 8):
         name[i] = bronk.read_serial()
         name[i] = name[i].strip()
         error = error + 1
-        print error
-        print name[i]
     if name[i] in devices:
         MFCs[name[i]] = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i),
                                               ranges[name[i]])
@@ -86,14 +92,18 @@ Datasocket.start()
 
 Pushsocket = DataPushSocket('microreactor_mfc_control', action='enqueue')
 Pushsocket.start()
-Livesocket = LiveSocket('microreactor_mfc_control', devices, 1)
+Livesocket = LiveSocket('microreactor_mfc_control', devices)
 Livesocket.start()
 
 fc = FlowControl(MFCs, Datasocket, Pushsocket, Livesocket)
 fc.start()
 
-Logger = ValueLogger(fc, comp_val=1, comp_type='log', low_comp=0.0001)
+Logger = ValueLogger(fc, comp_val=1, comp_type='log', low_comp=0.0001, channel=1)
 Logger.start()
+
+Sniffer_Logger = ValueLogger(fc, comp_val=1, comp_type='log', low_comp=0.0001, channel=2)
+Sniffer_Logger.start()
+
 
 db_logger = ContinuousLogger(table='dateplots_microreactor',
                              username=credentials.user,
@@ -101,6 +111,12 @@ db_logger = ContinuousLogger(table='dateplots_microreactor',
                              measurement_codenames=['mr_reactor_pressure'])
 db_logger.start()
 
+db_logger_sniffer = ContinuousLogger(table='dateplots_sniffer',
+                                     username=credentials_sniffer.user,
+                                     password=credentials_sniffer.passwd,
+                                     measurement_codenames=['sniffer_chip_pressure'])
+db_logger_sniffer.start()
+time.sleep(5)
 while True:
     time.sleep(0.25)
     v = Logger.read_value()
@@ -108,4 +124,10 @@ while True:
         print v
         db_logger.enqueue_point_now('mr_reactor_pressure', v)
         Logger.clear_trigged()
+
+    s = Sniffer_Logger.read_value()
+    if Sniffer_Logger.read_trigged():
+        print s
+        db_logger_sniffer.enqueue_point_now('sniffer_chip_pressure', s)
+        Sniffer_Logger.clear_trigged()
 

@@ -17,7 +17,7 @@ def create_tunnel():
     if TUNNEL != None:
         return False
     TUNNEL = subprocess.Popen(
-        'ssh -L 9000:servcinf:3306 fridays@demon.fysik.dtu.dk', shell=True,
+        'ssh -L 9000:servcinf-sql:3306 fridays@demon.fysik.dtu.dk', shell=True,
         stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     return True
 

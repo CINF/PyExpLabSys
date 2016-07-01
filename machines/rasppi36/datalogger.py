@@ -72,29 +72,29 @@ if len(mks_list) == 2:
 
     loggers = {}
     for i in range(len(codenames)):
-        loggers[codenames[i]] = ValueLogger(measurement, comp_val = 0.1,
-                                            low_comp = 1e-4, comp_type = 'log',
+        loggers[codenames[i]] = ValueLogger(measurement, comp_val=0.1,
+                                            low_comp=1e-4, comp_type='log',
                                             channel=i)
         loggers[codenames[i]].start()
 
-    socket = DateDataPullSocket(unichr(0x03BC) + '-reactor NG temperature', 
-                                codenames, timeouts=[1.0,1.0])
+    socket = DateDataPullSocket(unichr(0x03BC) + '-reactor NG temperature',
+                                codenames, timeouts=[1.0, 1.0])
     socket.start()
     
     livesocket = LiveSocket(unichr(0x03BC) + '-reactors pressures',
-                            codenames, 0.2)
+                            codenames)
     livesocket.start()
 
     db_logger = {} 
     db_logger[codenames[0]] = ContinuousLogger(table='dateplots_microreactor',
-                                 username=credentials.user_old,
-                                 password=credentials.passwd_old,
-                                 measurement_codenames=codenames)
+                                               username=credentials.user_old,
+                                               password=credentials.passwd_old,
+                                               measurement_codenames=codenames)
 
     db_logger[codenames[1]] = ContinuousLogger(table='dateplots_microreactorNG',
-                                 username=credentials.user_new,
-                                 password=credentials.passwd_new,
-                                 measurement_codenames=codenames)
+                                               username=credentials.user_new,
+                                               password=credentials.passwd_new,
+                                               measurement_codenames=codenames)
     db_logger[codenames[0]].start()
     db_logger[codenames[1]].start()
 

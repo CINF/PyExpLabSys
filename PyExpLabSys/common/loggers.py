@@ -97,13 +97,13 @@ class ContinuousLogger(threading.Thread):
     ONLY be used with the new layout of tables for continous data, where there
     is only one table per setup, as apposed to the old layout where there was
     one table per measurement type per setup. The class sends data to the
-    ``cinfdata`` database at host ``servcinf``.
+    ``cinfdata`` database at host ``servcinf-sql``.
 
-    :var host: Database host, value is ``servcinf``.
+    :var host: Database host, value is ``servcinf-sql``.
     :var database: Database name, value is ``cinfdata``.
     """
 
-    host = 'servcinf'
+    host = 'servcinf-sql'
     database = 'cinfdata'
 
     def __init__(self, table, username, password, measurement_codenames,

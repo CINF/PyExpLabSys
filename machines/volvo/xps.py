@@ -23,7 +23,7 @@ def sqlTime():
 
 def sqlInsert(query, return_value=False):
     try:
-        cnxn = MySQLdb.connect(host="servcinf", user="volvo", passwd="volvo", db="cinfdata")
+        cnxn = MySQLdb.connect(host="servcinf-sql", user="volvo", passwd="volvo", db="cinfdata")
         cursor = cnxn.cursor()
     except:
         print "Unable to connect to database"

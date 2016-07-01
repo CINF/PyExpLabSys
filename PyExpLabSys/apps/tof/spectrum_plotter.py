@@ -1,175 +1,277 @@
-import sys
+# pylint: disable=E1101
+""" The application will integrate peaks areas of a number
+    of spectrums as function of time """
+from __future__ import print_function
 import matplotlib.pyplot as plt
 import numpy as np
 import mysql.connector
-from scipy import optimize
-from scipy import interpolate
+#import MySQLdb as mysql
 import pickle
 import math
-import time
+from lmfit import Model
+from lmfit import Parameters
 from matplotlib.backends.backend_pdf import PdfPages
 
 PEAK_FIT_WIDTH = 25
 DATEPLOT_TABLE = 'dateplots_mgw'
-DATEPLOT_TYPE = 273
+#DATEPLOT_TYPE = 273 # Bubbler
+DATEPLOT_TYPE = 61 # Buffer
+#DATEPLOT_TYPE = 141 # RTD
 MEASUREMENT_TABLE = 'measurements_tof'
 XY_VALUES_TABLE = 'xy_values_tof'
 NORMALISATION_FIELD = 'tof_iterations'
 
-def fit_peak(time, data, ax=None):
-    center = np.where(Data[:,0] > time)[0][0]
-    Start = center - 125 #Display range
-    End = center + 125
-    X_values = Data[Start:End,0]
-    Y_values = Data[Start:End,1]
-    center = np.where(Y_values == max(Y_values))[0][0]
-
-    background = np.mean(Y_values[center-3*PEAK_FIT_WIDTH:center-2*PEAK_FIT_WIDTH])
-    print('Background: ' + str(background))
-
-    #Fitting range
-    x_values = X_values[center-PEAK_FIT_WIDTH:center+PEAK_FIT_WIDTH]
-    y_values = Y_values[center-PEAK_FIT_WIDTH:center+PEAK_FIT_WIDTH]
-
-    fitfunc = lambda p, x: p[0]*math.e ** (-1 * ((x - time - p[2]) ** 2) / p[1])
-    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
-    p0 = [max(Y_values)-2, 0.00001, 0] # Initial guess for the parameters
-    try:
-        p1, success = optimize.leastsq(errfunc, p0[:], args=(x_values, y_values-background),maxfev=10000) 
-    except: # Fit failed
-        p1 = p0
-        success = 0
-    usefull = (p1[0] > 1.5) and (p1[1] < 1e-3) and (success==1) # Only use the values if fit succeeded and peak has decent height
-    area_fit = math.sqrt(math.pi)*p1[0] * math.sqrt(p1[1])
+def gaussian(x, amp, cen, wid):
+    """ Gaussian function for fitting """
+    return amp * math.e ** (-1 * ((x - cen) ** 2) / wid)
     
-    area_count = np.sum(Y_values) - background*len(Y_values)
-    if ax is not None:
-        ax.plot(X_values, Y_values, 'k-')
-        ax.plot(X_values, fitfunc(p1, X_values)+background, 'r-')
-        ax.axvline(X_values[center-PEAK_FIT_WIDTH])
-        ax.axvline(X_values[center+PEAK_FIT_WIDTH])
-        ax.annotate(str(time), xy=(.05,.85), xycoords='axes fraction',fontsize=8)
-        ax.annotate("Fit Area: {0:.0f}".format(area_fit*2500), xy=(.05,.8), xycoords='axes fraction',fontsize=8)
-        ax.annotate("Count Area: {0:.0f}".format(area_count), xy=(.05,.75), xycoords='axes fraction',fontsize=8)
-        ax.annotate("Usefull: " + str(usefull), xy=(.05,.7), xycoords='axes fraction',fontsize=8)
+def double_gaussian(x, amp, cen, wid, amp2, cen2, wid2):
+    """ Double Gaussian function for fitting """
+    peak1 = gaussian(x, amp, cen, wid)
+    peak2 = gaussian(x, amp2, cen2, wid2)
+    return peak1 + peak2
+
+def fit_peak(flight_times, data, axis=None):
+    """ Fit a peak using lmfit """
+    index = {}
+    #Find index for 'center' time
+    index['center'] = np.where(data[:, 0] > np.mean(flight_times))[0][0]
+    index['start'] = index['center'] - 100 #Display range
+    index['end'] = index['center'] + 100
+    values = {}
+    values['x'] = data[index['start']:index['end'], 0]
+    values['y'] = data[index['start']:index['end'], 1]
+    center = np.where(values['y'] == max(values['y']))[0][0]
+
+    background = np.mean(values['y'][center-3*PEAK_FIT_WIDTH:center-2*PEAK_FIT_WIDTH])
+    print('Background: ' + str(background))
+    #TODO: Background should be fitted, lmfit can do this
+    
+    fit_width = PEAK_FIT_WIDTH + PEAK_FIT_WIDTH * (len(flight_times)-1) * 0.45
+    #Fitting range
+    values['x_fit'] = values['x'][center-fit_width:center+fit_width]
+    values['y_fit'] = values['y'][center-fit_width:center+fit_width] - background
+
+    if len(flight_times) == 1:
+        gmod = Model(gaussian)
+        print(max(values['y_fit']))
+        parms = gmod.make_params(amp=max(values['y_fit']), cen=flight_times[0], wid=0.0000025)
+        parms['amp'].min = 0
+        parms['amp'].max = 2 * max(values['y_fit'])
+        print(parms['amp'])
+        parms['wid'].min = 0.0000015
+        parms['wid'].max = 0.0000195
+        result = gmod.fit(values['y_fit'], x=values['x_fit'], amp=parms['amp'], cen=parms['cen'], wid=parms['wid'])
+        #result = gmod.fit(values['y_fit'], x=values['x_fit'], amp=max(values['y_fit']),
+        #                  cen=flight_times[0], wid=0.0000025)
+        fit_results = [(result.params['amp'].value, result.params['wid'].value,
+                        result.params['cen'].value)]
+
+    if len(flight_times) == 2:
+        center1 = np.where(data[:, 0] > flight_times[0])[0][0]
+        max1 = max(data[center1-10:center1+10, 1])
+
+        center2 = np.where(data[:, 0] > flight_times[1])[0][0]
+        max2 = max(data[center2-10:center2+10, 1])
+
+        gmod = Model(double_gaussian)
+        result = gmod.fit(values['y'], x=values['x'], amp=max1, cen=flight_times[0],
+                          wid=0.0000025, amp2=max2, cen2=flight_times[1], wid2=0.0000025)
+        fit_results = [(result.params['amp'].value, result.params['wid'].value,
+                        result.params['cen'].value),
+                       (result.params['amp'].value, result.params['wid'].value,
+                        result.params['cen'].value)]
+    usefull = result.success
+        
+    if axis is not None:
+        axis.plot(values['x'], values['y'], 'k-')
+        if len(flight_times) == 1:
+            #ax.plot(X_values, result.init_fit+background, 'k--')
+            axis.plot(values['x'], gaussian(values['x'], result.params['amp'].value,
+                                            result.params['cen'].value,
+                                            result.params['wid'].value) + background, 'r-')
+        if len(flight_times) == 2:
+            #ax.plot(X_values, result.init_fit, 'k--')
+            axis.plot(values['x'], double_gaussian(values['x'], result.params['amp'].value,
+                                                   result.params['cen'].value,
+                                                   result.params['wid'].value,
+                                                   result.params['amp2'].value,
+                                                   result.params['cen2'].value,
+                                                   result.params['wid2'].value)+background, 'r-')
+
+        axis.axvline(values['x'][center-fit_width])
+        axis.axvline(values['x'][center+fit_width])
+        #axis.annotate(str(time), xy=(.05, .85), xycoords='axes fraction', fontsize=8)
+        axis.annotate("Usefull: " + str(usefull), xy=(.05, .7),
+                      xycoords='axes fraction', fontsize=8)
         #plt.show()
-    return usefull, p1, area_count
-
-db = mysql.connector.connect(host="servcinf-sql.fysik.dtu.dk", user="cinf_reader",passwd = "cinf_reader", db = "cinfdata")
-cursor = db.cursor()
-#db = Cinfdata('tof', use_caching=True)
+    return usefull, fit_results
 
 
-#spectrum_number = sys.argv[1]
-#spectrum_numbers = range(3898, 3974)
-#spectrum_numbers = range(4160, 4255)
-spectrum_numbers = range(4160, 4165)
-
-peak_areas = {}
-peak_areas_count = {}
-peak_errors = {}
-x_values = {}
-x_values['M4'] = {}
-x_values['M4']['flighttime'] = 5.53
-x_values['M4']['peaks'] = 1
-x_values['11.82'] = {}
-x_values['11.82']['flighttime'] = 11.82
-x_values['11.82']['peaks'] = 1
-#Todo: This dict should contain all information, including integragted peaks
-
-#x_values = [5.53, 11.82, 39.81]
-#x_values = [39.81]
-
-dateplot_values = []
-timestamps = []
-
-for x in x_values:
-    x_values[x]['peak_area'] = []
-    x_values[x]['errors'] = []
-
-pp = PdfPages('multipage.pdf')
-for spectrum_number in spectrum_numbers:
-    print(spectrum_number)
-    t = time.time()
+def get_data(spectrum_number, cursor):
+    """ Load data from spectrum number """
     try:
-        Data = pickle.load(open(str(spectrum_number) + '.p', 'rb'))
-    except IOError:
-        cursor.execute('SELECT x*1000000,y FROM ' + XY_VALUES_TABLE +  ' where measurement = ' + str(spectrum_number))
-        Data = np.array(cursor.fetchall())
-        pickle.dump(Data, open(str(spectrum_number) + '.p', 'wb'))
-    print(time.time() - t)
-
+        data = pickle.load(open(str(spectrum_number) + '.p', 'rb'))
+    except (IOError, EOFError):
+        query = 'SELECT x*1000000, y FROM ' + XY_VALUES_TABLE
+        query += ' where measurement = ' + str(spectrum_number)
+        cursor.execute(query)
+        data = np.array(cursor.fetchall())
+        pickle.dump(data, open(str(spectrum_number) + '.p', 'wb'))
     try:
-        NORMALISATION_FIELD
-        query = 'select time, unix_timestamp(time), ' + NORMALISATION_FIELD + ' from ' + MEASUREMENT_TABLE + ' where id = "' + str(spectrum_number) + '"'
+        query = 'select time, unix_timestamp(time), ' + NORMALISATION_FIELD + ' from '
+        query += MEASUREMENT_TABLE + ' where id = "' + str(spectrum_number) + '"'
     except NameError: # No normalisation
-        query = 'select time, unix_timestamp(time), 1 from ' + MEASUREMENT_TABLE + ' where id = "' + str(spectrum_number) + '"'
+        query = 'select time, unix_timestamp(time), 1 from ' + MEASUREMENT_TABLE
+        query += ' where id = "' + str(spectrum_number) + '"'
     cursor.execute(query)
     spectrum_info = cursor.fetchone()
+    return data, spectrum_info
 
-    query = 'SELECT unix_timestamp(time), value FROM ' + DATEPLOT_TABLE + ' where type = ' + str(DATEPLOT_TYPE) + ' and time < "' + str(spectrum_info[0]) + '" order by time desc limit 1';
+def find_dateplot_info(spectrum_info, cursor):
+    """ Find dateplot info for the spectrum """
+    query = 'SELECT unix_timestamp(time), value FROM ' + DATEPLOT_TABLE
+    query += ' where type = ' + str(DATEPLOT_TYPE) + ' and time < "'
+    query += str(spectrum_info[0]) + '" order by time desc limit 1'
     cursor.execute(query)
     before_value = cursor.fetchone()
     time_before = spectrum_info[1] - before_value[0]
-    assert(time_before > 0)
+    assert time_before > 0
+    before = {'value': before_value, 'time': time_before}
 
-    query = 'SELECT unix_timestamp(time), value FROM ' + DATEPLOT_TABLE + ' where type = ' + str(DATEPLOT_TYPE) + ' and time > "' + str(spectrum_info[0]) + '" order by time limit 1';
+    query = 'SELECT unix_timestamp(time), value FROM ' + DATEPLOT_TABLE
+    query += ' where type = ' + str(DATEPLOT_TYPE) + ' and time > "'
+    query += str(spectrum_info[0]) + '" order by time limit 1'
     cursor.execute(query)
     after_value = cursor.fetchone()
     time_after = after_value[0] - spectrum_info[1]
-    assert(time_before > 0)
+    assert time_after > 0
+    after = {'value': after_value, 'time': time_after}
+    calculated_temp = (before['value'][1] * before['time'] +
+                       after['value'][1] * after['time']) / (after['time'] + before['time'])
+    return calculated_temp
 
-    calculated_temp = (before_value[1] * time_before + after_value[1] * time_after) / (time_after + time_before)
-    dateplot_values.append(calculated_temp)
+def main(fit_info, spectrum_numbers):
+    """ Main function """
+    conn = mysql.connector.connect(host="servcinf-sql.fysik.dtu.dk", user="cinf_reader",
+                                   passwd="cinf_reader", db="cinfdata")
+    cursor = conn.cursor()
 
-    i = 0
-    pdffig = plt.figure()    
-    for x in x_values:
-        i = i + 1
-        axis = pdffig.add_subplot(2,2,i)
-        if i == 1:
-            axis.text(0,1.2,'Spectrum id: ' + str(spectrum_number),fontsize=12,transform = axis.transAxes)
-            axis.text(0,1.1,'Sweeps: {0:.2e}'.format(spectrum_info[2]),fontsize=12,transform = axis.transAxes)
-        usefull, p1, count = fit_peak(x_values[x]['flighttime'], Data, axis)
-        area = math.sqrt(math.pi)*p1[0] * math.sqrt(p1[1])
-        if usefull:
-            x_values[x]['peak_area'].append(area * 2500 / spectrum_info[2])
-            x_values[x]['errors'].append(math.sqrt(area * 2500) / spectrum_info[2]) 
-        else:
-            x_values[x]['peak_area'].append(None)
-            x_values[x]['errors'].append(None) 
-        print(usefull)
-   
-    timestamps.append(spectrum_info[1])
-    plt.savefig(pp, format='pdf')                                                                      
-    plt.close()
-pp.close()
+    dateplot_values = []
+    timestamps = []
 
-timestamps[:] = [t - timestamps[0] for t in timestamps]
+    for x_value in fit_info:
+        fit_info[x_value]['peak_area'] = {}
+        fit_info[x_value]['errors'] = {}
+        for name in fit_info[x_value]['names']:
+            fit_info[x_value]['peak_area'][name] = []
+            fit_info[x_value]['errors'][name] = []
 
-fig = plt.figure()
-axis = fig.add_subplot(1, 1, 1)
+    pdf_file = PdfPages('multipage.pdf')
+    for spectrum_number in spectrum_numbers:
+        print(spectrum_number)
+        data, spectrum_info = get_data(spectrum_number, cursor)
+        calculated_temp = find_dateplot_info(spectrum_info, cursor)
+        dateplot_values.append(calculated_temp)
 
-for x in x_values:
-    try:
-        axis.errorbar(timestamps, x_values[x]['peak_area'], linestyle='-', marker='o', label=x, yerr=x_values[x]['errors'])
-    except TypeError: # Cannot plot errorbars on plots with missing points
-        axis.plot(timestamps, x_values[x]['peak_area'], linestyle='-', marker='o', label=str(x))
+        j = 0
+        pdffig = plt.figure()
+        for x in fit_info:
+            j = j + 1
+            axis = pdffig.add_subplot(3, 3, j)
+            if j == 1:
+                axis.text(0, 1.2, 'Spectrum id: ' + str(spectrum_number),
+                          fontsize=12, transform=axis.transAxes)
+                axis.text(0, 1.1, 'Sweeps: {0:.2e}'.format(spectrum_info[2]),
+                          fontsize=12, transform=axis.transAxes)
+            usefull, results = fit_peak(fit_info[x]['flighttime'], data, axis)
 
-axis2 = axis.twinx()
-axis2.plot(timestamps, dateplot_values, 'k-', label='test')
+            for i in range(0, len(fit_info[x]['names'])):
+                name = fit_info[x]['names'][i]
+                area = math.sqrt(math.pi)*results[i][0] * math.sqrt(results[i][1])
+                if usefull:
+                    print(name)
+                    fit_info[x]['peak_area'][name].append(area * 2500 / spectrum_info[2])
+                    fit_info[x]['errors'][name].append(math.sqrt(area * 2500) /
+                                                       spectrum_info[2])
+                else:
+                    fit_info[x]['peak_area'][name].append(None)
+                    fit_info[x]['errors'][name].append(None)
+                print(usefull)
 
-axis.set_ylabel('Integraged peak area')
-axis2.set_ylabel('Temperature')
-axis.set_xlabel('Time / s')
-#axis.set_yscale('log')
+        timestamps.append(spectrum_info[1])
+        plt.savefig(pdf_file, format='pdf')
+        plt.close()
+    pdf_file.close()
 
-axis.legend(loc='upper left')
+    timestamps[:] = [t - timestamps[0] for t in timestamps]
 
-plt.show()
+    fig = plt.figure()
+    axis = fig.add_subplot(1, 1, 1)
 
-#print('----')
-#print(dateplot_values)
-#print('----')
-#print(peak_areas)
-#print('----')
+    for x in fit_info:
+        for i in range(0, len(fit_info[x]['names'])):
+            name = fit_info[x]['names'][i]
+            try:
+                axis.errorbar(timestamps, fit_info[x]['peak_area'][name], linestyle='-',
+                              marker='o', label=fit_info[x]['names'][i],
+                              yerr=fit_info[x]['errors'][name])
+            except TypeError: # Cannot plot errorbars on plots with missing points
+                axis.plot(timestamps, fit_info[x]['peak_area'][name],
+                          linestyle='-', marker='o', label=str(x))
+
+    axis2 = axis.twinx()
+    axis2.plot(timestamps, dateplot_values, 'k-', label='test')
+
+    axis.set_ylabel('Integraged peak area')
+    axis2.set_ylabel('Temperature')
+    axis.set_xlabel('Time / s')
+    #axis.set_yscale('log')
+
+    axis.legend(loc='upper left')
+
+    plt.show()
+
+    #print('----')
+    #print(dateplot_values)
+    #print('----')
+    #print(peak_areas)
+    #print('----')
+
+
+if __name__ == '__main__':
+    FIT_INFO = {}
+    FIT_INFO['M4'] = {}
+    FIT_INFO['M4']['flighttime'] = [5.52]
+    FIT_INFO['M4']['names'] = ['He']
+
+    FIT_INFO['M34'] = {}
+    FIT_INFO['M34']['flighttime'] = [16.86]
+    FIT_INFO['M34']['names'] = ['H2S']
+    
+    FIT_INFO['M154'] = {}
+    FIT_INFO['M154']['flighttime'] = [36.36]
+    FIT_INFO['M154']['names'] = ['BiPhe']
+    
+    FIT_INFO['DBT'] = {}
+    FIT_INFO['DBT']['flighttime'] = [39.774]
+    FIT_INFO['DBT']['names'] = ['DBT']
+
+    """
+    FIT_INFO['21.97'] = {}
+    FIT_INFO['21.97']['flighttime'] = [21.97]
+    FIT_INFO['21.97']['names'] = ['Oil']
+
+    FIT_INFO['24.57'] = {}
+    FIT_INFO['24.57']['flighttime'] = [24.57]
+    FIT_INFO['24.57']['names'] = ['Oil II']
+    """
+    #FIT_INFO['11.82'] = {}
+    #FIT_INFO['11.82']['flighttime'] = [11.81, 11.831]
+    #FIT_INFO['11.82']['names'] = ['11.82-low', '11.82-high']
+    #Todo: Also include fit-information such as exact peak position
+
+    SPECTRUM_NUMBERS = range(6110, 6991)
+    #SPECTRUM_NUMBERS = range(6009, 6120)
+    
+    main(FIT_INFO, SPECTRUM_NUMBERS)

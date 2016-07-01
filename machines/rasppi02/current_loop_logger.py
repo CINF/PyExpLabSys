@@ -49,7 +49,7 @@ socket = DateDataPullSocket('hall_waterpressure',
                             ['hall_coolingwater_pressure'], timeouts=[1.0])
 socket.start()
 
-live_socket = LiveSocket('hall_waterpressure', ['hall_coolingwater_pressure'], 2)
+live_socket = LiveSocket('hall_waterpressure', ['hall_coolingwater_pressure'])
 live_socket.start()
 
 #db_logger = ContinuousLogger(table='dateplots_hall',

@@ -1,11 +1,21 @@
+""" Implementation of SCPI standard """
+from __future__ import print_function
 import time
 import serial
 import random
+import logging
 import telnetlib
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
-class SCPI:
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
 
-    def __init__(self, interface, device='', tcp_port=5025, hostname=''):
+
+class SCPI(object):
+    """ Driver for scpi communication """
+    def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600):
         self.device = device
         self.interface = interface
         try:
@@ -13,13 +23,13 @@ class SCPI:
                 self.f = open(self.device, 'w')
                 self.f.close()
             if self.interface == 'serial':
-                self.f = serial.Serial(self.device, 9600, timeout=1, xonxoff=True)
+                self.f = serial.Serial(self.device, baudrate, timeout=1, xonxoff=True)
             if self.interface == 'lan':
                 self.f = telnetlib.Telnet(hostname, tcp_port)
             self.debug = False
         except Exception as e:
             self.debug = True
-            #print "Debug mode: " + str(e)
+            print("Debug mode: " + str(e))
 
     def scpi_comm(self, command, expect_return=False):
         """ Implements actual communication with SCPI instrument """
@@ -42,13 +52,16 @@ class SCPI:
             if command.endswith('?') or (expect_return is True):
                 return_string = self.f.readline().decode()
         if self.interface == 'lan':
+            lan_time = time.time()
             self.f.write(command_text.encode('ascii'))
-            #self.f.write(command + '\n')
             if (command.find('?') > -1) or (expect_return is True):
                 return_string = self.f.read_until(chr(10).encode('ascii'), 2).decode()
+            #time.sleep(0.025)
+            LOGGER.info('lan_time for coomand ' + command_text.strip() +
+                        ': ' + str(time.time() - lan_time))
         return return_string
-    
-    def read_software_version(self, short=False):
+
+    def read_software_version(self):
         """ Read version string from device """
         version_string = self.scpi_comm("*IDN?")
         version_string = version_string.strip()

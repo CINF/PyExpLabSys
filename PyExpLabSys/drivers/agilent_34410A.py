@@ -6,6 +6,8 @@ class Agilent34410ADriver(SCPI):
     def __init__(self, interface='lan', hostname=''):
         if interface == 'lan':
             SCPI.__init__(self, interface=interface, hostname=hostname)
+        if interface == 'file':
+            SCPI.__init__(self, interface=interface, device='/dev/usbtmc0')
 
     def config_current_measurement(self):
         """ Configures the instrument to measure current. """

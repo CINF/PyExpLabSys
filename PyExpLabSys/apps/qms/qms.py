@@ -69,7 +69,7 @@ class QMS(object):
         auto-generated.
         
         """
-        cnxn = MySQLdb.connect(host="servcinf", user=self.credentials,
+        cnxn = MySQLdb.connect(host="servcinf-sql", user=self.credentials,
                                passwd=self.credentials, db="cinfdata")
 
         cursor = cnxn.cursor()
@@ -92,7 +92,7 @@ class QMS(object):
         query += preamp_range + '", time="' + timestamp + '", type="'
         query += str(measurement_type) + '"' + ', comment="' + comment + '"'
         query += ', timestep=' + str(timestep) + ', actual_mass=' + str(mass)
-        LOGGER.error(query)
+        LOGGER.info(query)
         cursor.execute(query)
         cnxn.commit()
         

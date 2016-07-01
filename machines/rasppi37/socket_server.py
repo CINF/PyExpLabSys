@@ -27,33 +27,36 @@ class FlowControl(threading.Thread):
                 element = self.pushsocket.queue.get()
                 mfc = element.keys()[0]
                 print element[mfc]
-                print mfc
+                print 'Queue: ' + str(qsize)
                 self.mks.set_flow(element[mfc], self.mfcs[mfc])
                 qsize = self.pushsocket.queue.qsize()
 
             for mfc in self.mfcs:
+                print '!!!'
                 flow =  self.mks.read_flow(self.mfcs[mfc])
                 print(mfc + ': ' + str(flow))
                 self.pullsocket.set_point_now(mfc, flow)
                 self.livesocket.set_point_now(mfc, flow)
 
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRKWL-if00-port0'
-devices = ['21984839', '21984838']
+devices = ['21984839', '21984838', '21984878', '21984877', '21984876', '21984879']
 
 Datasocket = DateDataPullSocket('microreactor_mks_mfc_control',
-                                devices, timeouts=[3.0, 3.0], port=9000)
+                                devices, timeouts=[3.0]*len(devices), port=9000)
 Datasocket.start()
 
 Pushsocket = DataPushSocket('microreactor_mks_push_control', action='enqueue')
 Pushsocket.start()
 
-Livesocket = LiveSocket('microreactor_mks_flows', devices, 1)
+Livesocket = LiveSocket('microreactor_mks_flows', devices)
 Livesocket.start()
 
 i = 0
 MFCs = {}
 MKS = mks.Mks_G_Series(port=port)
 for i in range(1, 8):
+    time.sleep(2)
+    print '!'
     serial = MKS.read_serial_number(i)
     print serial
     if serial in devices:

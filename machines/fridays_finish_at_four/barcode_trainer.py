@@ -4,7 +4,7 @@
 
 from bar_database import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
-BAR_DATABASE = BarDatabase(host='servcinf', port=3306)
+BAR_DATABASE = BarDatabase(host='servcinf-sql', port=3306)
 
 
 def read_barcode():

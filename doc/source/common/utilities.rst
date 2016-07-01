@@ -85,10 +85,17 @@ exception, do the following:
             main()
         except KeyboardInterrupt:
             pass  # Shut down code here
-        except Exception as exception:
-            LOGGER.exception(exception)
+        except Exception:
+            LOGGER.exception("Main program failed")
             # Possibly shut down code here
-            raise exception
+            raise
+
+.. note:: The argument to ``LOGGER.exception`` is a string, just like all other ``LOGGER``
+    methods. All the exception information, like the traceback, line number etc., is
+    picked up automatically by the logger. Also note, that the ``raise`` will re-raise the
+    caught exception, to make sure that the program fails like it is supposed to. The it
+    is the caught exception that is re-raised, is implicit when using raise without
+    arguments in an except clause.
 
 .. note:: In the example there is a seperate ``except`` for the
     ``KeyboardInterrupt`` exception, to make it possible to use

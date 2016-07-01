@@ -8,7 +8,7 @@ from bar_database import *
 from PyExpLabSys.drivers.vivo_technologies import BlockingLS689A, detect_barcode_device
 
 
-bar_database = BarDatabase(host='servcinf', port=3306)
+bar_database = BarDatabase(host='servcinf-sql', port=3306)
 
 
 def read_barcode():

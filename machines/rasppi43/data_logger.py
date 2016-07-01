@@ -1,11 +1,9 @@
-""" Data logger for mobile gas wall """
-# pylint: disable=C0301,R0904, C0103
-
+""" Data logger for VHP """
+from __future__ import print_function
 import threading
 import logging
 import time
-import FindSerialPorts
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 #from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.xgs600 as xgs600
@@ -45,9 +43,8 @@ class TemperatureReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            t = time.time()
-            for i in range(1, 8):
-                self.temperatures[i] = self.d6400.read_value(i)
+            for index in range(1, 8):
+                self.temperatures[index] = self.d6400.read_value(index)
 
 
 class TemperatureLogger(threading.Thread):
@@ -65,15 +62,16 @@ class TemperatureLogger(threading.Thread):
 
     def read_value(self):
         """ Read the temperature """
-        return(self.value)
+        return self.value
 
     def run(self):
         while not self.quit:
             time.sleep(2.5)
             self.value = self.tempreader.temperatures[self.channel]
             time_trigged = (time.time() - self.last_recorded_time) > self.maximumtime
-            val_trigged = not (self.last_recorded_value - 1 < self.value < self.last_recorded_value + 1)
-            if (time_trigged or val_trigged):
+            val_trigged = not (self.last_recorded_value - 1 < self.value
+                               < self.last_recorded_value + 1)
+            if time_trigged or val_trigged:
                 self.trigged = True
                 self.last_recorded_time = time.time()
                 self.last_recorded_value = self.value
@@ -95,7 +93,7 @@ class PressureLogger(threading.Thread):
 
     def read_pressure(self):
         """ Read the pressure """
-        return(self.pressure)
+        return self.pressure
 
     def run(self):
         while not self.quit:
@@ -105,18 +103,21 @@ class PressureLogger(threading.Thread):
             if self.channel == 1:
                 self.pressure = self.xgsreader.bufferpressure
             time_trigged = (time.time() - self.last_recorded_time) > self.maximumtime
-            val_trigged = not (self.last_recorded_value * 0.9 < self.pressure < self.last_recorded_value * 1.1)
+            val_trigged = not (self.last_recorded_value * 0.9 < self.pressure
+                               < self.last_recorded_value * 1.1)
             if (time_trigged or val_trigged) and (self.pressure > 0):
                 self.trigged = True
                 self.last_recorded_time = time.time()
                 self.last_recorded_value = self.pressure
 
 
-if __name__ == '__main__':
+def main():
+    """ Main function """
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
-    omega = D6400.OmegaD6400(1, '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWECCJP-if00-port0')
+    omega = D6400.OmegaD6400(1, '/dev/serial/by-id/' +
+                             'usb-FTDI_USB-RS485_Cable_FTWECCJP-if00-port0')
     omega.update_range_and_function(1, action='tc', fullrange='K')
     omega.update_range_and_function(2, action='tc', fullrange='K')
     omega.update_range_and_function(3, action='tc', fullrange='K')
@@ -125,10 +126,9 @@ if __name__ == '__main__':
     omega.update_range_and_function(6, action='tc', fullrange='K')
     omega.update_range_and_function(7, action='tc', fullrange='K')
 
-    xgs = xgs600.XGS600Driver('/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0')
-
-
-    print xgs.read_all_pressures()
+    xgs = xgs600.XGS600Driver('/dev/serial/by-id/usb-Prolific_Technology_Inc.' +
+                              '_USB-Serial_Controller_D-if00-port0')
+    print(xgs.read_all_pressures())
 
     pressurereader = PressureReader(xgs)
     pressurereader.daemon = True
@@ -154,28 +154,34 @@ if __name__ == '__main__':
                       'vhp_T_purifying_reactor',
                       'vhp_T_furnace']
 
-    socket = DateDataPullSocket('vhp', ['vhp_mass_spec_pressure'] + temp_codenames, timeouts=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+    socket = DateDataPullSocket('vhp', ['vhp_mass_spec_pressure'] + temp_codenames,
+                                timeouts=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     socket.start()
 
-    db_logger = ContinuousLogger(table='dateplots_vhp_setup',
-                                 username=credentials.user,
-                                 password=credentials.passwd,
-                                 measurement_codenames=['vhp_mass_spec_pressure'] + temp_codenames)
+    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_vhp_setup',
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=['vhp_mass_spec_pressure'] +
+                                    temp_codenames)
     db_logger.start()
     time.sleep(5)
     while True:
         time.sleep(0.25)
         for i in range(0, 7):
-            t = temp_loggers[i].read_value()
-            socket.set_point_now(temp_codenames[i], t)
+            value = temp_loggers[i].read_value()
+            socket.set_point_now(temp_codenames[i], value)
             if temp_loggers[i].trigged:
-                print t
-                db_logger.enqueue_point_now(temp_codenames[i], t)
+                print(value)
+                db_logger.save_point_now(temp_codenames[i], value)
                 temp_loggers[i].trigged = False
 
-        c = chamber_logger.read_pressure()
-        socket.set_point_now('vhp_mass_spec_pressure', c)
+        value = chamber_logger.read_pressure()
+        socket.set_point_now('vhp_mass_spec_pressure', value)
         if chamber_logger.trigged:
-            print(c)
-            db_logger.enqueue_point_now('vhp_mass_spec_pressure', c)
+            print(value)
+            db_logger.save_point_now('vhp_mass_spec_pressure', value)
             chamber_logger.trigged = False
+
+
+if __name__ == '__main__':
+    main()

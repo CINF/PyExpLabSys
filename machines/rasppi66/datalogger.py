@@ -51,7 +51,6 @@ class Reader(threading.Thread):
             #self.temperature = self.omron.read_temperature()
             self.humidity, self.temperature = self.honeywell.read_values()
 
-                    
 
 logging.basicConfig(filename="logger.txt", level=logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
@@ -66,17 +65,18 @@ time.sleep(2.5)
 codenames = ['hall_ventilation_pressure', 'hall_temperature', 'hall_humidity']
 
 loggers = {}
-loggers[codenames[0]] = ValueLogger(reader, comp_val=1.5, comp_type='lin', channel=0)
+loggers[codenames[0]] = ValueLogger(reader, comp_val=1.5, maximumtime=10, comp_type='lin', channel=0)
 loggers[codenames[0]].start()
-loggers[codenames[1]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=1)
+loggers[codenames[1]] = ValueLogger(reader, comp_val=0.2, maximumtime=10, comp_type='lin', channel=1)
 loggers[codenames[1]].start()
-loggers[codenames[2]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=2)
+loggers[codenames[2]] = ValueLogger(reader, comp_val=0.2, maximumtime=10, comp_type='lin', channel=2)
 loggers[codenames[2]].start()
 
-livesocket = LiveSocket('Hall Ventilation Logger', codenames, 2)
+livesocket = LiveSocket('Hall Ventilation Logger', codenames)
 livesocket.start()
 
-socket = DateDataPullSocket('Hall Ventilation logger', codenames, timeouts=[1.0] * len(loggers))
+socket = DateDataPullSocket('Hall Ventilation logger', codenames,
+                            timeouts=[1.0] * len(loggers))
 socket.start()
 
 db_logger = ContinuousLogger(table='dateplots_hall',
@@ -89,7 +89,6 @@ while reader.isAlive():
     time.sleep(1)
     for name in codenames:
         v = loggers[name].read_value()
-        print(v)
         livesocket.set_point_now(name, v)
         socket.set_point_now(name, v)
         if loggers[name].read_trigged():

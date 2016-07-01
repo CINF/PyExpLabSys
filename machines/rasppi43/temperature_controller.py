@@ -1,5 +1,3 @@
-# pylint: disable=R0913,W0142,C0103
-
 """ Temperature controller """
 import time
 import threading
@@ -10,50 +8,12 @@ import PyExpLabSys.drivers.cpx400dp as cpx
 import PyExpLabSys.drivers.isotech_ips as ips
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
-import wiringpi2 as wp # pylint: disable=F0401
+from PyExpLabSys.common.utilities import get_logger
+import PyExpLabSys.common.utilities
+PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
 
-class PulseHeater(threading.Thread):
-    """ PWM class for simple heater """
-    def __init__(self):
-        threading.Thread.__init__(self)
-        wp.wiringPiSetup()
-
-        wp.pinMode(0, 1)
-        wp.pinMode(1, 1)
-
-        self.dc = 0
-        self.quit = False
-
-    def set_dc(self, dc):
-        """ Set the duty cycle """
-        self.dc = dc
-
-    def run(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(1)
-        steps = 500
-        state = False
-        data = 'raw_wn#20:bool:'
-        while not self.quit:
-            for i in range(0, steps):
-                if (1.0*i/steps < self.dc) and (state is False):
-                    #wp.digitalWrite(0, 1)
-                    #wp.digitalWrite(1, 1)
-                    sock.sendto(data + 'True', ('rasppi33', 8500))
-                    #received = sock.recv(1024)
-                    state = True
-                if (1.0*i/steps < self.dc) and (i>5):
-                    wp.digitalWrite(0, 1)
-                    wp.digitalWrite(1, 1)
-
-                if (1.0*i/steps > self.dc) and (state is True):
-                    wp.digitalWrite(0, 0)
-                    wp.digitalWrite(1, 0)
-                    sock.sendto(data + 'False', ('rasppi33', 8500))
-                    #received = sock.recv(1024)
-                    state = False
-                time.sleep(15.0 / steps)
-        sock.sendto(data + 'False', ('rasppi33', 9999))
+LOGGER = get_logger('VHP Temperature control', level='INFO', file_log=True,
+                    file_name='temp_control.log', terminal_log=False)
 
 class CursesTui(threading.Thread):
     """ Text user interface for furnace heating control """
@@ -133,7 +93,7 @@ class PowerCalculatorClass(threading.Thread):
         self.pid = PID.PID()
         self.pid.pid_p = 1
         self.pid.pid_i = 0.00075
-        self.pid.p_max = 60
+        self.pid.p_max = 70
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -143,7 +103,7 @@ class PowerCalculatorClass(threading.Thread):
 
     def read_power(self):
         """ Return the calculated wanted power """
-        return(self.power)
+        return self.power
 
     def update_setpoint(self, setpoint=None):
         """ Update the setpoint """
@@ -151,20 +111,36 @@ class PowerCalculatorClass(threading.Thread):
         self.pid.update_setpoint(setpoint)
         self.pullsocket.set_point_now('setpoint', setpoint)
         return setpoint
-
-    def run(self):
-        data_temp = 'vhp_T_reactor_outlet#raw'
+   
+    def runner(self):
+        """ Main thread loop """
+        data_temp = 'vhp_T_reactor_outlet#raw'.encode('ascii')
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(1)
+        sock.settimeout(0.2)
+
         while not self.quit:
             self.pullsocket.set_point_now('pid_p', self.pid.proportional_contribution())
             self.pullsocket.set_point_now('pid_i', self.pid.integration_contribution())
             self.pullsocket.set_point_now('pid_e', self.pid.integrated_error())
 
-            sock.sendto(data_temp, ('localhost', 9000))
-            received = sock.recv(1024)
-            self.temperature = float(received[received.find(',') + 1:])
-            self.power = self.pid.wanted_power(self.temperature)
+            error = 5
+            while error > 0:
+                try:
+                    sock.sendto(data_temp, ('localhost', 9000))
+                    received = sock.recv(1024).decode()
+                    break # leave while loop, error will be > 0
+                except socket.timeout:
+                    LOGGER.error('Timeout Error: ' + str(error))
+                    error = error - 1
+                    time.sleep(0.25)
+
+            LOGGER.info('Error value: {:f}'.format(error))
+            if error > 0: # loop ended succesfully
+                self.temperature = float(received[received.find(',') + 1:])
+                self.power = self.pid.wanted_power(self.temperature)
+            else:
+                self.temperature = 9999
+                self.power = 0
 
             #  Handle the setpoint from the network
             try:
@@ -178,15 +154,24 @@ class PowerCalculatorClass(threading.Thread):
                 self.update_setpoint(setpoint)
             time.sleep(1)
 
+    def run(self):
+        try:
+            self.runner()
+        except:
+            LOGGER.exception('VHP Power calculator failed')
+            raise
+
 
 class HeaterClass(threading.Thread):
     """ Do the actual heating """
-    def __init__(self, power_calculator, pullsocket, ps, ps_isotech):
+    def __init__(self, power_calculator, pullsocket, ps, ps2, ps_isotech):
         threading.Thread.__init__(self)
         self.pc = power_calculator
         self.heater = ps
+        self.heater2 = ps2
         self.heater_isotech = ps_isotech
         self.heater.output_status(True)
+        self.heater2.output_status(True)
         self.heater_isotech.set_output_voltage(0)
         self.heater_isotech.set_relay_status(True)
         self.pullsocket = pullsocket
@@ -195,7 +180,8 @@ class HeaterClass(threading.Thread):
         self.actual_current = 0
         self.quit = False
 
-    def run(self):
+    def runner(self):
+        """ Main thread loop """
         time.sleep(0.05)
         while not self.quit:
             self.voltage = self.pc.read_power()
@@ -203,35 +189,56 @@ class HeaterClass(threading.Thread):
             if self.voltage < 10:
                 self.heater_isotech.set_output_voltage(self.voltage*2)
                 self.heater.set_voltage(0)
+                self.heater2.set_voltage(0)
             else:
                 self.heater_isotech.set_output_voltage(2 * 10)
                 self.heater.set_voltage(self.voltage-10)
+                self.heater2.set_voltage(self.voltage-10)
             self.actual_voltage = self.heater.read_actual_voltage()
             self.actual_current = self.heater.read_actual_current()
             time.sleep(0.5)
         self.heater.set_voltage(0)
+        self.heater2.set_voltage(0)
         self.heater.output_status(False)
+        self.heater2.output_status(False)
 
-CPX = cpx.CPX400DPDriver(1, device='/dev/ttyACM0', interface='serial')
-ISOTECH = ips.IPS('/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0')
+    def run(self):
+        try:
+            self.runner()
+        except:
+            LOGGER.exception('VHP Heater Class failed')
+            raise
 
-Pullsocket = DateDataPullSocket('vhp_temp_control',
-                                ['setpoint', 'dutycycle','pid_p', 'pid_i', 'pid_e'], 
-                                timeouts=[999999, 3.0, 3.0, 3.0, 3.0],
-                                port=9001)
-Pullsocket.start()
+def main():
+    """ Main function """
+    ps1 = cpx.CPX400DPDriver(1, device='/dev/ttyACM0', interface='serial')
+    ps2 = cpx.CPX400DPDriver(2, device='/dev/ttyACM0', interface='serial')
+    isotech = ips.IPS('/dev/serial/by-id/' +
+                      'usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0')
 
-Pushsocket = DataPushSocket('vhp_push_control', action='store_last')
-Pushsocket.start()
+    pullsocket = DateDataPullSocket('vhp_temp_control',
+                                    ['setpoint', 'dutycycle', 'pid_p', 'pid_i', 'pid_e'],
+                                    timeouts=[999999, 3.0, 3.0, 3.0, 3.0],
+                                    port=9001)
+    pullsocket.start()
 
-P = PowerCalculatorClass(Pullsocket, Pushsocket)
-P.daemon = True
-P.start()
+    pushsocket = DataPushSocket('vhp_push_control', action='store_last')
+    pushsocket.start()
 
-H = HeaterClass(P, Pullsocket, CPX, ISOTECH)
-H.start()
+    power_calc = PowerCalculatorClass(pullsocket, pushsocket)
+    power_calc.daemon = True
+    power_calc.start()
 
-T = CursesTui(H, CPX)
-T.daemon = True
-T.start()
+    heater = HeaterClass(power_calc, pullsocket, ps1, ps2, isotech)
+    heater.start()
 
+    tui = CursesTui(heater, ps1)
+    tui.daemon = True
+    tui.start()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except:
+        LOGGER.exception('Main program failed')
+        raise

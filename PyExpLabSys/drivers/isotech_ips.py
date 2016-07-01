@@ -15,7 +15,8 @@ class IPS(object):
 
     def comm(self, command):
         """ Communicate with instrument """
-        self.serial.write(command + '\r')
+        encoded_command = (command + '\r').encode('ascii')
+        self.serial.write(encoded_command)
         # The unit will fail to run at more than 2Hz
         time.sleep(0.5)
         return True

@@ -1,7 +1,6 @@
 # pylint: disable=C0103
 """This file logs data from the chiller at the thetaprobe"""
 
-
 import time
 import math
 from PyExpLabSys.common.value_logger import ValueLogger
@@ -35,7 +34,7 @@ def main():
         loggers[codenames[i]].start()
 
     live_socket_name = 'Thetaprobe chiller'
-    live_socket = LiveSocket(live_socket_name, codenames, 2)
+    live_socket = LiveSocket(live_socket_name, codenames)
     live_socket.start()
     LOG.info('Live socket init and started with name "%s"', live_socket_name)
 
