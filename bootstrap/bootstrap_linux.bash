@@ -58,6 +58,7 @@ bash        Edit PATH and PYTHONPATH in .bashrc to make PyExpLabSys scripts
 git         Add common git aliases
 install     Install commonly used packages e.g openssh-server
 pip         Install extra Python packages with pip
+autostart   Setup autostart cronjob
 pycheckers  Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
@@ -201,6 +202,49 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
 	echobad "pip3 not installed, run install step and then re-try pip step"
     fi
 fi
+
+# Setup autostart cronjob
+if [ $1 == "autostart" ] || [ $1 == "all" ];then
+    echo
+    echobold "===> SETTINGS UP AUTOSTART CRONJOB"
+
+    # Form path of autostart script
+    thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    thisdir=`dirname $thisdir`
+    autostartpath=$thisdir"/bin/autostart.py"
+    cronline="@reboot SHELL=/bin/bash BASH_ENV=$HOME/.bashrc \
+/usr/bin/env python $autostartpath 2>&1 | \
+/usr/bin/logger -t cinfautostart"
+
+    echoblue "Using autostart path: $autostartpath"
+
+    # Check there has been installed cronjobs before
+    crontab -l > /dev/null
+    if [ $? -eq 0 ];then
+        crontab -l | grep $autostartpath > /dev/null
+        if [ $? -eq 0 ];then
+            echoblue "Autostart cronjob already installed"
+        else
+            crontab -l | { cat; echo $cronline; } | crontab -
+            echoblue "Installed autostart cronjob"
+        fi
+    else
+        cronlines="# Output of the crontab jobs (including errors) is sent through\
+# email to the user the crontab file belongs to (unless redirected).\
+#\
+# For example, you can run a backup of all your user accounts\
+# at 5 a.m every week with: # 0 5 1 tar -zcf /var/backups/home.tgz /home/\
+#\
+# For more information see the manual pages of crontab(5) and cron(8)\
+#\
+# m h dom mon dow command\
+$cronline"
+        crontab -l | { cat; echo $cronlines; } | crontab -
+        echoblue "Had no cronjobs. Installed with standard header."
+    fi
+    echogood "+++++> DONE"
+fi
+
 
 if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
     echobold "===> SETTINGS UP CODE STYLE CHECKERS FOR EMACS AND GEANY"
