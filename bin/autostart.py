@@ -3,6 +3,8 @@
 """This script is executed by as a cronjob at every startup and in
 responsible for starting up any and all relevant programs in screen
 
+The cronjob is set up to log to /var/log/syslog under the tag: cinfautostart
+
 """
 
 from __future__ import print_function
