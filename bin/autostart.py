@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 """This script is executed by as a cronjob at every startup and in
 responsible for starting up any and all relevant programs in screen
@@ -10,7 +10,6 @@ The cronjob is set up to log to /var/log/syslog under the tag: cinfautostart
 from __future__ import print_function
 
 from os import path, chdir
-import sys
 from time import sleep
 import socket
 import subprocess
@@ -18,7 +17,7 @@ from functools import partial
 from xml.etree import ElementTree as XML
 
 
-config = """
+CONFIG = """
 # the following two lines give a two-line status, with the current window highlighted
 hardstatus alwayslastline
 hardstatus string '%{= kG}[%{G}%H%? %1`%?%{g}][%= %{= kw}%-w%{+b yk} %n*%t%?(%u)%? %{-}%+w %=%{g}][%{B}%m/%d %{W}%C%A%{g}]'
@@ -37,6 +36,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def find_config(args):
     """Find the configuration file"""
     if args.machine is not None:
@@ -49,6 +49,22 @@ def find_config(args):
         machine, 'AUTOSTART.xml'
     )
     return config_path
+
+
+def screen_cmd(command, window=None, screen_cmd_base=None, call=None):
+    """Execute screen command (with -X) on named session
+
+    Executes: {screen_cmd_base} -p {window} -X {command}
+
+    Where screen_cmd_base is usually: screen -S "{name}"
+    and the -p parameter is only filled in, if window is set
+    """
+    tosend = screen_cmd_base
+    if window is not None:
+        tosend += ' -p ' + str(window)
+    tosend += ' -X ' + command
+    call(tosend)
+
 
 def main():
     """The main script"""
@@ -72,31 +88,24 @@ def main():
     # Autofill in shell=True and exec in subprocess.call
     call = partial(subprocess.call, shell=True, executable='/bin/bash')
 
-    screen_cmd_base = 'screen -S "{}"'.format(name)
-    def screen(command, window=None):
-        """Execute screen command (with -X) on named session
+    # Make partial screen command
+    screen = partial(screen_cmd, call=call,
+                     screen_cmd_base='screen -S "{}"'.format(name))
 
-        Executes: screen -S "{name}" -p {window} -X {command}
-
-        where the -p parameter is only filled in, if window is set
-        """
-        tosend = screen_cmd_base
-        if window is not None:
-            tosend += ' -p ' + str(window)
-        tosend += ' -X ' + command
-        call(tosend)        
-        
-    call('screen -dmS \"{}\"'.format(name))  # FIXME maybe end with bash
+    call('screen -dmS \"{}\"'.format(name))
 
     # Reverse the order to end at window 0
+    window_number = -1  # To make sure it is defined even without sessions
     for window_number, session in enumerate(xml.findall("session")):
         # Extract startdelay and wait
-        delay = float(session.find("startdelay").text)
-        sleep(delay)
+        delay_element = session.find("startdelay")
+        if delay_element is not None:
+            delay = float(delay_element.text)
+            sleep(delay)
 
         # Create an extra screen
         screen('screen {}'.format(window_number))
-        
+
 
         # Start command
         command = session.find('command').text
@@ -109,7 +118,7 @@ def main():
     # Set window title of last window
     screen('title emacs', window_number+1)
 
-    for line in config.split('\n'):
+    for line in CONFIG.split('\n'):
         if line != '' and not line.startswith('#'):
             screen(line, window=0)
 
