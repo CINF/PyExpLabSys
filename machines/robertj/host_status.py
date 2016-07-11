@@ -7,6 +7,7 @@ import threading
 import Queue
 import time
 import json
+import sys
 import pickle
 
 def host_status(hostname, method=""):
@@ -71,6 +72,7 @@ def uptime(hostname, method, username='pi', password='cinf123'):
             received = sock.recv(4096)
             status = json.loads(received)
             system_status = status['system_status']
+            return_value['sytem_status'] = system_status
             uptime_value = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
             load = str(system_status['load_average']['15m'])
             return_value['up'] = uptime_value
@@ -116,10 +118,11 @@ def uptime(hostname, method, username='pi', password='cinf123'):
 class CheckHost(threading.Thread):
     """ Perfom the actual check """
 
-    def __init__(self, hosts_queue, results_queue):
+    def __init__(self, hosts_queue, results_queue, return_all):
         threading.Thread.__init__(self)
         self.hosts = hosts_queue
         self.results = results_queue
+        self.return_all = return_all
 
     def run(self):
         while not self.hosts.empty():
@@ -138,16 +141,20 @@ class CheckHost(threading.Thread):
                 uptime_val['host_temperature'] = ''
                 uptime_val['model'] = ''
                 uptime_val['python_version'] = ''
-            self.results.put([host[0], host_is_up, uptime_val['up'],
-                              uptime_val['load'], host[3],
-                              host[4], host[1],
-                              uptime_val['git'],
-                              uptime_val['host_temperature'],
-                              uptime_val['model'],
-                              uptime_val['python_version']])
+            if self.return_all:
+                uptime_val['hostname'] = host[0]
+                self.results.put(uptime_val)
+            else:
+                self.results.put([host[0], host_is_up, uptime_val['up'],
+                                  uptime_val['load'], host[3],
+                                  host[4], host[1],
+                                  uptime_val['git'],
+                                  uptime_val['host_temperature'],
+                                  uptime_val['model'],
+                                  uptime_val['python_version']])
             self.hosts.task_done()
 
-def main():
+def main(return_all=False):
     """ Main function """
     t = time.time()
     hosts = Queue.Queue()
@@ -175,7 +182,7 @@ def main():
     t = time.time()
     host_checkers = {}
     for i in range(0, 20):
-        host_checkers[i] = CheckHost(hosts, results)
+        host_checkers[i] = CheckHost(hosts, results, return_all)
         host_checkers[i].start()
     hosts.join()
 
@@ -188,22 +195,28 @@ def main():
 
     status_string = ""
     for host in sorted_results.values():
-        status_string += host[0] + "|"
-        if host[1]:
-            status_string += "1|"
-            status_string += host[2] + "|"
-            status_string += host[3] + "|"
+        if return_all:
+            status_string += json.dumps(host) + '\n'
         else:
-            status_string += "0|||"
-        status_string += host[4] + "|"
-        status_string += host[5] + "|"
-        status_string += host[6] + "|"
-        status_string += host[7] + "|"
-        status_string += str(host[8]) + "|"
-        status_string += str(host[9]) + "|"
-        status_string += host[10]
-        status_string += "\n"
+            status_string += host[0] + "|"
+            if host[1]:
+                status_string += "1|"
+                status_string += host[2] + "|"
+                status_string += host[3] + "|"
+            else:
+                status_string += "0|||"
+            status_string += host[4] + "|"
+            status_string += host[5] + "|"
+            status_string += host[6] + "|"
+            status_string += host[7] + "|"
+            status_string += str(host[8]) + "|"
+            status_string += str(host[9]) + "|"
+            status_string += host[10]
+            status_string += "\n"
     print(status_string)
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        main(sys.argv[1] == 'True')
+    else:
+        main(False)
