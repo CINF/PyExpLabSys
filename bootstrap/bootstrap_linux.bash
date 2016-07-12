@@ -21,8 +21,8 @@ apt3="pylint"
 apt_remove="wolfram-engine oracle-java7-jdk oracle-java8-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde* libreoffice-common"
 
 # packages to be installe by pip
-pippackages="minimalmodbus"
-pip3packages="minimalmodbus mysqlclient"
+pippackages="minimalmodbus pyusb python-usbtmc"
+pip3packages="minimalmodbus mysqlclient pyusb python-usbtmc"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
