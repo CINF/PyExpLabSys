@@ -6,7 +6,7 @@
 import sys
 from os import path
 from time import strftime
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QTimer
 from PyQt4.QtGui import (
     QApplication, QCompleter, QLineEdit, QStringListModel, QWidget, QHBoxLayout,
     QVBoxLayout, QPushButton, QTextEdit, QLabel, QScrollArea,
@@ -16,7 +16,10 @@ if sys.version_info[0] >= 3:
     UNICODE_TYPE = str
 else:
     UNICODE_TYPE = unicode
-
+try:
+    import Queue
+except ImportError:
+    import queue as Queue
 
 NO_FOCUS = Qt.FocusPolicy(0)
 
@@ -42,6 +45,9 @@ class SteppedProgramRunner(QWidget):
                 self.actions.append(action.replace('can_', ''))
         self.status_widgets = {}
         self._init_ui()
+        self.process_update_timer = QTimer()
+        self.process_update_timer.timeout.connect(self.process_updates)
+        self.process_update_timer.start(100)
 
     def _init_ui(self):
         """Setup the UI"""
@@ -69,17 +75,31 @@ class SteppedProgramRunner(QWidget):
 
         # Setup step list
         self.step_table.setHorizontalHeaderLabels(['Description'])
-        self.update_step_table()
 
         #self.setWindowTitle('Stepped Program Runner')
         self.show()
 
-    def update_step_table(self):
+    def process_updates(self):
+        """Process updates from the main program"""
+        while True:
+            try:
+                update_type, update_content = self.core.message_queue.get(True, 0.001)
+                if update_type == 'steps':
+                    self.update_step_table(update_content)
+                elif update_type == 'status':
+                    self.update_status(update_content)
+            except Queue.Empty:
+                break
+        self.process_update_timer.start(100)
+
+    def update_step_table(self, steps):
         """Update the step table"""
-        steps = self.core.get_steps()
+        print('update steps')
+        # Allow for changing number of steps
         if len(steps) != self.step_table.rowCount():
             self.step_table.setRowCount(len(steps))
             self.step_table.setVerticalHeaderLabels([str(n) for n in range(len(steps))])
+        # Write out the steps
         for row, (active, step) in enumerate(steps):
             if active:
                 step = '<b>' + step + '</b>'
@@ -88,6 +108,17 @@ class SteppedProgramRunner(QWidget):
                 widget.setText(step)
             else:
                 self.step_table.setCellWidget(row, 0, QLabel(step))
+
+    def update_status(self, status):
+        """Update the status table"""
+        for codename, value in status.items():
+            try:
+                widget = self.status_widgets[codename]
+            except KeyError:
+                pass  # FIXME add error message
+            else:
+                widget.setText(UNICODE_TYPE(value))
+                
 
     def process_command(self, command):
         command = UNICODE_TYPE(command).strip()
@@ -114,6 +145,7 @@ class SteppedProgramRunner(QWidget):
 
 
 class LineEdit(QLineEdit):
+    """Cursom QLineEdit with tab completion"""
 
     def __init__(self, parent = None):    
         QLineEdit.__init__(self, parent)
