@@ -9,8 +9,12 @@ try:
     from queue import Queue
 except ImportError:
     from Queue import Queue
+import argparse
+from pprint import pformat
 
-from PyQt4.QtGui import (QApplication)
+from yaml import load, dump
+from PyQt4.QtGui import QApplication
+
 from PyExpLabSys.apps.stepped_program_runner.stepped_program_runner import SteppedProgramRunner
 
 class ConstantValueStep(object):
@@ -27,10 +31,27 @@ class ConstantValueStep(object):
         )
 
 
+def parse_ramp(file_):
+    """Parse the ramp file"""
+    # Eveything in the steps file is config, except the step list
+    # which is extracted below
+    config = load(file_)
+
+    # Load steps
+    steps = []
+    step_definitions = config.pop('steps')
+    for step_definition in step_definitions:
+        type_  = step_definition.pop('type')
+        if type_ == 'ConstantValueStep':
+            steps.append(ConstantValueStep(**step_definition))
+
+    return config, steps
+
+
 class MyProgram(Thread):
     """My fancy program"""
 
-    def __init__(self):
+    def __init__(self, args):
         super(MyProgram, self).__init__()
 
         ### Required by the stepped program runner
@@ -46,14 +67,16 @@ class MyProgram(Thread):
         )
         # Queue for GUI updates
         self.message_queue = Queue()
+        # The GUI also looks in self.config, see below
 
         ### Normal program
-        # Set my program
+        # Setup my program
+        with open(args.program_file) as file_:
+            self.config, self.steps = parse_ramp(file_)
+        # The GUI will look for keys: program_title in config
+        self.say('Loaded with config:\n' + pformat(self.config))
+
         self.active_step = 0
-        self.steps = [
-            ConstantValueStep(2, 10.),
-            ConstantValueStep(3, 4.),
-        ]
         self.send_steps()
 
         # Base for the status
@@ -135,8 +158,20 @@ class MyProgram(Thread):
 
 def main():
     """Main function"""
-    my_program = MyProgram()
+    # Parse arguments
+    parser = argparse.ArgumentParser(description=('Runs a stepped power supply program on '
+                                                  'a specified power supply and channel'))
+    parser.add_argument('power_supply', choices=('A'),
+                        help='The capital lette of a power supply e.g. A')
+    parser.add_argument('output', choices=('1', '2'),
+                        help='The output number on that power supply. Must be 1 or 2')
+    parser.add_argument('program_file', help="The file that contains the ramp")
+    args = parser.parse_args()
+
+    # Init program
+    my_program = MyProgram(args)
     my_program.start()
+
     # Appearently, it is better to defined app at the module level for
     # clean up: http://stackoverflow.com/questions/27131294/
     # error-qobjectstarttimer-qtimer-can-only-be-used-with-threads-started-with-qt
