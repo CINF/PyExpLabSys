@@ -82,7 +82,9 @@ class SteppedProgramRunner(QWidget):
         # Setup step list
         self.step_table.setHorizontalHeaderLabels(['Description'])
 
-        #self.setWindowTitle('Stepped Program Runner')
+        title = getattr(self.core, 'config', {}).get('program_title')
+        if title:
+            self.setWindowTitle(title)
         self.show()
 
     def process_updates(self):
