@@ -123,7 +123,7 @@ p, li { white-space: pre-wrap; }
   <customwidget>
    <class>LineEdit</class>
    <extends>QLineEdit</extends>
-   <header>PyExpLabSys/apps/stepped_program_runner</header>
+   <header>PyExpLabSys/apps/stepped_program_runner/stepped_program_runner</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -5,13 +5,10 @@
 
 import sys
 from os import path
-from time import strftime
-from PyQt4.QtCore import Qt, QTimer
-from PyQt4.QtGui import (
-    QApplication, QCompleter, QLineEdit, QStringListModel, QWidget, QHBoxLayout,
-    QVBoxLayout, QPushButton, QTextEdit, QLabel, QScrollArea,
-)
-from PyQt4 import uic
+from time import strftime, sleep
+import traceback
+from functools import partial
+# Python 2-3 hacks
 if sys.version_info[0] >= 3:
     UNICODE_TYPE = str
 else:
@@ -21,6 +18,12 @@ try:
 except ImportError:
     import queue as Queue
 
+from PyQt4.QtCore import Qt, QTimer, QCoreApplication
+from PyQt4.QtGui import (
+    QApplication, QCompleter, QLineEdit, QStringListModel, QWidget, QHBoxLayout,
+    QVBoxLayout, QPushButton, QTextEdit, QLabel, QScrollArea,
+)
+from PyQt4 import uic
 NO_FOCUS = Qt.FocusPolicy(0)
 
 
@@ -30,13 +33,14 @@ class SteppedProgramRunner(QWidget):
     help_texts = {
         'start': 'Start the stepped program',
         'stop': 'Stop the stepped program',
-        'quit': 'Quit the stepped program',
+        'quit': 'Quit the stepped program. This will ask the core program to stop, wait for it t do so and quit the main GUI',
         'help': 'Display this help',
     }
 
     def __init__(self, core, window_title="Stepped Program Runner"):
         super(SteppedProgramRunner, self).__init__()
         self.core = core
+        self.last_text_type = 'none'
         self.completions = ['help']
         self.actions = ['help']
         for action in ('can_start', 'can_stop', 'can_edit_line', 'can_quit'):
@@ -48,6 +52,8 @@ class SteppedProgramRunner(QWidget):
         self.process_update_timer = QTimer()
         self.process_update_timer.timeout.connect(self.process_updates)
         self.process_update_timer.start(100)
+        self.quit_timer = QTimer()
+        self.quit_timer.timeout.connect(self.process_quit)
 
     def _init_ui(self):
         """Setup the UI"""
@@ -88,13 +94,14 @@ class SteppedProgramRunner(QWidget):
                     self.update_step_table(update_content)
                 elif update_type == 'status':
                     self.update_status(update_content)
+                elif update_type == 'message':
+                    self.append_text(update_content, text_type='message')
             except Queue.Empty:
                 break
         self.process_update_timer.start(100)
 
     def update_step_table(self, steps):
         """Update the step table"""
-        print('update steps')
         # Allow for changing number of steps
         if len(steps) != self.step_table.rowCount():
             self.step_table.setRowCount(len(steps))
@@ -111,27 +118,62 @@ class SteppedProgramRunner(QWidget):
 
     def update_status(self, status):
         """Update the status table"""
-        for codename, value in status.items():
-            try:
-                widget = self.status_widgets[codename]
-            except KeyError:
-                pass  # FIXME add error message
-            else:
-                widget.setText(UNICODE_TYPE(value))
-                
+        try:
+            for codename, value in status.items():
+                try:
+                    widget = self.status_widgets[codename]
+                except KeyError:
+                    message = 'Unknow field "{}" in status update'.format(codename)
+                    self.append_text(message, text_type='error')
+                else:
+                    widget.setText(UNICODE_TYPE(value))
+        except Exception:
+            text = ('An unknown error accoured during updating of the status table\n'
+                    'It had the following traceback\n' + traceback.format_exc())
+            self.append_text(text, text_type='error')
 
     def process_command(self, command):
+        """Process a command"""
         command = UNICODE_TYPE(command).strip()
-        self.append_text('<b>{} $ {}</b>'.format(strftime('%H:%M:%S'), command), trail='\n')
-        if command.strip() == 'help':
+        self.append_text(command, text_type='command')
+        splitted_command = command.split(' ')
+        if command == 'help':
             self.help_text()
-        elif command.split(' ')[0] in self.completions:
-            self.core.command(command, [])
+        elif command == 'quit':
+            self.process_quit(first_call=True)
+        elif splitted_command[0] in self.completions:
+            args = ' '.join(splitted_command[1:])
+            try:
+                self.core.command(splitted_command[0], args)
+            except Exception:
+                text = ('An error occoured during the execution of the command\n'
+                        'It had the following traceback\n' + traceback.format_exc())
+                self.append_text(text, text_type='error')
         else:
-            self.append_text('Unknown command: ' + command)
+            self.append_text('Unknown command: ' + command, start='\n')
 
-    def append_text(self, text, trail='\n\n'):
-        self.text_display.append('<pre>' + text + trail + '</pre>')
+    def append_text(self, text, start='\n\n', text_type=None):
+        """Append text to the text_display"""
+        # Always append text immediately after command
+        if self.last_text_type == 'command' and text_type != 'command':
+            start = '\n'
+
+        # Format depending on text_type
+        if text_type == 'error':
+            text = '<b><span style="color:#ff0000;">Error: {}</span></b>'.format(text)
+        elif text_type == 'message':
+            # Append several message from core right after each other
+            if self.last_text_type == 'message':
+                start = '\n'
+            text = '<b><span style="color:#0000ff;">{} says: {}</span></b>'.format(
+                self.core.__class__.__name__, text
+            )
+        elif text_type == 'command':
+            text = '<b>{} $ {}</b>'.format(strftime('%H:%M:%S'), text)
+
+        # Set last text_type and display
+        self.last_text_type = text_type
+        self.text_display.append('<pre>' + start + text + '</pre>')
 
     def help_text(self):
         """Form and display help"""
@@ -141,7 +183,35 @@ class SteppedProgramRunner(QWidget):
         for action in self.actions:
             help_ += '{: <16}{}\n'.format(action, self.help_texts[action])
         help_ = help_.strip('\n')
-        self.append_text(help_)
+        self.append_text(help_, start='\n')
+
+    def process_quit(self, first_call=False, quit_now=False):
+        """Process the quit command"""
+        if quit_now:
+            QCoreApplication.instance().quit()
+            return
+        if first_call:
+            text = "Quitting."
+            if self.core.isAlive() and 'can_stop' in self.core.capabilities:
+                text += ' Asking stepped program to stop and wait for it to do so.'
+                self.append_text(text)
+                self.core.command('stop', '')
+            else:
+                self.append_text(text)
+
+        if self.core.isAlive():
+            self.quit_timer.start(100)
+        else:
+            self.append_text('<b>Bye!</b>')
+            self.quit_timer.timeout.disconnect()
+            self.quit_timer.timeout.connect(partial(self.process_quit, quit_now=True))
+            self.quit_timer.start(1000)
+            
+    def closeEvent(self, event):
+        """Make sure to close down nicely on window close"""
+        event.ignore()
+        self.process_quit(first_call=True)
+
 
 
 class LineEdit(QLineEdit):
