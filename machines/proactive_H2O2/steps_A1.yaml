@@ -1,0 +1,19 @@
+# The step files are in YAML syntax
+# For details see e.g:
+# https://github.com/Animosity/CraftIRC/wiki/Complete-idiot's-introduction-to-yaml
+
+# Config options
+comment       : "Test run 1"
+maxcurrent    : 0.1
+program_title : "This is the fancy stepped program runner"
+
+# List of steps
+steps:
+- type: "ConstantValueStep"
+  duration: 2
+  value: 0.1
+  probe_interval: 0.1
+- type: "ConstantValueStep"
+  duration: 3
+  value: 0.2
+  probe_interval: 0.2
