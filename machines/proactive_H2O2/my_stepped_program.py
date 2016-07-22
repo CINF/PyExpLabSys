@@ -11,7 +11,7 @@ except ImportError:
     from Queue import Queue
 
 from PyQt4.QtGui import (QApplication)
-from PyExpLabSys.apps.stepped_program_runner import SteppedProgramRunner
+from PyExpLabSys.apps.stepped_program_runner.stepped_program_runner import SteppedProgramRunner
 
 class ConstantValueStep(object):
     """A constant value step"""
@@ -73,7 +73,7 @@ class MyProgram(Thread):
 
     def command(self, command, args_str):
         """Process commands, has to implement quit"""
-        if command == 'quit':
+        if command == 'stop':
             self.stop = True
         elif command == 'start':
             self.ok_to_start = True
@@ -88,12 +88,18 @@ class MyProgram(Thread):
                  for index, step in enumerate(self.steps)]
         self.message_queue.put(('steps', steps))
 
+    def say(self, text):
+        """Send a ordinary text message to the gui"""
+        self.message_queue.put(('message', text))
+
     def run(self):
         """The main run method"""
         # Wait for start
         while not self.ok_to_start:
+            if self.stop:
+                return
             sleep(0.1)
-
+        self.say('I started')
         # Initial setup
         current_start = time()
         current_step = self.steps[self.active_step]
@@ -111,8 +117,10 @@ class MyProgram(Thread):
                     self.status['current'] = current_step.value
                     self.send_steps()
                     self.send_status()
+                    self.say('Switched to step: {}'.format(self.active_step))
                 except IndexError:
                     # We are done
+                    self.say('Stepped program completed')
                     break
 
             self.status['elapsed'] = time() - current_start
@@ -121,8 +129,8 @@ class MyProgram(Thread):
 
             sleep(0.1)
         else:
-            print('Else on while')
-        print('done')
+            self.say('I have been asked to stop')
+        self.say("I have stopped")
 
 
 def main():
