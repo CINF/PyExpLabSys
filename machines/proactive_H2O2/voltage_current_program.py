@@ -170,7 +170,6 @@ class MyProgram(Thread):
             'read_actual_current', 'read_actual_voltage', 'read_set_voltage'
         )
 
-
         # Setup dataset saver and live socket
         self.codenames = [self.channel_id + id_ for id_ in
                           ('_current', '_voltage', '_voltage_setpoint')]
@@ -209,7 +208,7 @@ class MyProgram(Thread):
         self.message_queue.put(('message', text))
 
     def run(self):
-        """The main run method"""
+        """The MAIN run method"""
         # Wait for start
         while not self.ok_to_start:
             if self.stop:
@@ -218,59 +217,11 @@ class MyProgram(Thread):
             sleep(0.1)
 
         # Start
-        self.say('I started on step 0')
         self.setup_data_set_saver()
 
-        # Initial setup
-        program_start = time()
-        current_step = self.steps[self.active_step]
-        current_step.start()
-        last_set_voltage = None
-
-        last_time = time()
-        iteration_time = 'N/A'
-        while not self.stop:
-            iteration_start = time()
-
-            # If we are done with the step
-            if current_step.elapsed() > current_step.duration:
-                current_step.stop()
-                self.active_step += 1
-                try:
-                    current_step = self.steps[self.active_step]
-                    current_step.start()
-                    self.send_steps()
-                    self.say('Switched to step: {}'.format(self.active_step))
-                except IndexError:
-                    # We are done
-                    self.say('Stepped program completed')
-                    break
-
-            # Calculate the time for one iteration and update times in status
-            iteration_time = time() - last_time
-            last_time = time()
-            self.status.update({
-                'elapsed': current_step.elapsed(),
-                'remaining': current_step.remaining(),
-                'iteration_time': iteration_time,
-            })
-
-            # Ask the power supply to set a new voltage if needed
-            current_value = current_step.value
-            if current_value != last_set_voltage:
-                self.send_command('set_voltage', current_value)
-                last_set_voltage = current_value
-
-            # Read value from the power supply
-            self._read_values_from_power_supply(program_start)
-            self.send_status()
-
-            # Calculate time to sleep to use the proper probe interval
-            time_to_sleep = current_step.probe_interval - (time() - iteration_start)
-            if time_to_sleep > 0:
-                sleep(time_to_sleep)
-        else:
-            self.say('I have been asked to stop')
+        # Run the MAIN measurement loop
+        # (This is where most of the time is spent)
+        self.main_measure()
 
         # Shutdown powersupply and livesocket
         self.stop_everything()
@@ -288,6 +239,58 @@ class MyProgram(Thread):
                 'power_supply_channel': self.channel_id,
             }
             self.data_set_saver.add_measurement(codename, metadata)
+
+    def main_measure(self):
+        """The main measurement loop"""
+        # Initial setup
+        program_start = time()
+        last_set_voltage = None
+        last_time = time()
+        iteration_time = 'N/A'
+
+        self.say('I started on step 0')
+        for self.active_step, current_step in enumerate(self.steps):
+            # Also give the step an instance name (for steps list)
+            if self.active_step > 0:
+                self.say('Switched to step: {}'.format(self.active_step))
+            self.send_steps()
+            current_step.start()
+
+            # While the step hasn't completed yet
+            while current_step.elapsed() < current_step.duration:
+                # Check if we should stop
+                if self.stop:
+                    self.say('I have been asked to stop')
+                    return
+
+                iteration_start = now = time()
+                # Calculate the time for one iteration and update times in status
+                iteration_time = now - last_time
+                last_time = now
+                self.status.update({
+                    'elapsed': current_step.elapsed(),
+                    'remaining': current_step.remaining(),
+                    'iteration_time': iteration_time,
+                })
+    
+                # Ask the power supply to set a new voltage if needed
+                current_value = current_step.value
+                if current_value != last_set_voltage:
+                    self.send_command('set_voltage', current_value)
+                    last_set_voltage = current_value
+    
+                # Read value from the power supply
+                self._read_values_from_power_supply(program_start)
+                self.send_status()
+    
+                # Calculate time to sleep to use the proper probe interval
+                time_to_sleep = current_step.probe_interval - (time() - iteration_start)
+                if time_to_sleep > 0:
+                    sleep(time_to_sleep)
+
+        # For loop over steps ended
+        self.say('Stepped program completed')
+
 
     def _read_values_from_power_supply(self, program_start):
         """Read all required values from the power supply (used only from run)"""
@@ -312,13 +315,18 @@ class MyProgram(Thread):
     def power_supply_on_off(self, state, current_limit=0.0):
         """Set power supply on off"""
         # Set voltage to 0
+        LOG.debug('Stopping everything. Set voltage to 0.0')
         self.send_command('set_voltage', 0.0)
         start = time()
         while self.send_command('read_actual_voltage') > 1E-2:
             # Give it a second to set
-            if time() - start > 1:
-                raise RuntimeError('Unable to set voltage to 0')                
-            sleep(0.1)
+            if time() - start > 3:
+                LOG.error('Unable to set voltage to 0')
+                if state:
+                    raise RuntimeError('Unable to set voltage to 0')
+                else:
+                    self.say('Unable to set voltage to 0')
+
 
         # Set current limit
         self.send_command('set_current_limit', current_limit)
@@ -354,6 +362,7 @@ def main():
         level='debug', file_log=True,  terminal_log=False,
         file_name='stack_tester_' + args.power_supply + args.output + '.log'
     )
+
     # Init program
     my_program = MyProgram(args)
     my_program.start()
@@ -370,4 +379,7 @@ try:
     main()
 except Exception as exc:
     LOG.exception("Catched exception at the outer layer")
+    if isinstance(exc, ConnectionResetError):
+        LOG.info('Unable to connect to the power supply server. '
+                 'Did you rememver to start it?')
     raise
