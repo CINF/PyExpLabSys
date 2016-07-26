@@ -5,7 +5,7 @@
 
 import sys
 from os import path
-from time import strftime, sleep
+from time import strftime, time
 import traceback
 from functools import partial
 # Python 2-3 hacks
@@ -20,8 +20,7 @@ except ImportError:
 
 from PyQt4.QtCore import Qt, QTimer, QCoreApplication
 from PyQt4.QtGui import (
-    QApplication, QCompleter, QLineEdit, QStringListModel, QWidget, QHBoxLayout,
-    QVBoxLayout, QPushButton, QTextEdit, QLabel, QScrollArea,
+    QApplication, QCompleter, QLineEdit, QStringListModel, QWidget, QLabel,
 )
 from PyQt4 import uic
 NO_FOCUS = Qt.FocusPolicy(0)
@@ -48,12 +47,14 @@ class SteppedProgramRunner(QWidget):
                 self.completions.append(action.replace('can_', ''))
                 self.actions.append(action.replace('can_', ''))
         self.status_widgets = {}
+        self.status_formatters = {}
         self._init_ui()
         self.process_update_timer = QTimer()
         self.process_update_timer.timeout.connect(self.process_updates)
         self.process_update_timer.start(100)
         self.quit_timer = QTimer()
         self.quit_timer.timeout.connect(self.process_quit)
+        self.last = time()
 
     def _init_ui(self):
         """Setup the UI"""
@@ -69,10 +70,11 @@ class SteppedProgramRunner(QWidget):
         status = self.status_table
         status.setRowCount(len(self.core.status_fields))
         status.setHorizontalHeaderLabels(['Name', 'Value'])
-        for row, (status_codename, status_name) in enumerate(self.core.status_fields):
+        for row, (status_codename, status_name, status_formatter) in enumerate(self.core.status_fields):
             status.setCellWidget(row, 0, QLabel(status_name))
             status.setCellWidget(row, 1, QLabel("N/A"))
             self.status_widgets[status_codename] = status.cellWidget(row, 1)
+            self.status_formatters[status_codename] = status_formatter
         status.resizeColumnsToContents()
 
         # HACK to make the table expand to fit the contents, there MUST be a better way
@@ -92,6 +94,7 @@ class SteppedProgramRunner(QWidget):
         while True:
             try:
                 update_type, update_content = self.core.message_queue.get(True, 0.001)
+                self.last = time()
                 if update_type == 'steps':
                     self.update_step_table(update_content)
                 elif update_type == 'status':
@@ -128,7 +131,11 @@ class SteppedProgramRunner(QWidget):
                     message = 'Unknow field "{}" in status update'.format(codename)
                     self.append_text(message, text_type='error')
                 else:
-                    widget.setText(UNICODE_TYPE(value))
+                    try:
+                        to_set = self.status_formatters[codename](value)
+                    except Exception:
+                        to_set = UNICODE_TYPE(value)
+                    widget.setText(to_set)
         except Exception:
             text = ('An unknown error accoured during updating of the status table\n'
                     'It had the following traceback\n' + traceback.format_exc())
@@ -207,7 +214,7 @@ class SteppedProgramRunner(QWidget):
             self.append_text('<b>Bye!</b>')
             self.quit_timer.timeout.disconnect()
             self.quit_timer.timeout.connect(partial(self.process_quit, quit_now=True))
-            self.quit_timer.start(1000)
+            self.quit_timer.start(500)
             
     def closeEvent(self, event):
         """Make sure to close down nicely on window close"""

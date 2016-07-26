@@ -15,7 +15,11 @@ try:
 except ImportError:
     from queue import Queue  # pylint: disable=import-error
 
-import MySQLdb
+try:
+    import MySQLdb
+except ImportError:
+    import pymysql as MySQLdb
+    MySQLdb.install_as_MySQLdb()
 
 # Mark this module as supporting Python 2 and 3
 from PyExpLabSys.common.supported_versions import python2_and_3
