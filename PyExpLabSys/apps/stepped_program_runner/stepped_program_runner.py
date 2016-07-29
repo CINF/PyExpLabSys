@@ -3,10 +3,13 @@
 
 """A general stepped program runner"""
 
+from __future__ import unicode_literals
+
 import sys
 from os import path
 from time import strftime, time
 import traceback
+import types
 from functools import partial
 # Python 2-3 hacks
 if sys.version_info[0] >= 3:
@@ -32,7 +35,9 @@ class SteppedProgramRunner(QWidget):
     help_texts = {
         'start': 'Start the stepped program',
         'stop': 'Stop the stepped program',
-        'quit': 'Quit the stepped program. This will ask the core program to stop, wait for it t do so and quit the main GUI',
+        'quit': ('Quit the stepped program. \n'
+                 'This will ask the core program to stop if it "can_stop", wait for it \n'
+                 'to do so and quit the main GUI \n'),
         'help': 'Display this help',
     }
 
@@ -40,14 +45,21 @@ class SteppedProgramRunner(QWidget):
         super(SteppedProgramRunner, self).__init__()
         self.core = core
         self.last_text_type = 'none'
-        self.completions = ['help']
-        self.actions = ['help']
-        for action in ('can_start', 'can_stop', 'can_edit_line', 'can_quit'):
+
+        # Form completions and actions from core capabilities
+        self.completions = []
+        self.actions = []
+        for action in ('can_start', 'can_stop', 'can_edit_line'):
             if action in self.core.capabilities:
                 self.completions.append(action.replace('can_', ''))
                 self.actions.append(action.replace('can_', ''))
-        self.status_widgets = {}
-        self.status_formatters = {}
+        # We can always quit and help
+        self.completions += ['quit', 'help']
+        self.actions += ['quit', 'help']
+
+        #self.status_widgets = {}
+        #self.status_formatters = {}
+        self.status_defs = {}
         self._init_ui()
         self.process_update_timer = QTimer()
         self.process_update_timer.timeout.connect(self.process_updates)
@@ -70,11 +82,12 @@ class SteppedProgramRunner(QWidget):
         status = self.status_table
         status.setRowCount(len(self.core.status_fields))
         status.setHorizontalHeaderLabels(['Name', 'Value'])
-        for row, (status_codename, status_name, status_formatter) in enumerate(self.core.status_fields):
-            status.setCellWidget(row, 0, QLabel(status_name))
+        for row, status_field in enumerate(self.core.status_fields):
+            status_field = dict(status_field)  # Make a copy
+            status.setCellWidget(row, 0, QLabel(status_field.get('title', '')))
             status.setCellWidget(row, 1, QLabel("N/A"))
-            self.status_widgets[status_codename] = status.cellWidget(row, 1)
-            self.status_formatters[status_codename] = status_formatter
+            status_field['widget'] = status.cellWidget(row, 1)
+            self.status_defs[status_field.pop('codename')] = status_field
         status.resizeColumnsToContents()
 
         # HACK to make the table expand to fit the contents, there MUST be a better way
@@ -125,17 +138,29 @@ class SteppedProgramRunner(QWidget):
         """Update the status table"""
         try:
             for codename, value in status.items():
+                status_def = self.status_defs[codename]
                 try:
-                    widget = self.status_widgets[codename]
+                    widget = status_def['widget']
                 except KeyError:
                     message = 'Unknow field "{}" in status update'.format(codename)
                     self.append_text(message, text_type='error')
-                else:
-                    try:
-                        to_set = self.status_formatters[codename](value)
-                    except Exception:
-                        to_set = UNICODE_TYPE(value)
-                    widget.setText(to_set)
+                    continue
+
+                # Apply formatter, if any
+                try:
+                    formatter = status_def['formatter']
+                    if isinstance(formatter, types.FunctionType):
+                        to_set = formatter(value)
+                    else:
+                        to_set = formatter.format(value)
+                except Exception:
+                    to_set = UNICODE_TYPE(value)
+
+                # Append unit, if any, after half sized space
+                if 'unit' in status_def:
+                    to_set += '\u2006' + status_def['unit']
+
+                widget.setText(to_set)
         except Exception:
             text = ('An unknown error accoured during updating of the status table\n'
                     'It had the following traceback\n' + traceback.format_exc())
@@ -190,7 +215,10 @@ class SteppedProgramRunner(QWidget):
                  'stepped program.\n\n'
                  'For this program the following commands have been configured:\n')
         for action in self.actions:
-            help_ += '{: <16}{}\n'.format(action, self.help_texts[action])
+            lines = self.help_texts[action].split('\n')
+            help_ += '{: <16}{}\n'.format(action, lines[0])
+            for line in lines[1:]:
+                help_ += '{: <16}{}\n'.format('', line)
         help_ = help_.strip('\n')
         self.append_text(help_, start='\n')
 
