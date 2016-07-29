@@ -1,6 +1,6 @@
 """My example stepped program"""
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals, division
 
 # Import builtins
 import sys
@@ -15,7 +15,6 @@ from pprint import pformat
 
 # Import third party
 from numpy import isclose
-from yaml import load
 from PyQt4.QtGui import QApplication
 
 # Import from PyExpLabSys
@@ -26,6 +25,8 @@ from PyExpLabSys.common.utilities import get_logger
 LOG = None
 
 import credentials
+from steps import parse_ramp
+
 
 # Setup communication with the power supply server
 HOST, PORT = "localhost", 8500
@@ -58,66 +59,6 @@ class PowerSupplyComException(Exception):
     pass
 
 
-class ConstantValueStep(object):
-    """A constant value step"""
-
-    def __init__(self, duration, value, probe_interval=0.1):
-        self.duration = duration
-        self.value = value
-        self.probe_interval = probe_interval
-        # For interbal bookkeeping of the time
-        self._start = None
-        self._elapsed = 0.0
-
-    def __str__(self):
-        return 'ContantStep(duration={}, value={}, probe_interval={})'.format(
-            self.duration, self.value, self.probe_interval,
-        )
-
-    def start(self):
-        """Start this step"""
-        self._start = time()
-
-    def stop(self):
-        """Stop the step"""
-        self._elapsed = time() - self._start
-        self._start = None
-
-    def elapsed(self):
-        """Return the elapsed time"""
-        if self._start is None:
-            return self._elapsed
-        else:
-            return time() - self._start
-
-    def remaining(self):
-        """Return remaining time"""
-        return self.duration - self.elapsed()
-
-
-def parse_ramp(file_):
-    """Parse the ramp file"""
-    # Eveything in the steps file is config, except the step list
-    # which is extracted below
-    config = load(file_)
-
-    # Load steps
-    steps = []
-    step_definitions = config.pop('steps')
-    for step_definition in step_definitions:
-        type_  = step_definition.pop('type')
-        if type_ == 'ConstantValueStep':
-            steps.append(ConstantValueStep(**step_definition))
-
-    return config, steps
-
-
-def f2(number):
-    return '{:.2f}'.format(number)
-
-def f3(number):
-    return '{:.3f}'.format(number)
-
 class MyProgram(Thread):
     """My fancy program"""
 
@@ -131,14 +72,40 @@ class MyProgram(Thread):
         # Accepted capabilities are: can_edit_line, can_play,
         # can_stop, can_quit
         self.capabilities = ('can_stop', 'can_start')
+        # Status fields (in order)
         self.status_fields = (
-            # codename, Headline, formatter
-            (self.channel_id + '_voltage', 'Voltage', f3),
-            (self.channel_id + '_voltage_setpoint', 'Voltage Setpoint', f3),
-            (self.channel_id + '_current', 'Current', f3),
-            ('elapsed', 'Step elapsed', None),
-            ('remaining', 'Step remaining', f2),
-            ('iteration_time', 'Iteration time', f2),
+            # Status
+            {'codename': 'status_field', 'title': 'Status'},
+            # Voltage
+            {'codename': self.channel_id + '_voltage',
+            'title': 'Voltage', 'formatter': '{:.3f}', 'unit': 'V'},
+            # Voltage setpoint
+            {'codename': self.channel_id + '_voltage_setpoint',
+             'title': 'Voltage Setpoint', 'formatter': '{:.3f}', 'unit': 'V'},
+            # Current
+            {'codename': self.channel_id + '_current',
+             'title': 'Current', 'formatter': '{:.3f}', 'unit': 'A'},
+            # Current limit
+            {'codename': self.channel_id + '_current_limit',
+             'title': 'Current limit', 'formatter': '{:.3f}', 'unit': 'A'},
+            # Charge
+            {'codename': self.channel_id + '_accum_charge',
+             'title': 'Accumulated charge', 'formatter': '{:.3f}', 'unit': 'C'},
+            # Time elapsed (step)
+            {'codename': 'elapsed',
+             'title': 'Time elapsed (step)', 'unit': 's'},
+            # Time remaining (step)
+            {'codename': 'remaining',
+             'title': 'Time remaining (step)', 'formatter': '{:.2f}', 'unit': 's'},
+            # Time elapsed (total)
+            {'codename': 'elapsed_total',
+             'title': 'Time elapsed (total)', 'unit': 's'},
+            # Time remaining (total)
+            {'codename': 'remaining_total',
+             'title': 'Time remaining (total)', 'formatter': '{:.2f}', 'unit': 's'},
+            # Iteration time
+            {'codename': 'iteration_time',
+             'title': 'Iteration time', 'formatter': '{:.2f}', 'unit': 's'},
         )
         # Queue for GUI updates
         self.message_queue = Queue()
@@ -155,7 +122,7 @@ class MyProgram(Thread):
         self.send_steps()
 
         # Base for the status
-        self.status = {'elapsed': 0}
+        self.status = {'status_field': 'Initialized'}
 
         # General variables
         self.stop = False
@@ -164,17 +131,20 @@ class MyProgram(Thread):
         # Setup power supply
         # Create a partial function with the output substitued in
         self.send_command = partial(_send_command, args.output)
-        self.power_supply_on_off(True, self.config['maxcurrent'])
+        self.power_supply_on_off(True, self.config['maxcurrent_start'])
         # Power supply commands, must match order with self.codenames
         self.power_supply_commands = (
-            'read_actual_current', 'read_actual_voltage', 'read_set_voltage'
+            'read_actual_current', 'read_actual_voltage', 'read_set_voltage',
+            'read_current_limit'
         )
 
         # Setup dataset saver and live socket
         self.codenames = [self.channel_id + id_ for id_ in
-                          ('_current', '_voltage', '_voltage_setpoint')]
+                          ('_current', '_voltage', '_voltage_setpoint',
+                           '_current_limit')]
         self.live_socket = LiveSocket(
-            'H2O2_proactive_' + self.channel_id, self.codenames,
+            'H2O2_proactive_' + self.channel_id,
+            self.codenames + [self.channel_id + '_accum_charge'],
             no_internal_data_pull_socket=True
         )
         self.live_socket.reset(self.codenames)
@@ -186,6 +156,9 @@ class MyProgram(Thread):
         )
         self.data_set_saver.start()
 
+        # Done with init, send status
+        self.send_status()
+
     def command(self, command, args_str):
         """Process commands from the GUI"""
         if command == 'stop':  # stop is sent on quit
@@ -193,8 +166,10 @@ class MyProgram(Thread):
         elif command == 'start':
             self.ok_to_start = True
 
-    def send_status(self):
+    def send_status(self, update_dict=None):
         """Send the status to the GUI"""
+        if update_dict:
+            self.status.update(update_dict)
         self.message_queue.put(('status', self.status.copy()))
 
     def send_steps(self):
@@ -212,11 +187,14 @@ class MyProgram(Thread):
         # Wait for start
         while not self.ok_to_start:
             if self.stop:
+                self.send_status({'status_field': 'Stopping'})
                 self.power_supply_on_off(False)
+                self.send_status({'status_field': 'Stopped'})
                 return
             sleep(0.1)
 
         # Start
+        self.send_status({'status_field': 'Starting'})
         self.setup_data_set_saver()
 
         # Run the MAIN measurement loop
@@ -224,7 +202,9 @@ class MyProgram(Thread):
         self.main_measure()
 
         # Shutdown powersupply and livesocket
+        self.send_status({'status_field': 'Stopping'})
         self.stop_everything()
+        self.send_status({'status_field': 'Stopped'})
 
         sleep(0.1)
         self.say("I have stopped")
@@ -242,14 +222,22 @@ class MyProgram(Thread):
 
     def main_measure(self):
         """The main measurement loop"""
+        self.send_status({'status_field': 'Running'})
         # Initial setup
         program_start = time()
         last_set_voltage = None
+        last_set_max_current = None
         last_time = time()
         iteration_time = 'N/A'
+        self.status['elapsed'] = 0.0
+        accum_charge_codename = self.channel_id + '_accum_charge'
+        self.status[accum_charge_codename] = 0.0
+        current_id = self.channel_id + '_current'
+        last_measured_current = 0.0
 
         self.say('I started on step 0')
         for self.active_step, current_step in enumerate(self.steps):
+            self.send_status({'status_field': 'Running step {}'.format(self.active_step)})
             # Also give the step an instance name (for steps list)
             if self.active_step > 0:
                 self.say('Switched to step: {}'.format(self.active_step))
@@ -266,21 +254,38 @@ class MyProgram(Thread):
                 iteration_start = now = time()
                 # Calculate the time for one iteration and update times in status
                 iteration_time = now - last_time
+                
                 last_time = now
                 self.status.update({
                     'elapsed': current_step.elapsed(),
                     'remaining': current_step.remaining(),
                     'iteration_time': iteration_time,
+                    'elapsed_total': sum(step.elapsed() for step in self.steps),
+                    'remaining_total': sum(step.remaining() for step in self.steps),
                 })
     
                 # Ask the power supply to set a new voltage if needed
-                current_value = current_step.value
-                if current_value != last_set_voltage:
-                    self.send_command('set_voltage', current_value)
-                    last_set_voltage = current_value
+                required_voltage, required_max_current = current_step.values()
+                if required_max_current != last_set_max_current:
+                    self.send_command('set_current_limit', required_max_current)
+                    last_set_max_current = required_max_current
+                if required_voltage != last_set_voltage:
+                    self.send_command('set_voltage', required_voltage)
+                    last_set_voltage = required_voltage
     
                 # Read value from the power supply
                 self._read_values_from_power_supply(program_start)
+
+                # Calculate, set and send accumulated charge
+                charge_addition = \
+                    (last_measured_current + self.status[current_id])\
+                    / 2 * iteration_time
+                last_measured_current = self.status[current_id]
+                self.status[accum_charge_codename] += charge_addition
+                point = (self.status['elapsed_total'], self.status[accum_charge_codename])
+                self.live_socket.set_point(accum_charge_codename, point)
+
+                # Send the new status
                 self.send_status()
     
                 # Calculate time to sleep to use the proper probe interval
@@ -288,20 +293,26 @@ class MyProgram(Thread):
                 if time_to_sleep > 0:
                     sleep(time_to_sleep)
 
+            # Stop the step(s own time keeping)
+            current_step.stop()
+
         # For loop over steps ended
+        self.send_status({'status_field': 'Program Complete'})
         self.say('Stepped program completed')
 
 
     def _read_values_from_power_supply(self, program_start):
         """Read all required values from the power supply (used only from run)"""
-        elapsed_all_steps = sum(step.elapsed() for step in self.steps)
         for command, codename in zip(self.power_supply_commands, self.codenames):
             # Get a value for the current command
             value = self.send_command(command)
             if command == 'read_set_voltage':
                 value = float(value.strip().split(' ')[1])
+            if command == 'read_current_limit':
+                value = float(value.strip().split(' ')[1])
+
             # Set/save it on the live_socket, database and in the GUI
-            point = (elapsed_all_steps, value)
+            point = (self.status['elapsed_total'], value)
             self.live_socket.set_point(codename, point)
             self.data_set_saver.save_point(codename, point)
             self.status[codename] = value
@@ -319,14 +330,14 @@ class MyProgram(Thread):
         self.send_command('set_voltage', 0.0)
         start = time()
         while self.send_command('read_actual_voltage') > 1E-2:
-            # Give it a second to set
-            if time() - start > 3:
+            if time() - start > 60:
                 LOG.error('Unable to set voltage to 0')
                 if state:
                     raise RuntimeError('Unable to set voltage to 0')
                 else:
                     self.say('Unable to set voltage to 0')
-
+                    break
+            sleep(1)
 
         # Set current limit
         self.send_command('set_current_limit', current_limit)
