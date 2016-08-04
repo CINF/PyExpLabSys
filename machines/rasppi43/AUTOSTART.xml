@@ -1,0 +1,13 @@
+<autostart>
+  <name>RASPPI43_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>1</startdelay>
+    <command>python3 data_logger.py</command>
+    <name>Data Logger</name>
+  </session>
+  <session>
+    <startdelay>60</startdelay>
+    <command>python3 temperature_controller.py</command>
+    <name>Temperature Control</name>
+  </session>
+</autostart>
