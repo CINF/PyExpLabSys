@@ -93,16 +93,16 @@ class MyProgram(Thread):
              'title': 'Accumulated charge', 'formatter': '{:.3f}', 'unit': 'C'},
             # Time elapsed (step)
             {'codename': 'elapsed',
-             'title': 'Time elapsed (step)', 'unit': 's'},
+             'title': 'Time elapsed (step)', 'formatter': '{:.1f}', 'unit': 's'},
             # Time remaining (step)
             {'codename': 'remaining',
-             'title': 'Time remaining (step)', 'formatter': '{:.2f}', 'unit': 's'},
+             'title': 'Time remaining (step)', 'formatter': '{:.1f}', 'unit': 's'},
             # Time elapsed (total)
             {'codename': 'elapsed_total',
-             'title': 'Time elapsed (total)', 'unit': 's'},
+             'title': 'Time elapsed (total)', 'formatter': '{:.1f}', 'unit': 's'},
             # Time remaining (total)
             {'codename': 'remaining_total',
-             'title': 'Time remaining (total)', 'formatter': '{:.2f}', 'unit': 's'},
+             'title': 'Time remaining (total)', 'formatter': '{:.1f}', 'unit': 's'},
             # Iteration time
             {'codename': 'iteration_time',
              'title': 'Iteration time', 'formatter': '{:.2f}', 'unit': 's'},
@@ -371,7 +371,8 @@ def main():
     LOG = get_logger(
         'STACK TESTER ' + args.power_supply + args.output,
         level='debug', file_log=True,  terminal_log=False,
-        file_name='stack_tester_' + args.power_supply + args.output + '.log'
+        file_name='stack_tester_' + args.power_supply + args.output + '.log',
+        email_on_warnings=False, email_on_errors=False,
     )
 
     # Init program
