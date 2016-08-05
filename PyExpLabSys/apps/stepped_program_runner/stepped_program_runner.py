@@ -91,7 +91,7 @@ class SteppedProgramRunner(QWidget):
         status.resizeColumnsToContents()
 
         # HACK to make the table expand to fit the contents, there MUST be a better way
-        height = (status.cellWidget(0, 0).size().height() + 16) * (status.rowCount() + 1)
+        height = (status.cellWidget(0, 0).size().height() + 2) * (status.rowCount() + 1)
         status.setMinimumHeight(height)
 
         # Setup step list
