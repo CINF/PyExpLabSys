@@ -47,8 +47,36 @@ class CPX400DPDriver(SCPI):
     def read_current_limit(self):
         """Reads the current limit"""
         function_string = 'I' + self.output + '?'
-        return self.scpi_comm(function_string)
+        value_string = self.scpi_comm(function_string)
+        try:
+            value = float(value_string.replace('I' + self.output, ''))
+        except ValueError:
+            value = -999999
+        return value
 
+    def read_configuration_mode(self):
+        """ Return the depency mode between the channels """
+        configuration_mode = self.scpi_comm('CONFIG?').strip()
+        mode = 'Unknown'
+        if configuration_mode == '0':
+            mode = 'Voltage tracking'
+        if configuration_mode == '2':
+            mode = 'Dual output'
+        if configuration_mode in ('3', '4'):
+            mode = 'Track Voltage and Current'
+        return mode
+
+    def set_dual_output(self, dual_output=True):
+        """ Sets voltage tracking or dual output
+        If dual_output is True, Dual output will be activated.
+        If dual_output is False, Voltage tracking will be enabled """
+        if dual_output:
+            self.scpi_comm('CONFIG 2')
+        else:
+            self.scpi_comm('CONFIG 3') # CHECK THIS on CPX400dp!!!!!!
+        status = self.read_configuration_mode()
+        return status
+    
     def read_actual_voltage(self):
         """Reads the actual output voltage"""
         function_string = 'V' + self.output + 'O?'
@@ -127,5 +155,8 @@ class CPX400DPDriver(SCPI):
 
 if __name__ == '__main__':
     CPX = CPX400DPDriver(1, interface='serial', device='/dev/ttyACM0')
+    print(CPX.read_software_version())
     print(CPX.read_current_limit())
     print(CPX.read_actual_current())
+    print(CPX.read_configuration_mode())
+    print(CPX.set_dual_output(False))
