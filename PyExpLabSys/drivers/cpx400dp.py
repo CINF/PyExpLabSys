@@ -73,7 +73,7 @@ class CPX400DPDriver(SCPI):
         if dual_output:
             self.scpi_comm('CONFIG 2')
         else:
-            self.scpi_comm('CONFIG 3') # CHECK THIS on CPX400dp!!!!!!
+            self.scpi_comm('CONFIG 3')
         status = self.read_configuration_mode()
         return status
     
