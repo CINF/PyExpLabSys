@@ -33,9 +33,9 @@ class CursesTui(threading.Thread):
             self.screen.addstr(9, 40, "Setpoint: {0:.2f}C  ".format(val))
             val = self.hc.pc.temperature
             try:
-                self.screen.addstr(9, 2, "Temeperature: {0:.4f}C  ".format(val))
-            except ValueError:
-                self.screen.addstr(9, 2, "Temeperature: -         ".format(val))
+                self.screen.addstr(9, 2, "Temperature: {0:.4f}C  ".format(val))
+            except (ValueError, TypeError):
+                self.screen.addstr(9, 2, "Temperature: -         ")
             val = self.hc.voltage
             self.screen.addstr(10, 2, "Actual Voltage: {0:.2f} ".format(val))
             val = self.hc.pc.pid.setpoint
@@ -77,7 +77,7 @@ class PowerCalculatorClass(threading.Thread):
         self.pullsocket = pullsocket
         self.pushsocket = pushsocket
         self.power = 0
-        self.setpoint = -900
+        self.setpoint = 0
         self.pid = PID.PID()
         self.pid.Kp = 0.20
         self.pid.Ki = 0.05
