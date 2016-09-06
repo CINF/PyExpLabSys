@@ -73,9 +73,11 @@ class RtdReader(threading.Thread):
     def __init__(self, address, calib_temp):
         self.rtd_reader = dmm.Agilent34410ADriver(interface='lan', hostname=address)
         self.rtd_reader.select_measurement_function('FRESISTANCE')
+        #self.rtd_reader.select_measurement_function('RESISTANCE')
         self.calib_temp = calib_temp
         time.sleep(0.2)
         self.calib_value = self.rtd_reader.read()
+        print(self.calib_value)
         self.rtd_calc = rtd_calculator.RTD_Calculator(calib_temp, self.calib_value)
         threading.Thread.__init__(self)
         self.temperature = None
@@ -138,7 +140,7 @@ def main():
                                              comp_type='lin', channel=i-1)
         loggers[code_names[i]].start()
     for i in range(9, 16):
-        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=1.0,
+        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=2.0,
                                              comp_type='lin', channel=i-8)
         loggers[code_names[i]].start()
 
