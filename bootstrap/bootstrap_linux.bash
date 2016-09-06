@@ -7,22 +7,22 @@
 ##############################################################
 
 # apt install packages line 1, general packages
-# NOTE pip is placed here, because right now it pulls in python2.6, which
-# I prefer is complete before installing python packages
-apt1="openssh-server emacs python-pip graphviz screen ntp libmysqlclient-dev"
+#
+# NOTE: python3 is not installed on lite raspbian image by default!!
+apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python2 python3"
 
 # apt install packages line 2, python extensions
-apt2="python-mysqldb python-serial python-colorama python3-pip python3-serial python3-colorama"
+#
+# NOTE: This line used to contain colorama, but it is a dependency of
+# pip, so it will be installed anyway
+apt2="python-pip python-mysqldb python3-pip"
 
 # apt install packages line 3, code checkers
 apt3="pylint"
 
-# remove selcted packages
-apt_remove="wolfram-engine oracle-java7-jdk oracle-java8-jdk pypy-upstream scratch smbclient samba-common sonic-pi lxde* libreoffice-common"
-
 # packages to be installe by pip
-pippackages="minimalmodbus pyusb python-usbtmc"
-pip3packages="minimalmodbus mysqlclient pyusb python-usbtmc"
+pippackages="minimalmodbus pyusb python-usbtmc pyserial"
+pip3packages="minimalmodbus pyusb python-usbtmc pyserial mysqlclient"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
@@ -152,14 +152,22 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     echo 
     echobold "===> INSTALLING PACKAGES"
     echoblue "---> Updating package archive information"
-    sudo apt-get update
-    if [ $USER == "pi" ];then
-	echoblue "----> Removing large uneeded packages"
-	echoblue "----> Remove: $apt_remove"
-	sudo apt-get -y remove $apt_remove
-	echoblue "---> Remove un-needed packages after removal, if any"
-	sudo apt-get -y autoremove
+
+    # Update, but only if it has not just been done (within the last
+    # 10 hours), since it actually takes a while on a RPi.
+    #
+    # NOTE. The method is based on checking the last modification of
+    # the apt cache file, which may not the perfect method, we will
+    # test it and see
+    last_update=`stat /var/cache/apt/pkgcache.bin --format="%Y"`
+    now=`date +%s`
+    since_last_update=$((now-last_update))
+    if [ $since_last_update -gt 36000 ];then
+	sudo apt-get update
+    else
+	echoblue "Skipping, since it was done" $(($since_last_update/3600)) "hours ago"
     fi
+
     echoblue "---> Upgrade all existing packages"
     sudo apt-get -y dist-upgrade
     echoblue "---> Installing packages"
