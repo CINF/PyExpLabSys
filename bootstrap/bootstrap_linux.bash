@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python2 python3"
+apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3"
 
 # apt install packages line 2, python extensions
 #
