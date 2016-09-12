@@ -27,13 +27,9 @@ APT1 = "openssh-server emacs graphviz screen ntp libmysqlclient-dev python pytho
 # pip, so it will be installed anyway
 APT2 = "python-pip python-mysqldb python3-pip"
 
-# apt install packages line 3, code checkers
-APT3 = "pylint"
-
 # packages to be installe by pip
 PIPPACKAGES = "minimalmodbus pyusb python-usbtmc pyserial"
-PIP3PACKAGES = "minimalmodbus pyusb python-usbtmc pyserial mysqlclient"
-
+PIP3PACKAGES = "minimalmodbus pyusb python-usbtmc pyserial mysqlclient pylint"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
@@ -79,16 +75,21 @@ qt          Setup GUI environment: Qt and Qwt (for plots, NOT part of all)
 
 ALL = ['bash', 'git', 'install', 'pip', 'autostart', 'pycheckers']
 
+ALL_AVAILABLE_SECTIONS = {
+    'bash', 'git', 'install', 'pip', 'autostart', 'pycheckers',
+    'doc', 'abelec', 'qt',
+}
+
 ###################
 ## EDIT POINT END #
 ###################
 
-# Setup logging
+### Setup logging
 logging.basicConfig(
     filename=join(expanduser('~'), 'bootstrap_log'),
     filemode='w',
     format='%(asctime)s: %(message)s',
-    datefmt='',
+    #datefmt='',
     level=logging.DEBUG,
 )
 my_formatter = logging.Formatter('%(asctime)s: %(message)s')
@@ -99,7 +100,7 @@ logging.getLogger('').addHandler(stream_handler)
 logging.debug('Use less -R to see the log with colors')
 
 
-# Functions
+### Functions
 def echo(text='', color=None):
     """Print with ansi color"""
     for line in text.split('\n'):
@@ -108,20 +109,42 @@ def echo(text='', color=None):
         logging.debug(line)
 
 
+# Coloring and logging
 echobad = partial(echo, color='1;31')
 echobold = partial(echo, color='1;37')
 echogood = partial(echo, color='1;32')
 echoblue = partial(echo, color='1;34')
 echoyellow = partial(echo, color='1;33')
 
+# Command line calls
 check_call = partial(subprocess.check_output, shell=True)
 call = partial(subprocess.call, shell=True)
 
-# Defaults
+
+### Defaults
 RESET_BASH = False
 
+
+def logged_call(command):
+    """Run a command at the command line and log the output"""
+    process = subprocess.Popen(command, shell=True,
+                               stdout=subprocess.PIPE)
+    while True:
+        line = process.stdout.readline()
+        if line:
+            logging.debug("| " + line.strip('\n'))
+        else:
+            break
+
+# Section functions
+
+def test():
+    """Test function"""
+    logged_call("python output.py")
+
+
 def bash():
-    """bash sections"""
+    """bash section"""
     echo()
     echobold("===> SETTING UP BASH")
 
@@ -129,6 +152,7 @@ def bash():
         # Check if PATH is already in .bashrc and in that case do nothing
         check_call('grep PATH ~/.bashrc > /dev/null')
         echobad("---> PATH already setup in .bashrc. NO MODIFICATION IS MADE")
+        status = [('Setup PATH', 'OK, already done')]
     except subprocess.CalledProcessError:
         echoblue("---> Modifying PATH and adding PYTHONPATH by editing .bashrc")
         echoblue("----> Making the following addition to .bashrc =============")
@@ -136,7 +160,7 @@ def bash():
         echoblue("----> ======================================================")
         with open(join(expanduser('~'), '.bashrc'), 'a') as file_:
             file_.write(BASHRC_ADDITION)
-
+        status = [('Setup PATH', 'OK')]
 
     echoblue("---> Writing bash aliasses to .bash_aliases")
     echoblue("----> Overwriting .bashrc_aliases with the following =======")
@@ -144,34 +168,50 @@ def bash():
     echoblue("----> ======================================================")
     with open(join(expanduser('~'), '.bash_aliases'), 'w') as file_:
         file_.write(BASH_ALIASES)
+    status.append(('Setup bash aliases', 'OK'))
 
+    # bash shoud be restarted after this
     global RESET_BASH
     RESET_BASH = True
+
+    echogood("+++++> DONE")
+    return status
+
+
+def git():
+    """git section"""
+    echo('')
+    echobold("===> SETTING UP GIT")
+    echoblue("---> Setting up git aliases")
+    return_code_sum = 0
+    aliases = (
+        ('ci', 'commit -v'),
+        ('pr', 'pull --rebase'),
+        ('lol', 'log --graph --decorate --pretty=oneline --abbrev-commit'),
+        ('ba', 'branch -a'),
+        ('st', 'status'),
+        ('cm', 'commit -m'),
+    )
+    for alias, full_command in aliases:
+        echoblue("{}={}".format(alias, full_command))
+        return_code_sum += call("git config --global alias.{} '{}'"\
+                                .format(alias, full_command))
+    if return_code_sum > 0:
+        status = [('git aliases', 'FAILED on {} aliases'.format(return_code_sum))]
+    else:
+        status = [('git aliases', 'OK')]
+        
+    echoblue("---> Make git use colors")
+    if call("git config --global color.ui true") == 0:
+        status.append(('setup git color', 'OK'))
+    else:
+        status.append(('setup git color', 'FAILED'))
     echogood("+++++> DONE")
 
+    return status
 
-## Git section
-#if [ $1 == "git" ] || [ $1 == "all" ];then
-#    echo
-#    echobold "===> SETTING UP GIT"
-#    echoblue "---> Setting up git aliases"
-#    echoblue "----> ci='commit -v'"
-#    git config --global alias.ci 'commit -v'
-#    echoblue "----> pr='pull --rebase'"
-#    git config --global alias.pr 'pull --rebase'
-#    echoblue "----> lol='log --graph --decorate --pretty=oneline --abbrev-commit'"
-#    git config --global alias.lol 'log --graph --decorate --pretty=oneline --abbrev-commit'
-#    echoblue "----> ba='branch -a'"
-#    git config --global alias.ba 'branch -a'
-#    echoblue "----> st='status'"
-#    git config --global alias.st 'status'
-#    echoblue "----> cm='commit -m'"
-#    git config --global alias.cm 'commit -m'
-#    echoblue "---> Make git use colors"
-#    git config --global color.ui true
-#    echogood "+++++> DONE"
-#fi
-#
+
+
 ## Install packages
 #if [ $1 == "install" ] || [ $1 == "all" ];then
 #    echo 
@@ -200,8 +240,6 @@ def bash():
 #    sudo apt-get -y install $apt1
 #    echoblue "----> Install: $apt2"
 #    sudo apt-get -y install $apt2
-#    echoblue "----> Install: $apt3"
-#    sudo apt-get -y install $apt3
 #    echoblue "---> Remove un-needed packages, if any"
 #    sudo apt-get -y autoremove
 #    echoblue "---> Clear apt cache"
@@ -406,7 +444,7 @@ def main():
     )
     args = parser.parse_args()
 
-    # Form the lits of sections to run
+    # Form the list of sections to run
     sections = []
     for section in args.section:
         if section == 'all':
@@ -417,9 +455,21 @@ def main():
     # Run the sections
     results = []
     for section in sections:
+        if section not in ALL_AVAILABLE_SECTIONS:
+            message = ('The sections "{}" is not the set of '
+                       'ALL_AVAILABLE_SECTIONS'.format(section))
+            logging.error('ERROR ' + message)
+            raise RuntimeError(message)
         function = globals()[section]
         results.append((section, function()))
 
-    print(results)
+    # Print out a summary
+    echo('\n######## SUMMARY ########')
+    for section, section_results in results:
+        echo()
+        echo("SECTION: " + section)
+        for section_result in section_results:
+            echo("{:.<20} {}".format(*section_result))
+    echo('\n######## SUMMARY END ####')
 
 main()
