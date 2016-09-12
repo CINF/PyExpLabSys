@@ -121,6 +121,32 @@ def get_logger(name, level='INFO', terminal_log=True, file_log=False,
     return logger
 
 
+def get_library_logger(name, level=None, terminal_log=True):
+    """Get a logger for a shared (library) component"""
+    # Get the root logger and set the level
+    logger = logging.getLogger(name)
+    if level:
+        log_level = getattr(logging, level.upper())
+        logger.setLevel(log_level)
+
+    handlers = []
+    # Form the handler(s) and set the level
+    if terminal_log:
+        stream_handler = logging.StreamHandler()
+        if level:
+            stream_handler.setLevel(log_level)
+        handlers.append(stream_handler)
+
+    # Add formatters to the handlers and add the handlers to the root_logger
+    formatter = logging.Formatter(
+        '%(asctime)s:%(name)s:\n-> %(levelname)s: %(message)s')
+    for handler in handlers:
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    return logger
+
+
 class CustomSMTPHandler(SMTPHandler):
     """PyExpLabSys modified SMTP handler"""
 
