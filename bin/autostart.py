@@ -21,6 +21,7 @@ CONFIG = """
 # the following two lines give a two-line status, with the current window highlighted
 hardstatus alwayslastline
 hardstatus string '%{= kG}[%{G}%H%? %1`%?%{g}][%= %{= kw}%-w%{+b yk} %n*%t%?(%u)%? %{-}%+w %=%{g}][%{B}%m/%d %{W}%C%A%{g}]'
+bind s split
 """
 # Look e.g. at https://gist.github.com/joaopizani/2718397 for more
 
