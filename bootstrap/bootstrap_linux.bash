@@ -17,18 +17,16 @@ apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3
 # pip, so it will be installed anyway
 apt2="python-pip python-mysqldb python3-pip"
 
-# apt install packages line 3, code checkers
-apt3="pylint"
-
 # packages to be installe by pip
-pippackages="minimalmodbus pyusb python-usbtmc pyserial"
-pip3packages="minimalmodbus pyusb python-usbtmc pyserial mysqlclient"
+pippackages="pylint minimalmodbus pyusb python-usbtmc pyserial"
+pip3packages="pylint minimalmodbus pyusb python-usbtmc pyserial mysqlclient"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
 bashrc_addition="
-export PATH=$PATH:$HOME/PyExpLabSys/bin
+export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin
 export PYTHONPATH=$HOME/PyExpLabSys
+stty -ixon
 "
 
 # These lines will be added to ~/.bash_aliases
@@ -107,9 +105,22 @@ if [ $1 == "bash" ] || [ $1 == "all" ];then
     echobold "===> SETTING UP BASH"
     grep PATH ~/.bashrc > /dev/null
     if [ $? -eq 0 ];then
-	echobad "---> PATH already setup in .bashrc. NO MODIFICATION IS MADE"
+	echogood "---> .bashrc. previously setup"
+	grep ".local.bin" ~/.bashrc > /dev/null
+	if [ $? -eq 0 ];then
+	    echogood "---> no update to PATH required"
+	else
+	    sed -i -e 's/.*PATH.*//g' $HOME/.bashrc
+	    echo "$bashrc_addition" >> ~/.bashrc
+	    echobad "---> Replacing old PATH setting with new one"
+	fi
+	grep "stty" ~/.bashrc > /dev/null
+	if [ $? -ne 0 ];then
+	    echo "stty -ixon" >> ~/.bashrc
+	    echogood "---> .bashrc missed 'stty -ixon line', added it"
+	fi
     else
-	echoblue "---> Modifying PATH and adding PYTHONPATH by editing .bashrc"
+	echoblue "---> Modifying .bashrc includes PATH and PYTHONPATH setup"
 	echoblue "----> Making the following addition to .bashrc ============="
 	echoyellow "$bashrc_addition"
 	echoblue "----> ======================================================"
@@ -175,8 +186,6 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     sudo apt-get -y install $apt1
     echoblue "----> Install: $apt2"
     sudo apt-get -y install $apt2
-    echoblue "----> Install: $apt3"
-    sudo apt-get -y install $apt3
     echoblue "---> Remove un-needed packages, if any"
     sudo apt-get -y autoremove
     echoblue "---> Clear apt cache"
@@ -192,7 +201,7 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP"
 	echoblue "---> $pippackages"
-	sudo pip install -U $pippackages
+	sudo pip install --user -U $pippackages
 	echogood "+++++> DONE"
     else
 	echobad "pip not installed, run install step and then re-try pip step"
@@ -204,7 +213,7 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
 	echoblue "---> $pip3packages"
-	sudo pip3 install -U $pip3packages
+	sudo pip3 install --user -U $pip3packages
 	echogood "+++++> DONE"
     else
 	echobad "pip3 not installed, run install step and then re-try pip step"
