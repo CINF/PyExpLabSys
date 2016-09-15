@@ -155,6 +155,8 @@ if [ $1 == "git" ] || [ $1 == "all" ];then
     git config --global alias.cm 'commit -m'
     echoblue "---> Make git use colors"
     git config --global color.ui true
+    echoblue "---> Set default push setting"
+    git config --global push.default matching
     echogood "+++++> DONE"
 fi
 
