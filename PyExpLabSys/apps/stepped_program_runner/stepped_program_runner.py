@@ -39,6 +39,11 @@ class SteppedProgramRunner(QWidget):
                  'This will ask the core program to stop if it "can_stop", wait for it \n'
                  'to do so and quit the main GUI \n'),
         'help': 'Display this help',
+        'edit': ('Edit the parameters for a single step. \n'
+                 'The format of the command is: \n'
+                 '    edit step_number field=value \n'
+                 'e.g: \n'
+                 '    edit 1 duration=3600'),
     }
 
     def __init__(self, core, window_title="Stepped Program Runner"):
@@ -49,13 +54,19 @@ class SteppedProgramRunner(QWidget):
         # Form completions and actions from core capabilities
         self.completions = []
         self.actions = []
-        for action in ('can_start', 'can_stop', 'can_edit_line'):
+        for action in ('can_start', 'can_stop', 'can_edit'):
             if action in self.core.capabilities:
                 self.completions.append(action.replace('can_', ''))
                 self.actions.append(action.replace('can_', ''))
         # We can always quit and help
         self.completions += ['quit', 'help']
         self.actions += ['quit', 'help']
+
+        # Add completion additions if available
+        try:
+            self.completions += self.core._completion_additions
+        except AttributeError:
+            pass
 
         #self.status_widgets = {}
         #self.status_formatters = {}
@@ -114,6 +125,8 @@ class SteppedProgramRunner(QWidget):
                     self.update_status(update_content)
                 elif update_type == 'message':
                     self.append_text(update_content, text_type='message')
+                elif update_type == 'error':
+                    self.append_text(update_content, text_type='error')
             except Queue.Empty:
                 break
         self.process_update_timer.start(100)
