@@ -364,8 +364,6 @@ class MyProgram(Thread):
             value = self.send_command(command)
             if command == 'read_set_voltage':
                 value = float(value.strip().split(' ')[1])
-            if command == 'read_current_limit':
-                value = float(value.strip().split(' ')[1])
 
             # Set/save it on the live_socket, database and in the GUI
             point = (self.status['elapsed_total'], value)
@@ -413,9 +411,7 @@ class MyProgram(Thread):
 
         # Set current limit
         self.send_command('set_current_limit', current_limit)
-        read_current_limit = float(
-            self.send_command('read_current_limit').strip().split(' ')[1]
-        )
+        read_current_limit = self.send_command('read_current_limit')
         if not isclose(read_current_limit, current_limit):
             raise RuntimeError('Unable to set current limit')
 
