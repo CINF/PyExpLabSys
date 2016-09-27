@@ -3,12 +3,14 @@
 from __future__ import print_function, unicode_literals, division
 
 # Import builtins
+import os
 import sys
 import socket
 import json
 from time import time, sleep
 from threading import Thread
 from functools import partial
+import subprocess
 from queue import Queue
 import argparse
 from pprint import pformat
@@ -55,6 +57,21 @@ def _send_command(output, command, arg=None):
     return json.loads(received[4:])
 
 
+def count_processes(process_search_string):
+    """Return the number of processes that contain process_search_string"""
+    # Hack found online to prevent Windows from opening a terminal
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    # Ask Windows about its processes
+    processes_bytes = subprocess.check_output(
+        'wmic process get processid,commandline',
+        startupinfo=startupinfo,
+    )
+    processes = processes_bytes.decode('utf-8', errors='ignore').split('\r\r\n')
+    processes = [process.strip().lower() for process in processes]
+    processes =  [p for p in processes if 'cmd.exe' not in p]
+    return len([p for p in processes if process_search_string in p])
+
 class PowerSupplyComException(Exception):
     pass
 
@@ -69,9 +86,9 @@ class MyProgram(Thread):
         self.channel_id = args.power_supply + args.output
 
         ### Required by the stepped program runner
-        # Accepted capabilities are: can_edit_line, can_play,
+        # Accepted capabilities are: can_edit, can_play,
         # can_stop, can_quit
-        self.capabilities = ('can_stop', 'can_start')
+        self.capabilities = ('can_stop', 'can_start', 'can_edit')
         # Status fields (in order)
         self.status_fields = (
             # Status
@@ -120,6 +137,14 @@ class MyProgram(Thread):
         self.say('Loaded with config:\n' + pformat(self.config))
         self.active_step = 0
         self.send_steps()
+        
+        # Add completions for the edits
+        self._completion_additions = []
+        for number, step in enumerate(self.steps):
+            base = 'edit {} '.format(number)
+            self._completion_additions.append(base)
+            for field in sorted(step.fields):
+                self._completion_additions.append('{}{}='.format(base, field))
 
         # Base for the status
         self.status = {'status_field': 'Initialized'}
@@ -165,6 +190,36 @@ class MyProgram(Thread):
             self.stop = True
         elif command == 'start':
             self.ok_to_start = True
+        elif command == 'edit':
+            # Parse the edit line, start by splitting up in step_num, field and value
+            try:
+                num_step, field_value = [arg.strip() for arg in args_str.split(' ')]
+                field, value = [arg.strip() for arg in field_value.split('=')]
+            except ValueError:
+                message = ('Bad edit command, must be on the form:\n'
+                           'edit step_num field=value')
+                self.say(message, message_type='error')
+                return
+
+            # Try to get the correct step
+            try:
+                step = self.steps[int(num_step)]
+            except (ValueError, IndexError):
+                message = 'Unable to convert step number {} to integer or nu such step '\
+                    'exists'
+                self.say(message.format(num_step), message_type='error')
+                return                
+
+            # Edit the value
+            try:
+                step.edit_value(field, value)
+            except (ValueError, AttributeError) as exception:
+                self.say(str(exception.args[0]), message_type='error')
+                return
+
+            # Finally send the new steps to the GUI
+            self.send_steps()
+                
 
     def send_status(self, update_dict=None):
         """Send the status to the GUI"""
@@ -178,9 +233,9 @@ class MyProgram(Thread):
                  for index, step in enumerate(self.steps)]
         self.message_queue.put(('steps', steps))
 
-    def say(self, text):
+    def say(self, text, message_type='message'):
         """Send a ordinary text message to the gui"""
-        self.message_queue.put(('message', text))
+        self.message_queue.put((message_type, text))
 
     def run(self):
         """The MAIN run method"""
@@ -189,6 +244,7 @@ class MyProgram(Thread):
             if self.stop:
                 self.send_status({'status_field': 'Stopping'})
                 self.power_supply_on_off(False)
+                self.stop_server_if_necessary()
                 self.send_status({'status_field': 'Stopped'})
                 return
             sleep(0.1)
@@ -201,7 +257,7 @@ class MyProgram(Thread):
         # (This is where most of the time is spent)
         self.main_measure()
 
-        # Shutdown powersupply and livesocket
+        # Shutdown powersupply, livesocket and possibly server
         self.send_status({'status_field': 'Stopping'})
         self.stop_everything()
         self.send_status({'status_field': 'Stopped'})
@@ -322,6 +378,22 @@ class MyProgram(Thread):
         self.power_supply_on_off(False) 
         self.live_socket.stop()
         self.data_set_saver.stop()
+        self.stop_server_if_necessary()
+
+    def stop_server_if_necessary(self):
+        """Stop the power supply server if no other instance needs it"""
+        # Check whether we should stop the power supply server
+        if count_processes('voltage_current_program') == 1:
+            LOG.debug('This is the last instance of the program running; stop stop '
+                      'the power supply server')
+            self.send_command('STOP')
+            while count_processes('power_supply_server') > 0:
+                sleep(0.1)
+                LOG.debug('power supply still running, wait 0.1 s')
+            LOG.debug('power supply server has stopped')
+        else:
+            LOG.debug('Still another instance of this program running, leave the power '
+                      'supply server alone')
 
     def power_supply_on_off(self, state, current_limit=0.0):
         """Set power supply on off"""
@@ -375,6 +447,24 @@ def main():
         email_on_warnings=False, email_on_errors=False,
     )
 
+    LOG.debug('psu count' + str(count_processes('power_supply_server')))
+    if count_processes('power_supply_server') == 0:
+        LOG.debug('No power supply server running. Start it.')
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        psu_path = os.path.join(dir_path, 'power_supply_server.py')
+        LOG.debug(psu_path)
+        subprocess.Popen(r'C:\Users\CINF\Anaconda3\python.exe ' + psu_path, shell=True)
+        sleep(0.1)
+        for n in range(20):
+            try:
+                # Check if the server is up
+                if _send_command("1", 'PING') == 'PONG':
+                    LOG.debug('Got PONG from server')
+                    break
+            except ConnectionResetError as exp:
+                LOG.debug('server not up yet' + str(exp), str(type(exp)))
+                sleep(0.1)
+
     # Init program
     my_program = MyProgram(args)
     my_program.start()
@@ -387,11 +477,12 @@ def main():
     SteppedProgramRunner(my_program)
     sys.exit(app.exec_())
 
+
 try:
     main()
 except Exception as exc:
     LOG.exception("Catched exception at the outer layer")
     if isinstance(exc, ConnectionResetError):
         LOG.info('Unable to connect to the power supply server. '
-                 'Did you rememver to start it?')
+                 'Did you remember to start it?')
     raise

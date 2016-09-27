@@ -9,6 +9,7 @@ from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.utilities import get_logger
 
 LOG = get_logger('H2O2 CPX Serv', level='debug')
+STOP_SERVER = False
 
 
 class CPXServer(object):
@@ -34,6 +35,16 @@ class CPXServer(object):
         """Call back function that will be called when a request is received"""
         print("##", kwargs)
         command = kwargs.get('command')
+
+        # Test if we asked it to stop
+        if command == 'STOP':
+            global STOP_SERVER
+            STOP_SERVER = True
+            return 'asked to stop'
+
+        if command == 'PING':
+            return 'PONG'
+
         if command not in self.accepted_commands:
             return 'ERROR: Invalid command: {}'.format(command)
 
@@ -56,14 +67,14 @@ class CPXServer(object):
             )
             return error
         else:
-            return out        
+            return out
 
 
 def main():
     cpx_server = CPXServer(device='COM4')
     cpx_server.dps.start()
     try:
-        while True:
+        while not STOP_SERVER:
             sleep(1)
     except KeyboardInterrupt:
         cpx_server.dps.stop()

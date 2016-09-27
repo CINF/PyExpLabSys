@@ -9,6 +9,8 @@ from yaml import load
 class ConstantStepBase(object):
     """A base step with time keeping a probe interval"""
 
+    fields = {'duration', 'probe_interval', 'voltage', 'max_current'}
+
     def __init__(self, duration, voltage, max_current, probe_interval):
         self.duration = duration
         self.probe_interval = probe_interval
@@ -17,8 +19,8 @@ class ConstantStepBase(object):
         self._elapsed = 0.0
         
         # Overwrite in baseclasses
-        self._voltage = voltage
-        self._max_current = max_current
+        self.voltage = voltage
+        self.max_current = max_current
 
     def start(self):
         """Start this step"""
@@ -43,13 +45,24 @@ class ConstantStepBase(object):
     def __str__(self):
         """Return the str representation"""
         return '{}(duration={}, voltage={}, max_current={}, probe_interval={})'.format(
-            self.__class__.__name__, self.duration, self._voltage, self._max_current, 
+            self.__class__.__name__, self.duration, self.voltage, self.max_current, 
             self.probe_interval,
         )
 
     def values(self):
         """Return voltage and max_current"""
-        return self._voltage, self._max_current
+        return self.voltage, self.max_current
+
+    def edit_value(self, name, value_str):
+        """Edit a value for this step"""
+        if name not in self.fields:
+            message = 'Unknown field {} for step type {}'
+            raise AttributeError(message.format(name, self.__class__.__name__))
+        try:
+            setattr(self, name, float(value_str))
+        except:
+            message = 'Unable to convert value "{}" for field {} to float'
+            raise ValueError(message.format(value_str, name))
 
 
 class ConstantVoltageStep(ConstantStepBase):
@@ -57,7 +70,7 @@ class ConstantVoltageStep(ConstantStepBase):
 
 
 class ConstantCurrentStep(ConstantStepBase):
-    """A constant voltage step"""
+    """A constant current step"""
 
 
 def parse_ramp(file_):
