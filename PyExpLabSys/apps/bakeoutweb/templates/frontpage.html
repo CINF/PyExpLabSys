@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>The Bakeout Box Webapp</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='frontpage.css') }}">
+  </head>
+  <body>
+    <div class="main">
+      <header><h1>Bakeout Box Webapp</h1></header>
+
+      <!-- Main controls -->
+      <table border="1">
+        {# table header #}
+        <tr>
+          <th></th>
+          {% for channel_number in range(1, 7) %}
+          <th>Channel {{ channel_number }}</th>
+          {% endfor %}
+        </tr>
+        {# table body #}
+        {% for id_prefix, title, element in row_elements %}
+        <tr>
+          <td>{{ title }}</td>
+          {% for channel_number in range(1, 7) %}
+          <td id="{{ id_prefix.format(channel_number) }}">{{ element.format(channel_number=channel_number)|safe }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </table>
+
+      <footer></footer>
+    </div>
+    <script>
+      var input_as_json = '{{ json_input|tojson }}';
+    </script>
+    <script src="{{ url_for('static', filename='frontpage.js') }}"></script>
+  </body>
+</html>
+
+

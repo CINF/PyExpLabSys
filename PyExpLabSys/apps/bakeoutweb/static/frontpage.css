@@ -1,0 +1,28 @@
+
+.main{
+    width: 95%;
+    background-color: #FFFFF0;
+}
+
+header {
+    background-color: #228B22;
+}
+
+header h1 {
+    padding:20px 0px 20px 20px;
+}
+
+footer {
+    height: 100px;
+    background-color: #228B22;
+}
+
+.circle {
+    width: 50px;
+    height: 50px;
+    -webkit-border-radius: 25px;
+    -moz-border-radius: 25px;
+    border-radius: 25px;
+    background: grey;
+    margin: 0 auto;    
+}
