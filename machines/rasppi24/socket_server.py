@@ -49,14 +49,16 @@ class FlowControl(threading.Thread):
                     self.reactor_pressure = flow
 
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRR44-if00-port0'
-devices = ['M13201551A',  'M11200362F', 'M8203814A', 'M8203814B', 'M11200362B', 'M11200362H']
+devices = ['M13201551A',  'M11200362F', 'M8203814A', 'M8203814B',
+           'M11200362B', 'M11213502A']
 ranges = {}
 ranges['M13201551A'] = 5 # Microreactor, pressure controller
 ranges['M11200362F'] = 1 # Microreactor, flow 2
 ranges['M8203814A'] = 10 # flow 5 (argon calibrated)
 ranges['M8203814B'] = 3 # Microreactor, flow 1 (argon calibrated)
 ranges['M11200362B'] = 10 # Palle Flow
-ranges['M11200362H'] = 2.5 # Palle pressure
+ranges['M11213502A'] = 2.5 # Palle pressure
+
 name = {}
 
 MFCs = {}
