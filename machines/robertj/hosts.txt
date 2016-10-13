@@ -31,7 +31,8 @@
  rasppi36,  Raspberry Pi, socket, &micro;-reactors, Pressure readout
  rasppi37,  Raspberry Pi, socket, &micro;-reactors, MKS MFCs
  rasppi39,  Raspberry Pi, ls,     PS, Mass Spec High pressure cell
- rasppi43,  Raspberry Pi, socket, VHP, Pressure and temperature
+ rasppi42,  Raspberry Pi, ls,     sniffer, Pressure controller - bronkhorst
+ rasppi43,  Raspberry Pi, socket, VHP, Pressure and temperature readout
  rasppi44,  Raspberry Pi, socket, &micro;-reactorNG, Valve Control box
  rasppi47,  Raspberry Pi, socket, Furnace Room, Temperature Control
  rasppi48,  Raspberry Pi, socket, Palle, Backeout Control
@@ -41,6 +42,7 @@
  rasppi52,  Raspberry Pi, socket, VHP, bakeout control
  rasppi53,  Raspberry Pi, socket, Palle, pressure readout
  rasppi54,  Raspberry Pi, socket, b307, Muffle furnace
+ rasppi55,  Raspberry Pi, socket, sniffer, Valve Control box
  rasppi56,  Raspberry Pi, ls,     sniffer, bakeout control
  rasppi57,  Raspberry Pi, ls,     Theta Probe, Chiller
  rasppi59,  Raspberry Pi, socket, STM312, Magic Box
@@ -50,6 +52,7 @@
  rasppi64,  Raspberry Pi, ls,     Chemlab b312, Picture Logbook
  rasppi65,  Raspberry Pi, socket, STM312, QMG420 test machine
  rasppi66,  Raspberry Pi, socket, Hall, Ventilation pressure + hall temperature
+ rasppi67,  Raspberry Pi, socket, VHP, Temperature control
  rasppi68,  Raspberry Pi, socket, TOF, Livesocket display
  rasppi70,  Raspberry Pi, socket, Chemlab b312, Temp + humidity
  rasppi71,  Raspberry Pi, ls,     Thetaprobe, Main chamber pressure
@@ -59,6 +62,7 @@
  rasppi103, Raspberry Pi, socket, Palle, Temperature control
  rasppi103, Raspberry Pi, 9001,   Palle, Temperature reader
  rasppi104, Raspberry Pi, socket, Chemlab b312, Sample storage
+ rasppi105, Raspberry Pi, socket, Palle, MKS + Brooks flow controllers
  rasppi106, Raspberry Pi, socket, b309 CVD, QCMs
  rasppi107, Raspberry Pi, socket, Sniffer, Pressure readout
  rasppi109, Raspberry Pi, ls,     TOF, Pressure
