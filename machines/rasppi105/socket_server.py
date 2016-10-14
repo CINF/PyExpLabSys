@@ -1,7 +1,6 @@
-# pylint: disable=R0913,W0142,C0103 
-
 import threading
 import time
+import PyExpLabSys.drivers.mks_g_series as mks
 import PyExpLabSys.drivers.brooks_s_protocol as brooks
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
@@ -12,7 +11,7 @@ class FlowControl(threading.Thread):
     def __init__(self, mfcs, pullsocket, pushsocket):
         threading.Thread.__init__(self)
         self.mfcs = mfcs
-        print mfcs
+        print(mfcs)
         self.pullsocket = pullsocket
         self.pushsocket = pushsocket
         self.running = True
@@ -21,7 +20,7 @@ class FlowControl(threading.Thread):
         while self.running:
             time.sleep(0.1)
             qsize = self.pushsocket.queue.qsize()
-            print qsize
+            print(qsize)
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 mfc = element.keys()[0]
@@ -33,26 +32,36 @@ class FlowControl(threading.Thread):
                 #print(mfc + ': ' + str(flow))
                 self.pullsocket.set_point_now(mfc, flow)
 
-port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWDN166-if00-port0'
-devices = ['3F2320902001', '3F2320901001']
-datasocket = DateDataPullSocket('palle_brooks_control',
-                                devices,
-                                timeouts=[3.0, 3.0],
-                                port=9001)
-datasocket.start()
+def main():
+    port_brooks = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWDN166-if00-port0'
+    port_mks = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G4YV-if00-port0'
+    devices = ['3F2320902001', '3F2320901001', '254']
+    datasocket = DateDataPullSocket('palle_mfc_control', devices,
+                                    timeouts=[3.0, 3.0, 3.0], port=9000)
+    datasocket.start()
 
-pushsocket = DataPushSocket('palle_brooks_push_control', action='enqueue')
-pushsocket.start()
+    pushsocket = DataPushSocket('palle_brooks_push_control', action='enqueue')
+    pushsocket.start()
 
-i = 0
-mfcs = {}
-for device in devices:
-    mfcs[device] = brooks.Brooks(device, port=port)
-    print mfcs[device].long_address
-    print mfcs[device].read_flow()
+    i = 0
+    mfcs = {}
+    for i in range(0, 2):
+        device = devices[i]
+        mfcs[device] = brooks.Brooks(device, port=port_brooks)
+        print(mfcs[device].long_address)
+        print(mfcs[device].read_flow())
 
-fc = FlowControl(mfcs, datasocket, pushsocket)
-fc.start()
+    for i in range(2, 3):
+        device = devices[i]
+        mfcs[devices[i]] = mks.Mks_G_Series(port=port_mks)
+        print(mfcs[device].read_serial_number())
+        print(mfcs[device].read_flow())
 
-while True:
-    time.sleep(0.2)
+    fc = FlowControl(mfcs, datasocket, pushsocket)
+    fc.start()
+
+    while fc.running:
+        time.sleep(1)
+
+if __name__ == '__main__':
+    main()
