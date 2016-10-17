@@ -53,13 +53,12 @@ class GasAlarmMonitor(object):
 
         # Each value is measured about every 5 sec, so sane interval about 2
         self.live_socket = LiveSocket(name='gas_alarm_312_live',
-                                      codenames=codenames,
-                                      sane_interval=2.0)
+                                      codenames=codenames)
         self.live_socket.start()
         LOGGER.info('Live socket started')
 
         # Start driver
-        self.vortex = Vortex('/dev/ttyUSB0', 1)
+        self.vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRKRA-if00-port0', 1)
         LOGGER.info('Vortex driver opened')
 
         # Init database connection
