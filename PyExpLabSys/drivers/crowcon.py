@@ -28,6 +28,8 @@ http://www.crowcon.com/
 
 """
 
+from __future__ import print_function
+
 from collections import namedtuple
 import minimalmodbus
 import logging
@@ -439,6 +441,17 @@ SYSTEM_STATUS = {
 
 
 if __name__ == '__main__':
-    vortex = Vortex('/dev/ttyUSB0', 1)
-    print vortex.get_system_status()
-    print vortex.get_system_power_status()
+    vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2)
+    print('Type         :', vortex.get_type())
+    print('System status:', vortex.get_system_status())
+    print('Power status :', vortex.get_system_power_status())
+    print('Serial number:', vortex.get_serial_number())
+    print('System name  :', vortex.get_system_name())
+    print()
+    print('Number of installed detectors      :', vortex.get_number_installed_detectors())
+    print('Number of installed digital outputs:', vortex.get_number_installed_digital_outputs())
+    print()
+    for detector_number in range(1, 9):
+        print('Detector', detector_number)
+        print(vortex.detector_configuration(detector_number))
+        print(vortex.get_detector_levels(detector_number), end='\n\n')
