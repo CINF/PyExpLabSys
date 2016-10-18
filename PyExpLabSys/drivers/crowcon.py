@@ -33,9 +33,13 @@ from __future__ import print_function
 from collections import namedtuple
 import minimalmodbus
 import logging
-LOGGER = logging.getLogger('vortex')
+LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
+
+
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 
 # These named tuples are used for multiple return values
@@ -71,8 +75,7 @@ class Vortex(minimalmodbus.Instrument):
         LOGGER.info(
             '__init__ called, serial device: {}, slave address: {}'.format(
                 serial_device, slave_address))
-        minimalmodbus.Instrument.__init__(self, serial_device,
-                                          slave_address)
+        minimalmodbus.Instrument.__init__(self, serial_device, slave_address)
         self.serial.baudrate = 9600
         self.serial.stopbits = 2
         self.serial.timeout = 2.0
@@ -441,6 +444,8 @@ SYSTEM_STATUS = {
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    logging.debug('Start')
     vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2)
     print('Type         :', vortex.get_type())
     print('System status:', vortex.get_system_status())
@@ -455,3 +460,4 @@ if __name__ == '__main__':
         print('Detector', detector_number)
         print(vortex.detector_configuration(detector_number))
         print(vortex.get_detector_levels(detector_number), end='\n\n')
+        break
