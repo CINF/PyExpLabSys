@@ -18,8 +18,8 @@ apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3
 apt2="python-pip python-mysqldb python3-pip"
 
 # packages to be installe by pip
-pippackages="pylint minimalmodbus pyusb python-usbtmc pyserial"
-pip3packages="pylint minimalmodbus pyusb python-usbtmc pyserial mysqlclient"
+pippackages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial"
+pip3packages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial mysqlclient"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
@@ -203,7 +203,7 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP"
 	echoblue "---> $pippackages"
-	sudo pip install --user -U $pippackages
+	pip install --user -U $pippackages
 	echogood "+++++> DONE"
     else
 	echobad "pip not installed, run install step and then re-try pip step"
@@ -215,7 +215,7 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
 	echoblue "---> $pip3packages"
-	sudo pip3 install --user -U $pip3packages
+	pip3 install --user -U $pip3packages
 	echogood "+++++> DONE"
     else
 	echobad "pip3 not installed, run install step and then re-try pip step"
