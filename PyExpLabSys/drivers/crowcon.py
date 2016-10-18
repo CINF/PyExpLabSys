@@ -31,7 +31,7 @@ http://www.crowcon.com/
 from __future__ import print_function
 
 from collections import namedtuple
-import minimalmodbus
+from minimalmodbus import Instrument, _numToTwoByteString, _twoByteStringToNum
 import logging
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -54,8 +54,29 @@ DetConfMap = namedtuple(  # pylint: disable=C0103
 DetLev = namedtuple('DetectorLevels', ['number', 'level', 'status', 'inhibit'])
 
 
+### Utility functions
+def register_to_bool(register):
+    """Convert a register value to a boolean
+
+    0 is considered False, 65535 True and remaining integer values are
+    invalid.
+
+    Args:
+        register (int): The register value
+
+    Returns:
+        bool: The boolean value
+    """
+    if register == 0:  # Hex value 0000
+        return False
+    elif register == 65535:  # Hex value FFFF
+        return True
+    else:
+        raise ValueError('Only 0 or 65535 can be converted to a boolean')
+
+
 # pylint: disable=R0904
-class Vortex(minimalmodbus.Instrument):
+class Vortex(Instrument):
     """Driver for the Vortex gas alarm central
 
     .. note:: In the manual the register numbers are 1-based, but when sent
@@ -72,10 +93,9 @@ class Vortex(minimalmodbus.Instrument):
 
     def __init__(self, serial_device, slave_address, debug=False, cache=True):
         """Initialize the driver"""
-        LOGGER.info(
-            '__init__ called, serial device: {}, slave address: {}'.format(
-                serial_device, slave_address))
-        minimalmodbus.Instrument.__init__(self, serial_device, slave_address)
+        LOGGER.info('__init__ called, serial device: %s, slave address: %s',
+                    serial_device, slave_address)
+        Instrument.__init__(self, serial_device, slave_address)
         self.serial.baudrate = 9600
         self.serial.stopbits = 2
         self.serial.timeout = 2.0
@@ -105,16 +125,18 @@ class Vortex(minimalmodbus.Instrument):
         Returns:
             bool: The boolean value
         """
-        LOGGER.debug('read_bool at register {}'.format(register))
-        integer = self.read_register(register)
-        if integer == 0:  # Hex value 0000
-            LOGGER.debug('read_bool False')
-            return False
-        elif integer == 65535:  # Hex value FFFF
-            LOGGER.debug('read_bool True')
-            return True
-        else:
-            raise ValueError('Only 0 or 65535 can be converted to a boolean')
+        LOGGER.debug('read_bool at register %s', register)
+        boolean = register_to_bool(self.read_register(register))
+        LOGGER.debug('read_bool %s', boolean)
+        return boolean
+
+    def _check_detector_number(self, detector_number):
+        """Check for a valid detector number"""
+        num_detectors = self.get_number_installed_detectors()
+        if detector_number not in range(1, num_detectors + 1):
+            message = 'Only detector numbers 1-{} are valid'
+                .format(num_detectors)
+            raise ValueError(message)
 
     # System commands, manual section 4.5.1
     def get_type(self):
@@ -133,7 +155,7 @@ class Vortex(minimalmodbus.Instrument):
 
         Returns:
             list: ['All OK'] if no status bits (section 5.1.1 in the manual)
-                has been set, otherwise one stringfor each of the status bits
+                has been set, otherwise one string for each of the status bits
                 that was set.
         """
         LOGGER.info('get_system_status called')
@@ -237,12 +259,7 @@ class Vortex(minimalmodbus.Instrument):
         """
         LOGGER.info('detector_configuration called for detector: {}'
                     .format(detector_number))
-        # Check for valid detector number
-        num_detectors = self.get_number_installed_detectors()
-        if detector_number not in range(1, num_detectors + 1):
-            message = 'Only detector numbers 1-{} are valid'\
-                .format(num_detectors)
-            raise ValueError(message)
+        self._check_detector_number(detector_number)
 
         # Return cached value if cache is True and it has been cached
         if self.cache and detector_number in self.channel_conf:
@@ -327,12 +344,7 @@ class Vortex(minimalmodbus.Instrument):
         """
         LOGGER.debug('get_detector_levels called for detector: {}'
                      .format(detector_number))
-        # Check for valid detector number
-        num_detectors = self.get_number_installed_detectors()
-        if detector_number not in range(1, num_detectors + 1):
-            message = 'Only detector numbers 1-{} are valid'\
-                .format(num_detectors)
-            raise ValueError(message)
+        self._check_detector_number(detector_number)
 
         # The registers for the detectors are shfited by 10 for each
         # register and the register numbers below are for detector 1
@@ -501,10 +513,16 @@ SYSTEM_STATUS = {
 }
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    logging.debug('Start')
+def main():
+    """Main function, used to simple functional test"""
+    from pprint import pprint
+    from time import time
+
+    #logging.basicConfig(level=logging.DEBUG)
+    #logging.debug('Start')
+
     vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2)
+    
     print('Type         :', vortex.get_type())
     print('System status:', vortex.get_system_status())
     print('Power status :', vortex.get_system_power_status())
@@ -518,4 +536,16 @@ if __name__ == '__main__':
         print('Detector', detector_number)
         print(vortex.detector_configuration(detector_number))
         print(vortex.get_detector_levels(detector_number), end='\n\n')
-        break
+
+    print('get_multiple_detector_levels')
+    t0 = time()
+    while True:
+        levels = vortex.get_multiple_detector_levels(list(range(1, 8)))
+        pprint(levels)
+        now = time()
+        print('Time to read 8 detectors', now - t0)
+        t0 = now
+
+
+if __name__ == '__main__':
+    main()
