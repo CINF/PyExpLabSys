@@ -361,6 +361,64 @@ class Vortex(minimalmodbus.Instrument):
         return detector_levels
 
 
+    def get_multiple_detector_levels(self, detector_numbers):
+        """Get the levels for multiple detectors in one communication call
+
+        Args:
+            detector_numbers (sequence): Sequence of integer detector numbers
+                (remember they are 1 based)
+
+        .. warning::
+           This method uses "hidden" functions in the minimal modbus module for
+           value conversion. As they are hidden, they are not guarantied to
+           preserve their interface, which means that this method may break at
+           any time
+
+        """
+        # Check for valid detector numbers
+        for detector_number in detector_numbers:
+            self._check_detector_number(detector_number)
+
+        # We read 10 registers per detector
+        # FIXME. This may exceed the maximum number of registers that can be read
+        data = self.read_registers(2999, len(detector_numbers) * 10)
+
+        detector_levels = {}
+        for detector_number in detector_numbers:
+            # Calculate the register shift for this detector. There are 10
+            # registers per detector, in order.
+            reg_shift = 10 * (detector_number - 1)
+
+            # Get the range and read the level
+            detector_range = self.detector_configuration(detector_number).range
+            # The level is the 0th register
+            level_register = data[reg_shift]
+            bytestring = _numToTwoByteString(level_register)
+            level = _twoByteStringToNum(bytestring, numberOfDecimals=3,
+                                        signed=True) * detector_range
+
+            # Status is the 1st register (0-based)
+            status = data[1 + reg_shift]
+            status_out = []
+            if status == 0:
+                status_out.append('OK')
+            else:
+                # Format the number into bitstring and reverse it with [::-1]
+                bit_string = '{:016b}'.format(status)[::-1]
+                for key, value in DETECTOR_STATUS.items():
+                    if bit_string[key] == '1':
+                        status_out.append(value)
+
+            # inhibit is the 4th register (0-based)
+            inhibited_register = data[4 + reg_shift]
+            inhibited = register_to_bool(inhibited_register)
+
+            detector_level = DetLev(detector_number, level, status_out, inhibited)
+            detector_levels[detector_number] = detector_level
+
+        return detector_levels
+
+
 # System power status translations, section 4.5.1
 SYSTEM_POWER_STATUS = {
     0: 'OK',
