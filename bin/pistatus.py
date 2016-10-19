@@ -105,7 +105,7 @@ def machine_status():
         framed(line)
 
     # Has autostart
-    if isfile(join(MACHINE_DIR, 'AUTOSTART.xml')):
+    if MACHINE_DIR and isfile(join(MACHINE_DIR, 'AUTOSTART.xml')):
         value_pair('Has autostart', YES)
     else:
         value_pair('Has autostart', 'NO')
@@ -142,7 +142,7 @@ def git():
     framed(bold('==='))
 
     # date of last commit
-    last_commit = check_output('git log --date=iso -n 1 --pretty=format:"%ad"',
+    last_commit = check_output('git -C $HOME/PyExpLabSys log --date=iso -n 1 --pretty=format:"%ad"',
                                shell=True).decode('utf-8')
     value_pair('Last commit', last_commit)
 
