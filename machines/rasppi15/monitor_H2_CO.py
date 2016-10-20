@@ -9,15 +9,21 @@ For the status logs:
 
 import time
 import json
-from pprint import pprint
+import sys
 
 import credentials
 from PyExpLabSys.drivers.crowcon import Vortex
-from PyExpLabSys.common.loggers import ContinuousLogger
+#from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
+#from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 LOGGER = get_logger('b312gasalarm', level='debug')
 import MySQLdb
+
+# Python 3 check
+if sys.version_info.major < 3:
+    raise RuntimeError('Run with Python 3')
 
 # Gas alarm configuration to codename translation
 CONF_TO_NAME = {
@@ -41,17 +47,17 @@ class GasAlarmMonitor(object):
 
     def __init__(self):
         # Start logger
-        codenames = CONF_TO_NAME.values()
-        self.db_logger = ContinuousLogger(
-            table='dateplots_b312gasalarm',
+        codenames = list(CONF_TO_NAME.values())
+        self.db_saver = ContinuousDataSaver(
+            continuous_data_table='dateplots_b312gasalarm',
             username=credentials.USERNAME,
             password=credentials.PASSWORD,
-            measurement_codenames=codenames
+            measurement_codenames=codenames,
         )
-        self.db_logger.start()
+        self.db_saver.start()
         LOGGER.info('Logger started')
 
-        # Each value is measured about every 5 sec, so sane interval about 2
+        # Init live socket
         self.live_socket = LiveSocket(name='gas_alarm_312_live',
                                       codenames=codenames)
         self.live_socket.start()
@@ -74,7 +80,6 @@ class GasAlarmMonitor(object):
         self.detector_numbers = range(1, self.vortex.get_number_installed_detectors() + 1)
         self.detector_info = {detector_num: self.vortex.detector_configuration(detector_num)
                               for detector_num in self.detector_numbers}
-        pprint(self.detector_info)
         # trip_levels are the differences that are required to force a log
         # The levels are set to 2 * the communication resolution
         # (1000 values / full range)
@@ -104,7 +109,7 @@ class GasAlarmMonitor(object):
 
     def close(self):
         """Close the logger and the connection to the Vortex"""
-        self.db_logger.stop()
+        self.db_saver.stop()
         LOGGER.info('Logger stopped')
         self.live_socket.stop()
         LOGGER.info('Live socket stopped')
@@ -143,7 +148,6 @@ class GasAlarmMonitor(object):
         now = time.time()
         # Always send to live socket
         self.live_socket.set_point_now(codename, levels.level)
-        print detector_num, codename, levels.level
         # Force log every 10 m
         time_condition = now - self.detector_levels_last_times[detector_num] > 600
         value_condition = abs(self.detector_levels_last_values[detector_num] - levels.level)\
@@ -151,7 +155,7 @@ class GasAlarmMonitor(object):
         if time_condition or value_condition:
             LOGGER.debug('Send level to db trigged in time: {} or value: '
                          '{}'.format(time_condition, value_condition))
-            self.db_logger.enqueue_point(codename, (now, levels.level))
+            self.db_saver.save_point(codename, (now, levels.level))
             # Update last values
             self.detector_levels_last_values[detector_num] = levels.level
             self.detector_levels_last_times[detector_num] = now
@@ -165,10 +169,8 @@ class GasAlarmMonitor(object):
         now = time.time()
         # Force log every 24 hours
         time_condition = now - self.detector_status_last_times[detector_num] > 86400
-        status = {'inhibit': levels.inhibit, 'status': levels.status,
-                  'codename': conf.identity}
+        status = {'inhibit': levels.inhibit, 'status': levels.status, 'codename': conf.identity}
         value_condition = (status != self.detector_status_last_values[detector_num])
-        print detector_num, status
 
         # Check if we should log
         if time_condition or value_condition:
@@ -190,7 +192,6 @@ class GasAlarmMonitor(object):
     def log_central_unit(self):
         """Log the status of the central unit"""
         power_status = self.vortex.get_system_power_status().value
-        print "power status", power_status
         now = time.time()
         # Force a log once per 24 hours
         time_condition = now - self.central_power_status_last_time > 86400
@@ -217,7 +218,6 @@ class GasAlarmMonitor(object):
     def log_central_unit_generel(self):
         """Log the generel status from the central"""
         generel_status = self.vortex.get_system_status()
-        print "general status", generel_status
         now = time.time()
         # Force a log once per 24 hours
         time_condition = now - self.central_status_last_time > 86400
