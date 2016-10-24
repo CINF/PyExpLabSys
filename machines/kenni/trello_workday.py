@@ -34,7 +34,7 @@ def organize_comments(actions):
 def time_line_to_float(line):
     """Return time as float from time line"""
     line = line.lower().replace('estimate', '').replace('spent', '').lstrip(': ')
-    hours, minutes = [c.strip(' mh') for c in line.split(':')]
+    hours, minutes = [c.strip(' mh') for c in line.split(':')]    
     return float(hours) + float(minutes) / 60
 
 
@@ -116,6 +116,7 @@ def get_board_status():
     floormanagers = {"4f6218048dda41741ca9a15f", "5413dab58ec329d97290155f"}
     scores = Counter()
     for card in board['cards']:
+        print("CARD", card['name'])
         list_title = list_id_to_title[card['idList']]
         if list_title == 'Done':
             ids = [id_ for id_ in card['idMembers'] if id_ not in floormanagers]
@@ -198,7 +199,7 @@ def main():
                 highscore_str += '\n{{: <{}}}: {{:.2f}}'.format(largest_name).format(name, value)
 
             # Total work 80 and 10 people
-            total_work = 80
+            total_work = 66.33
             estimate = max(total_work - since_9am() * 10, 0)
             batch = {
                 'work_estimate': estimate,
