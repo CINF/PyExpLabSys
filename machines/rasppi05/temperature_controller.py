@@ -17,8 +17,8 @@ PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
-LOGGER = get_logger('Microreactor Temperature control', level='WARN', file_log=True,
-                    file_name='temp_control.log', terminal_log=False)
+LOGGER = get_logger('Microreactor Temperature control', level='ERROR', file_log=True,
+                    file_name='temp_control.log', terminal_log=False, email_on_warnings=False)
 
 class CursesTui(threading.Thread):
     """ Text user interface for furnace heating control """
@@ -139,7 +139,10 @@ class PowerCalculatorClass(threading.Thread):
         self.values['power'] = 0
         self.values['setpoint'] = -1
         self.values['temperature'] = None
-        self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        #RTD SETTINGS
+        #self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        #TC SETTINGS
+        self.pid = PID.PID(pid_p=0.1, pid_i=0.01, p_max=54)
         self.update_setpoint(self.values['setpoint'])
         self.quit = False
         self.ramp = None
@@ -183,6 +186,8 @@ class PowerCalculatorClass(threading.Thread):
         start_time = 0
         sp_updatetime = 0
         ramp_updatetime = 0
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(1)
         while not self.quit:
             self.values['temperature'] = self.value_reader.value()
             self.pullsocket.set_point_now('temperature', self.values['temperature'])
@@ -191,14 +196,18 @@ class PowerCalculatorClass(threading.Thread):
             #We replace RTD value with TC value, but keep all other code
             #unchanged. In this way, we will regulate by the thermocouple, but
             #all logging of RTD data will stay unchanged
-            self.values['voltage'] = self.pid.wanted_power(self.values['temperature'])
-            #network_adress = 'rasppi12'
-            #command = 'microreactorng_temp_sample#raw'.encode()
-            #sock.sendto(command, (network_adress, 9000))
-            #received = sock.recv(1024)
-            #received = received.decode('ascii')
-            #temperature = float(received[received.find(',') + 1:])
-            #self.values['voltage'] = self.pid.wanted_power(temperature)
+            #self.values['voltage'] = self.pid.wanted_power(self.values['temperature'])
+            network_adress = 'rasppi12'
+            command = 'microreactorng_temp_sample#raw'.encode()
+            sock.sendto(command, (network_adress, 9000))
+            received = sock.recv(1024)
+            received = received.decode('ascii')
+            try:
+                temperature = float(received[received.find(',') + 1:])
+            except ValueError:
+                LOGGER.error('Old data from tc')
+            LOGGER.warn('Temperature: ' + str(temperature))
+            self.values['voltage'] = self.pid.wanted_power(temperature)
 
             #  Handle the setpoint from the network
             try:
