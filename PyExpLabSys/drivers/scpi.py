@@ -60,6 +60,7 @@ class SCPI(object):
             self.f.write(command_text.encode('ascii'))
             if (command.find('?') > -1) or (expect_return is True):
                 return_string = self.f.read_until(chr(10).encode('ascii'), 2).decode()
+            LOGGER.info('Return string length: ' + str(len(return_string)))
             #time.sleep(0.025)
             LOGGER.info('lan_time for coomand ' + command_text.strip() +
                         ': ' + str(time.time() - lan_time))
