@@ -4,7 +4,7 @@
 import threading
 import time
 import logging
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.value_logger import ValueLogger
@@ -88,15 +88,15 @@ livesocket = LiveSocket(unichr(0x03BC) + '-reactors temperatures', codenames)
 livesocket.start()
 
 db_logger = {} 
-db_logger[codenames[0]] = ContinuousLogger(table='dateplots_microreactorNG',
-                                 username=credentials.user_new,
-                                 password=credentials.passwd_new,
-                                 measurement_codenames=codenames)
+db_logger[codenames[0]] = ContinuousDataSaver(continuous_data_table='dateplots_microreactorNG',
+                                              username=credentials.user_new,
+                                              password=credentials.passwd_new,
+                                              measurement_codenames=codenames)
 
-db_logger[codenames[1]] = ContinuousLogger(table='dateplots_microreactor',
-                                 username=credentials.user_old,
-                                 password=credentials.passwd_old,
-                                 measurement_codenames=codenames)
+db_logger[codenames[1]] = ContinuousDataSaver(continuous_data_table='dateplots_microreactor',
+                                              username=credentials.user_old,
+                                              password=credentials.passwd_old,
+                                              measurement_codenames=codenames)
 db_logger[codenames[0]].start()
 db_logger[codenames[1]].start()
 
@@ -108,5 +108,5 @@ while ng_measurement.isAlive():
         livesocket.set_point_now(name, v)
         if loggers[name].read_trigged():
             print v
-            db_logger[name].enqueue_point_now(name, v)
+            db_logger[name].save_point_now(name, v)
             loggers[name].clear_trigged()
