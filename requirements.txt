@@ -1,4 +1,4 @@
-mysql-python
+numpy
 pyserial
-sphinxcontrib-napoleon
-mock
+minimalmodbus==0.6
+mysql-python
