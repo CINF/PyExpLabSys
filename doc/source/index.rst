@@ -18,6 +18,7 @@ Contents:
    :maxdepth: 2
 
    overview
+   user_notes
    common
    file-parsers
    drivers
