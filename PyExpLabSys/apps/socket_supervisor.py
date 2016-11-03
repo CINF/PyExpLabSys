@@ -7,7 +7,8 @@ import socket
 import sys
 sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
-
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 LOGGER = get_logger('Socket Supervisor')
 
 class SocketSupervisor(threading.Thread):
@@ -17,9 +18,6 @@ class SocketSupervisor(threading.Thread):
         self.quit = False
         self.ports = settings.ports
         self.setup = settings.setup
-        print self.ports
-        print len(self.ports)
-        print [str(port) for port in self.ports]
         self.pullsocket = DateDataPullSocket(self.setup + '-socket supervisor',
                                              [str(port) for port in self.ports],
                                              timeouts=len(self.ports)*[5])
