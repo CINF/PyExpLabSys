@@ -18,7 +18,7 @@ apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3
 apt2="python-pip python-mysqldb python3-pip"
 
 # packages to be installe by pip
-pippackages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial"
+pippackages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial chainmap"
 pip3packages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial mysqlclient"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
@@ -57,10 +57,12 @@ git         Add common git aliases
 install     Install commonly used packages e.g openssh-server
 pip         Install extra Python packages with pip
 autostart   Setup autostart cronjob
+settings    Link in the PyExpLabSys settings file
 pycheckers  Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
 all         All of the above
+
 doc         Install extra packages needed for writing docs (NOT part of all)
 abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
 qt          Setup GUI environment: Qt and Qwt (for plots)
@@ -260,6 +262,22 @@ if [ $1 == "autostart" ] || [ $1 == "all" ];then
 $cronline"
         crontab -l | { cat; echo -e $cronlines; } | crontab -
         echoblue "Had no cronjobs. Installed with standard header."
+    fi
+    echogood "+++++> DONE"
+fi
+
+
+# Setup autostart cronjob
+if [ $1 == "settings" ] || [ $1 == "all" ];then
+    echobold "===> LINKING PYEXPLABSYS SETTINGS FILE IN PLACE"
+    if [ -f ~/.config/PyExpLabSys/user_settings.yaml ];then
+        echogood "Settings file already linked in"
+    else
+        echoblue "---> Make ~/.config/PyExpLabSys dir"
+        mkdir -p ~/.config/PyExpLabSys
+        echoblue "---> Link settings into dir:"
+        echoblue "---> ~/PyExpLabSys/bootstrap/user_settings.yaml into ~/.config/PyExpLabSys/"
+        ln -s ~/PyExpLabSys/bootstrap/user_settings.yaml ~/.config/PyExpLabSys/user_settings.yaml
     fi
     echogood "+++++> DONE"
 fi

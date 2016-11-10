@@ -1,0 +1,10 @@
+# PyExpLabSys settings defaults
+
+# Common
+common_sql_reader_user: 'cinf_reader'
+common_sql_reader_password: 'cinf_reader'
+
+# PyExpLabSys.common.utilities settings
+util_log_warning_email: 'FYS-list-CINF-FM@fysik.dtu.dk'
+util_log_error_email: 'FYS-list-CINF-FM@fysik.dtu.dk'
+util_log_mail_host: 'FYS-list-CINF-FM@fysik.dtu.dk'
