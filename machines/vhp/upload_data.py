@@ -28,13 +28,35 @@ already_uploaded = data_set_saver.get_unique_values_from_measurements('relative_
 print('Fetched relative paths for {} known sequences'.format(len(already_uploaded)))
 
 # This is the measurement path, should be generated somehow
-basefolder = '/home/cinf/Desktop/Shared_folder'
+basefolder = '/home/cinf/o/FYSIK/list-SurfCat/setups/vhp-setup'
 sequence_identifyer = 'sequence.acaml'
 
-for root, dirs, files in os.walk(basefolder):
+# Find the active month
+newest = None
+highest_value = 0
+for dir_ in os.listdir(basefolder):
+    dir_split = dir_.split(' ')
+    if len(dir_split) != 2:
+        continue
+    try:
+        month, year = [int(component) for component in dir_split]
+    except ValueError:
+        continue
+    value = year * 100 + month
+    if value > highest_value:
+        newest = dir_
+        highest_value = value
+
+if newest is None:
+    raise RuntimeError('Unable to find month folder')
+
+print('Found newest folder: "{}" in basefolder'.format(newest))
+
+for root, dirs, files in os.walk(os.path.join(basefolder, newest)):
     if sequence_identifyer in files:
         # Check if file is known
         relative_path = root.replace(basefolder, '').strip(os.sep)
+        print(relative_path)
         if relative_path in already_uploaded:
             continue
 
