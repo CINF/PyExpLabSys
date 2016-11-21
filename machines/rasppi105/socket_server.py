@@ -1,6 +1,5 @@
 import threading
 import time
-import PyExpLabSys.drivers.mks_g_series as mks
 import PyExpLabSys.drivers.brooks_s_protocol as brooks
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
@@ -34,10 +33,9 @@ class FlowControl(threading.Thread):
 
 def main():
     port_brooks = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWDN166-if00-port0'
-    port_mks = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G4YV-if00-port0'
-    devices = ['3F2320902001', '3F2320901001', '254']
+    devices = ['3F2320902001', '3F2320901001']
     datasocket = DateDataPullSocket('palle_mfc_control', devices,
-                                    timeouts=[3.0, 3.0, 3.0], port=9000)
+                                    timeouts=[3.0, 3.0], port=9000)
     datasocket.start()
 
     pushsocket = DataPushSocket('palle_brooks_push_control', action='enqueue')
@@ -51,17 +49,17 @@ def main():
         print(mfcs[device].long_address)
         print(mfcs[device].read_flow())
 
-    for i in range(2, 3):
-        device = devices[i]
-        mfcs[devices[i]] = mks.Mks_G_Series(port=port_mks)
-        print(mfcs[device].read_serial_number())
-        print(mfcs[device].read_flow())
-
     fc = FlowControl(mfcs, datasocket, pushsocket)
     fc.start()
 
     while fc.running:
-        time.sleep(1)
+        try:
+            time.sleep(1)
+        except KeyboardInterrupt:
+            fc.running = False
+            print('stopping, waiting for 2 sek')
+            time.sleep(2)
+    print('stopped')
 
 if __name__ == '__main__':
     main()
