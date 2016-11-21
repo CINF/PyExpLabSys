@@ -1,9 +1,15 @@
 # pylint: disable=too-many-ancestors
 
-"""Complete serial driver for the Tenma 72-2535 and 72-2550 power supplies
+"""Complete serial driver for the Tenma 72-2535, *72-2540, *72-2545, *72-2550, 72-2930 and
+*72-2940 (see details below)
+
+ .. note:: * The driver has not been tested on the models with a *. However, the two
+    models that has been tested, seems like are built from the same template, so there is
+    a very high probability that the generic :class:`.TenmaBase` driver will work with
+    those as well.
 
 Implemented according to "Series Protocol V2.0 of Remote Control" (referred to in inline
-comments as the spec). FIXME add download links.
+comments as the spec) which can be downloaded from the link below.
 
 Manual and specification can be downloaded from here: `https://www.element14.com/community/
 docs/DOC-75108/l/protocol-information-for-tenma-72-2550-and-tenma-72-2535-qa-window-
@@ -29,8 +35,16 @@ LOG = logging.getLogger(__name__)
 LOG.addHandler(logging.NullHandler())
 
 
-class Tenma722535And722550(Serial):
-    """Serial driver for the Tenma 72-2535 and 72-2550 power supplies"""
+class TenmaBase(Serial):
+    """Serial driver for the Tenma 72-2535, *72-2540, *72-2545, *72-2550, 72-2930 and *72-2940
+    power supplies
+
+    .. note:: * The driver has not been tested on the models with a *. However, the two
+       models that has been tested, seems like are built from the same template, so there
+       is a very high probability that the generic :class:`.TenmaBase` driver will work
+       with those as well.
+
+    """
 
     def __init__(self, device, sleep_after_command=0.1):
         """Initialize driver
@@ -43,7 +57,7 @@ class Tenma722535And722550(Serial):
         """
         LOG.info('%s init on device: %s, sleep_after_command=%s', self.__class__.__name__,
                  device, sleep_after_command)
-        super(Tenma722535And722550, self).__init__(device)
+        super(TenmaBase, self).__init__(device)
         self.sleep_after_command = sleep_after_command
 
     def com(self, command, decode_reply=True):
@@ -256,12 +270,16 @@ class Tenma722535And722550(Serial):
         self.com('OVP' + ('1' if on_off else '0'))
 
 
-class Tenma722535(Tenma722535And722550):
+class Tenma722535(TenmaBase):
     """Driver for the Tenma 72-2535 power supply"""
 
 
-class Tenma722550(Tenma722535And722550):
+class Tenma722550(TenmaBase):
     """Driver for the Tenma 72-2550 power supply"""
+
+
+class Tenma722930(TenmaBase):
+    """Driver for the Tenma 72-2930 power supply"""
 
 
 def main():
