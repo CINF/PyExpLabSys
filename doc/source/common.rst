@@ -17,5 +17,6 @@ of the other categories like ``drivers`` and ``parsers``.
     common/sockets.rst
     common/utilities.rst
     combos.rst
+    settings.rst
 
     

@@ -1,5 +1,18 @@
 """This module contains a convenience function for easily setting up a
 logger with the :py:mod:`logging` module.
+
+This module uses the following settings from the :class:`.Settings` class:
+
+ * util_log_warning_email
+ * util_log_error_email
+ * util_log_mail_host
+ * util_log_max_emails_per_period (defaults to 5)
+ * util_log_email_throttle_time (defaults to 86400s = 1day)
+ * util_log_backlog_limit (defaults to 250)
+
+ .. note:: All of these settings are at present read from the settings module at import
+    time, so if it is desired to modify them at run time, it should be done before import
+
 """
 
 from __future__ import unicode_literals, print_function
@@ -12,32 +25,36 @@ import platform
 import time
 from collections import deque
 
+from ..settings import Settings
+
+#: The :class:`.Settings` object used in this module
+SETTINGS = Settings()
 
 #: The email list warning emails are sent to
-WARNING_EMAIL = 'FYS-list-CINF-FM@fysik.dtu.dk'
+WARNING_EMAIL = SETTINGS.util_log_warning_email
 #: The email list error emails are sent to
-ERROR_EMAIL = 'FYS-list-CINF-FM@fysik.dtu.dk'
+ERROR_EMAIL = SETTINGS.util_log_error_email
 #: The email host used to send emails on logged warnings and errors
-MAIL_HOST = 'mail.fysik.dtu.dk'
+MAIL_HOST = SETTINGS.util_log_mail_host
 
 # Limit emails to 5 of each kind per day, but send blocked emails along with
 # the next allowed email
 #: The maximum number of emails the logger will send in
 #: :data:`.EMAIL_THROTTLE_TIME`
-MAX_EMAILS_PER_PERIOD = 5
+MAX_EMAILS_PER_PERIOD = SETTINGS.util_log_max_emails_per_period
 EMAIL_TIMES = {
-    logging.WARNING:
-    deque([0] * MAX_EMAILS_PER_PERIOD, maxlen=MAX_EMAILS_PER_PERIOD),
-    logging.ERROR:
-    deque([0] * MAX_EMAILS_PER_PERIOD, maxlen=MAX_EMAILS_PER_PERIOD)
+    logging.WARNING: deque([0] * MAX_EMAILS_PER_PERIOD, maxlen=MAX_EMAILS_PER_PERIOD),
+    logging.ERROR: deque([0] * MAX_EMAILS_PER_PERIOD, maxlen=MAX_EMAILS_PER_PERIOD)
 }
 #: The time period that the numbers of emails will be limited within
-EMAIL_THROTTLE_TIME = 24 * 60 * 60
+EMAIL_THROTTLE_TIME = SETTINGS.util_log_email_throttle_time
 #: The maximum number of messages in the email backlog that will be sent when
 #: the next email is let through
-EMAIL_BACKLOG_LIMIT = 250
-EMAIL_BACKLOG = {logging.WARNING: deque(maxlen=EMAIL_BACKLOG_LIMIT),
-                 logging.ERROR: deque(maxlen=EMAIL_BACKLOG_LIMIT)}
+EMAIL_BACKLOG_LIMIT = SETTINGS.util_log_backlog_limit
+EMAIL_BACKLOG = {
+    logging.WARNING: deque(maxlen=EMAIL_BACKLOG_LIMIT),
+    logging.ERROR: deque(maxlen=EMAIL_BACKLOG_LIMIT),
+}
 
 
 ### Log helpers
@@ -185,7 +202,7 @@ def activate_library_logging(logger_name, logger_to_inherit_from=None, level=Non
 
     Args:
         logger_name (str): The name of the logger to activate, as returned by
-            :func:`.get_library_logger_names
+            :func:`.get_library_logger_names`
         logger_to_inherit_from (logging.Logger): (Optional) If this is set, the library
             logger will simply share the handlers that are present in this logger. The
             library to be activated will also inherit the level from this logger, unless

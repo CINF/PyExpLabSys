@@ -13,12 +13,10 @@ tasks.
 Get a logger
 ============
 
-The :func:`.get_logger` function is a convenience function to setup
-logging output. It will return a named logger, which can be used
-inside programs, and it will at the same time, setup logging from all
-the imported PyExpLabSys components to the same logging location. The
-function has the ability to setup logging both to a terminal and to a
-log file, including setting up log rotation.
+The :func:`.get_logger` function is a convenience function to setup logging output. It
+will return a named logger, which can be used inside programs. The function has the
+ability to setup logging both to a terminal, to a log file, including setting up log
+rotation and for sending out email on log message at warning level or above.
 
 ``get_logger`` usage examples
 =============================
@@ -93,7 +91,7 @@ exception, do the following:
 .. note:: The argument to ``LOGGER.exception`` is a string, just like all other ``LOGGER``
     methods. All the exception information, like the traceback, line number etc., is
     picked up automatically by the logger. Also note, that the ``raise`` will re-raise the
-    caught exception, to make sure that the program fails like it is supposed to. The it
+    caught exception, to make sure that the program fails like it is supposed to. That it
     is the caught exception that is re-raised, is implicit when using raise without
     arguments in an except clause.
 
@@ -106,7 +104,8 @@ exception, do the following:
 Auto-generated module documentation
 ===================================
 
-.. autodata:: PyExpLabSys.common.utilities.MAIL_HOST
-.. autodata:: PyExpLabSys.common.utilities.WARNING_EMAIL
-.. autodata:: PyExpLabSys.common.utilities.ERROR_EMAIL
-.. autofunction:: PyExpLabSys.common.utilities.get_logger
+
+.. automodule:: PyExpLabSys.common.utilities
+   :members:
+   :member-order: bysource
+   :show-inheritance:

@@ -1,4 +1,32 @@
-"""This module contains the modules used for settings for PyExpLabSys"""
+"""This module contains the modules used for settings for PyExpLabSys
+
+To use the settings module instantiate a :class:`.Settings` object and access the settings
+as attributes::
+
+    >>> from PyExpLabSys.settings import Settings
+    >>> settings = Settings()
+    >>> settings.util_log_max_emails_per_period
+    5
+
+The settings in the :class:`.Settings` are formed by 2 layers. The bottom layer are the
+defaults, that are stored in the `PyExpLabSys/defaults.yaml
+<https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/defaults.yaml>`_ file. Op top
+of those are placed the user settings, that originate from the file whose path is in the
+`settings.USERSETTINGS_PATH` variable. The user settings can me modified at run time as
+opposed to having to write them to the user settings file before running. This is done
+simply by writing to the properties on the settings object::
+
+    >>> settings.util_log_max_emails_per_period = 7
+    >>> settings.util_log_max_emails_per_period
+    7
+
+All :class:`.Settings` objects share the same settings, so these changes will be used when
+using other parts of PyExpLabSys that makes use of one of the settings. Do however note,
+that different parts of PyExpLabSys use the settings at different times (instantiate, call
+etc.) so check with the documentation for each component when the settings needs to be
+modified to take effect.
+
+"""
 
 from __future__ import print_function
 
@@ -14,10 +42,6 @@ except ImportError:
     from chainmap import ChainMap
 import codecs
 import yaml
-
-
-# FIXME: Add chainmap to python 2.7 install
-
 
 
 # WARNING. This module was written partially on November 9th, 2016,
@@ -51,7 +75,21 @@ def value_str(obj):
 class Settings(object):
     """The PyExpLabSys settings object
 
-    The settings are available get and setable on this object as attributes
+    The settings are available to get and setable on this object as attributes i.e::
+
+        >>> from PyExpLabSys.settings import Settings
+        >>> settings = Settings()
+        >>> settings.util_log_max_emails_per_period
+        5
+
+    The settings are stored as a ChainMap of the defaults and the user settings and this
+    ChainMap object containing the current state of the settings is shared between all
+    :class:`.Settings` objects.
+
+    To get a list of all available settings see the :attr:`.Settings.settings_names`
+    attribute. To get a pretty print of all settings names, types, default values, user
+    setting values (if any) use the :meth:`.Settings.print_settings` method.
+
     """
 
     #: The settings ChainMap
