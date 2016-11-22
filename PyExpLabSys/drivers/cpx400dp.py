@@ -2,8 +2,12 @@
 """ Driver for CPX400DP power supply """
 from __future__ import print_function
 import time
+import logging
 from PyExpLabSys.drivers.scpi import SCPI
 from PyExpLabSys.common.supported_versions import python2_and_3
+# Configure logger as library logger and set supported python versions
+LOGGER = logging.getLogger(__name__)
+LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
 class InterfaceOutOfBoundsError(Exception):
@@ -81,6 +85,7 @@ class CPX400DPDriver(SCPI):
         """Reads the actual output voltage"""
         function_string = 'V' + self.output + 'O?'
         value_string = self.scpi_comm(function_string)
+        LOGGER.warn(value_string)
         time.sleep(0.1) # This might only be necessary on LAN interface
         try:
             value = float(value_string.replace('V', ''))

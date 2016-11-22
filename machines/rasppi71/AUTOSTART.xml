@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI71_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>1</startdelay>
+    <command>python2 pvci_monitor.py</command>
+    <name>Main Pressure Gauge Logger</name>
+  </session>
+</autostart>

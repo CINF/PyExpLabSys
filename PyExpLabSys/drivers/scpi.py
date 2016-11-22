@@ -15,7 +15,8 @@ LOGGER.addHandler(logging.NullHandler())
 
 class SCPI(object):
     """ Driver for scpi communication """
-    def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600):
+    def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600,
+                 allow_debug=False):
         self.device = device
         self.interface = interface
         try:
@@ -26,10 +27,13 @@ class SCPI(object):
                 self.f = serial.Serial(self.device, baudrate, timeout=1, xonxoff=True)
             if self.interface == 'lan':
                 self.f = telnetlib.Telnet(hostname, tcp_port)
-            self.debug = False
+            self.debug=False
         except Exception as e:
-            self.debug = True
-            print("Debug mode: " + str(e))
+            if allow_debug:
+                self.debug = True
+                print("Debug mode: " + str(e))
+            else:
+                raise
 
     def scpi_comm(self, command, expect_return=False):
         """ Implements actual communication with SCPI instrument """
@@ -56,6 +60,7 @@ class SCPI(object):
             self.f.write(command_text.encode('ascii'))
             if (command.find('?') > -1) or (expect_return is True):
                 return_string = self.f.read_until(chr(10).encode('ascii'), 2).decode()
+            LOGGER.info('Return string length: ' + str(len(return_string)))
             #time.sleep(0.025)
             LOGGER.info('lan_time for coomand ' + command_text.strip() +
                         ': ' + str(time.time() - lan_time))

@@ -33,7 +33,7 @@ from steps import parse_ramp
 # Setup communication with the power supply server
 HOST, PORT = "localhost", 8500
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-def _send_command(output, command, arg=None):
+def _send_command(output, power_supply, command, arg=None):
     """Send a command to the power supply server
     
     Args:
@@ -42,7 +42,9 @@ def _send_command(output, command, arg=None):
             supply object
         arg (object): The argument to the command/method
     """
-    data_to_send = {'command': command, 'output': output}
+    power_supplies = {'A': 1, 'B': 2}
+    data_to_send = {'command': command, 'output': output,
+                    'power_supply': power_supplies[power_supply]}
     if arg is not None:
         data_to_send['arg'] = arg
     formatted_command = b'json_wn#' + json.dumps(data_to_send).encode('utf-8')
@@ -57,7 +59,7 @@ def _send_command(output, command, arg=None):
     return json.loads(received[4:])
 
 
-def count_processes(process_search_string):
+def count_processes(process_search_string, ignore=('cmd.exe', 'spyder')):
     """Return the number of processes that contain process_search_string"""
     # Hack found online to prevent Windows from opening a terminal
     startupinfo = subprocess.STARTUPINFO()
@@ -67,10 +69,25 @@ def count_processes(process_search_string):
         'wmic process get processid,commandline',
         startupinfo=startupinfo,
     )
+    # Decode split into lines, lowercase and strip
     processes = processes_bytes.decode('utf-8', errors='ignore').split('\r\r\n')
     processes = [process.strip().lower() for process in processes]
-    processes =  [p for p in processes if 'cmd.exe' not in p]
-    return len([p for p in processes if process_search_string in p])
+
+    # Find the processes that contain the search word and not any of the igore terms
+    processes_filtered = []
+    for process in processes:
+        if not process_search_string in process:
+            continue
+
+        # If any of the ignore terms are found, break and thereby never reach the append
+        # in the else clause
+        for ignore_term in ignore:
+            if ignore_term in process:
+                break
+        else:
+            processes_filtered.append(process)
+    return len(processes_filtered)
+
 
 class PowerSupplyComException(Exception):
     pass
@@ -155,7 +172,7 @@ class MyProgram(Thread):
 
         # Setup power supply
         # Create a partial function with the output substitued in
-        self.send_command = partial(_send_command, args.output)
+        self.send_command = partial(_send_command, args.output, args.power_supply)
         self.power_supply_on_off(True, self.config['maxcurrent_start'])
         # Power supply commands, must match order with self.codenames
         self.power_supply_commands = (
@@ -428,7 +445,7 @@ def main():
     # Parse arguments
     parser = argparse.ArgumentParser(description=('Runs a stepped power supply program on '
                                                   'a specified power supply and channel'))
-    parser.add_argument('power_supply', choices=('A'),
+    parser.add_argument('power_supply', choices=('A', 'B'),
                         help='The capital lette of a power supply e.g. A')
     parser.add_argument('output', choices=('1', '2'),
                         help='The output number on that power supply. Must be 1 or 2')
@@ -454,7 +471,7 @@ def main():
         for n in range(20):
             try:
                 # Check if the server is up
-                if _send_command("1", 'PING') == 'PONG':
+                if _send_command("1", args.power_supply, 'PING') == 'PONG':
                     LOG.debug('Got PONG from server')
                     break
             except ConnectionResetError as exp:

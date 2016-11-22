@@ -2,38 +2,41 @@
 and logs the output
 
 For the status logs:
- * Numbers 1-? are detectors
- * 255 is the system power status
- * 254 is the system status
+ * Numbers 101-112 are detectors (1-12)
+ * 120 is the system status
+ * 121 is the system power status
 """
 
 import time
 import json
-from pprint import pprint
+import sys
 
 import credentials
 from PyExpLabSys.drivers.crowcon import Vortex
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 LOGGER = get_logger('b312gasalarm', level='debug')
 import MySQLdb
 
-# Gas alarm configuration to codename translation
+# Python 3 check
+if sys.version_info.major < 3:
+    raise RuntimeError('Run with Python 3')
+
+# Gas alarm configuration to codename translation.
+# NOTE key is: '{conf.number} {conf.identity} {conf.unit}'.format(conf=conf)
 CONF_TO_NAME = {
-    '1 Pumperum %LEL': 'B312_gasalarm_H2_pumproom',
-    '2 Hall %LEL': 'B312_gasalarm_H2_hall_west',
-    '3 Hall %LEL': 'B312_gasalarm_H2_hall_east',
-    '4 LAB %LEL': 'B312_gasalarm_H2_chemlab',
-    '5 Pumperum PPM': 'B312_gasalarm_CO_pumproom',
-    '6 Hall PPM': 'B312_gasalarm_CO_hall_west',
-    '7 Hall PPM': 'B312_gasalarm_CO_hall_east',
-    '8 LAB PPM': 'B312_gasalarm_CO_chemlab',
-    '9 NY LAB %LEL': 'B312_gasalarm_H2_microscopy_west',
-    '10 VENT %LEL': 'B312_gasalarm_H2_vent',
-    '11 NY LAB PPM': 'B312_gasalarm_CO_microscopy_west',
-    '12 NY LAB PPM': 'B312_gasalarm_CO_microscopy_east',
+    '1 MikroLab PPM': 'B312_gasalarm_H2S_microscopy_west',
+    '2 Hal PPM': 'B312_gasalarm_H2S_hall_west',
+    '3 KemiLab PPM': 'B312_gasalarm_H2S_chemlab',
 }
+
+# device numbers for status table
+NUMBER_OF_DETECTORS_IN_USE = 3
+SYSTEM_STATUS_DEVICE = 120
+POWER_STATUS_DEVICE = 121
+DETECTOR_NUM_TO_DEVICE_NUM = {n: n + 100 for n in range(1, NUMBER_OF_DETECTORS_IN_USE + 1)}
+
 
 # pylint: disable=R0902
 class GasAlarmMonitor(object):
@@ -41,41 +44,41 @@ class GasAlarmMonitor(object):
 
     def __init__(self):
         # Start logger
-        codenames = CONF_TO_NAME.values()
-        self.db_logger = ContinuousLogger(
-            table='dateplots_b312gasalarm',
+        codenames = list(CONF_TO_NAME.values())
+        self.db_saver = ContinuousDataSaver(
+            continuous_data_table='dateplots_b312gasalarm',
             username=credentials.USERNAME,
             password=credentials.PASSWORD,
-            measurement_codenames=codenames
+            measurement_codenames=codenames,
         )
-        self.db_logger.start()
+        self.db_saver.start()
         LOGGER.info('Logger started')
 
-        # Each value is measured about every 5 sec, so sane interval about 2
-        self.live_socket = LiveSocket(name='gas_alarm_312_live',
-                                      codenames=codenames,
-                                      sane_interval=2.0)
+        # Init live socket
+        self.live_socket = LiveSocket(name='gas_alarm_312_live', codenames=codenames,
+                                      internal_data_pull_socket_port=8001)
         self.live_socket.start()
         LOGGER.info('Live socket started')
 
         # Start driver
-        self.vortex = Vortex('/dev/ttyUSB0', 1)
+        self.vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2)
         LOGGER.info('Vortex driver opened')
 
         # Init database connection
         self.db_connection = MySQLdb.connect(
             host='servcinf-sql', user=credentials.USERNAME,
-            passwd=credentials.PASSWORD, db='cinfdata')
+            passwd=credentials.PASSWORD, db='cinfdata',
+        )
         self.db_cursor = self.db_connection.cursor()
 
-        # Initiate static information. All information about the except for
-        # the list of their numbers are placed in dicts because the numbering
-        # starts at 1.
+        # Initiate static information. All information about the detectors except for the
+        # list of their numbers are placed in dicts because the numbering starts at 1.
         # Detector numbers: [1, 2, 3, ..., 12]
-        self.detector_numbers = range(1, self.vortex.get_number_installed_detectors() + 1)
-        self.detector_info = {detector_num: self.vortex.detector_configuration(detector_num)
-                              for detector_num in self.detector_numbers}
-        pprint(self.detector_info)
+        self.detector_numbers = list(range(1, NUMBER_OF_DETECTORS_IN_USE + 1))
+        self.detector_info = {
+            detector_num: self.vortex.detector_configuration(detector_num)
+            for detector_num in self.detector_numbers
+        }
         # trip_levels are the differences that are required to force a log
         # The levels are set to 2 * the communication resolution
         # (1000 values / full range)
@@ -84,8 +87,7 @@ class GasAlarmMonitor(object):
 
         # Initiate last measured values and their corresponding times
         self.detector_levels_last_values = \
-            {detector_num: - (10 ** 9)
-             for detector_num in self.detector_numbers}
+            {detector_num: - (10 ** 9) for detector_num in self.detector_numbers}
         self.detector_levels_last_times = \
             {detector_num: 0 for detector_num in self.detector_numbers}
         self.detector_status_last_values = \
@@ -105,7 +107,7 @@ class GasAlarmMonitor(object):
 
     def close(self):
         """Close the logger and the connection to the Vortex"""
-        self.db_logger.stop()
+        self.db_saver.stop()
         LOGGER.info('Logger stopped')
         self.live_socket.stop()
         LOGGER.info('Live socket stopped')
@@ -144,7 +146,6 @@ class GasAlarmMonitor(object):
         now = time.time()
         # Always send to live socket
         self.live_socket.set_point_now(codename, levels.level)
-        print detector_num, codename, levels.level
         # Force log every 10 m
         time_condition = now - self.detector_levels_last_times[detector_num] > 600
         value_condition = abs(self.detector_levels_last_values[detector_num] - levels.level)\
@@ -152,7 +153,7 @@ class GasAlarmMonitor(object):
         if time_condition or value_condition:
             LOGGER.debug('Send level to db trigged in time: {} or value: '
                          '{}'.format(time_condition, value_condition))
-            self.db_logger.enqueue_point(codename, (now, levels.level))
+            self.db_saver.save_point(codename, (now, levels.level))
             # Update last values
             self.detector_levels_last_values[detector_num] = levels.level
             self.detector_levels_last_times[detector_num] = now
@@ -166,10 +167,9 @@ class GasAlarmMonitor(object):
         now = time.time()
         # Force log every 24 hours
         time_condition = now - self.detector_status_last_times[detector_num] > 86400
-        status = {'inhibit': levels.inhibit, 'status': levels.status,
-                  'codename': conf.identity}
+        codename = self.conf_to_codename(conf)
+        status = {'inhibit': levels.inhibit, 'status': levels.status, 'codename': codename}
         value_condition = (status != self.detector_status_last_values[detector_num])
-        print detector_num, status
 
         # Check if we should log
         if time_condition or value_condition:
@@ -179,7 +179,8 @@ class GasAlarmMonitor(object):
             query = 'INSERT INTO status_b312gasalarm '\
                 '(time, device, status, check_in) '\
                 'VALUES (FROM_UNIXTIME(%s), %s, %s, %s);'
-            values = (now, detector_num, json.dumps(status), check_in)
+            values = (now, DETECTOR_NUM_TO_DEVICE_NUM[detector_num], json.dumps(status),
+                      check_in)
             self._wake_mysql()
             self.db_cursor.execute(query, values)
             # Update last values
@@ -191,7 +192,6 @@ class GasAlarmMonitor(object):
     def log_central_unit(self):
         """Log the status of the central unit"""
         power_status = self.vortex.get_system_power_status().value
-        print "power status", power_status
         now = time.time()
         # Force a log once per 24 hours
         time_condition = now - self.central_power_status_last_time > 86400
@@ -204,7 +204,7 @@ class GasAlarmMonitor(object):
             query = 'INSERT INTO status_b312gasalarm '\
                 '(time, device, status, check_in) '\
                 'VALUES (FROM_UNIXTIME(%s), %s, %s, %s);'
-            values = (now, 255, json.dumps(power_status), check_in)
+            values = (now, POWER_STATUS_DEVICE, json.dumps(power_status), check_in)
             self._wake_mysql()
             self.db_cursor.execute(query, values)
             # Update last values
@@ -218,7 +218,6 @@ class GasAlarmMonitor(object):
     def log_central_unit_generel(self):
         """Log the generel status from the central"""
         generel_status = self.vortex.get_system_status()
-        print "general status", generel_status
         now = time.time()
         # Force a log once per 24 hours
         time_condition = now - self.central_status_last_time > 86400
@@ -233,7 +232,7 @@ class GasAlarmMonitor(object):
             query = 'INSERT INTO status_b312gasalarm '\
                 '(time, device, status, check_in) '\
                 'VALUES (FROM_UNIXTIME(%s), %s, %s, %s);'
-            values = (now, 254, json.dumps(generel_status), check_in)
+            values = (now, SYSTEM_STATUS_DEVICE, json.dumps(generel_status), check_in)
             self._wake_mysql()
             self.db_cursor.execute(query, values)
             # Update last values

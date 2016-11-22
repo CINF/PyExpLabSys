@@ -73,13 +73,13 @@ class Mks_G_Series():
         value = float(self.comm(command, addr))
         return value
 
-    def set_flow(self, value, addr):
+    def set_flow(self, value, addr=254):
         """ Set the flow setpoint """
         command = 'SX!' + str(round(value, 1))
         self.comm(command, addr)
-        return(True)
+        return True
 
-    def read_flow(self, addr):
+    def read_flow(self, addr=254):
         """ Read the flow """
         command = 'FX?'
         error = 1
@@ -88,10 +88,11 @@ class Mks_G_Series():
                 flow = float(self.comm(command, addr))
                 error = -1
             except ValueError:
-                error = error + 1    
+                error = error + 1
+                flow = -1
         return flow
 
-    def read_serial_number(self, addr):
+    def read_serial_number(self, addr=254):
         """ Read the serial number of the device """
         command = 'SN?'
         return self.comm(command, addr)

@@ -3,58 +3,102 @@
 
 """Setup file for PyExpLabSys"""
 
-import sys
+# 19:20 - 20:10
+# 20:40 - 21:20
+# 21:15 - 21:55
+
+import codecs
 import os
 import re
-import warnings
-try:
-    from setuptools import setup
-    has_setuptools = True
-except ImportError:
-    from distutils.core import setup
-    has_setuptools = False
 
-src = open(os.path.join('PyExpLabSys', '__init__.py')).read()
-metadata = dict(re.findall("__([a-z]+)__ = '([^']+)'", src))
-docstrings = re.findall('"""([^"]*)"""', src, re.MULTILINE | re.DOTALL)
+from setuptools import setup, find_packages
 
-PACKAGE = 'PyExpLabSys'
 
-MODULES = (
-        'PyExpLabSys.common.loggers',
-        'PyExpLabSys.common.utilities',
-        'PyExpLabSys.drivers.pfeiffer',
-)
+###################################################################
 
-REQUIREMENTS = list(open('requirements.txt'))
+NAME = "PyExpLabSys"
+PACKAGES = find_packages(where="PyExpLabSys")
+META_PATH = os.path.join("PyExpLabSys", "__init__.py")
+KEYWORDS = ["equipment", "serial", "drivers", "file parsers", "sockets"]
+CLASSIFIERS = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 2",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.3",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: System :: Hardware :: Hardware Drivers",
+    "Topic :: Terminals :: Serial",
+    "Topic :: Terminals :: Telnet",    
+]
+with open('requirements.txt') as file_:
+    INSTALL_REQUIRES = [r.strip() for r in list(file_)]
 
-if has_setuptools:
-    OPTIONS = {
-        'install_requires': REQUIREMENTS
-    }
-else:
-    if sys.version_info < (2, 6):
-        warnings.warn('No setuptools installed. Be sure that you have '
-                      'all dependencies installed')
-    OPTIONS = {}
+###################################################################
 
-AUTHOR_EMAIL = metadata['author']
-VERSION = metadata['version']
-WEBSITE = metadata['website']
-LICENSE = metadata['license']
-DESCRIPTION = docstrings[0]
+HERE = os.path.abspath(os.path.dirname(__file__))
 
-# Extract name and e-mail ("Firstname Lastname <mail@example.org>")
-AUTHOR, EMAIL = re.match(r'(.*) <(.*)>', AUTHOR_EMAIL).groups()
 
-setup(name=PACKAGE,
-      version=VERSION,
-      description=DESCRIPTION,
-      author=AUTHOR,
-      author_email=EMAIL,
-      license=LICENSE,
-      url=WEBSITE,
-      py_modules=MODULES,
-      zip_safe=True,
-      **OPTIONS
-)
+def read(*parts):
+    """
+    Build an absolute path from *parts* and and return the contents of the
+    resulting file.  Assume UTF-8 encoding.
+    """
+    with codecs.open(os.path.join(HERE, *parts), "rb", "utf-8") as f:
+        return f.read()
+
+
+META_FILE = read(META_PATH)
+
+
+def find_meta(meta):
+    """
+    Extract __*meta*__ from META_FILE.
+    """
+    meta_match = re.search(
+        r"^__{meta}__ = ['\"]([^'\"]*)['\"]".format(meta=meta),
+        META_FILE, re.M
+    )
+    if meta_match:
+        return meta_match.group(1)
+    raise RuntimeError("Unable to find __{meta}__ string.".format(meta=meta))
+
+
+class A(object):
+    def __init__(*args, **kwargs):
+        from pprint import pprint
+        kwargs.pop('long_description')
+        pprint(kwargs)
+
+
+if __name__ == "__main__":
+    #setup(
+    A(
+        name=NAME,
+        description=find_meta("description"),
+        license=find_meta("license"),
+        url=find_meta("uri"),
+        version=find_meta("version"),
+        author=find_meta("author"),
+        author_email=find_meta("email"),
+        maintainer=find_meta("author"),
+        maintainer_email=find_meta("email"),
+        keywords=KEYWORDS,
+        long_description=read("README.markdown"),
+        packages=PACKAGES,
+        package_dir={"": "src"},
+        zip_safe=False,
+        classifiers=CLASSIFIERS,
+        install_requires=INSTALL_REQUIRES,
+    )

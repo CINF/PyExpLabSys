@@ -1,4 +1,5 @@
 """ Temperature controller for microreactors """
+from __future__ import print_function
 import time
 import threading
 import socket
@@ -16,8 +17,8 @@ PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
-LOGGER = get_logger('Microreactor Temperature control', level='WARN', file_log=True,
-                    file_name='temp_control.log', terminal_log=False)
+LOGGER = get_logger('Microreactor Temperature control', level='ERROR', file_log=True,
+                    file_name='temp_control.log', terminal_log=False, email_on_warnings=False)
 
 class CursesTui(threading.Thread):
     """ Text user interface for furnace heating control """
@@ -53,20 +54,22 @@ class CursesTui(threading.Thread):
             self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
 
             val = self.heater.values['actual_voltage_1']
-            self.screen.addstr(11, 40, "Actual Voltage 1: {0:.2f}V       ".format(val))
+            self.screen.addstr(11, 40, "Actual Voltage 1: {0:.2f}V           ".format(val))
             val = self.heater.values['actual_voltage_2']
-            self.screen.addstr(12, 40, "Actual Voltage 2: {0:.2f}V       ".format(val))
+            self.screen.addstr(12, 40, "Actual Voltage 2: {0:.2f}V          ".format(val))
             val = self.heater.values['actual_current_1'] * 1000
-            self.screen.addstr(13, 40, "Actual Current 1: {0:.0f}mA       ".format(val))
+            self.screen.addstr(13, 40, "Actual Current 1: {0:.0f}mA          ".format(val))
             val = self.heater.values['actual_current_2'] * 1000
-            self.screen.addstr(14, 40, "Actual Current 2: {0:.0f}mA       ".format(val))
+            self.screen.addstr(14, 40, "Actual Current 2: {0:.0f}mA         ".format(val))
             power1 = (self.heater.values['actual_voltage_1'] *
                       self.heater.values['actual_current_1'])
-            self.screen.addstr(15, 40, "Power, heater 1: {0:.3f}W        ".format(power1))
+            self.screen.addstr(15, 40, "Power, heater 1: {0:.3f}W           ".format(power1))
             power2 = (self.heater.values['actual_voltage_2'] *
                       self.heater.values['actual_current_2'])
-            self.screen.addstr(16, 40, "Power, heater 1: {0:.3f}W        ".format(power2))
+            self.screen.addstr(16, 40, "Power, heater 2: {0:.3f}W           ".format(power2))
             self.screen.addstr(17, 40, "Total Power1: {0:.3f}W        ".format(power1 + power2))
+
+            self.screen.addstr(19, 2, "press [q] to quit")
 
             
             key_val = self.screen.getch()
@@ -74,9 +77,9 @@ class CursesTui(threading.Thread):
                 self.heater.quit = True
                 self.quit = True
             if key_val == ord('i'):
-                self.heater.pc.update_setpoint(self.heater.power_calculator.setpoint + 1)
+                self.heater.power_calculator.update_setpoint(self.heater.power_calculator.values['setpoint'] + 1)
             if key_val == ord('d'):
-                self.heater.pc.update_setpoint(self.heater.power_calculator.setpoint - 1)
+                self.heater.power_calculator.update_setpoint(self.heater.power_calculator.values['setpoint'] - 1)
 
             self.screen.refresh()
             time.sleep(0.2)
@@ -134,9 +137,12 @@ class PowerCalculatorClass(threading.Thread):
         self.values['voltage'] = 0
         self.values['current'] = 0
         self.values['power'] = 0
-        self.values['setpoint'] = -900
+        self.values['setpoint'] = -1
         self.values['temperature'] = None
-        self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        #RTD SETTINGS
+        #self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        #TC SETTINGS
+        self.pid = PID.PID(pid_p=0.1, pid_i=0.01, p_max=54)
         self.update_setpoint(self.values['setpoint'])
         self.quit = False
         self.ramp = None
@@ -180,10 +186,28 @@ class PowerCalculatorClass(threading.Thread):
         start_time = 0
         sp_updatetime = 0
         ramp_updatetime = 0
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(1)
         while not self.quit:
             self.values['temperature'] = self.value_reader.value()
             self.pullsocket.set_point_now('temperature', self.values['temperature'])
-            self.values['voltage'] = self.pid.wanted_power(self.values['temperature'])
+
+            #TEMPORARY FIX!!!
+            #We replace RTD value with TC value, but keep all other code
+            #unchanged. In this way, we will regulate by the thermocouple, but
+            #all logging of RTD data will stay unchanged
+            #self.values['voltage'] = self.pid.wanted_power(self.values['temperature'])
+            network_adress = 'rasppi12'
+            command = 'microreactorng_temp_sample#raw'.encode()
+            sock.sendto(command, (network_adress, 9000))
+            received = sock.recv(1024)
+            received = received.decode('ascii')
+            try:
+                temperature = float(received[received.find(',') + 1:])
+            except ValueError:
+                LOGGER.error('Old data from tc')
+            LOGGER.warn('Temperature: ' + str(temperature))
+            self.values['voltage'] = self.pid.wanted_power(temperature)
 
             #  Handle the setpoint from the network
             try:
@@ -244,23 +268,31 @@ class HeaterClass(threading.Thread):
             self.power_supply[1].set_voltage(self.values['wanted_voltage'])
             self.power_supply[2].set_voltage(self.values['wanted_voltage'] * 0.5)
 
-            self.values['actual_voltage_1'] = self.power_supply[1].read_actual_voltage()
-            LOGGER.info('Voltage 1: ' + str(self.values['actual_voltage_1']))
-            self.pullsocket.set_point_now('actual_voltage_1',
-                                          self.values['actual_voltage_1'])
-
-            self.values['actual_current_1'] = self.power_supply[1].read_actual_current()
-            self.pullsocket.set_point_now('actual_current_1',
-                                          self.values['actual_current_1'])
-
-            self.values['actual_voltage_2'] = self.power_supply[2].read_actual_voltage()
-            self.pullsocket.set_point_now('actual_voltage_2',
-                                          self.values['actual_voltage_2'])
-
-            self.values['actual_current_2'] = self.power_supply[2].read_actual_current()
-            self.pullsocket.set_point_now('actual_current_2',
-                                          self.values['actual_current_2'])
-
+            ps_value = -11
+            while ps_value < -10:
+                ps_value = self.power_supply[1].read_actual_voltage()
+                LOGGER.warn('Voltage 1: ' + str(ps_value))
+            self.values['actual_voltage_1'] = ps_value
+            self.pullsocket.set_point_now('actual_voltage_1', ps_value)
+            time.sleep(0.5)
+            ps_value = -11
+            while ps_value < -10:
+                ps_value = self.power_supply[1].read_actual_current()
+            self.values['actual_current_1'] = ps_value
+            self.pullsocket.set_point_now('actual_current_1', ps_value)
+            time.sleep(0.5)
+            ps_value = -11
+            while ps_value < -10:
+                ps_value = self.power_supply[2].read_actual_voltage()
+            self.values['actual_voltage_2'] = ps_value
+            self.pullsocket.set_point_now('actual_voltage_2', ps_value)
+            time.sleep(0.5)
+            ps_value = -11
+            while ps_value < -10:
+                ps_value = self.power_supply[2].read_actual_current()
+            self.values['actual_current_2'] = ps_value
+            self.pullsocket.set_point_now('actual_current_2', ps_value)
+            time.sleep(0.5)
         for i in range(1, 3):
             self.power_supply[i].set_voltage(0)
             LOGGER.info('%s set voltage', i)

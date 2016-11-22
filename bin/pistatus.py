@@ -34,7 +34,8 @@ import socket
 from textwrap import wrap
 from functools import partial
 from subprocess import check_output
-from os.path import expanduser, join, isdir, isfile
+from os.path import expanduser, join, isdir, isfile, abspath
+from os import getlogin, listdir, sep
 
 # Terminal width
 COL, _ = shutil.get_terminal_size((78, 40))
@@ -47,6 +48,10 @@ if not isdir(MACHINE_DIR):
 
 # key width default
 KEY_WIDTH = 16
+
+# Username
+USERNAME = getlogin()
+SCREEN_FOLDER = join(abspath(sep), 'var', 'run', 'screen', 'S-' + USERNAME)
 
 
 # Utility functions
@@ -105,7 +110,7 @@ def machine_status():
         framed(line)
 
     # Has autostart
-    if isfile(join(MACHINE_DIR, 'AUTOSTART.xml')):
+    if MACHINE_DIR and isfile(join(MACHINE_DIR, 'AUTOSTART.xml')):
         value_pair('Has autostart', YES)
     else:
         value_pair('Has autostart', 'NO')
@@ -116,11 +121,16 @@ def running_programs():
     framed(bold('Running programs'))
     framed(bold('================'))
 
-    processes = check_output('ps -eo command', shell=True).decode('utf-8').split('\n')
-    if any('screen' in process for process in processes):
-        value_pair('Running screen', YES)
+    screens = listdir(SCREEN_FOLDER)
+    if screens:
+        framed(blue('Screens'))
+        for screen in screens:
+            framed(screen)
     else:
-        value_pair('Running screen', 'NO')
+        value_pair('Screens', 'None')
+
+    processes = check_output('ps -eo command', shell=True).decode('utf-8')\
+        .split('\n')
     python_processes = []
     for process in processes:
         if 'python' in process.split(' ')[0]:
@@ -142,8 +152,10 @@ def git():
     framed(bold('==='))
 
     # date of last commit
-    last_commit = check_output('git log --date=iso -n 1 --pretty=format:"%ad"',
-                               shell=True).decode('utf-8')
+    last_commit = check_output(
+        'git -C $HOME/PyExpLabSys log --date=iso -n 1 --pretty=format:"%ad"',
+        shell=True,
+    ).decode('utf-8')
     value_pair('Last commit', last_commit)
 
     # git clean
