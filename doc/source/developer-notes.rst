@@ -23,8 +23,9 @@ the database).
    documentation <https://docs.python.org/3/howto/logging.html>`_ and
    :ref:`user_notes_logging` for how to use some convenience functions in PyExpLabSys.
 
-Setting up a logger for a component of PyExpLabSys should be done in the manner
-recommended by the `standard library documentation
+Setting up a logger for a component of PyExpLabSys should be done in
+the manner recommended by the `standard library documentation for
+logging from libraries
 <https://docs.python.org/3/howto/logging.html#configuring-logging-for-a-library>`_. I.e. in
 the beginning of the file to the following:
 

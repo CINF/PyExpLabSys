@@ -1,9 +1,9 @@
 # pylint: disable=too-many-ancestors
 
-"""Complete serial driver for the Tenma 72-2535, *72-2540, *72-2545, *72-2550, 72-2930 and
-*72-2940 (see details below)
+r"""Complete serial driver for the Tenma 72-2535, \*72-2540, \*72-2545, \*72-2550, 72-2930
+and \*72-2940 (see details below)
 
- .. note:: * The driver has not been tested on the models with a *. However, the two
+ .. note:: \* The driver has not been tested on the models with a \*. However, the two
     models that has been tested, seems like are built from the same template, so there is
     a very high probability that the generic :class:`.TenmaBase` driver will work with
     those as well.
@@ -36,10 +36,10 @@ LOG.addHandler(logging.NullHandler())
 
 
 class TenmaBase(Serial):
-    """Serial driver for the Tenma 72-2535, *72-2540, *72-2545, *72-2550, 72-2930 and *72-2940
-    power supplies
+    r"""Serial driver for the Tenma 72-2535, \*72-2540, \*72-2545, \*72-2550, 72-2930 and
+    \*72-2940 power supplies
 
-    .. note:: * The driver has not been tested on the models with a *. However, the two
+    .. note:: \* The driver has not been tested on the models with a \*. However, the two
        models that has been tested, seems like are built from the same template, so there
        is a very high probability that the generic :class:`.TenmaBase` driver will work
        with those as well.
