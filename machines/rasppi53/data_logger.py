@@ -78,7 +78,6 @@ def main():
         time.sleep(0.2)
         p_containment = containment_logger.read_value()
         p_buffer = buffer_logger.read_value()
-        p_reactor = reactor_logger.read_value()
         socket.set_point_now('containment_pressure', p_containment)
         socket.set_point_now('buffer_pressure', p_buffer)
         livesocket.set_point_now('containment_pressure', p_containment)
