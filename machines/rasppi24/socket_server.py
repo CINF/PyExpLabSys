@@ -41,6 +41,8 @@ class FlowControl(threading.Thread):
 
             for mfc in self.mfcs:
                 flow =  self.mfcs[mfc].read_flow()
+                if mfc == 'M11213502A':
+                    flow = flow * 1000
                 #print(mfc + ': ' + str(flow))
                 self.pullsocket.set_point_now(mfc, flow)
                 self.livesocket.set_point_now(mfc, flow)
