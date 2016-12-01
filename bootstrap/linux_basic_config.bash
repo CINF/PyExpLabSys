@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-# This script sets up locate and keyboard
+# This script sets up locale and keyboard
 
 # Setup keyboard
 #
@@ -18,11 +18,6 @@ echo "Making changes in /etc/timezone"
 echo "Current time zone setting:" `cat /etc/timezone`
 sudo sudo sed -i -e 's/.*/Europe\/Copenhagen/g' /etc/timezone
 echo "Time zone after change:" `cat /etc/timezone`
-
-# Expand the root fs
-echo
-echo "Expading the root fs"
-sudo raspi-config --expand-rootfs
 
 # Reboot
 read -p "Press [Enter] to reboot..."
