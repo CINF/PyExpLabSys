@@ -23,11 +23,11 @@ pip3packages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml mysq
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
-bashrc_addition="
+bashrc_addition='
 export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin
 export PYTHONPATH=$HOME/PyExpLabSys
 stty -ixon
-"
+'
 
 # These lines will be added to ~/.bash_aliases
 bash_aliases="
@@ -183,17 +183,19 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
 	echoblue "Skipping, since it was done" $(($since_last_update/3600)) "hours ago"
     fi
 
+    aptgetprefix='sudo apt-get -y'
+
     echoblue "---> Upgrade all existing packages"
-    sudo apt-get -y dist-upgrade
+    $aptgetprefix dist-upgrade
     echoblue "---> Installing packages"
     echoblue "----> Install: $apt1"
-    sudo apt-get -y install $apt1
+    $aptgetprefix install $apt1
     echoblue "----> Install: $apt2"
-    sudo apt-get -y install $apt2
+    $aptgetprefix install $apt2
     echoblue "---> Remove un-needed packages, if any"
-    sudo apt-get -y autoremove
+    $aptgetprefix autoremove
     echoblue "---> Clear apt cache"
-    sudo apt-get clean
+    $aptgetprefix clean
     echogood "+++++> DONE"
 fi
 
@@ -205,7 +207,7 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP"
 	echoblue "---> $pippackages"
-	pip install --user -U $pippackages
+	sudo pip install -U $pippackages
 	echogood "+++++> DONE"
     else
 	echobad "pip not installed, run install step and then re-try pip step"
@@ -217,7 +219,7 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
 	echoblue "---> $pip3packages"
-	pip3 install --user -U $pip3packages
+	sudo pip3 install -U $pip3packages
 	echogood "+++++> DONE"
     else
 	echobad "pip3 not installed, run install step and then re-try pip step"
