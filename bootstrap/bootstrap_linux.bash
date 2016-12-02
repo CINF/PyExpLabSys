@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3"
+apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3 libyaml-dev libpython2.7-dev libpython3-dev"
 
 # apt install packages line 2, python extensions
 #
@@ -18,8 +18,8 @@ apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3
 apt2="python-pip python-mysqldb python3-pip"
 
 # packages to be installe by pip
-pippackages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial chainmap"
-pip3packages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial mysqlclient"
+pippackages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml chainmap"
+pip3packages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml mysqlclient"
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
@@ -327,6 +327,19 @@ if [ $1 == "docs" ];then
     echogood "+++++> DONE"
 fi
 
+if [ $1 == "wiringpi" ];then
+    echobold "===> INSTALLING WIRINGPI"
+    echoblue "---> Installing wiringpi with apt-get"
+    sudo apt-get install wiringpi
+    echoblue "---> Installing python wiringpi with pip (as root)"
+    sudo pip2 install wiringpi
+    sudo pip3 install wiringpi
+    echoblue "---> Setting sticky bit on python2 and python3"
+    sudo chmod +s `which python2`
+    sudo chmod +s `which python3`
+    echogood "+++++> DONE"
+fi
+
 if [ $1 == "abelec" ];then
     # TODO: Improve script to allow multiple executions
     echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
@@ -389,8 +402,8 @@ fi
 if [ $reset_bash == "YES" ];then
     echo
     echobold "##> NOTE! ~/PyExpLabSys/bin has been added to PATH, which means"
-    echobold "##> that the user specific rgit, kgit and agit commands (for "
-    echobold "##> Robert, Kenneth and Anders) can be used."
+    echobold "##> that the user specific rgit, kgit and agit commands for "
+    echobold "##> Robert, Kenneth and Anders can be used."
     echobold "##>"
     echobold "##> NOTE! Your bash environment has been modified."
     echobold "##> Run: \"source ~/.bashrc\" to make the changes take effect."
