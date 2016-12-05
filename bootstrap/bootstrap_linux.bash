@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3 libyaml-dev libpython2.7-dev libpython3-dev"
+apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3"
 
 # apt install packages line 2, python extensions
 #
@@ -17,9 +17,14 @@ apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3
 # pip, so it will be installed anyway
 apt2="python-pip python-mysqldb python3-pip"
 
+# apt install packages that has possibly changed name, written in list form and installed one at at time
+declare -a apt3=("libpython2.7-dev" "libpython3-dev" "python-dev" "python3-dev")
+
 # packages to be installe by pip
-pippackages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml chainmap"
-pip3packages="pylint minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml mysqlclient"
+pippackages="minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml pylint chainmap"
+pip3packages="minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml mysqlclient"
+# Put packages into this array, whose installation sometimes fail
+declare -a pip3problempackages=("pylint")
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
@@ -193,6 +198,13 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     $aptgetprefix install $apt1
     echoblue "----> Install: $apt2"
     $aptgetprefix install $apt2
+
+    # Install package individually, that may have changed name
+    for package in "${apt3[@]}";do
+	echoblue "----> Attempting to install \"$package\" as an individual package"
+	$aptgetprefix install $package
+    done
+
     echoblue "---> Remove un-needed packages, if any"
     $aptgetprefix autoremove
     echoblue "---> Clear apt cache"
@@ -215,12 +227,23 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     fi
 
     echo
+
+
     # Test if pip3 is there
-    pip3 --version > /dev/null
+    PIPEXECUTABLE=`which pip3`
+    if [ $? -ne 0 ];then
+	PIPEXECUTABLE=`which pip-3.2`
+    fi
+
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
-	echoblue "---> $pip3packages"
-	sudo pip3 install -U $pip3packages
+	echoblue "---> Installing: $pip3packages"
+	sudo $PIPEXECUTABLE install -U $pip3packages
+	# Individual packages
+	for package in "${pip3problempackages[@]}";do
+	    echoblue "---> Installing \"$package\" as an invididual package"
+	    sudo $PIPEXECUTABLE install -U $package
+	done
 	echogood "+++++> DONE"
     else
 	echobad "pip3 not installed, run install step and then re-try pip step"
