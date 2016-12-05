@@ -236,7 +236,13 @@ if __name__ == '__main__':
     BAKER.start()
 
     TUI = CursesTui(BAKER)
-    TUI.start()
+    TUI.start()  # Runs until quit
+    # Shut down curses nicely, clean up could be written nicer in OO fasion like so:
+    # https://cinfwiki.fysik.dtu.dk/cinfwiki/TipsTricksAndCodeSnippets?highlight=%28TUI%29#Make_curses_applications_shut_down_nicely_on_un-caught_exceptions
+    curses.nocbreak()
+    TUI.screen.keypad(0)
+    curses.echo()
+    curses.endwin()
 
     while not BAKER.quit:
         time.sleep(1)
