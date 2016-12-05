@@ -64,6 +64,7 @@ pycheckers  Install Python code style checkers and hook them up to emacs and
 all         All of the above
 
 doc         Install extra packages needed for writing docs (NOT part of all)
+wiringpi    Install wiring pi and python-wiringpi
 abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
 qt          Setup GUI environment: Qt and Qwt (for plots)
 "
