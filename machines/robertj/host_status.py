@@ -9,6 +9,7 @@ import time
 import json
 import sys
 import pickle
+import os
 
 def host_status(hostname, method=""):
     """ Report if a host i available on the network """
@@ -69,6 +70,7 @@ def uptime(hostname, method, username='pi', password='cinf123'):
 
         try:
             sock.sendto('status', (hostname, port))
+            
             received = sock.recv(4096)
             status = json.loads(received)
             system_status = status['system_status']
@@ -113,6 +115,7 @@ def uptime(hostname, method, username='pi', password='cinf123'):
                 pass
         else: # Update cache
             pickle.dump(return_value, open('/srv/http/cache/' + hostname + '.p', 'wb'))
+            os.chmod('/srv/http/cache/' + hostname + '.p', 0777)
     return return_value
 
 class CheckHost(threading.Thread):

@@ -14,7 +14,7 @@
  rasppi17,  Raspberry Pi, socket, &micro;-reactor, Valve Control box
  rasppi18,  Raspberry Pi, ls,     STM312, Mass Spec
  rasppi19,  Raspberry Pi, socket, STM312, Temperature control
- rasppi20,  Raspberry Pi, ls,     PS, Chiller
+ rasppi20,  Raspberry Pi, ls,     Omicron, Chiller
  rasppi21,  Raspberry Pi, ls,     Sputterchamber, Chiller
  rasppi22,  Raspberry Pi, socket, STM312, Bakeout control box
  rasppi24,  Raspberry Pi, socket, &micro;-reactor, Flow control - bronkhorst
@@ -46,7 +46,7 @@
  rasppi56,  Raspberry Pi, ls,     sniffer, bakeout control
  rasppi57,  Raspberry Pi, ls,     Theta Probe, Chiller
  rasppi59,  Raspberry Pi, socket, STM312, Magic Box
- rasppi60,  Raspberry Pi, ls,     XRD, Chiller
+ rasppi60,  Raspberry Pi, ls,     XRDs, Chillers
  rasppi61,  Raspberry Pi, socket, Hall, Cooling water temperature
  rasppi63,  Raspberry Pi, socket, b312, Small office Temp + humidity
  rasppi64,  Raspberry Pi, ls,     Chemlab b312, Picture Logbook
@@ -68,8 +68,9 @@
  rasppi109, Raspberry Pi, ls,     TOF, Pressure
  rasppi110, Raspberry Pi, socket, XRD, Pressure readout
  rasppi111, Raspberry Pi, socket, &micro;-reactor, Temperature control 
- rasppi112, Raspberry Pi, 9000,   b309 CVD, MAI cell
+ #rasppi112, Raspberry Pi, 9000,   b309 CVD, MAI cell
  rasppi112, Raspberry Pi, 9001,   b309 CVD, Effusion cell logger
- rasppi112, Raspberry Pi, 9002,   b309 CVD, DCA cell
+ #rasppi112, Raspberry Pi, 9002,   b309 CVD, DCA cell
  cinf-microreactorng-ms,  Ubuntu, ls,    &micro;-reactorNG, Mass Spec
  cinf-microreactor-ms,    Ubuntu, ls,    &micro;-reactor, Mass Spec
+ 
