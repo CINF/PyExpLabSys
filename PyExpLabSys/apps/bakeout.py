@@ -10,6 +10,8 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 try:
     sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
@@ -60,8 +62,6 @@ class CursesTui(threading.Thread):
 
             key = self.screen.getch()
 
-            self.screen.addstr(20, 2, str(key) + '     ')
-
             keyboard_actions = {ord('1'): [1, 1], ord('!'): [1, -1],
                                 ord('2'): [2, 1], ord('"'): [2, -1],
                                 ord('3'): [3, 1], ord('#'): [3, -1],
@@ -75,6 +75,10 @@ class CursesTui(threading.Thread):
             if key == ord('q'):
                 self.baker.quit = True
                 self.screen.addstr(2, 2, 'Quitting....')
+
+            message = 'Press 1 to increase channel 1, shift-1 to decrease channel 1'
+            self.screen.addstr(16, 2, message)
+            self.screen.addstr(17, 2, 'Likewise for other channels, press q to quit')
 
             self.screen.refresh()
             time.sleep(0.2)
@@ -203,7 +207,7 @@ class Bakeout(threading.Thread):
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 LOGGER.debug('Element: ' + str(element))
-                channel = element.keys()[0]
+                channel =list(element.keys())[0]
                 value = element[channel]
                 self.modify_dutycycle(int(channel), value=value)
                 qsize = self.pushsocket.queue.qsize()
@@ -237,12 +241,8 @@ if __name__ == '__main__':
 
     TUI = CursesTui(BAKER)
     TUI.start()  # Runs until quit
-    # Shut down curses nicely, clean up could be written nicer in OO fasion like so:
-    # https://cinfwiki.fysik.dtu.dk/cinfwiki/TipsTricksAndCodeSnippets?highlight=%28TUI%29#Make_curses_applications_shut_down_nicely_on_un-caught_exceptions
-    curses.nocbreak()
-    TUI.screen.keypad(0)
-    curses.echo()
-    curses.endwin()
 
     while not BAKER.quit:
         time.sleep(1)
+    TUI.stop()
+
