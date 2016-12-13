@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# pylint: disable=broad-except
 """CPX drivers server, for connecting with several CPX power supplies"""
 
+import os
+from os import path
 from time import sleep
 import traceback
 
@@ -8,42 +12,60 @@ from PyExpLabSys.drivers.cpx400dp import CPX400DPDriver
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.utilities import get_logger
 
+print('PSU running')
+
+# Check server lock
+THIS_DIR = path.dirname(path.realpath(__file__))
+print(THIS_DIR)
+
+LOCK_FILE = path.join(THIS_DIR, 'SERVER_LOCK')
+if path.isfile(LOCK_FILE):
+    MESSAGE = ('Server already running\n'
+               '\n'
+               'The server lock file "SERVER_LOCK" is in place, which indicates that '
+               'the server is already running.\n'
+               '\n'
+               'If you know that it is not true, delete the lock file.')
+    raise RuntimeError(MESSAGE)
+# Lock to prevent multiple servers
+with open(LOCK_FILE, 'w') as file_:
+    pass
+
+
 LOG = get_logger('H2O2 CPX Serv', level='debug', file_log=True, file_name='server.log',
                  file_backup_count=1, file_max_bytes=1048576)
 STOP_SERVER = False
 
-import logging
-pels_logger = logging.getLogger('PyExpLabSys.common.sockets.PushUDPHandler')
-pels_logger.setLevel(logging.INFO)
-
 
 class CPXServer(object):
+    """Server for CPX400DP power supplies"""
 
     def __init__(self, devices=None):
         """Initialize CPXServer
 
         Args:
             devices (dict): Mapping of power supply names (letters) to hostnames. E.g:
-                {'A': 'HOSTNAME-PS1', 'B': 'HOSTNAME-PS2'}
+                {'A': '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F95400-if00',
+                 'B': '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_12345600-if00'}
         """
         if not devices:
             msg = '"devices" must be dict of power supply number to hostname, not: {}'
             raise ValueError(msg.format(devices))
 
+        self.devices = devices
         self.cpxs = {}  # Plural of cpx??
         # Mapping of global output channels to power supply local ones. I.e:
         # {output_channel (str):(ps_number (int), ps_output_channel (str))}
-        for power_supply_name, hostname in devices.items():
-            LOG.debug('Connect %s, %s', power_supply_name, hostname)
+        for power_supply_name, device in devices.items():
+            LOG.debug('Connect %s, %s', power_supply_name, device)
             if not isinstance(power_supply_name, str):
                 msg = '"power_supply_name" in devices must be str, not: {}'
                 raise ValueError(msg.format(type(power_supply_name)))
             # Init CPX400DP driver
             self.cpxs[power_supply_name] = CPX400DPDriver(
                 1,  # will be overwritten anyway
-                interface='lan',
-                hostname=hostname,
-                tcp_port=9221,
+                interface='serial',
+                device=device,
             )
 
         self.accepted_commands = {
@@ -56,10 +78,11 @@ class CPXServer(object):
 
         # Test connection
         for cpx_name, cpx in self.cpxs.items():
+            print(cpx.read_actual_voltage())
             if cpx.read_actual_voltage() < -999:
                 error = 'Unable to connect to power supply "{}" with name "{}"'
                 raise RuntimeError(error.format(cpx, cpx_name))
-            
+
         # Form data push socket for receiving commands
         self.dps = DataPushSocket('H2O2_ps_server', action='callback_direct',
                                   callback=self.handle_command)
@@ -91,7 +114,6 @@ class CPXServer(object):
                 self.reset_cpx(kwargs)
                 continue
             if isinstance(out, int) and out < -999:
-                return 0.047
                 LOG.error('Return value %s was less than -999. Probably com error', out)
                 self.reset_cpx(kwargs)
                 continue
@@ -127,30 +149,26 @@ class CPXServer(object):
                 out = function()
                 LOG.debug(cmd_msg, command, None, cpx.hostname, cpx.output, out)
         except Exception:
-            error = (
-                'ERROR: An unhandled exception accoured during callback.\n'
-                'The traceback was:\n' + traceback.format_exc()
-            )
             LOG.exception("An error occured during execution of command on CPX")
-            return error
+            raise
         else:
             return out
 
     def reset_cpx(self, kwargs):
         """Reset a CPX"""
         # close old
+        print('reset')
         power_supply_name = kwargs.get('power_supply')
-        sleep(10)
+        sleep(5)
         print('after sleep')
 
-        hostname = self.devices[power_supply_name]
-        LOG.info('Attempt to re-init cpx %s at hostname %s', power_supply_name, hostname)
+        device = self.devices[power_supply_name]
+        LOG.info('Attempt to re-init cpx %s at hostname %s', power_supply_name, device)
         try:
             cpx = CPX400DPDriver(
                 1,  # will be overwritten anyway
-                interface='lan',
-                hostname=hostname,
-                tcp_port=9221,
+                interface='serial',
+                device=device,
             )
             self.cpxs[power_supply_name] = cpx
         except Exception:
@@ -158,9 +176,11 @@ class CPXServer(object):
 
 
 def main():
+    """Main function"""
     devices = {
-        'A': 'SURFCAT-PROACTIVE-PS1',
-        'B': 'SURFCAT-PROACTIVE-PS2',
+        'A': '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F95400-if00',
+        #'A': 'SURFCAT-PROACTIVE-PS1',
+        #'B': 'SURFCAT-PROACTIVE-PS2',
         #'C': 'SURFCAT-PROACTIVE-PS3',
     }
     cpx_server = CPXServer(devices=devices)
@@ -177,3 +197,5 @@ try:
 except:
     LOG.exception('Exception in program')
     raise
+finally:
+    os.remove(LOCK_FILE)

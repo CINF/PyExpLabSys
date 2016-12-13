@@ -1,9 +1,12 @@
+# pylint: disable=global-statement
+
 """My example stepped program"""
 
 from __future__ import print_function, unicode_literals, division
 
 # Import builtins
 import os
+from os import path
 import sys
 import socket
 import json
@@ -18,25 +21,31 @@ import traceback
 
 # Import third party
 from numpy import isclose
-from PyQt4.QtGui import QApplication
+from PyQt4.QtGui import QApplication  # pylint: disable=no-name-in-module
 
 # Import from PyExpLabSys
 from PyExpLabSys.apps.stepped_program_runner.stepped_program_runner import SteppedProgramRunner
 from PyExpLabSys.common.database_saver import DataSetSaver, CustomColumn
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
-LOG = None
 
 import credentials
 from steps import parse_ramp
 
+# Check lock
+THIS_DIR = path.dirname(path.realpath(__file__))
+print(THIS_DIR)
+LOCK_FILE = None
+
+LOG = None
+
 
 # Setup communication with the power supply server
 HOST, PORT = "localhost", 8500
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 def _send_command(output, power_supply, command, arg=None):
     """Send a command to the power supply server
-    
+
     Args:
         output (str): The output number in a string; either 1 or 2
         power_supply (str): The power supply name e.g. 'A'
@@ -50,8 +59,8 @@ def _send_command(output, power_supply, command, arg=None):
         data_to_send['arg'] = arg
     formatted_command = b'json_wn#' + json.dumps(data_to_send).encode('utf-8')
 
-    sock.sendto(formatted_command, (HOST, PORT))
-    received = sock.recv(1024).decode('utf-8')
+    SOCK.sendto(formatted_command, (HOST, PORT))
+    received = SOCK.recv(1024).decode('utf-8')
     LOG.debug('Send %s. Got: %s', data_to_send, received)
 
     if received.startswith('ERROR:'):
@@ -92,10 +101,11 @@ def count_processes(process_search_string, ignore=('cmd.exe', 'spyder')):
 
 
 class PowerSupplyComException(Exception):
+    """Custom power supply exception"""
     pass
 
 
-class MyProgram(Thread):
+class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
     """My fancy program"""
 
     def __init__(self, args):
@@ -114,7 +124,7 @@ class MyProgram(Thread):
             {'codename': 'status_field', 'title': 'Status'},
             # Voltage
             {'codename': self.channel_id + '_voltage',
-            'title': 'Voltage', 'formatter': '{:.3f}', 'unit': 'V'},
+             'title': 'Voltage', 'formatter': '{:.3f}', 'unit': 'V'},
             # Voltage setpoint
             {'codename': self.channel_id + '_voltage_setpoint',
              'title': 'Voltage Setpoint', 'formatter': '{:.3f}', 'unit': 'V'},
@@ -149,14 +159,14 @@ class MyProgram(Thread):
 
         ### Normal program
         # Setup my program
-        with open(args.program_file) as file_:
-            self.config, self.steps = parse_ramp(file_)
+        with open(args.program_file) as file__:
+            self.config, self.steps = parse_ramp(file__)
         # The GUI will look for keys: program_title in config
         self.say('Using power supply channel: ' + self.channel_id)
         self.say('Loaded with config:\n' + pformat(self.config))
         self.active_step = 0
         self.send_steps()
-        
+
         # Add completions for the edits
         self._completion_additions = []
         for number, step in enumerate(self.steps):
@@ -227,7 +237,7 @@ class MyProgram(Thread):
                 message = 'Unable to convert step number {} to integer or nu such step '\
                     'exists'
                 self.say(message.format(num_step), message_type='error')
-                return                
+                return
 
             # Edit the value
             try:
@@ -238,7 +248,6 @@ class MyProgram(Thread):
 
             # Finally send the new steps to the GUI
             self.send_steps()
-                
 
     def send_status(self, update_dict=None):
         """Send the status to the GUI"""
@@ -263,7 +272,6 @@ class MyProgram(Thread):
             if self.stop:
                 self.send_status({'status_field': 'Stopping'})
                 self.power_supply_on_off(False)
-                self.stop_server_if_necessary()
                 self.send_status({'status_field': 'Stopped'})
                 return
             sleep(0.1)
@@ -295,11 +303,10 @@ class MyProgram(Thread):
             }
             self.data_set_saver.add_measurement(codename, metadata)
 
-    def main_measure(self):
+    def main_measure(self):  # pylint: disable=too-many-locals
         """The main measurement loop"""
         self.send_status({'status_field': 'Running'})
         # Initial setup
-        program_start = time()
         last_set_voltage = None
         last_set_max_current = None
         last_time = time()
@@ -329,7 +336,7 @@ class MyProgram(Thread):
                 iteration_start = now = time()
                 # Calculate the time for one iteration and update times in status
                 iteration_time = now - last_time
-                
+
                 last_time = now
                 self.status.update({
                     'elapsed': current_step.elapsed(),
@@ -338,7 +345,7 @@ class MyProgram(Thread):
                     'elapsed_total': sum(step.elapsed() for step in self.steps),
                     'remaining_total': sum(step.remaining() for step in self.steps),
                 })
-    
+
                 # Ask the power supply to set a new voltage if needed
                 required_voltage, required_max_current = current_step.values()
                 if required_max_current != last_set_max_current:
@@ -347,9 +354,9 @@ class MyProgram(Thread):
                 if required_voltage != last_set_voltage:
                     self.send_command('set_voltage', required_voltage)
                     last_set_voltage = required_voltage
-    
+
                 # Read value from the power supply
-                self._read_values_from_power_supply(program_start)
+                self._read_values_from_power_supply()
 
                 # Calculate, set and send accumulated charge
                 charge_addition = \
@@ -362,7 +369,7 @@ class MyProgram(Thread):
 
                 # Send the new status
                 self.send_status()
-    
+
                 # Calculate time to sleep to use the proper probe interval
                 time_to_sleep = current_step.probe_interval - (time() - iteration_start)
                 if time_to_sleep > 0:
@@ -376,13 +383,11 @@ class MyProgram(Thread):
         self.say('Stepped program completed')
 
 
-    def _read_values_from_power_supply(self, program_start):
+    def _read_values_from_power_supply(self):
         """Read all required values from the power supply (used only from run)"""
         for command, codename in zip(self.power_supply_commands, self.codenames):
             # Get a value for the current command
             value = self.send_command(command)
-            if command == 'read_set_voltage':
-                value = float(value.strip().split(' ')[1])
 
             # Set/save it on the live_socket, database and in the GUI
             point = (self.status['elapsed_total'], value)
@@ -392,25 +397,9 @@ class MyProgram(Thread):
 
     def stop_everything(self):
         """Stop power supply and live socket"""
-        self.power_supply_on_off(False) 
+        self.power_supply_on_off(False)
         self.live_socket.stop()
         self.data_set_saver.stop()
-        self.stop_server_if_necessary()
-
-    def stop_server_if_necessary(self):
-        """Stop the power supply server if no other instance needs it"""
-        # Check whether we should stop the power supply server
-        if count_processes('voltage_current_program') == 1:
-            LOG.debug('This is the last instance of the program running; stop stop '
-                      'the power supply server')
-            self.send_command('STOP')
-            while count_processes('power_supply_server') > 0:
-                sleep(0.1)
-                LOG.debug('power supply still running, wait 0.1 s')
-            LOG.debug('power supply server has stopped')
-        else:
-            LOG.debug('Still another instance of this program running, leave the power '
-                      'supply server alone')
 
     def power_supply_on_off(self, state, current_limit=0.0):
         """Set power supply on off"""
@@ -454,32 +443,34 @@ def main():
                         help='The output number on that power supply. Must be 1 or 2')
     parser.add_argument('program_file', help="The file that contains the ramp")
     args = parser.parse_args()
-    
+
+    global LOCK_FILE
+    LOCK_FILE = path.join(THIS_DIR, 'LOCK{power_supply}{output}'.format(**args))
+    print(LOCK_FILE)
+    if path.isfile(LOCK_FILE):
+        message = (
+            'Stacktester {power_supply}{output} already running\n'
+            '\n'
+            'The lock file "LOCK{power_supply}{output}" is in place, which indicates '
+            'that this stack tester is already running.\n'
+            '\n'
+            'If you know that it is not true, delete the lock file.')
+        raise RuntimeError(message)
+    # Lock to prevent multiple servers
+    with open(LOCK_FILE, 'w') as file__:  # pylint: disable=unused-variable
+        pass
+
     global LOG
     LOG = get_logger(
         'STACK TESTER ' + args.power_supply + args.output,
-        level='debug', file_log=True,  terminal_log=False,
+        level='debug', file_log=True, terminal_log=False,
         file_name='stack_tester_' + args.power_supply + args.output + '.log',
         email_on_warnings=False, email_on_errors=False,
     )
 
-    LOG.debug('psu count' + str(count_processes('power_supply_server')))
-    if count_processes('power_supply_server') == 0:
-        LOG.debug('No power supply server running. Start it.')
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        psu_path = os.path.join(dir_path, 'power_supply_server.py')
-        LOG.debug(psu_path)
-        subprocess.Popen(r'C:\Users\CINF\Anaconda3\python.exe ' + psu_path, shell=True)
-        sleep(0.1)
-        for n in range(20):
-            try:
-                # Check if the server is up
-                if _send_command("1", args.power_supply, 'PING') == 'PONG':
-                    LOG.debug('Got PONG from server')
-                    break
-            except ConnectionResetError as exp:
-                LOG.debug('server not up yet' + str(exp), str(type(exp)))
-                sleep(0.1)
+    # Check if the server is up
+    if _send_command("1", args.power_supply, 'PING') == 'PONG':
+        LOG.debug('Got PONG from server')
 
     # Init program
     my_program = MyProgram(args)
@@ -488,22 +479,25 @@ def main():
     # Appearently, it is better to defined app at the module level for
     # clean up: http://stackoverflow.com/questions/27131294/
     # error-qobjectstarttimer-qtimer-can-only-be-used-with-threads-started-with-qt
-    global app
-    app = QApplication(sys.argv)
+    global APP  # pylint: disable=global-variable-undefined
+    APP = QApplication(sys.argv)
     SteppedProgramRunner(my_program)
-    sys.exit(app.exec_())
+    sys.exit(APP.exec_())
 
 
 try:
     main()
 except Exception as exc:
-    exception_text = traceback.format_exc()
+    EXCEPTION_TEXT = traceback.format_exc()
     import datetime
     with open('last_error.txt', 'w') as file_:
         file_.write(datetime.datetime.now().isoformat())
-        file_.write(exception_text)
+        file_.write(EXCEPTION_TEXT)
     LOG.exception("Catched exception at the outer layer")
     if isinstance(exc, ConnectionResetError):
         LOG.info('Unable to connect to the power supply server. '
                  'Did you remember to start it?')
     raise
+finally:
+    if LOCK_FILE is not None:
+        os.remove(LOCK_FILE)
