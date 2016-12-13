@@ -41,3 +41,4 @@ def count_processes(process_search_string, ignore=('cmd.exe', 'spyder')):
 
 print('Voltage current program:', count_processes('voltage_current_program'))
 print('power supply server:', count_processes('power_supply_server'))
+input("Press ay key to exit")

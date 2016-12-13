@@ -14,6 +14,7 @@ import subprocess
 from queue import Queue
 import argparse
 from pprint import pformat
+import traceback
 
 # Import third party
 from numpy import isclose
@@ -38,19 +39,20 @@ def _send_command(output, power_supply, command, arg=None):
     
     Args:
         output (str): The output number in a string; either 1 or 2
+        power_supply (str): The power supply name e.g. 'A'
         command (str): The command/name of the method to call on the power
             supply object
         arg (object): The argument to the command/method
     """
-    power_supplies = {'A': 1, 'B': 2}
     data_to_send = {'command': command, 'output': output,
-                    'power_supply': power_supplies[power_supply]}
+                    'power_supply': power_supply}
     if arg is not None:
         data_to_send['arg'] = arg
     formatted_command = b'json_wn#' + json.dumps(data_to_send).encode('utf-8')
 
     sock.sendto(formatted_command, (HOST, PORT))
     received = sock.recv(1024).decode('utf-8')
+    LOG.debug('Send %s. Got: %s', data_to_send, received)
 
     if received.startswith('ERROR:'):
         raise PowerSupplyComException(received)
@@ -416,7 +418,8 @@ class MyProgram(Thread):
         LOG.debug('Stopping everything. Set voltage to 0.0')
         self.send_command('set_voltage', 0.0)
         start = time()
-        while self.send_command('read_actual_voltage') > 1E-2:
+        # Anything < 1.0 Volt is OK
+        while self.send_command('read_actual_voltage') > 1.0:
             if time() - start > 60:
                 LOG.error('Unable to set voltage to 0')
                 if state:
@@ -445,7 +448,7 @@ def main():
     # Parse arguments
     parser = argparse.ArgumentParser(description=('Runs a stepped power supply program on '
                                                   'a specified power supply and channel'))
-    parser.add_argument('power_supply', choices=('A', 'B'),
+    parser.add_argument('power_supply', choices=('A', 'B', 'C'),
                         help='The capital lette of a power supply e.g. A')
     parser.add_argument('output', choices=('1', '2'),
                         help='The output number on that power supply. Must be 1 or 2')
@@ -494,6 +497,11 @@ def main():
 try:
     main()
 except Exception as exc:
+    exception_text = traceback.format_exc()
+    import datetime
+    with open('last_error.txt', 'w') as file_:
+        file_.write(datetime.datetime.now().isoformat())
+        file_.write(exception_text)
     LOG.exception("Catched exception at the outer layer")
     if isinstance(exc, ConnectionResetError):
         LOG.info('Unable to connect to the power supply server. '

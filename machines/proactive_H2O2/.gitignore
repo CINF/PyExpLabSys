@@ -1,3 +1,4 @@
 *.yaml
 *.log
 *.log.*
+last_error.txt
