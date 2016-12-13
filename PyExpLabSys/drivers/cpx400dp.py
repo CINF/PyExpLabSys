@@ -47,7 +47,12 @@ class CPX400DPDriver(SCPI):
     def read_set_voltage(self):
         """Reads the set voltage"""
         function_string = 'V' + self.output + '?'
-        return self.scpi_comm(function_string)
+        value_string = self.scpi_comm(function_string)
+        try:
+            value = float(value_string.replace('V' + self.output, ''))
+        except ValueError:
+            value = -9997
+        return value
 
     def read_current_limit(self):
         """Reads the current limit"""
