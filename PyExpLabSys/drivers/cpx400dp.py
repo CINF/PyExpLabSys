@@ -24,6 +24,7 @@ class CPX400DPDriver(SCPI):
     """Actual driver for the CPX400DP """
 
     def __init__(self, output, interface, hostname='', device='', tcp_port=0):
+        self.hostname = hostname
         if interface == 'lan':
             SCPI.__init__(self, 'lan', tcp_port=tcp_port, hostname=hostname)
         if interface == 'serial':
