@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
+# pylint: disable=invalid-name, no-name-in-module, broad-except
 
 """A general stepped program runner"""
 
@@ -11,11 +12,6 @@ from time import strftime, time
 import traceback
 import types
 from functools import partial
-# Python 2-3 hacks
-if sys.version_info[0] >= 3:
-    UNICODE_TYPE = str
-else:
-    UNICODE_TYPE = unicode
 try:
     import Queue
 except ImportError:
@@ -28,8 +24,14 @@ from PyQt4.QtGui import (
 from PyQt4 import uic
 NO_FOCUS = Qt.FocusPolicy(0)
 
+# Python 2-3 hacks
+if sys.version_info[0] >= 3:
+    UNICODE_TYPE = str
+else:
+    UNICODE_TYPE = unicode  # pylint: disable=undefined-variable
 
-class SteppedProgramRunner(QWidget):
+
+class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attributes
     """Main Window"""
 
     help_texts = {
@@ -50,6 +52,7 @@ class SteppedProgramRunner(QWidget):
         super(SteppedProgramRunner, self).__init__()
         self.core = core
         self.last_text_type = 'none'
+        self.window_title = window_title
 
         # Form completions and actions from core capabilities
         self.completions = []
@@ -102,13 +105,13 @@ class SteppedProgramRunner(QWidget):
         status.resizeColumnsToContents()
 
         # HACK to make the table expand to fit the contents, there MUST be a better way
-        height = (status.cellWidget(0, 0).size().height() + 2) * (status.rowCount() + 1)
+        height = (status.cellWidget(0, 0).size().height() + 14) * (status.rowCount() + 1)
         status.setMinimumHeight(height)
 
         # Setup step list
         self.step_table.setHorizontalHeaderLabels(['Description'])
 
-        title = getattr(self.core, 'config', {}).get('program_title')
+        title = getattr(self.core, 'config', {}).get('program_title', self.window_title)
         if title:
             self.setWindowTitle(title)
         self.show()
@@ -256,7 +259,7 @@ class SteppedProgramRunner(QWidget):
             self.quit_timer.timeout.disconnect()
             self.quit_timer.timeout.connect(partial(self.process_quit, quit_now=True))
             self.quit_timer.start(500)
-            
+
     def closeEvent(self, event):
         """Make sure to close down nicely on window close"""
         event.ignore()
@@ -267,7 +270,7 @@ class SteppedProgramRunner(QWidget):
 class LineEdit(QLineEdit):
     """Cursom QLineEdit with tab completion"""
 
-    def __init__(self, parent = None):    
+    def __init__(self, parent=None):
         QLineEdit.__init__(self, parent)
         self.completer = QCompleter()
         self.setCompleter(self.completer)
@@ -276,8 +279,9 @@ class LineEdit(QLineEdit):
         #get_data(model)
         self.completions = None
         self.parent = parent
-    
+
     def keyPressEvent(self, event):
+        """Handle keypress event"""
         text = self.text()
         if event.key() == Qt.Key_Tab:
             current_text = self.text()
