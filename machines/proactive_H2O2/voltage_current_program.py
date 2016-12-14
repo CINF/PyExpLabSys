@@ -43,6 +43,7 @@ LOG = None
 # Setup communication with the power supply server
 HOST, PORT = "localhost", 8500
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+SOCK.settimeout(5)
 def _send_command(output, power_supply, command, arg=None):
     """Send a command to the power supply server
 
@@ -159,7 +160,7 @@ class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
 
         ### Normal program
         # Setup my program
-        with open(args.program_file) as file__:
+        with open(path.join(THIS_DIR, args.program_file)) as file__:
             self.config, self.steps = parse_ramp(file__)
         # The GUI will look for keys: program_title in config
         self.say('Using power supply channel: ' + self.channel_id)
@@ -444,33 +445,36 @@ def main():
     parser.add_argument('program_file', help="The file that contains the ramp")
     args = parser.parse_args()
 
-    global LOCK_FILE
-    LOCK_FILE = path.join(THIS_DIR, 'LOCK{power_supply}{output}'.format(**args))
-    print(LOCK_FILE)
-    if path.isfile(LOCK_FILE):
-        message = (
-            'Stacktester {power_supply}{output} already running\n'
-            '\n'
-            'The lock file "LOCK{power_supply}{output}" is in place, which indicates '
-            'that this stack tester is already running.\n'
-            '\n'
-            'If you know that it is not true, delete the lock file.')
-        raise RuntimeError(message)
-    # Lock to prevent multiple servers
-    with open(LOCK_FILE, 'w') as file__:  # pylint: disable=unused-variable
-        pass
-
     global LOG
     LOG = get_logger(
         'STACK TESTER ' + args.power_supply + args.output,
-        level='debug', file_log=True, terminal_log=False,
+        level='debug', file_log=True, terminal_log=True,
         file_name='stack_tester_' + args.power_supply + args.output + '.log',
         email_on_warnings=False, email_on_errors=False,
     )
 
+    global LOCK_FILE
+    psu_name = '{}{}'.format(args.power_supply, args.output)
+    LOCK_FILE = path.join(THIS_DIR, 'LOCK{}'.format(psu_name))
+    print(LOCK_FILE)
+    if path.isfile(LOCK_FILE):
+        message = (
+            'Stacktester {0} already running\n'
+            '\n'
+            'The lock file "LOCK{0}" is in place, which indicates '
+            'that this stack tester is already running.\n'
+            '\n'
+            'If you know that it is not true, delete the lock file.')
+        LOCK_FILE = None
+        raise RuntimeError(message.format(psu_name))
+    # Lock to prevent multiple servers
+    with open(LOCK_FILE, 'w') as file__:  # pylint: disable=unused-variable
+        pass
+
     # Check if the server is up
     if _send_command("1", args.power_supply, 'PING') == 'PONG':
         LOG.debug('Got PONG from server')
+    SOCK.settimeout(None)
 
     # Init program
     my_program = MyProgram(args)
@@ -487,6 +491,9 @@ def main():
 
 try:
     main()
+except socket.timeout:
+    print('Unable to connect to the power supply server. '
+          'Did you remember to start it?')
 except Exception as exc:
     EXCEPTION_TEXT = traceback.format_exc()
     import datetime
@@ -494,9 +501,6 @@ except Exception as exc:
         file_.write(datetime.datetime.now().isoformat())
         file_.write(EXCEPTION_TEXT)
     LOG.exception("Catched exception at the outer layer")
-    if isinstance(exc, ConnectionResetError):
-        LOG.info('Unable to connect to the power supply server. '
-                 'Did you remember to start it?')
     raise
 finally:
     if LOCK_FILE is not None:

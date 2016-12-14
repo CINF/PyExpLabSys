@@ -179,9 +179,8 @@ def main():
     """Main function"""
     devices = {
         'A': '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F95400-if00',
-        #'A': 'SURFCAT-PROACTIVE-PS1',
-        #'B': 'SURFCAT-PROACTIVE-PS2',
-        #'C': 'SURFCAT-PROACTIVE-PS3',
+        'B': '/dev/serial/by-id/usb-TTi_CPX_Series_PSU_452958-if00',
+        'C': '/dev/serial/by-id/usb-TTi_CPX_Series_PSU_467069-if00',
     }
     cpx_server = CPXServer(devices=devices)
     cpx_server.dps.start()
