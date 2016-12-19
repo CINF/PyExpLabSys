@@ -8,6 +8,10 @@ import mysql.connector
 from scipy import optimize
 import math
 
+
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
 #PEAK_FIT_WIDTH = 5
 
 
@@ -51,7 +55,7 @@ def fit_x_axis(fit_values):
     errfunc = lambda p, x, y: x_axis_fit_func(p, x) - y # Distance to the target function
     fit_params = [0.1, 0.1, 2] # Initial guess for the parameters
     fitted_params, success = optimize.leastsq(errfunc, fit_params[:],
-                                              args=(fit_values.values(), fit_values.keys()),
+                                              args=(list(fit_values.values()), list(fit_values.keys())),
                                               maxfev=10000)
     return fitted_params
 
@@ -105,11 +109,11 @@ def main():
     """
     fig = plt.figure()
     axis = fig.add_subplot(2, 1, 1)
-    axis.plot(fit_values.values(), fit_values.keys() -
-              x_axis_fit_func(p1_x_axis, fit_values.values()), 'bo')
+    axis.plot(list(fit_values.values()), list(fit_values.keys()) -
+              x_axis_fit_func(p1_x_axis, list(fit_values.values())), 'bo')
     axis = fig.add_subplot(2, 1, 2)
     x_fit = np.arange(0, 45, 0.01)
-    axis.plot(fit_values.values(), fit_values.keys(), 'bo')
+    axis.plot(list(fit_values.values()), list(fit_values.keys()), 'bo')
     axis.plot(x_fit, x_axis_fit_func(p1_x_axis, x_fit), 'k-')
     plt.show()
 
