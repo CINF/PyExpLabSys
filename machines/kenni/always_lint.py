@@ -53,7 +53,7 @@ PYLINTRC = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), '..', '..', 'bootstrap',
     '.pylintrc'
 )
-PYLINT_VERSION = subprocess.check_output(['pylint --version 2> /dev/null'], shell=True)
+PYLINT_VERSION = subprocess.check_output(['/home/kenni/.local/bin/pylint --version 2> /dev/null'], shell=True)
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 CACHE_PATH = os.path.join(THIS_DIR, 'lint_cache')
@@ -255,7 +255,7 @@ class CommitAnalyzer(object):
                 sys.stdout.flush()
             LOG.debug('No lint cache found for %s, actually run pylint', md5sum)
             # Collect lint statistics
-            args = ['pylint', '--output-format=json', '--disable=F0401', '-r', 'n',
+            args = ['/home/kenni/.local/bin/pylint', '--output-format=json', '--disable=F0401', '-r', 'n',
                     '--rcfile={}'.format(PYLINTRC), filepath]
             process = subprocess.Popen(args, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
