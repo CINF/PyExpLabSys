@@ -5,10 +5,12 @@ import time
 import math
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.chiller_reader import ChillerReader
-from PyExpLabSys.common.loggers import ContinuousLogger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
 LOG = get_logger('chiller_logger_xrd')
 
@@ -39,10 +41,10 @@ def main():
     LOG.info('Live socket init and started with name "%s"', live_socket_name)
 
     db_table = 'dateplots_sputterchamber'
-    db_logger = ContinuousLogger(table=db_table,
-                                 username=credentials.user,
-                                 password=credentials.passwd,
-                                 measurement_codenames=codenames)
+    db_logger = ContinuousDataSaver(continuous_data_table=db_table,
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=codenames)
     db_logger.start()
     LOG.info('ContinuousLogger init and started on table "%s"', db_table)
 
@@ -56,7 +58,7 @@ def main():
                 live_socket.set_point_now(name, value)
                 if loggers[name].read_trigged():
                     LOG.debug('Log value %s for codename "%s"', value, name)
-                    db_logger.enqueue_point_now(name, value)
+                    db_logger.save_point_now(name, value)
                     loggers[name].clear_trigged()
 
 
