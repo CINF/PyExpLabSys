@@ -9,6 +9,8 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.utilities import get_logger
 import PyExpLabSys.common.utilities
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
 
 LOGGER = get_logger('VHP Temperature control', level='INFO', file_log=True,
