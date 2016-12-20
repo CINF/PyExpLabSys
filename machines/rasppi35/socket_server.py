@@ -5,6 +5,8 @@ import time
 import PyExpLabSys.drivers.brooks_s_protocol as brooks
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 
 class FlowControl(threading.Thread):
@@ -39,27 +41,22 @@ def main():
     port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRR44-if00-port0'
     devices = ['F25600004', 'F25600005', 'F25600006', 'F25600001', 'F25600002',
                'F25600003', 'F25698001']
-    datasocket = DateDataPullSocket('vhp_mfc_control',
-                                    devices,
-                                    timeouts=[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                                    port=9000)
+    datasocket = DateDataPullSocket('vhp_mfc_control', devices, timeouts=3, port=9000)
     datasocket.start()
 
     pushsocket = DataPushSocket('vhp_push_control', action='enqueue')
     pushsocket.start()
 
-    i = 0
     mfcs = {}
     for device in devices:
         mfcs[device] = brooks.Brooks(device, port=port)
         print(mfcs[device].read_flow())
 
-    fc = FlowControl(mfcs, datasocket, pushsocket)
-    fc.start()
+    flow_control = FlowControl(mfcs, datasocket, pushsocket)
+    flow_control.start()
 
-    while True:
+    while flow_control.isAlive():
         time.sleep(0.5)
 
 if __name__ == '__main__':
-    main()        
-
+    main()

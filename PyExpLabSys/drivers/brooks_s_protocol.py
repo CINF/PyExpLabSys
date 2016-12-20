@@ -1,11 +1,18 @@
-# pylint: disable=R0913,W0142,C0103
-
-import serial
+""" Driver for Brooks s-protocol """
+from __future__ import print_function
 import time
 import struct
+import logging
+import serial
+from six import b, indexbytes
+from PyExpLabSys.common.supported_versions import python2_and_3
+# Configure logger as library logger and set supported python versions
+LOGGER = logging.getLogger(__name__)
+LOGGER.addHandler(logging.NullHandler())
+python2_and_3(__file__)
 
-class Brooks():
-
+class Brooks(object):
+    """ Driver for Brooks s-protocol """
     def __init__(self, device, port='/dev/ttyUSB0'):
         self.ser = serial.Serial(port, 19200)
         self.ser.parity = serial.PARITY_ODD
@@ -38,7 +45,7 @@ class Brooks():
         command = command[i:]
         n = len(command)
         result = 0
-        for i in range(0, (n/2)):
+        for i in range(0, (n//2)):
             byte_string = command[i*2:i*2+2]
             byte = int(byte_string, 16)
             result = byte ^ result
@@ -50,16 +57,20 @@ class Brooks():
         check = check[2:].zfill(2)
         final_com = 'FFFFFFFF' + command + check
         bin_comm = ''
-        for i in range(0, len(final_com) / 2):
+        for i in range(0, len(final_com) // 2):
             bin_comm += chr(int(final_com[i * 2:i * 2 + 2], 16))
+        bin_comm += chr(0)
+        bytes_for_serial = b(bin_comm)
         error = 1
         while (error > 0) and (error < 10):
-            self.ser.write(bin_comm + chr(0))
+            self.ser.write(bytes_for_serial)
             time.sleep(0.2)
             s = self.ser.read(self.ser.inWaiting())
             st = ''
             for i in range(0, len(s)):
-                char = hex(ord(s[i]))[2:].zfill(2)
+                #char = hex(ord(s[i]))[2:].zfill(2)
+                #char = hex(s[i])[2:].zfill(2)
+                char = hex(indexbytes(s, i))[2:].zfill(2)
                 if not char.upper() == 'FF':
                     st = st + char
             try:
@@ -68,44 +79,43 @@ class Brooks():
                 command = st[12:14]
                 byte_count = int(st[14:16], 16)
                 response = st[16:16 + 2 * byte_count]
-                error = False
                 error = 0
             except ValueError:
                 error = error + 1
                 response = 'Error'
-        return(response)
+        return response
 
     def read_flow(self):
         """ Read the current flow-rate """
         response = self.comm('82' + self.long_address + '0100')
         try:  # TODO: This should be handled be re-sending command
-            status_code = response[0:4]
+            #status_code = response[0:4]
             unit_code = int(response[4:6], 16)
             flow_code = response[6:]
             byte0 = chr(int(flow_code[0:2], 16))
             byte1 = chr(int(flow_code[2:4], 16))
             byte2 = chr(int(flow_code[4:6], 16))
             byte3 = chr(int(flow_code[6:8], 16))
-            flow = struct.unpack('>f', byte0 + byte1 + byte2 + byte3)
+            flow = struct.unpack('>f', b(byte0 + byte1 + byte2 + byte3))
             value = flow[0]
         except ValueError:
             value = -1
             unit_code = 171  # Satisfy assertion check, we know what is wrong
-        assert(unit_code == 171)  # Flow unit should always be mL/min
-        return(value)
+        assert unit_code == 171  # Flow unit should always be mL/min
+        return value
 
     def read_full_range(self):
-        """ 
-        Report the full range of the device 
-        Apparantly this does not work for SLA-series... 
+        """
+        Report the full range of the device
+        Apparantly this does not work for SLA-series...
         """
         response = self.comm('82' + self.long_address + '980106')#Command 152
-        print response
+        print(response)
         # Double check what gas-selection code really means...
         # currently 01 is used
         # status_code = response[0:4]
         unit_code = int(response[4:6], 16)
-        assert(unit_code == 171)#Flow controller should always be set to mL/min
+        assert unit_code == 171 #Flow controller should always be set to mL/min
 
         flow_code = response[6:]
         byte0 = chr(int(flow_code[0:2], 16))
@@ -113,7 +123,7 @@ class Brooks():
         byte2 = chr(int(flow_code[4:6], 16))
         byte3 = chr(int(flow_code[6:8], 16))
         max_flow = struct.unpack('>f', byte0 + byte1 + byte2 + byte3)
-        return(max_flow[0])
+        return max_flow[0]
 
     def set_flow(self, flowrate):
         """ Set the setpoint of the flow """
@@ -123,14 +133,13 @@ class Brooks():
             ieee_flowrate += hex(ord(ieee[i]))[2:].zfill(2)
         #39 = unit code for percent
         #FA = unit code for 'same unit as flowrate measurement'
-        response = self.comm('82' + self.long_address +
-                             'ec05' + 'FA' + ieee_flowrate)
+        #response = self.comm('82' + self.long_address +
+        #                     'ec05' + 'FA' + ieee_flowrate)
         # status_code = response[0:4]
         # unit_code = int(response[4:6], 16)
         return True
 
 if __name__ == '__main__':
-    brooks = Brooks()
-    print brooks.long_address
-    print brooks.read_flow()
-    #print brooks.set_flow(0.0)
+    BROOKS = Brooks()
+    print(BROOKS.long_address)
+    print(BROOKS.read_flow())
