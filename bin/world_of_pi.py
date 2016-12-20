@@ -40,6 +40,9 @@ if sys.version_info[0] < 3:
     print('World of pi is Python 3 only. Sorry!')
     raise SystemExit(8)
 
+from PyExpLabSys.common.supported_versions impor python3_only
+python3_only(__file__)
+
 
 # Read terminal rows and columns
 ROWS, COLUMNS = (int(num) for num in popen('stty size', 'r').read().split())

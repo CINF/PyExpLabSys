@@ -1,3 +1,7 @@
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
+
 class RTD_Calculator():
 
     def __init__(self, Trt, Rrt, material='Pt'):
