@@ -1,5 +1,12 @@
 from __future__ import print_function
+import logging
 from PyExpLabSys.drivers.scpi import SCPI
+from PyExpLabSys.common.supported_versions import python2_and_3
+# Configure logger as library logger and set supported python versions
+LOGGER = logging.getLogger(__name__)
+LOGGER.addHandler(logging.NullHandler())
+python2_and_3(__file__)
+
 
 class Agilent34410ADriver(SCPI):
 

@@ -13,8 +13,8 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.utilities import get_logger
 import PyExpLabSys.common.utilities
-PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
 from PyExpLabSys.common.supported_versions import python2_and_3
+PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
 python2_and_3(__file__)
 
 LOGGER = get_logger('Microreactor Temperature control', level='ERROR', file_log=True,
