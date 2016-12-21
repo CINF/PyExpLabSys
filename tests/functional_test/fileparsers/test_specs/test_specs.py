@@ -5,8 +5,11 @@
 from __future__ import print_function
 import re
 import os
+import codecs
 import numpy as np
 from PyExpLabSys.file_parsers.specs import SpecsFile
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 
 FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
@@ -33,8 +36,7 @@ def get_specs_region(filepath, region):
 
 def get_xy_data(filepath):
     """Get the xy region"""
-    with open(os.path.join(THIS_FILE_DIR, filepath)) as file_:
-        data = np.genfromtxt(file_, delimiter='  ')
+    data = np.genfromtxt(os.path.join(THIS_FILE_DIR, filepath), delimiter='  ')
     return data
 
 

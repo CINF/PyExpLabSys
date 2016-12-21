@@ -8,12 +8,15 @@ import pytest
 import numpy
 
 from PyExpLabSys.file_parsers.chemstation import Sequence, CHFile
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 SEQUENCE_FILE = os.path.join(THIS_FILE_DIR, 'def_GC 2015-01-13 11-16-24')
 DATA_FILE = os.path.join(THIS_FILE_DIR, 'chemstation_data.json')
 INJECTION_METADATA = os.path.join(THIS_FILE_DIR, 'injection_metadata.json')
 CHFILE = os.path.join(THIS_FILE_DIR, 'TCD3C.ch')
+CHDATA = os.path.join(THIS_FILE_DIR, 'ch_metadata.json')
 
 
 # Sequence metadata
@@ -67,8 +70,10 @@ def test_ch_file():
     assert numpy.isclose(saved_times_sum, ch_file.times.sum())
     assert numpy.isclose(saved_values_sum, ch_file.values.sum())
 
+    metadata = ch_file.metadata
+    metadata['datetime'] = time.mktime(metadata['datetime'])
     # Test metadata
-    with open('ch_metadata.json', 'r') as file_:
+    with open(CHDATA, 'r') as file_:
         saved_metadata = json.load(file_)
     assert saved_metadata == ch_file.metadata
     

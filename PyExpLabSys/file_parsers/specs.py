@@ -93,14 +93,20 @@ _LOG = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 _LOG.addHandler(logging.NullHandler())
 import numpy as np
+import six
 from PyExpLabSys.thirdparty.cached_property import cached_property
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
+if six.PY3:
+    long = int
 
 
 UNHANDLED_XML_COMPONENTS = 'An unhandled XML component \'{}\' was found when '\
                            'parsing a \'{}\''
 # Used in the conversion of elements with type information
 XML_TYPES = {
-    'string': unicode, 'ulong': long, 'double': float, 'boolean': bool,
+    'string': six.text_type, 'ulong': long, 'double': float, 'boolean': bool,
     'long': long,
 }
 ARRAY_TYPES = {'ulong': 'uint64', 'double': 'double'}
