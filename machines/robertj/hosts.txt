@@ -31,9 +31,9 @@
  rasppi36,  Raspberry Pi, socket, &micro;-reactors, Pressure readout
  rasppi37,  Raspberry Pi, socket, &micro;-reactors, MKS MFCs
  rasppi39,  Raspberry Pi, ls,     PS, Mass Spec High pressure cell
- rasppi42,  Raspberry Pi, ls,     sniffer, Pressure controller - bronkhorst
  rasppi43,  Raspberry Pi, socket, VHP, Pressure and temperature readout
  rasppi44,  Raspberry Pi, socket, &micro;-reactorNG, Valve Control box
+ rasppi45,  Raspberry Pi, ls,     sniffer, Pressure controller - bronkhorst
  rasppi47,  Raspberry Pi, socket, Furnace Room, Temperature Control
  rasppi48,  Raspberry Pi, socket, Palle, Backeout Control
  rasppi49,  Raspberry Pi, socket, TOF, emission control
@@ -54,6 +54,7 @@
  rasppi66,  Raspberry Pi, socket, Hall, Ventilation pressure + hall temperature
  rasppi67,  Raspberry Pi, socket, VHP, Temperature control
  rasppi68,  Raspberry Pi, socket, TOF, Livesocket display
+ rasppi69,  Raspberry Pi, socket, XRD, Flow control - bronkhorst
  rasppi70,  Raspberry Pi, socket, Chemlab b312, Temp + humidity
  rasppi71,  Raspberry Pi, ls,     Thetaprobe, Main chamber pressure
  rasppi72,  Raspberry Pi, socket, b312, Large office Temp + humidity
@@ -73,4 +74,3 @@
  #rasppi112, Raspberry Pi, 9002,   b309 CVD, DCA cell
  cinf-microreactorng-ms,  Ubuntu, ls,    &micro;-reactorNG, Mass Spec
  cinf-microreactor-ms,    Ubuntu, ls,    &micro;-reactor, Mass Spec
- 
