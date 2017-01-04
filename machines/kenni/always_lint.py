@@ -48,6 +48,7 @@ if sys.version_info.major != 3:
     raise RuntimeError('Run with python 3')
 
 ARCHIVE_PATH = '/home/kenni/pylint_pyexplabsys/PyExpLabSys'
+SKIP_FILE_LINESTART = ('# Form implementation generated from reading ui file',)
 GIT_PREFIX_ARGS = ['git', '-C', ARCHIVE_PATH]
 PYLINTRC = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), '..', '..', 'bootstrap',
@@ -196,8 +197,9 @@ class CommitAnalyzer(object):
                     else:
                         raise exception
                 # We are good to lint the file
-                self.add_lines_to_total_count(filepath)
-                self.lint_file(filepath)
+                should_lint = self.add_lines_to_total_count(filepath)
+                if should_lint:
+                    self.lint_file(filepath)
 
         if not RUNNING_IN_CRON:
             sys.stdout.write('\n')
@@ -215,7 +217,16 @@ class CommitAnalyzer(object):
             self.report_to_mysql()
 
     def add_lines_to_total_count(self, filename):
-        """Returns the number of lines in file"""
+        """Add line number statistics and check whether file should be skipped
+        altogether based on *file contents*.
+
+        NOTE: Skips based of filenames and paths are performed elsewhere
+
+        Returns:
+            bool: Whether this file was included in the line numbers and therefore should
+                be linted
+
+        """
         LOG.debug(
             'Adding file to total line count: %s. Line count before: %s',
             filename, self.total_line_count,
@@ -228,6 +239,9 @@ class CommitAnalyzer(object):
             for line_number, line in enumerate(file_, start=1):
                 if line.startswith('python3_only(') or line.startswith('python2_and_3('):
                     is_python3_compatible = True
+                for linestart in SKIP_FILE_LINESTART:
+                    if line.startswith(linestart):
+                        return False
             self.total_line_count += line_number
 
             # Add Python 3 compatible lines
@@ -235,6 +249,7 @@ class CommitAnalyzer(object):
                 self.total_py3_line_count += line_number
 
         LOG.debug('Line count after: %s', self.total_line_count)
+        return True
 
     def lint_file(self, filepath):
         """Runs lint on the file"""
