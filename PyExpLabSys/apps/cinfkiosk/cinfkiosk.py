@@ -1,4 +1,5 @@
 
+#pylint: skip-file
 from __future__ import division
 
 import sys

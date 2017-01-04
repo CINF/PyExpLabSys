@@ -1,3 +1,8 @@
+
+# pylint: disable=invalid-name,redefined-builtin,too-many-arguments
+
+"""Configuration file for Sphinx"""
+
 # -*- coding: utf-8 -*-
 #
 # PyExpLabSys documentation build configuration file, created by
@@ -11,7 +16,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys
+import os
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -40,14 +46,15 @@ if os.environ.get('READTHEDOCS', None) == 'True':
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.intersphinx',
-              'sphinx.ext.ifconfig',
-              'sphinx.ext.viewcode',
-              'sphinx.ext.todo',
-              'sphinx.ext.inheritance_diagram',
-              'sphinx.ext.autosummary',
-              'sphinxcontrib.napoleon'
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.ifconfig',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.todo',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.autosummary',
+    'sphinxcontrib.napoleon',
 ]
 todo_include_todos = True
 
@@ -115,7 +122,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-if not (os.environ.get('READTHEDOCS', None) == 'True'):
+if not os.environ.get('READTHEDOCS', None) == 'True':
     html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -195,21 +202,21 @@ htmlhelp_basename = 'PyExpLabSysdoc'
 # -- Options for LaTeX output --------------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    #'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    #'pointsize': '10pt',
 
-# Additional stuff for the LaTeX preamble.
-#'preamble': '',
+    # Additional stuff for the LaTeX preamble.
+    #'preamble': '',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'PyExpLabSys.tex', u'PyExpLabSys Documentation',
-   u'CINF', 'manual'),
+    ('index', 'PyExpLabSys.tex', u'PyExpLabSys Documentation',
+     u'CINF', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -252,9 +259,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'PyExpLabSys', u'PyExpLabSys Documentation',
-   u'CINF', 'PyExpLabSys', 'One line description of project.',
-   'Miscellaneous'),
+    ('index', 'PyExpLabSys', u'PyExpLabSys Documentation',
+     u'CINF', 'PyExpLabSys', 'One line description of project.',
+     'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -272,10 +279,12 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 
 
 # Make sure we always document __init__
-def skip(app, what, name, obj, skip, options):
+def skip(app, what, name, obj, skip_, options):  # pylint: disable=unused-argument
+    """Modify the autodoc skip result for __init__"""
     if name == "__init__":
         return False
-    return skip
+    return skip_
 
 def setup(app):
+    """Make custom setup"""
     app.connect("autodoc-skip-member", skip)
