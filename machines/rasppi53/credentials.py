@@ -1,2 +1,0 @@
-user = 'mgw'
-passwd = 'mgw'
