@@ -8,6 +8,7 @@ import time
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
+from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 try:
@@ -17,7 +18,6 @@ except IndexError:
     print('This will ensure that the correct settings file will be used')
     exit()
 import settings # pylint: disable=F0401
-import credentials
 
 LOGGER = get_logger('Socket Dataplot Logger', level='ERROR', file_log=True,
                     file_name='errors.log', terminal_log=False, email_on_warnings=False)
@@ -42,6 +42,9 @@ class SocketReaderClass(threading.Thread):
             return self.current_value
         else:
             self.quit = True
+            # Consider to keep program running even in case of
+            # socket failures
+
 
     def run(self):
         while not self.quit:
@@ -54,7 +57,7 @@ class SocketReaderClass(threading.Thread):
                 self.current_value = float(received[received.find(',') + 1:])
                 self.ttl = 20
             except (socket.timeout, ValueError) as e:
-                print(e)
+                print(e) # LOG THIS
             time.sleep(1)
 
 def main():
@@ -70,9 +73,14 @@ def main():
         channel['logger'].start()
         codenames.append(channel['codename'])
 
+    pullsocket = DateDataPullSocket(settings.user + '-socket_logger',
+                                             codenames, timeouts=5)
+    pullsocket.start()
+
+        
     db_logger = ContinuousDataSaver(continuous_data_table=settings.dateplot_table,
-                                    username=credentials.user,
-                                    password=credentials.passwd,
+                                    username=settings.user,
+                                    password=settings.passwd,
                                     measurement_codenames=codenames)
     db_logger.start()
 
@@ -84,7 +92,11 @@ def main():
         for channel in settings.channels.values():
             if not channel['reader'].isAlive():
                 everything_ok = False
+                # Report error here!!!
+                # Consider to keep program running even in case of
+                # socket failures
             value = channel['logger'].read_value()
+            pullsocket.set_point_now(channel['codename'], value)
             if channel['logger'].read_trigged():
                 print(value)
                 db_logger.save_point_now(channel['codename'], value)

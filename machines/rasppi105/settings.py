@@ -16,12 +16,12 @@ channels[1] = {'host':'rasppi24','port':9000,
                'comp_value': 0.1}
 
 
-channels[2] = {'host':'rasppi105','port':9000,
-               'command':'3F2320902001', 'codename':'mgw_mfc_flow_02',
+channels[2] = {'host':'rasppi37','port':9000,
+               'command':'21984839', 'codename':'mgw_mfc_flow_02',
                'comp_value': 0.1}
 
-channels[3] = {'host':'rasppi105','port':9000,
-               'command':'3F2320901001', 'codename':'mgw_mfc_flow_03',
-               'comp_value': 0.1}
 
+channels[3] = {'host':'rasppi37','port':9000,
+               'command':'21984838', 'codename':'mgw_mfc_flow_03',
+               'comp_value': 0.1}
 
