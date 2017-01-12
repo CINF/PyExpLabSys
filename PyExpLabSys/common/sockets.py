@@ -1273,7 +1273,11 @@ class LiveSocket(object):
         """
         LSLOG.info('Init')
         self.codename_set = set(codenames)
-        self.host, self.port = live_server
+        liveserver_hostname, self.liveserver_port = live_server
+        # Translate live server hostname to IP-address to avoid DNS lookup on every transmission
+        self.liveserver_ip = socket.gethostbyname(liveserver_hostname)
+
+        # Open up UDP socket and get hostname og this machine
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.hostname = socket.gethostname()
 
@@ -1322,7 +1326,7 @@ class LiveSocket(object):
 
         # Send the data to the live socket proxy
         dump = json.dumps({'host': self.hostname, 'data': data})
-        self.socket.sendto(dump.encode('utf-8'), (self.host, self.port))
+        self.socket.sendto(dump.encode('utf-8'), (self.liveserver_ip, self.liveserver_port))
 
     def set_batch_now(self, data):
         """Set a batch of point now
@@ -1445,6 +1449,8 @@ TYPE_FROM_STRING = {'int': int, 'float': float, 'str': str,
 
 def run_module():
     """This functions sets"""
+    import math
+
     def push_callback(incoming):
         """Calback function for the push socket"""
         print('Push socket got:', incoming)
@@ -1455,11 +1461,25 @@ def run_module():
     push_socket.start()
     print('Started DataPushSocket on port 8500 with name "module_test_push_socket"')
 
+    live_socket = LiveSocket(
+        'dummy_live_socket',
+        codenames=('dummy_sine_one', 'dummy_sine_two'),
+        no_internal_data_pull_socket=True,
+    )
+    live_socket.start()
+    print('Started live_socket. Using hostname {}'.format(live_socket.hostname))
+
     try:
-        time.sleep(1E7)
+        while True:
+            print('Send new points live socket')
+            live_socket.set_point_now('dummy_sine_one', math.sin(time.time()))
+            live_socket.set_point_now('dummy_sine_two', math.sin(time.time() + math.pi))
+            time.sleep(1)
     except KeyboardInterrupt:
         push_socket.stop()
         print('Stopped DataPushSocket on port 8500 with name "module_test_push_socket"')
+        live_socket.stop()
+        print('Stopped LiveSocket')
         time.sleep(2)
 
 
