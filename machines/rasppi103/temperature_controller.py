@@ -127,7 +127,7 @@ class PowerCalculatorClass(threading.Thread):
 
 
     def run(self):
-        data_temp = 'mgw_reactor_rtd_temperature#raw'
+        data_temp = 'mgw_reactor_tc_temperature#raw'
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
         t = 0
