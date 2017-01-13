@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """The sockets module contains various implementations of UDP socket servers
 (at present 4 in total) for transmission of data over the network. The
-different implementations tailored for a specific purposes, as described below.
+different implementations are tailored for a specific purposes, as described below.
 
 In general, there is a distinction in the naming of the different socket server
 implementation between **push** socket servers, that you can push data to, and
@@ -18,8 +18,8 @@ Presently the module contains the following socket servers:
  * **DataPullSocket** (:class:`.DataPullSocket`) This socket is similar to the
    date data server, but is
    used to make x, y type data available on the network. It identifies
-   different data channel by codenames and has time out functionality to
-   prevent servcing old data.
+   different data channel by codenames and has timeout functionality to
+   prevent serving old data.
  * **DataPushSocket** (:class:`.DataPushSocket`) This socket is used to recieve
    data from the network. The
    data is received in dictionary form and it identifies the data channels by
@@ -28,7 +28,7 @@ Presently the module contains the following socket servers:
    data set, to put them in a queue (that the user can then empty) or to call
    a callback function with the received data as en argument.
  * **LiveSocket** (:class:`.LiveSocket`) This socket is used only for serving
-   data to the a live socket server. It also is not actuallya socket server
+   data to the live socket server. It also is not actually a socket server
    like the others, but it has a similar interface.
 
 .. note:: The module variable :data:`.DATA` is a dict shared for all socket
@@ -116,8 +116,6 @@ def socket_server_status():
 
 PULLUHLOG = logging.getLogger(__name__ + '.PullUDPHandler')
 PULLUHLOG.addHandler(logging.NullHandler())
-
-
 class PullUDPHandler(SocketServer.BaseRequestHandler):
     """Request handler for the :class:`.DateDataPullSocket` and
     :class:`.DateDataPullSocket` socket servers. The commands this request
@@ -160,8 +158,10 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
         sock = self.request[1]
-        PULLUHLOG.debug('Request \'{}\' received from {} on port {}'
-                        .format(command, self.client_address, self.port))
+        PULLUHLOG.debug('Request \'%s\' received from %s on port %s',
+                        command, self.client_address, self.port)
+
+        # NOTE: The data is encoded
 
         if command.count('#') == 1:
             data = self._single_value(command)
@@ -170,8 +170,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
             data = self._all_values(command)
 
         sock.sendto(data.encode('ascii'), self.client_address)
-        PULLUHLOG.debug('Sent back \'{}\' to {}'
-                        .format(data, self.client_address))
+        PULLUHLOG.debug('Sent back \'%s\' to %s', data, self.client_address)
 
     def _single_value(self, command):
         """Returns a string for a single point
@@ -182,7 +181,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             str: The data as a string (or an error) to be sent back
         """
-        PULLUHLOG.debug('Parsing single value command: {}'.format(command))
+        PULLUHLOG.debug('Parsing single value command: %s', command)
         name, command = command.split('#')
         # Return as raw string
         if command == 'raw' and name in DATA[self.port]['data']:
@@ -212,7 +211,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             str: The data as a string (or an error) to be sent back
         """
-        PULLUHLOG.debug('Parsing all-values command: {}'.format(command))
+        PULLUHLOG.debug('Parsing all-values command: %s', command)
         # Return a raw string with all measurements in codenames order
         if command == 'raw':
             strings = []
@@ -233,8 +232,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
                     data = DATA[self.port]['data'][codename]
                 points.append(data)
             out = json.dumps(points)
-        # Return a raw string with all measurements in codenames order
-        # including names
+        # Return a raw string with all measurements in codenames order including names
         elif command == 'raw_wn':
             strings = []
             for codename in DATA[self.port]['codenames']:
@@ -284,7 +282,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             bool: Whether the data is too old or not
         """
-        PULLUHLOG.debug('Check if data for \'{}\' is too old'.format(codename))
+        PULLUHLOG.debug('Check if data for \'%s\' is too old', codename)
         now = time.time()
         if DATA[self.port]['type'] == 'date':
             timeout = DATA[self.port]['timeouts'].get(codename)
@@ -311,8 +309,6 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
 
 CDPULLSLOG = logging.getLogger(__name__ + '.CommonDataPullSocket')
 CDPULLSLOG.addHandler(logging.NullHandler())
-
-
 class CommonDataPullSocket(threading.Thread):
     """Abstract class that implements common data pull socket functionality.
 
@@ -327,8 +323,7 @@ class CommonDataPullSocket(threading.Thread):
     # pylint: disable=too-many-branches
     def __init__(self, name, codenames, port, default_x, default_y, timeouts,
                  check_activity, activity_timeout, init_timeouts=True,
-                 handler_class=PullUDPHandler,
-                 ):
+                 handler_class=PullUDPHandler):
         """Initializes internal variables and data structure in the
         :data:`.DATA` module variable
 
@@ -359,7 +354,7 @@ class CommonDataPullSocket(threading.Thread):
             activity_timeout (float or int): The timespan in seconds which
                 constitutes in-activity
         """
-        CDPULLSLOG.info('Initialize with: {}'.format(call_spec_string()))
+        CDPULLSLOG.info('Initialize with: %s', call_spec_string())
         # Init thread
         super(CommonDataPullSocket, self).__init__()
         self.daemon = True
@@ -421,7 +416,7 @@ class CommonDataPullSocket(threading.Thread):
         except socket.error as error:
             if error.errno == 98:
                 # See custom exception message to understand this
-                CDPULLSLOG.error('Port \'{}\' still reserved'.format(port))
+                CDPULLSLOG.error('Port \'%s\' still reserved', port)
                 raise PortStillReserved()
             else:
                 raise error
@@ -458,8 +453,6 @@ class CommonDataPullSocket(threading.Thread):
 
 DPULLSLOG = logging.getLogger(__name__ + '.DataPullSocket')
 DPULLSLOG.addHandler(logging.NullHandler())
-
-
 class DataPullSocket(CommonDataPullSocket):
     """This class implements a UDP socket server for serving x, y type data.
     The UDP server uses the :class:`.PullUDPHandler` class to handle
@@ -480,7 +473,7 @@ class DataPullSocket(CommonDataPullSocket):
             poke_on_set (bool): Whether to poke the socket server when a point
                 is set, to let it know there is activity
         """
-        DPULLSLOG.info('Initialize with: {}'.format(call_spec_string()))
+        DPULLSLOG.info('Initialize with: %s', call_spec_string())
         # Run super init to initialize thread, check input and initialize data
         super(DataPullSocket, self).__init__(
             name, codenames, port=port, default_x=default_x,
@@ -513,8 +506,7 @@ class DataPullSocket(CommonDataPullSocket):
         if timestamp is None:
             timestamp = time.time()
         DATA[self.port]['timestamps'][codename] = timestamp
-        DPULLSLOG.debug('Point {} for \'{}\' set'
-                        .format(tuple(point), codename))
+        DPULLSLOG.debug('Point %s for \'%s\' set', tuple(point), codename)
         # Poke if required
         if DATA[self.port]['activity']['check_activity'] and self.poke_on_set:
             self.poke()
@@ -522,8 +514,6 @@ class DataPullSocket(CommonDataPullSocket):
 
 DDPULLSLOG = logging.getLogger(__name__ + '.DateDataPullSocket')
 DDPULLSLOG.addHandler(logging.NullHandler())
-
-
 class DateDataPullSocket(CommonDataPullSocket):
     """This class implements a UDP socket server for serving data as a function
     of time. The UDP server uses the :class:`.PullUDPHandler` class to handle
@@ -545,7 +535,7 @@ class DateDataPullSocket(CommonDataPullSocket):
             poke_on_set (bool): Whether to poke the socket server when a point
                 is set, to let it know there is activity
         """
-        DDPULLSLOG.info('Initialize with: {}'.format(call_spec_string()))
+        DDPULLSLOG.info('Initialize with: %s', call_spec_string())
         # Run super init to initialize thread, check input and initialize data
         super(DateDataPullSocket, self).__init__(
             name, codenames, port=port, default_x=default_x,
@@ -579,8 +569,7 @@ class DateDataPullSocket(CommonDataPullSocket):
                 [x, y]
         """
         DATA[self.port]['data'][codename] = tuple(point)
-        DDPULLSLOG.debug('Point {} for \'{}\' set'
-                         .format(tuple(point), codename))
+        DDPULLSLOG.debug('Point %s for \'%s\' set', tuple(point), codename)
         # Poke if required
         if DATA[self.port]['activity']['check_activity'] and self.poke_on_set:
             self.poke()
@@ -588,8 +577,6 @@ class DateDataPullSocket(CommonDataPullSocket):
 
 PUSHUHLOG = logging.getLogger(__name__ + '.PushUDPHandler')
 PUSHUHLOG.addHandler(logging.NullHandler())
-
-
 class PushUDPHandler(SocketServer.BaseRequestHandler):
     """This class handles the UDP requests for the :class:`.DataPushSocket`
     """
@@ -622,7 +609,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
            is prefixed with :data:`.PUSH_RET` and '#' so e.g. 'RET#actual_date'
         """
         request = self.request[0].decode('ascii')
-        PUSHUHLOG.debug('Request \'{}\'received'.format(request))
+        PUSHUHLOG.debug('Request \'%s\'received', request)
         # pylint: disable=attribute-defined-outside-init
         self.port = self.server.server_address[1]
         sock = self.request[1]
@@ -655,12 +642,12 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             except ValueError as exception:
                 return_value = '{}#{}'.format(PUSH_ERROR, str(exception))
 
-        PUSHUHLOG.debug('Send back: {}'.format(return_value))
+        PUSHUHLOG.debug('Send back: %s', return_value)
         sock.sendto(return_value.encode('ascii'), self.client_address)
 
     def _raw_with_names(self, data):
         """Adds raw data to the queue"""
-        PUSHUHLOG.debug('Parse raw with names: {}'.format(data))
+        PUSHUHLOG.debug('Parse raw with names: %s', data)
         data_out = {}
         # Split in data parts e.g: 'codenam1:type:dat1,dat2'. NOTE if no data
         # is passed (data is ''), the split will return '', which will make
@@ -672,7 +659,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             except ValueError:
                 message = 'The data part \'{}\' did not match the expected '\
                     'format of 3 parts divided by \':\''.format(part)
-                PUSHUHLOG.error('{}'.format(message))
+                PUSHUHLOG.error(message)
                 raise ValueError(message)
             # Parse the type
             try:
@@ -680,7 +667,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             except KeyError:
                 message = 'The data type \'{}\' is unknown. Only {} are '\
                     'allowed'.format(data_type, TYPE_FROM_STRING.keys())
-                PUSHUHLOG.error('{}'.format(message))
+                PUSHUHLOG.error(message)
                 raise ValueError(message)
             # Convert the data
             try:
@@ -690,7 +677,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             except ValueError as exception:
                 message = 'Unable to convert values to \'{}\'. Error is: {}'\
                     .format(data_type, str(exception))
-                PUSHUHLOG.error('{}'.format(message))
+                PUSHUHLOG.error(message)
                 raise ValueError(message)
             # Remove list for length 1 data
             if len(data_converted) == 1:
@@ -703,19 +690,19 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
     def _json_with_names(self, data):
         """Adds json encoded data to the data queue"""
-        PUSHUHLOG.debug('Parse json with names: {}'.format(data))
+        PUSHUHLOG.debug('Parse json with names: %s', data)
         try:
             data_dict = json.loads(data)
         except ValueError:
             message = 'The string \'{}\' could not be decoded as JSON'.\
                 format(data)
-            PUSHUHLOG.error('{}'.format(message))
+            PUSHUHLOG.error(message)
             raise ValueError(message)
         # Check type (normally not done, but we want to be sure)
         if not isinstance(data_dict, dict):
             message = 'The object \'{}\' returned after decoding the JSON '\
                 'string is not a dict'.format(data_dict)
-            PUSHUHLOG.error('{}'.format(message))
+            PUSHUHLOG.error(message)
             raise ValueError(message)
 
         # Set data and return ACK message
@@ -731,7 +718,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             (str): The request return value
         """
-        PUSHUHLOG.debug('Set data: {}'.format(data))
+        PUSHUHLOG.debug('Set data: %s', data)
         timestamp = time.time()
         DATA[self.port]['last'] = data
         DATA[self.port]['last_time'] = timestamp
@@ -781,7 +768,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             (str): The request return value
         """
-        PUSHUHLOG.debug('Format return json: {}'.format(value))
+        PUSHUHLOG.debug('Format return json: %s', value)
         try:
             out = '{}#{}'.format(PUSH_RET, json.dumps(value))
         except TypeError as exception:
@@ -834,7 +821,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         Returns:
             (str): The request return value
         """
-        PUSHUHLOG.debug('Format return raw: {}'.format(argument))
+        PUSHUHLOG.debug('Format return raw: %s', argument)
         try:
             if argument is None:
                 out = '{}#{}'.format(PUSH_RET, 'None')
@@ -858,7 +845,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         """Formats return raw value which is a dict. See
         :meth:`._format_return_raw` for details
         """
-        PUSHUHLOG.debug('Format return raw dict: {}'.format(argument))
+        PUSHUHLOG.debug('Format return raw dict: %s', argument)
         # Items holds the strings for each key, value pair e.g.
         # 'codename1:type:data'
         items = []
@@ -911,7 +898,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         """Formats return raw value which is a dict. See
         :meth:`._format_return_raw` for details
         """
-        PUSHUHLOG.debug('Format return raw list: {}'.format(argument))
+        PUSHUHLOG.debug('Format return raw list: %s', argument)
         types = []
         # List of strings with points as x,y
         items = []
@@ -944,8 +931,6 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
 DPUSHSLOG = logging.getLogger(__name__ + '.DataPushSocket')
 DPUSHSLOG.addHandler(logging.NullHandler())
-
-
 class DataPushSocket(threading.Thread):
     """This class implements a data push socket and provides options for
     enqueuing, calling back or doing nothing on reciept of data
@@ -1013,7 +998,7 @@ class DataPushSocket(threading.Thread):
                    them
 
         """
-        DPUSHSLOG.info('Initialize with: {}'.format(call_spec_string()))
+        DPUSHSLOG.info('Initialize with: %s', call_spec_string())
         # Init thread
         super(DataPushSocket, self).__init__()
         self.daemon = True
@@ -1048,9 +1033,10 @@ class DataPushSocket(threading.Thread):
         content = {
             'action': action, 'last': None, 'type': 'push', 'updated': {},
             'last_time': None, 'updated_time': None, 'name': name,
-            'activity': {'check_activity': check_activity,
-                         'activity_timeout': activity_timeout,
-                         'last_activity': time.time()
+            'activity': {
+                'check_activity': check_activity,
+                'activity_timeout': activity_timeout,
+                'last_activity': time.time(),
             }
         }
         if action == 'store_last':
@@ -1175,8 +1161,6 @@ class DataPushSocket(threading.Thread):
 
 CBTLOG = logging.getLogger(__name__ + '.CallBackThread')
 CBTLOG.addHandler(logging.NullHandler())
-
-
 class CallBackThread(threading.Thread):
     """Class to handle the calling back for a DataReceiveSocket"""
 
@@ -1189,7 +1173,7 @@ class CallBackThread(threading.Thread):
             callback (callable): The callable that will be called when there
                 are items in the queue
         """
-        CBTLOG.info('Initialize with: {}'.format(call_spec_string()))
+        CBTLOG.info('Initialize with: %s', call_spec_string())
         # Initialize the thread
         super(CallBackThread, self).__init__()
         self.daemon = True
@@ -1210,7 +1194,7 @@ class CallBackThread(threading.Thread):
                 # can be shut down
                 item = self.queue.get(True, 1)
                 self.callback(item)
-                CBTLOG.debug('CBT: Callback called with arg: {}'.format(item))
+                CBTLOG.debug('CBT: Callback called with arg: %s', item)
             except Queue.Empty:
                 pass
         CBTLOG.info('CBT: Run stopped')
@@ -1241,8 +1225,6 @@ class PortStillReserved(Exception):
 
 LSLOG = logging.getLogger(__name__ + '.LiveSocket')
 LSLOG.addHandler(logging.NullHandler())
-
-
 class LiveSocket(object):
     """This class implements a Live Socket
 
@@ -1332,7 +1314,8 @@ class LiveSocket(object):
         for key, value in data.items():
             if key not in self.codename_set:
                 message = 'The codename: \'{}\' is not registered'.format(key)
-                # FIXME exception
+                LSLOG.error(message)
+                raise RuntimeError(message)
             if self._internal_pull_socket:
                 self._internal_pull_socket.set_point(key, value)
 
@@ -1376,7 +1359,7 @@ class LiveSocket(object):
                 the first must be a float, the second can be float, int, bool or str
         """
         self.set_batch({codename: point})
-        LSLOG.debug('Point {} for \'{}\' set'.format(tuple(point), codename))
+        LSLOG.debug('Point %s for \'%s\' set', tuple(point), codename)
 
     def reset(self, codenames):
         """Send the reset signal for codenames
