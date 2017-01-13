@@ -1,5 +1,6 @@
 import threading
 import time
+import os
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
@@ -38,6 +39,7 @@ class ValueLogger(threading.Thread):
         self.status['trigged'] = False
 
     def run(self):
+        error_count = 0
         while not self.status['quit']:
             time.sleep(1)
             if self.channel is None:
@@ -58,10 +60,14 @@ class ValueLogger(threading.Thread):
                                        < self.value
                                        < self.last['val'] *
                                        (1 + self.compare['val']))
+                error_count = 0
             except (UnboundLocalError, TypeError):
                 #Happens when value is not yes ready from reader
                 val_trigged = False
                 time_trigged = False
+                error_count = error_count + 1
+            if error_count > 15:
+                raise Exception('Error in ValueLogger')
 
             # Will only trig on value of value is larger than low_comp
             if self.compare['low_comp'] is not None:
