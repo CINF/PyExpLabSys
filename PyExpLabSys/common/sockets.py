@@ -52,25 +52,33 @@ import json
 try:
     import Queue
 except ImportError:
-    # Queue was renamed to queueu in Python 3
+    # Queue was renamed to queue in Python 3
     import queue as Queue
 import logging
+from .utilities import call_spec_string
+from .system_status import SystemStatus
+from ..settings import Settings
+from .supported_versions import python2_and_3
+
+# Instantiate module logger
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
-from .utilities import call_spec_string
-from .system_status import SystemStatus
+
 # Instantiate a global system status object
 SYSTEM_STATUS = SystemStatus()
 
 # Indicate Python 2/3
-from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
+
+# Instantiate settings object
+SETTINGS = Settings()
+LOGGER.debug("Settings loaded with the following values: %s", SETTINGS.settings)
 
 
 def bool_translate(string):
     """Returns boolean value from strings 'True' or 'False'"""
-    if not str(string) in ['True', 'False']:
+    if str(string) not in ['True', 'False']:
         message = 'Cannot translate the string \'{}\' to a boolean. Only the '\
             'strings \'True\' or \'False\' are allowed'.format(string)
         raise ValueError(message)
@@ -1248,8 +1256,8 @@ class LiveSocket(object):
 
     """
 
-    def __init__(self, name, codenames, live_server=('cinf-wsserver', 9767),
-                 no_internal_data_pull_socket=False, internal_data_pull_socket_port=8000):
+    def __init__(self, name, codenames, live_server=None, no_internal_data_pull_socket=False,
+                 internal_data_pull_socket_port=8000):
         """Intialize the LiveSocket
 
         Args:
@@ -1257,7 +1265,8 @@ class LiveSocket(object):
             codenames (sequence): The codenames for the different data channels on this
                 LiveSocket
             live_server (sequence): 2 element sequence of hostname and port for the live
-                server to connect to. Defaults to ('servcinf', 9767).
+                server to connect to. Defaults to `(Settings.common_liveserver_host,
+                Settings.common_liveserver_host)`.
             no_internal_data_pull_socket (bool): Whether to not open an internal
                 DataPullSocket. Defaults to False. See note below.
             internal_data_pull_socket_port (int): Port for the internal DataPullSocket.
@@ -1273,8 +1282,11 @@ class LiveSocket(object):
         """
         LSLOG.info('Init')
         self.codename_set = set(codenames)
+        if live_server is None:
+            live_server = (SETTINGS.common_liveserver_host, SETTINGS.common_liveserver_port)
         liveserver_hostname, self.liveserver_port = live_server
-        # Translate live server hostname to IP-address to avoid DNS lookup on every transmission
+        # Translate live server hostname to IP-address to avoid DNS lookup on every
+        # transmission
         self.liveserver_ip = socket.gethostbyname(liveserver_hostname)
 
         # Open up UDP socket and get hostname og this machine

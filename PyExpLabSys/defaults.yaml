@@ -3,6 +3,9 @@
 # Common
 common_sql_reader_user: null
 common_sql_reader_password: null
+# The host can be hostname or IP-address
+common_liveserver_host: null
+common_liveserver_port: null
 
 # PyExpLabSys.common.utilities settings
 util_log_warning_email: null
