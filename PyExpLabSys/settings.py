@@ -28,6 +28,14 @@ modified to take effect.
 
 """
 
+# Implementation status
+# =====================
+# The following files has had settings incoorporated into them OR evaluated not to need
+# them:
+# common/sockets.py (Done)
+# common/utilities.py (Implemented but may need refactoring)
+
+
 from __future__ import print_function
 
 import sys
