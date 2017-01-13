@@ -55,6 +55,7 @@ except ImportError:
     # Queue was renamed to queue in Python 3
     import queue as Queue
 import logging
+import six
 from .utilities import call_spec_string
 from .system_status import SystemStatus
 from ..settings import Settings
@@ -161,8 +162,6 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
         PULLUHLOG.debug('Request \'%s\' received from %s on port %s',
                         command, self.client_address, self.port)
 
-        # NOTE: The data is encoded
-
         if command.count('#') == 1:
             data = self._single_value(command)
         else:
@@ -192,9 +191,9 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
 
         elif command == 'json' and name in DATA[self.port]['data']:
             if self._old_data(name):
-                out = json.dumps(OLD_DATA)
+                out = six.text_type(json.dumps(OLD_DATA))
             else:
-                out = json.dumps(DATA[self.port]['data'][name])
+                out = six.text_type(json.dumps(DATA[self.port]['data'][name]))
         # The command is unknown
         else:
             out = UNKNOWN_COMMAND
@@ -231,7 +230,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
                 else:
                     data = DATA[self.port]['data'][codename]
                 points.append(data)
-            out = json.dumps(points)
+            out = six.text_type(json.dumps(points))
         # Return a raw string with all measurements in codenames order including names
         elif command == 'raw_wn':
             strings = []
@@ -250,22 +249,22 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
             for codename in DATA[self.port]['codenames']:
                 if self._old_data(codename):
                     datacopy[codename] = OLD_DATA
-            out = json.dumps(datacopy)
+            out = six.text_type(json.dumps(datacopy))
         # Return all codesnames in a raw string
         elif command == 'codenames_raw':
             out = ','.join(DATA[self.port]['codenames'])
         # Return a list with all codenames encoded as a json string
         elif command == 'codenames_json':
-            out = json.dumps(DATA[self.port]['codenames'])
+            out = six.text_type(json.dumps(DATA[self.port]['codenames']))
         # Return the socket server name
         elif command == 'name':
             out = DATA[self.port]['name']
         # Return status of system and all socket servers
         elif command == 'status':
-            out = json.dumps({
+            out = six.text_type(json.dumps({
                 'system_status': SYSTEM_STATUS.complete_status(),
                 'socket_server_status': socket_server_status()
-            })
+            }))
         # The command is not known
         else:
             out = UNKNOWN_COMMAND
@@ -578,8 +577,7 @@ class DateDataPullSocket(CommonDataPullSocket):
 PUSHUHLOG = logging.getLogger(__name__ + '.PushUDPHandler')
 PUSHUHLOG.addHandler(logging.NullHandler())
 class PushUDPHandler(SocketServer.BaseRequestHandler):
-    """This class handles the UDP requests for the :class:`.DataPushSocket`
-    """
+    """This class handles the UDP requests for the :class:`.DataPushSocket`"""
 
     def handle(self):
         """Sets data corresponding to the request
@@ -621,10 +619,10 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             commands = ['json_wn#', 'raw_wn#', 'name', 'status', 'commands']
             return_value = '{}#{}'.format(PUSH_RET, json.dumps(commands))
         elif request == 'status':
-            return_value = json.dumps({
+            return_value = six.text_type(json.dumps({
                 'system_status': SYSTEM_STATUS.complete_status(),
                 'socket_server_status': socket_server_status()
-            })
+            }))
         elif request.count('#') != 1:
             return_value = '{}#{}'.format(PUSH_ERROR, UNKNOWN_COMMAND)
         else:
@@ -789,8 +787,8 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
         PUSHUHLOG.debug('Format return string: %s', value)
         try:
             out = '{}#{}'.format(PUSH_RET, str(value))
-        # pylint: disable=broad-except
-        except Exception as exception:  # Have no idea, maybe attribute error
+        except Exception as exception:  # pylint: disable=broad-except
+            # Have no idea, maybe attribute error
             out = '{}#{}'.format(PUSH_EXCEP, str(exception))
         return out
 
@@ -819,7 +817,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             argument (dict or list): The values to to convert
 
         Returns:
-            (str): The request return value
+            str: The request return value
         """
         PUSHUHLOG.debug('Format return raw: %s', argument)
         try:
@@ -842,8 +840,14 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
 
     @staticmethod
     def _format_return_raw_dict(argument):
-        """Formats return raw value which is a dict. See
-        :meth:`._format_return_raw` for details
+        """Formats return raw value which is a dict. See :meth:`._format_return_raw` for
+        details
+
+        Args:
+            argument (dict): The dict to be serialized manually
+
+        Returns:
+            str: The dict raw serialization string
         """
         PUSHUHLOG.debug('Format return raw dict: %s', argument)
         # Items holds the strings for each key, value pair e.g.
@@ -857,46 +861,49 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 # Check all values in list are of same type
                 types = [type(element) for element in value]
                 element_type = types[0]
+                element_type_name = six.text_type(element_type.__name__)
                 if types != len(types) * [element_type]:
-                    message = 'With return format raw, value in list '\
-                        'must have same type'
+                    message = 'With return format raw, value in list must have same type'
                     raise ValueError(message)
 
                 value_string = ','.join([str(element) for element in value])
             elif isinstance(value, list) and len(value) == 0:
                 # An empty list gets turned into type='', value=''
-                element_type = ''
+                element_type_name = ''
                 value_string = ''
             else:
                 # Single element conversion
-                element_type = type(value)
-                value_string = str(value)
+                element_type_name = six.text_type(type(value).__name__)
+                value_string = '{}'.format(str(value))
 
-            # Convert element_type to string
-            if element_type != '':
-                element_type = element_type.__name__  # pylint: disable=maybe-no-member
             # We always call it str
-            if sys.version_info[0] == 2 and element_type == 'unicode':
-                element_type = 'str'
+            if sys.version_info[0] == 2 and element_type_name == 'unicode':
+                element_type_name = 'str'
+
             # Check that the element type makes sense for raw conversion
-            if element_type not in ['int', 'float', 'bool', 'str']:
+            if element_type_name not in ['int', 'float', 'bool', 'str']:
                 message = 'With return format raw, the item type can '\
                     'only be one of \'int\', \'float\', \'bool\' and '\
                     '\'str\'. Object: \'{}\' is of type: {}'.format(
-                        value, element_type)
+                        value, element_type_name)
                 raise TypeError(message)
 
             # pylint: disable=maybe-no-member
-            item_str = '{}:{}:{}'.format(str(key), element_type,
-                                         value_string)
+            item_str = '{}:{}:{}'.format(str(key), element_type_name, value_string)
             items.append(item_str)
 
         return '{}#{}'.format(PUSH_RET, ';'.join(items))
 
     @staticmethod
     def _format_return_raw_list(argument):
-        """Formats return raw value which is a dict. See
+        """Formats return raw value which is a list of lists. See
         :meth:`._format_return_raw` for details
+
+        Args:
+            argument (list): The list of lists to be raw serialized
+
+        Returns
+            str: The raw serialized string
         """
         PUSHUHLOG.debug('Format return raw list: %s', argument)
         types = []
