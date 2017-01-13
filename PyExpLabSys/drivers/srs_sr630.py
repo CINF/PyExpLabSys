@@ -1,5 +1,13 @@
+""" Driver for Standford Research Systems, Model SR630 """
+from __future__ import print_function
 import serial
 import time
+import logging
+from PyExpLabSys.common.supported_versions import python2_and_3
+# Configure logger as library logger and set supported python versions
+LOGGER = logging.getLogger(__name__)
+LOGGER.addHandler(logging.NullHandler())
+python2_and_3(__file__)
 
 # Legal values for units
 UNITS = ['ABS', 'CENT', 'FHRN', 'MDC', 'DC']
@@ -8,15 +16,20 @@ class SRS_SR630():
     """ Driver for Standford Research Systems, Model SR630 """
 
     def __init__(self, port):
-        self.f = serial.Serial(port, 9600, timeout=2)
+        self.ser = serial.Serial(port, 9600, timeout=2)
+        #print self.f
+        #self.f.xonxoff = True
+        #self.f.rtscts = False
+        #self.f.dsrdtr = False
+        #print self.f
         time.sleep(0.1)
 
     def comm(self, command):
         """ Ensures correct protocol for instrument """
         endstring = '\r'
-        self.f.write(command + endstring)
+        self.ser.write((command + endstring).encode('ascii'))
         if command.find('?') > -1:
-            return_string = self.f.readline()[:-2]
+            return_string = self.ser.readline()[:-2].decode()
         else:
             return_string = True
         return return_string
@@ -49,10 +62,10 @@ class SRS_SR630():
         """ List all configuration of all channels """
         types = {}
         command = 'TTYP? '
-        for i in range(1,17):
+        for i in range(1, 17):
             types[i] = self.comm(command + str(i))
         return types
-    
+
     def read_open_status(self):
         """ Check for open output on all channels """
         for i in range(1, 17):
@@ -65,28 +78,27 @@ class SRS_SR630():
     def read_serial_number(self):
         """ Return the serial number of the device """
         return self.comm('*IDN?')
-
     
-    def read_channel(self, ch):
+    def read_channel(self, channel):
         """ Read the actual value of a channel """
         command = 'CHAN?'
         current_channel = self.comm(command)
-        if int(current_channel) ==  ch:
-            command = 'MEAS? ' + str(ch)
+        if int(current_channel) == channel:
+            command = 'MEAS? ' + str(channel)
             value = self.comm(command)
         else:
-            command = 'CHAN ' + str(ch)
+            command = 'CHAN ' + str(channel)
             self.comm(command)
-            command = 'MEAS? ' + str(ch)
+            command = 'MEAS? ' + str(channel)
             value = self.comm(command)
-        return value
+        return float(value)
 
 if __name__ == '__main__':
-    srs = SRS_SR630('/dev/ttyUSB0')
-    print(srs.read_serial_number())
-    print(str(srs.read_channel(2)))
-    print(srs.set_unit(2, 'CENT'))
-    print(str(srs.read_channel(2)))
-    print(srs.read_open_status())
-    print(srs.tc_types())
-    print(srs.config_analog_channel(1, follow_temperature=False, value=0.2))
+    SRS = SRS_SR630('/dev/ttyUSB0')
+    print(SRS.read_serial_number())
+    print(str(SRS.read_channel(2)))
+    print(SRS.set_unit(2, 'CENT'))
+    print(str(SRS.read_channel(2)))
+    print(SRS.read_open_status())
+    print(SRS.tc_types())
+    #print(SRS.config_analog_channel(1, follow_temperature=False, value=0.2))
