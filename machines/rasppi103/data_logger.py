@@ -204,8 +204,8 @@ def main():
         print(loggers[code_names[i]])
     for i in range(9, 25):
         print('Channel: ' + str(i-8) + ' , codename: ' + code_names[i])
-        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=0.1,
-                                             comp_type='lin', channel=i-8, maximumtime=2)
+        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=0.3,
+                                             comp_type='lin', channel=i-8)
         loggers[code_names[i]].start()
         print(loggers[code_names[i]])
     datasocket = DateDataPullSocket('mgw_temp', code_names, timeouts=4, port=9001)
