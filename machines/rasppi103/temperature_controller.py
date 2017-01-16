@@ -1,8 +1,7 @@
-""" Temperature controller """
+""" Temperature controller"""
 import time
 import threading
 import socket
-import curses
 import pickle
 import PyExpLabSys.auxiliary.pid as PID
 import PyExpLabSys.drivers.cpx400dp as cpx
@@ -155,7 +154,7 @@ def main():
     pushsocket = DataPushSocket('mgw_push_control', action='store_last')
     pushsocket.start()
 
-    power_calcuator = PowerCalculatorClass(pullsocket, pushsocket)
+    power_calculator = PowerCalculatorClass(pullsocket, pushsocket)
     power_calculator.daemon = True
     power_calculator.start()
 
