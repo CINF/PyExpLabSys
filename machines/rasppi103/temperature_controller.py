@@ -1,5 +1,3 @@
-# pylint: disable=R0913,W0142,C0103
-
 """ Temperature controller """
 import time
 import threading
@@ -10,65 +8,24 @@ import PyExpLabSys.auxiliary.pid as PID
 import PyExpLabSys.drivers.cpx400dp as cpx
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.microreactor_temperature_control import HeaterClass
+from PyExpLabSys.common.microreactor_temperature_control import CursesTui
+from PyExpLabSys.common.utilities import activate_library_logging
+import PyExpLabSys.common.utilities
+from PyExpLabSys.common.supported_versions import python2_and_3
+PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
+python2_and_3(__file__)
+
+LOGGER = get_logger('Palle Temperature control', level='WARN', file_log=True,
+                    file_name='temp_control.log', terminal_log=False, email_on_warnings=False)
 
 
-class CursesTui(threading.Thread):
-    """ Text user interface for furnace heating control """
-    def __init__(self, heating_class):
-        threading.Thread.__init__(self)
-        self.start_time = time.time()
-        self.quit = False
-        self.hc = heating_class
-        self.screen = curses.initscr()
-        curses.noecho()
-        curses.cbreak()
-        curses.curs_set(False)
-        self.screen.keypad(1)
-        self.screen.nodelay(1)
+activate_library_logging('PyExpLabSys.common.microreactor_temperature_control',
+                         logger_to_inherit_from=LOGGER)
+activate_library_logging('PyExpLabSys.auxiliary.pid', logger_to_inherit_from=LOGGER)
 
-    def run(self):
-        while not self.quit:
-            self.screen.addstr(3, 2, 'Running')
-            val = self.hc.pc.setpoint
-            self.screen.addstr(9, 40, "Setpoint: {0:.2f}C  ".format(val))
-            val = self.hc.pc.temperature
-            try:
-                self.screen.addstr(9, 2, "Temperature: {0:.4f}C  ".format(val))
-            except (ValueError, TypeError):
-                self.screen.addstr(9, 2, "Temperature: -         ")
-            val = self.hc.voltage
-            self.screen.addstr(10, 2, "Actual Voltage: {0:.2f} ".format(val))
-            val = self.hc.pc.pid.setpoint
-            self.screen.addstr(11, 2, "PID-setpint: {0:.2f}C  ".format(val))
-            val = self.hc.pc.pid.int_err
-            self.screen.addstr(12, 2, "PID-error: {0:.3f} ".format(val))
-            val = time.time() - self.start_time
-            self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
-
-            self.screen.addstr(17, 2, "Message:" + self.hc.pc.message)
-
-            self.screen.addstr(20, 2, "Message:" + self.hc.pc.message2)
-
-            n = self.screen.getch()
-            if n == ord('q'):
-                self.hc.quit = True
-                self.quit = True
-            if n == ord('i'):
-                self.hc.pc.update_setpoint(self.hc.pc.setpoint + 1)
-            if n == ord('d'):
-                self.hc.pc.update_setpoint(self.hc.pc.setpoint - 1)
-
-            self.screen.refresh()
-            time.sleep(0.2)
-        self.stop()
-
-    def stop(self):
-        """ Clean up console """
-        curses.nocbreak()
-        self.screen.keypad(0)
-        curses.echo()
-        curses.endwin()
-
+LOGGER.warn('Program started')
 
 class PowerCalculatorClass(threading.Thread):
     """ Calculate the wanted amount of power """
@@ -76,29 +33,30 @@ class PowerCalculatorClass(threading.Thread):
         threading.Thread.__init__(self)
         self.pullsocket = pullsocket
         self.pushsocket = pushsocket
-        self.power = 0
-        self.setpoint = 0
-        self.pid = PID.PID()
-        self.pid.Kp = 0.20
-        self.pid.Ki = 0.05
-        self.pid.Pmax = 45
-        self.update_setpoint(self.setpoint)
+        self.pushsocket = pushsocket
+        self.values = {}
+        self.values['power'] = 0
+        self.values['setpoint'] = -1
+        self.values['temperature'] = None
+        self.pid = PID.PID(pid_p=0.2, pid_i=0.05, pid_d=0, p_max=45)
+        self.update_setpoint(self.values['setpoint'])
         self.quit = False
-        self.temperature = None
         self.ramp = None
         self.message = '**'
         self.message2 = '*'
 
     def read_power(self):
         """ Return the calculated wanted power """
-        return self.power
+        return self.values['power']
 
     def update_setpoint(self, setpoint=None, ramp=0):
         """ Update the setpoint """
         if ramp > 0:
             setpoint = self.ramp_calculator(time.time()-ramp)
-        self.setpoint = setpoint
+        self.values['setpoint'] = setpoint
+        LOGGER.debug('Setting setpoint:' + str(setpoint))
         self.pid.update_setpoint(setpoint)
+        LOGGER.debug('Setpoint correct')
         self.pullsocket.set_point_now('setpoint', setpoint)
         return setpoint
 
@@ -125,8 +83,9 @@ class PowerCalculatorClass(threading.Thread):
                                                             ramp['temp'][i-1])
         return return_value
 
-
     def run(self):
+        LOGGER.debug('Start Power Calculator')
+        LOGGER.debug(self.quit)
         data_temp = 'mgw_reactor_tc_temperature#raw'
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
@@ -136,9 +95,12 @@ class PowerCalculatorClass(threading.Thread):
         while not self.quit:
             sock.sendto(data_temp.encode('ascii'), ('localhost', 9001))
             received = sock.recv(1024).decode()
-            self.temperature = float(received[received.find(',') + 1:])
-            self.power = self.pid.wanted_power(self.temperature)
-
+            LOGGER.debug(received)
+            self.values['temperature'] = float(received[received.find(',') + 1:])
+            LOGGER.debug('Temperature: ' + str(self.values['temperature']))
+            self.values['power'] = self.pid.wanted_power(self.values['temperature'])
+            LOGGER.debug('b')
+            LOGGER.debug('Power: ' + str(self.values['power']))
             #  Handle the setpoint from the network
             try:
                 setpoint = self.pushsocket.last[1]['setpoint']
@@ -148,7 +110,7 @@ class PowerCalculatorClass(threading.Thread):
                 self.message = str(self.pushsocket.last)
                 setpoint = None
             if ((setpoint is not None) and
-                (setpoint != self.setpoint) and (sp_updatetime < new_update)):
+            (setpoint != self.values['setpoint']) and (sp_updatetime < new_update)):
                 self.update_setpoint(setpoint)
                 sp_updatetime = new_update
 
@@ -174,54 +136,35 @@ class PowerCalculatorClass(threading.Thread):
                 self.update_setpoint(ramp=t)
             time.sleep(1)
 
+def main():
+    """ Main function """
+    power_supplies = {}
+    for i in range(1, 3):
+        power_supplies[i] = cpx.CPX400DPDriver(i, interface='lan',
+                                               hostname='cinf-palle-heating-ps',
+                                               tcp_port=9221)
+        power_supplies[i].set_voltage(0)
+        power_supplies[i].output_status(True)
 
-class HeaterClass(threading.Thread):
-    """ Do the actual heating """
-    def __init__(self, power_calculator, pullsocket, ps):
-        threading.Thread.__init__(self)
-        self.pc = power_calculator
-        self.pullsocket = pullsocket
-        self.ps = ps
-        self.voltage = 0
-        self.quit = False
+    codenames = ['setpoint', 'wanted_voltage', 'actual_voltage_1', 'actual_voltage_2',
+                 'actual_current_1', 'actual_current_2', 'power', 'temperature']
+    pullsocket = DateDataPullSocket('palle_temp_control', codenames,
+                                    timeouts=[999999, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0])
+    pullsocket.start()
 
-    def run(self):
-        while not self.quit:
-            self.voltage = self.pc.read_power()
-            self.pullsocket.set_point_now('voltage', self.voltage)
-            for i in range(1, 3):
-                self.ps[i].set_voltage(self.voltage)
-            time.sleep(0.25)
-        for i in range(1, 3):
-            self.ps[i].set_voltage(0)
-            self.ps[i].output_status(False)
+    pushsocket = DataPushSocket('mgw_push_control', action='store_last')
+    pushsocket.start()
 
-port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_55126216-if00'
-PS = {}
-for i in range(1, 3):
-    PS[i] = cpx.CPX400DPDriver(i, interface='lan',
-                               hostname='cinf-palle-heating-ps',
-                               tcp_port=9221)
-    PS[i].set_voltage(0)
-    PS[i].output_status(True)
+    power_calcuator = PowerCalculatorClass(pullsocket, pushsocket)
+    power_calculator.daemon = True
+    power_calculator.start()
 
-Pullsocket = DateDataPullSocket('mgw_temp_control',
-                                ['setpoint', 'voltage'],
-                                timeouts=[999999, 3.0],
-                                port=9000)
-Pullsocket.start()
+    heater = HeaterClass(power_calculator, pullsocket, power_supplies)
+    heater.start()
 
-Pushsocket = DataPushSocket('mgw_push_control', action='store_last')
-Pushsocket.start()
+    tui = CursesTui(heater)
+    tui.daemon = True
+    tui.start()
 
-P = PowerCalculatorClass(Pullsocket, Pushsocket)
-P.daemon = True
-P.start()
-
-H = HeaterClass(P, Pullsocket, PS)
-#H.daemon = True
-H.start()
-
-T = CursesTui(H)
-T.daemon = True
-T.start()
+if __name__ == '__main__':
+    main()

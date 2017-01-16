@@ -46,9 +46,8 @@ class SrsReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            time.sleep(0.5)
             for j in range(1, 17):
-                time.sleep(0.5)
+                time.sleep(1)
                 self.temperatures[j] = self.srs.read_channel(j)
 
 class TemperatureReader(threading.Thread):
@@ -87,7 +86,7 @@ class TemperatureReader(threading.Thread):
 class TcReader(threading.Thread):
     """ Communicates with the Omega ?? """
     def __init__(self, port):
-        self.comm = minimalmodbus.Instrument('/dev/serial/by-id/' + port, 1)
+        self.comm = minimalmodbus.Instrument(port, 1)
         self.comm.serial.baudrate = 9600
         self.comm.serial.parity = serial.PARITY_EVEN
         self.comm.serial.timeout = 0.5
@@ -138,7 +137,7 @@ class RtdReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            time.sleep(0.1)
+            time.sleep(0.25)
             rtd_value = self.rtd_reader.read()
             temperature = self.rtd_calc.find_temperature(rtd_value)
             if temperature < 1000:
@@ -151,11 +150,12 @@ def main():
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
+    prefix = '/dev/serial/by-id/'
     ports = {}
-    ports[0] = 'usb-FTDI_USB-RS485_Cable_FTWGRMCG-if00-port0'
+    ports[0] = prefix + 'usb-FTDI_USB-RS485_Cable_FTWGRMCG-if00-port0'
     ports[1] = 'mobile-gaswall-agilent-34410a'
-    ports[2] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGUBYN-if00-port0'
-    ports[3] = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+    ports[2] = prefix + 'usb-FTDI_USB-RS485_Cable_FTWGUBYN-if00-port0'
+    ports[3] = prefix + 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
     code_names = ['mgw_reactor_tc_temperature',
                   'mgw_reactor_rtd_temperature',
                   'mgw_omega_temp_ch01',
@@ -227,7 +227,7 @@ def main():
 
             if loggers[name].read_trigged():
                 print(name + ': ' + str(value))
-                #db_logger.save_point_now(name, value)
+                db_logger.save_point_now(name, value)
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
