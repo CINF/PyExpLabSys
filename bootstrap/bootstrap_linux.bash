@@ -45,6 +45,7 @@ alias sagdu=\"sudo apt-get dist-upgrade\"
 alias ll=\"ls -lh\"
 alias df=\"df -h\"
 alias emacs-nolint=\"emacs -q --load ~/PyExpLabSys/bootstrap/.emacs-simple\"
+alias python=\"/usr/bin/python3.4\"
 "
 
 # Usage string, edit if adding another section to the script
