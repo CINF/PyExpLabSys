@@ -105,7 +105,18 @@ class GasAlarmMonitor(object):
         """Convert the identity the sensor returns to the codename used in the
         database
         """
-        identity = identity.replace(' ', '_').replace('/', '-')
+        # NOTE The identities was changed at some point, which is the reason where there
+        # is this manual mingling with name. The current names are:
+        # 'CO 51', 'H2 51', 'CO 55', 'H2 55', 'CO 59', 'H2 61', 'CO 61', 'H2 61',
+        # 'CO 42/43', 'H2 2 sal', 'CO 932', 'H2 932'
+        # and they need to be changed to the codenames in codenames (in __init__)
+
+        first, second = identity.split(' ', 1)
+        if len(second) == 2:
+            second = '0' + second
+        identity = first + ' ' + second
+
+        identity = identity.replace('2 sal', '2sal').replace(' ', '_').replace('/', '-')
         return 'B307_gasalarm_{}'.format(identity)
 
     def main(self):
