@@ -8,7 +8,9 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.xgs600 as xgs600
 import PyExpLabSys.drivers.agilent_34972A as agilent_34972A
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
 class MuxReader(threading.Thread):
     """ Analog reader """
