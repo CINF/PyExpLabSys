@@ -20,13 +20,14 @@ if [ $# -lt 1 ] || [ $# -gt 2 ];then
     exit 1
 fi
 
-export FLASK_APP=tmp.py
+export FLASK_APP=bakeoutweb.py
+export MACHINE=$1
 
 # Check whether debug mode is requested
 if [ $# -eq 2 ] && [ $2 == "debug" ];then
     echo "Running in debug mode"
     export FLASK_DEBUG=1
-    python3 -m flask run
+    python3 -m flask run --host=0.0.0.0
 else
     python3 -m flask run --host=0.0.0.0
 fi
