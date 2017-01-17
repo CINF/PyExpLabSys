@@ -156,7 +156,7 @@ class Bakeout(threading.Thread):
         channels = ['1', '2', '3', '4', '5', '6']
         self.livesocket = LiveSocket(self.setup + '-bakeout', channels)
         self.livesocket.start()
-        self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=[2]*6)
+        self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=None)
         self.pullsocket.start()
         self.pushsocket = DataPushSocket(self.setup + '-push_control', action='enqueue')
         self.pushsocket.start()
