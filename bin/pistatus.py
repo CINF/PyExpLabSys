@@ -121,7 +121,10 @@ def running_programs():
     framed(bold('Running programs'))
     framed(bold('================'))
 
-    screens = listdir(SCREEN_FOLDER)
+    try:
+        screens = listdir(SCREEN_FOLDER)
+    except FileNotFoundError:
+        screens = (())
     if screens:
         framed(blue('Screens'))
         for screen in screens:
