@@ -7,3 +7,6 @@ step_size = 0.025
 
 safety_margin = 5
 safety_cycle_time = 124
+
+web_diode_color_scheme = 'green'  # 'red'
+polling_time_msec = 5000
