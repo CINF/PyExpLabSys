@@ -29,6 +29,39 @@
         {% endfor %}
       </table>
       <p>Using websocket: <span id="websocket_status">Unkonwn</span></p>
+      <a href="javascript:toggle('keymap')" title="Press to show the keymap"><h2>Keymap</h2></a>
+      <div id="keymap" style="display: none;">
+        <table class="nicetable">
+          <tr>
+            <th>Channel</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+            <th>6</th>
+          </tr>
+          <tr>
+            <td>Increase</td>
+            <td>1 or q</td>
+            <td>2 or w</td>
+            <td>3 or e</td>
+            <td>4 or r</td>
+            <td>5 or t</td>
+            <td>6 or y</td>
+          </tr>
+          <tr>
+            <td>Decrease</td>
+            <td>Shift-1 or a</td>
+            <td>Shift-2 or s</td>
+            <td>Shift-3 or d</td>
+            <td>Shift-4 or f</td>
+            <td>Shift-5 or g</td>
+            <td>Shift-6 or h</td>
+          </tr>
+        </table>
+        <p>
+      </div>
       <footer></footer>
     </div>
     <script>

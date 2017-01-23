@@ -260,6 +260,18 @@ function onReadResponse (error, data) {
   }
 }
 
+function toggle(list){
+  /* Toggle html element visibility */
+  var elementStyle=document.getElementById(list).style
+  if (elementStyle.display=="none"){
+    elementStyle.display = "block"
+  } else {
+    elementStyle.display = "none"
+  }
+}
+
+
+
 /* ### Utility Functions ### */
 
 function getJSON (url, callback) {
