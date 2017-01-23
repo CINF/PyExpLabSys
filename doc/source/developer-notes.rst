@@ -33,7 +33,7 @@ the beginning of the file to the following:
 
    import logging
    LOG = logging.getLogger(__name__)
-   LOG.setHandler(logging.NullHandler())
+   LOG.addHandler(logging.NullHandler())
 
 Where using ``__name__`` as the name, will ensure that it gets a name that is the full
 qualified name of the module e.g. ``PyExpLabSys.common.utilities``.
@@ -47,7 +47,7 @@ the name of the class, i.e:
 
    # Assuming logging is already imported for the module logger
    MYCLASS_LOG = logging.getLogger(__name__ + '.MyClass')
-   MYCLASS_LOG.setHandler(logging.NullHandler())
+   MYCLASS_LOG.addHandler(logging.NullHandler())
 
    class MyClass(object):
        """My fancy class"""

@@ -9,7 +9,7 @@ import logging
 from flask import Flask, render_template
 
 LOG = logging.getLogger(__name__)
-LOG.setHandler(logging.NullHandler())  # pylint: disable=no-member
+LOG.addHandler(logging.NullHandler())  # pylint: disable=no-member
 
 # Form app
 app = Flask(__name__)  # pylint: disable=invalid-name
