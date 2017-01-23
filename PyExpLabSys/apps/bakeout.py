@@ -153,8 +153,14 @@ class Bakeout(threading.Thread):
             wp.pinMode(i, 1)
         self.setup = settings.setup
         self.dutycycles = [0, 0, 0, 0, 0, 0]
+
         channels = ['1', '2', '3', '4', '5', '6']
-        self.livesocket = LiveSocket(self.setup + '-bakeout', channels)
+        # Setup up extra status for the diode relay status
+        diode_channels = ['diode' + number for number in channels];
+        self.diode_channel_last = {name: None for name in diode_channels}
+
+        # Setup sockets
+        self.livesocket = LiveSocket(self.setup + '-bakeout', channels + diode_channels)
         self.livesocket.start()
         self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=None)
         self.pullsocket.start()
@@ -169,8 +175,16 @@ class Bakeout(threading.Thread):
             pin = 7 - pin
         if self.watchdog.watchdog_safe:
             wp.digitalWrite(pin, 1)
+            new_status = True
         else:
             wp.digitalWrite(pin, 0)
+            new_status = False
+
+        # Send on/off status out on live socket
+        name = 'diode{}'.format(pin)
+        if self.diode_channel_last[name] is not new_status:
+            self.livesocket.set_point_now(name, new_status)
+            self.diode_channel_last[name] = new_status
 
     def deactivate(self, pin):
         """ De-activate a pin """
@@ -179,6 +193,12 @@ class Bakeout(threading.Thread):
         else:
             pin = 7 - pin
         wp.digitalWrite(pin, 0)
+
+        # Send on/off status out on live socket
+        name = 'diode{}'.format(pin)
+        if self.diode_channel_last[name] is not False:
+            self.livesocket.set_point_now(name, False)
+            self.diode_channel_last[name] = False
 
     def modify_dutycycle(self, channel, amount=None, value=None):
         """ Change the dutycycle of a channel """
