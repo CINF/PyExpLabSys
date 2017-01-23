@@ -4,6 +4,7 @@
 
 import json
 import os
+import sys
 from pprint import pprint
 import socket
 import requests
@@ -18,38 +19,36 @@ app.jinja_env.lstrip_blocks = True
 SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 HOSTNAME = os.environ["MACHINE"]
 print(HOSTNAME)
+sys.path.append('/home/pi/PyExpLabSys/machines/' + HOSTNAME)
+import settings # pylint: disable=F0401
 
-"""
-Socket (None) >>> set rasppi23:8500
-Connected to: rasppi23:8500
 
-The name of the socket is: thetaprobe-ec-extension-push_control
 
-== Known commands ==
+SETTINGS_DEFAULTS = {
+    'web_diode_color_scheme': 'green',
+    'web_polling_time_msec': 5000, 
+}
 
- * json_wn#
- * raw_wn#
- * name
- * status
- * commands
 
-Socket (rasppi23:8500) >>> json_wn#{"1": 0.2}
-"ACK#{u'1': 0.2}"
-Socket (rasppi23:8500) >>> json_wn#{"1": 1}
-"ACK#{u'1': 1}"
-Socket (rasppi23:8500) >>> json_wn#{"1": 0.1}
-"ACK#{u'1': 0.1}"
+def get_settings():
+    """Form the settings for the javascript interface"""
+    web_settings = {'hostname': HOSTNAME}
+    for key, value in SETTINGS_DEFAULTS.items():
+        web_settings[key] = getattr(settings, key, value)
+    return web_settings
 
-"""
 
+@app.route('/<debug>')
 @app.route('/')
-def frontpage():
+def frontpage(debug=''):
     """Produce the frontpage"""
-    json_input = {}
+    print("Frontpage, debug is", debug)
+    json_input = get_settings()
+    json_input["debug"] = debug
 
     row_elements = [
         # Rows of id prefix, row title and element
-        ('state{}', 'Current state', '<div class="circle" id="led{channel_number}"></div>'),
+        ('state{}', 'Current state', '<div class="circle" id="diode{channel_number}"></div>'),
         ('current_value{}', 'Current setpoint', 'N/A'),
         ('requested_value{}', 'Change setpoint',
          '<input onchange="set_channel({channel_number})" id="input{channel_number}" '
@@ -62,10 +61,10 @@ def frontpage():
 @app.route('/set/<request_parameters_string>')
 def set(request_parameters_string):
     """Page to set parameters on the bakeout box"""
-    print("Send set request", request_parameters_string)
+    print("SET request", request_parameters_string)
     SOCKET.sendto(b"json_wn#" + request_parameters_string.encode('ascii'), (HOSTNAME, 8500))
     reply = SOCKET.recv(1024)
-    print("Got reply", reply)
+    print("Got socket reply:", reply)
     # We return just the channel name
     return list(json.loads(request_parameters_string).keys())[0]
 
@@ -73,12 +72,13 @@ def set(request_parameters_string):
 @app.route('/get/<channel_number>')
 def get_channel(channel_number):
     """Page to get parameters from the bakeout box"""
+    print("GET request", channel_number)
     if channel_number == "all":
         SOCKET.sendto(b"json_wn", (HOSTNAME, 9000))
     else:
         SOCKET.sendto(channel_number.encode("ascii") + b"#json", (HOSTNAME, 9000))
     reply = SOCKET.recv(1024).decode('ascii')
-
+    print("Got socket reply", reply)
     if channel_number != "all":
         data = json.loads(reply)
         data.append(channel_number)

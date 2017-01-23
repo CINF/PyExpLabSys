@@ -5,7 +5,7 @@
     <title>The Bakeout Box Webapp</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='frontpage.css') }}">
   </head>
-  <body>
+  <body id="body">
     <div class="main">
       <header><h1>Bakeout Box Webapp</h1></header>
 
@@ -28,7 +28,7 @@
         </tr>
         {% endfor %}
       </table>
-
+      <p>Using websocket: <span id="websocket_status">Unkonwn</span></p>
       <footer></footer>
     </div>
     <script>
