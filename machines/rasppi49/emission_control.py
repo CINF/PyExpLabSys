@@ -9,14 +9,18 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
-import PyExpLabSys.drivers.keithley_smu as smu
+import PyExpLabSys.drivers.agilent_34972A as agilent_34972A
 import emission_tui
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
-LOGGER = get_logger('Emission', level='info', file_log=True,
-                    file_name='emission_log.txt', terminal_log=False)
 
-LOGGER.error('Start')
+LOGGER = get_logger('Emission', level='warn', file_log=True,
+                    file_name='emission_log.txt', terminal_log=False,
+                    email_on_errors=True, email_on_warnings=True)
+
+LOGGER.info('Start')
 
 class EmissionControl(threading.Thread):
     """ Control the emission of a filament. """
@@ -36,16 +40,15 @@ class EmissionControl(threading.Thread):
         self.filament['voltage'] = 0
         self.filament['current'] = 0
         self.filament['idle_voltage'] = 1.7
-        self.filament['device'].set_current_limit(7)
+        self.filament['device'].set_current_limit(3.2)
         self.filament['device'].output_status(True)
         self.bias = {}
-        port = '/dev/serial/by-id/'
-        port += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
-        self.keithley_port = port
-        self.bias['device'] = smu.KeithleySMU(interface='serial', device=self.keithley_port)
+        self.bias['device'] = CPX.CPX400DPDriver(2, interface='serial', device=port)
         self.bias['grid_voltage'] = 0
         self.bias['grid_current'] = 0
-        self.bias['device'].output_state(True)
+        self.bias['device'].output_status(True)
+        self.bias['current_reader'] = agilent_34972A.Agilent34972ADriver('10.54.6.72')
+
         self.pid = pid.PID(0.01, 0.1, 0, 4)
         self.looptime = 0
         self.setpoint = 0.05
@@ -81,26 +84,18 @@ class EmissionControl(threading.Thread):
 
     def read_grid_voltage(self):
         """Read the actual grid voltage """
-        return self.bias['device'].read_voltage()
+        return self.bias['device'].read_actual_voltage()
 
     def read_emission_current(self):
         """ Read the grid current as measured by power supply """
-        emission_current = self.bias['device'].read_current()
-        if emission_current is None:
-            self.bias['device'] = smu.KeithleySMU(
-                interface='serial',
-                device=self.keithley_port,
-                )
-            time.sleep(0.1)
-            emission_current = self.value()
-            LOGGER.error('Emission current not read correctly - reset device')
-        else:
-            emission_current = emission_current * 1000
+        mux_list = self.bias['current_reader'].read_single_scan()
+        emission_current = mux_list[0]
+        emission_current = emission_current * -1000
         return emission_current
 
     def read_grid_current(self):
         """ Read the actual emission current """
-        return self.bias['device'].read_current()
+        return self.bias['device'].read_actual_current()
 
     def value(self):
         """ Return the curren emission value """
@@ -139,13 +134,14 @@ class EmissionControl(threading.Thread):
             self.looptime = time.time() - start_time
         self.setpoint = 0
         self.set_filament_voltage(0)
+        self.bias['device'].set_voltage(0)
         #self.set_bias(0)
 
 
 def main():
     """ Main function """
     emission_control = EmissionControl()
-    emission_control.set_bias(38)
+    emission_control.set_bias(28)
     emission_control.start()
 
     logger = ValueLogger(emission_control, comp_val=0.01, comp_type='log')

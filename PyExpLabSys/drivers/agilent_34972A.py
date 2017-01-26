@@ -15,13 +15,13 @@ class Agilent34972ADriver(SCPI):
         self.scpi_comm("TRIG:SOURCE TIMER")
         self.scpi_comm("TRIG:COUNT 1")
         self.scpi_comm("INIT")
-        time.sleep(0.1)
+        time.sleep(0.025)
         status = int(self.scpi_comm("STATUS:OPERATION:CONDITION?"))
         status_bin = bin(status)[2:].zfill(16)
         while status_bin[11] == '1':
             status = int(self.scpi_comm("STATUS:OPERATION:CONDITION?"))
             status_bin = bin(status)[2:].zfill(16)
-            time.sleep(0.1)
+            time.sleep(0.025)
         response = self.scpi_comm("FETCH?")
         response = response.split(',')
         return_values = []
