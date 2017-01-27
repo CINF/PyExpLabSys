@@ -35,9 +35,10 @@ LOGGER.warn('Program started')
 
 class RtdReader(threading.Thread):
     """ Read resistance of RTD and calculate temperature """
-    def __init__(self, hostname, calib_temp):
-        self.rtd_reader = dmm.Agilent34410ADriver(interface='lan',
-                                                  hostname=hostname)
+    def __init__(self, calib_temp):
+        visa_string = 'usb0::2391::1543::MY47002726::INSTR'
+        self.rtd_reader = dmm.Agilent34410ADriver(interface='usbtmc',
+                                                  connection_string=visa_string)
         self.rtd_reader.select_measurement_function('FRESISTANCE')
         self.calib_temp = calib_temp
         time.sleep(0.2)
@@ -165,11 +166,13 @@ def main():
         sock.sendto(temperature_string.encode('ascii'), ('rasppi12', 9000))
         received = sock.recv(1024).decode('ascii')
         start_temp = float(received[received.find(',') + 1:])
-        agilent_hostname = '10.54.6.79'
-        rtd_reader = RtdReader(agilent_hostname, start_temp)
-    except:
+    except socket.gaierror:
         print('Could not find rasppi12')
         exit()
+    except ValueError:
+        print('Bad reply from rasppi12')
+        exit()
+    rtd_reader = RtdReader(start_temp)
 
     rtd_reader.daemon = True
     rtd_reader.start()

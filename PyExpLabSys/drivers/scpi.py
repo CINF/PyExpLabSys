@@ -2,9 +2,12 @@
 from __future__ import print_function
 import time
 import serial
-import random
 import logging
 import telnetlib
+try:
+    import usbtmc
+except ImportError:
+    usbtmc = None
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
@@ -16,30 +19,24 @@ LOGGER.addHandler(logging.NullHandler())
 class SCPI(object):
     """ Driver for scpi communication """
     def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600,
-                 allow_debug=False):
+                 visa_string=''):
         self.device = device
         self.interface = interface
-        try:
-            if self.interface == 'file':
-                self.f = open(self.device, 'w')
-                self.f.close()
-            if self.interface == 'serial':
-                self.f = serial.Serial(self.device, baudrate, timeout=1, xonxoff=True)
-            if self.interface == 'lan':
-                self.f = telnetlib.Telnet(hostname, tcp_port)
-            self.debug=False
-        except Exception as e:
-            if allow_debug:
-                self.debug = True
-                print("Debug mode: " + str(e))
-            else:
-                raise
+        if self.interface == 'file':
+            self.f = open(self.device, 'w')
+            self.f.close()
+        if self.interface == 'serial':
+            self.f = serial.Serial(self.device, baudrate, timeout=1, xonxoff=True)
+        if self.interface == 'lan':
+            self.f = telnetlib.Telnet(hostname, tcp_port)
+        if self.interface == 'usbtmc':
+            if usbtmc is None:
+                exit('usbtmc is not availalbe')
+            self.f = usbtmc.Instrument(visa_string)
 
     def scpi_comm(self, command, expect_return=False):
         """ Implements actual communication with SCPI instrument """
         return_string = ""
-        if self.debug:
-            return str(random.random())
         if self.interface == 'file':
             self.f = open(self.device, 'w')
             self.f.write(command)
@@ -51,10 +48,12 @@ class SCPI(object):
                 return_string = self.f.readline()
                 self.f.close()
         command_text = command + '\n'
+
         if self.interface == 'serial':
             self.f.write(command_text.encode('ascii'))
             if command.endswith('?') or (expect_return is True):
                 return_string = self.f.readline().decode()
+
         if self.interface == 'lan':
             lan_time = time.time()
             self.f.write(command_text.encode('ascii'))
@@ -64,6 +63,13 @@ class SCPI(object):
             #time.sleep(0.025)
             LOGGER.info('lan_time for coomand ' + command_text.strip() +
                         ': ' + str(time.time() - lan_time))
+
+        if self.interface == 'usbtmc':
+            if command.find('?') > -1:
+                return_string = self.f.ask(command_text)
+            else:
+                self.f.write(command_text)
+                return_string = 'command_text'
         return return_string
 
     def read_software_version(self):
