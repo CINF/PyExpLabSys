@@ -37,7 +37,7 @@ class PowerCalculatorClass(threading.Thread):
         self.values['power'] = 0
         self.values['setpoint'] = -1
         self.values['temperature'] = None
-        self.pid = PID.PID(pid_p=0.2, pid_i=0.05, pid_d=0, p_max=45)
+        self.pid = PID.PID(pid_p=0.25, pid_i=0.01, pid_d=0, p_max=40)
         self.update_setpoint(self.values['setpoint'])
         self.quit = False
         self.ramp = None
