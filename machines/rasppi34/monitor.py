@@ -135,6 +135,15 @@ class GasAlarmMonitor(object):
         # Get detector info and levels for this detector
         conf = self.detector_info[detector_num]
         codename = self.identity_to_codename(conf.identity)
+
+
+        ##### HACK HACK HACK FIXME There is a duplicate name error in the configuration
+        # which for now we fix here in code
+        if codename == "B307_gasalarm_H2_061" and detector_num == 6:
+            codename = "B307_gasalarm_H2_059"
+        ##### HACK HACK HACK FIXME
+
+
         LOGGER.debug('Use detector {} \'{}\''.format(detector_num, codename))
         levels = self.vortex.get_detector_levels(detector_num)
         LOGGER.debug('Levels read: {}'.format(levels))
