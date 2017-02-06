@@ -74,7 +74,7 @@ def main():
         codenames.append(channel['codename'])
 
     pullsocket = DateDataPullSocket(settings.user + '-socket_logger',
-                                             codenames, timeouts=5)
+                                    codenames, timeouts=5)
     pullsocket.start()
 
         
