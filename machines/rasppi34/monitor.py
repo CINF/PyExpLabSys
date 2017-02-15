@@ -178,6 +178,12 @@ class GasAlarmMonitor(object):
             now - self.detector_status_last_times[detector_num] > 86400
         status = {'inhibit': levels.inhibit, 'status': levels.status,
                   'codename': conf.identity}
+
+        ##### HACK HACK HACK FIXME There is a duplicate name error in the configuration
+        if detector_num == 6 and status['codename'] == 'H2 61':
+            status['codename'] = 'H2 59'
+        ##### HACK HACK HACK FIXME
+
         value_condition = \
             (status != self.detector_status_last_values[detector_num])
 
