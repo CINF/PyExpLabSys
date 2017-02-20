@@ -3,13 +3,15 @@ from __future__ import print_function
 import threading
 import logging
 import time
+from ABE_helpers import ABEHelpers
+from ABE_ADCPi import ADCPi
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
-from ABE_helpers import ABEHelpers
-from ABE_ADCPi import ADCPi
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
 class PressureReader(threading.Thread):
     """ Read argon pressure """
