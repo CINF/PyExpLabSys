@@ -1,6 +1,6 @@
- rasppi00,  Raspberry Pi, socket, STM312, X-ray cooling water flow
  rasppi01,  Raspberry Pi, socket, Hall, N5 argon pressure
  rasppi02,  Raspberry Pi, socket, Hall, Cooling water pressure
+ rasppi03,  Raspberry Pi, socket, STM312, X-ray cooling water flow
  rasppi04,  Raspberry Pi, socket, Volvo, pressure readout
  rasppi05,  Raspberry Pi, socket, &micro;-reactorNG, temperature control
  rasppi06,  Raspberry Pi, socket, sniffer, analog pressure controller
@@ -21,7 +21,8 @@
  rasppi25,  Raspberry Pi, ls,     Thetaprobe, Datalogger
  rasppi26,  Raspberry Pi, socket, &micro;-reactor, analog flow controller
  rasppi27,  Raspberry Pi, socket, Sputterchamber, QCM
- rasppi28,  Raspberry Pi, socket, PS, Pressure readout + turbo control
+ rasppi28,  Raspberry Pi, socket, PS, Turbo control
+ rasppi28,  Raspberry Pi, 9001, PS, Pressure readout
  rasppi29,  Raspberry Pi, socket, Palle, Valve control
  rasppi30,  Raspberry Pi, socket, Tower, Backeout Control
  rasppi31,  Raspberry Pi, socket, STM312, X-ray gun
@@ -34,7 +35,7 @@
  rasppi43,  Raspberry Pi, socket, VHP, Pressure and temperature readout
  rasppi44,  Raspberry Pi, socket, &micro;-reactorNG, Valve Control box
  rasppi45,  Raspberry Pi, ls,     sniffer, Pressure controller - bronkhorst
- rasppi47,  Raspberry Pi, socket, Furnace Room, Temperature Control
+ rasppi47,  Raspberry Pi, 9001,   Furnace Room, Temperature Control
  rasppi48,  Raspberry Pi, socket, Palle, Backeout Control
  rasppi49,  Raspberry Pi, socket, TOF, emission control
  rasppi50,  Raspberry Pi, socket, XRD, Valve control
@@ -48,6 +49,7 @@
  rasppi59,  Raspberry Pi, socket, STM312, Magic Box
  rasppi60,  Raspberry Pi, ls,     XRDs, Chillers
  rasppi61,  Raspberry Pi, socket, Hall, Cooling water temperature
+ rasppi62,  Raspberry Pi, socket, Sputterchamber, Pressure + roughpumps
  rasppi63,  Raspberry Pi, socket, b312, Small office Temp + humidity
  rasppi64,  Raspberry Pi, ls,     Chemlab b312, Picture Logbook
  rasppi65,  Raspberry Pi, socket, STM312, QMG420 test machine
@@ -59,11 +61,12 @@
  rasppi71,  Raspberry Pi, ls,     Thetaprobe, Main chamber pressure
  rasppi72,  Raspberry Pi, socket, b312, Large office Temp + humidity
  rasppi74,  Raspberry Pi, socket, TOF, Voltage control
+ rasppi76,  Raspberry Pi, socket, 307 Photo, Brooks flow control
  rasppi100, Raspberry Pi, socket, &micro;-reactor, Turbo controller
  rasppi103, Raspberry Pi, socket, Palle, Temperature control
  rasppi103, Raspberry Pi, 9001,   Palle, Temperature reader
  rasppi104, Raspberry Pi, socket, Chemlab b312, Sample storage
- rasppi105, Raspberry Pi, socket, Palle, MKS + Brooks flow controllers
+ rasppi105, Raspberry Pi, socket, Palle, Flow logger
  rasppi106, Raspberry Pi, socket, b309 CVD, QCMs
  rasppi107, Raspberry Pi, socket, Sniffer, Pressure readout
  rasppi109, Raspberry Pi, ls,     TOF, Pressure
