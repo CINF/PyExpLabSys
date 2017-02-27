@@ -11,8 +11,11 @@ python2_and_3(__file__)
 
 class OmegaBus(object):
     """ Driver for OmegaBus devices """
-    def __init__(self, device='/dev/ttyUSB1'):
-        self.ser = serial.Serial(device, 9600)
+    def __init__(self, device='/dev/ttyUSB0', model='D5251'):
+        self.ser = serial.Serial(device, 300)
+        self.setup = {}
+        self.setup['model'] = model
+        self.read_setup() # Read temperature unit, if relevant
         time.sleep(0.1)
 
     def comm(self, command):
@@ -20,19 +23,21 @@ class OmegaBus(object):
         command = command + "\r"
         command = command.encode('ascii')
         self.ser.write(command)
-        time.sleep(0.2)
+        time.sleep(2)
         answer = self.ser.read(self.ser.inWaiting())
         answer = answer.decode()
         return answer
 
-    def read_value(self, channel):
+    def read_value(self, channel, convert_to_celcius=True):
         """ Read the measurement value """
-        temp_string = self.comm("$" + str(channel) + "RD")
-        if temp_string[1] == "*":
-            temp_string = temp_string[3:]
-        temp_fahrenheit = float(temp_string)
-        temp_celsius = 5*(temp_fahrenheit-32)/9
-        return float(temp_celsius)
+        value_string = self.comm("$" + str(channel) + "RD")
+        if value_string[1] == "*":
+            value_string = value_string[3:]
+        value = float(value_string)
+        if convert_to_celcius and self.setup['model'] in ['D5311', 'D5321', 'D5331', 'D5431']:
+            if self.setup['temp_unit'] == 'F':
+                value = 5 * (value - 32)/9
+        return value
 
     def read_max(self, channel):
         """ The maximum read-out value """
@@ -79,16 +84,20 @@ class OmegaBus(object):
         else:
             setupstring += "Cold junction compensation enabled\n"
         setupstring += "Unit: Fahrenheit\n" if bits_3[4] == '1' else "Unit: Celsius\n"
+        if bits_3[4] == '1':
+            self.setup['temp_unit'] = 'F'
+        else:
+            self.setup['temp_unit'] = 'C'
         #print (bin(int(byte4,16))[2:]).zfill(8
         return setupstring
 
 
 if __name__ == "__main__":
-    OMEGA = OmegaBus()
+    OMEGA = OmegaBus(model='D5251')
+    print(OMEGA.read_setup())
     print(OMEGA.read_value(1))
-    print(OMEGA.read_value(2))
-    print(OMEGA.read_value(3))
-    print(OMEGA.read_value(4))
+    #print(OMEGA.read_value(2))
+    #print(OMEGA.read_value(3))
+    #print(OMEGA.read_value(4))
     #print(OMEGA.read_min(1))
     #print(OMEGA.read_max(1))
-    #print(OMEGA.read_setup())
