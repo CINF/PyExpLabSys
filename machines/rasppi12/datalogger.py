@@ -67,7 +67,7 @@ def main():
     ng_temp = omega_CNi32.ISeries('/dev/serial/by-id/' + port, 9600)
 
     port = 'usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
-    old_temp = omegabus.OmegaBus('/dev/serial/by-id/' + port)
+    old_temp = omegabus.OmegaBus(device='/dev/serial/by-id/' + port, model='D5321', baud=9600)
 
     ng_measurement = NGTempReader(ng_temp)
     ng_measurement.start()

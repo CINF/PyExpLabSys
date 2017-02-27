@@ -11,8 +11,8 @@ python2_and_3(__file__)
 
 class OmegaBus(object):
     """ Driver for OmegaBus devices """
-    def __init__(self, device='/dev/ttyUSB0', model='D5251'):
-        self.ser = serial.Serial(device, 300)
+    def __init__(self, device='/dev/ttyUSB1', model='D5251', baud=300):
+        self.ser = serial.Serial(device, baud)
         self.setup = {}
         self.setup['model'] = model
         self.read_setup() # Read temperature unit, if relevant
