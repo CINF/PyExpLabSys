@@ -29,16 +29,31 @@ Pi healt (from SystemStatus) TODO:
 
 from __future__ import print_function
 
+import sys
 import shutil
 import socket
 from textwrap import wrap
 from functools import partial
 from subprocess import check_output
 from os.path import expanduser, join, isdir, isfile, abspath
-from os import getlogin, listdir, sep
+from os import getlogin, listdir, sep, chdir, getcwd, popen
+
+if sys.version_info.major < 3:
+    print("This script is Python 3 or above only")
+    raise SystemExit(1)
 
 # Terminal width
-COL, _ = shutil.get_terminal_size((78, 40))
+COL = 80
+if sys.version_info.minor > 2:
+    COL, _ = shutil.get_terminal_size((78, 40))
+else:
+    # This will most likely fail on non-Linux platforms, in that case
+    # just ignore and use default
+    try:
+        _, COL = [int(num) for num in popen('stty size', 'r').read().split()]
+    except:  # pylint: disable=bare-except
+        pass
+
 WIDTH = COL - 4
 # Machine folder
 HOSTNAME = socket.gethostname()
@@ -154,19 +169,27 @@ def git():
     framed(bold('git'))
     framed(bold('==='))
 
+    # older gits did not have the -C options, to change current
+    # working directory internally, so we have to do it manually
+    cwd = getcwd()
+    chdir(join(expanduser("~"), "PyExpLabSys"))
+
     # date of last commit
     last_commit = check_output(
-        'git -C $HOME/PyExpLabSys log --date=iso -n 1 --pretty=format:"%ad"',
+        'git log --date=iso -n 1 --pretty=format:"%ad"',
         shell=True,
     ).decode('utf-8')
     value_pair('Last commit', last_commit)
 
     # git clean
-    git_status = check_output('git -C $HOME/PyExpLabSys status --porcelain', shell=True)
+    git_status = check_output('git status --porcelain', shell=True)
     if len(git_status) == 0:
         value_pair('Git clean', YES)
     else:
         value_pair('Git clean', NO)
+
+    # Change cwd back
+    chdir(cwd)
 
 def main():
     """main function"""
