@@ -15,9 +15,9 @@ python2_and_3(__file__)
 
 class Reader(threading.Thread):
     """ Pressure reader """
-    def __init__(self, omegabus, honeywell):
+    def __init__(self, omegabus_instance, honeywell):
         threading.Thread.__init__(self)
-        self.omegabus = omegabus
+        self.omegabus = omegabus_instance
         self.honeywell = honeywell
         self.pressure = None
         self.temperature = None
@@ -42,10 +42,9 @@ class Reader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            pressures = []
             self.ttl = 50
             raw = self.omegabus.read_value(1)
-            self.pressure = 34.5 * (raw - 4) / 16.0
+            self.pressure = 17.0 * (raw - 4) / 16.0
             self.humidity, self.temperature = self.honeywell.read_values()
 
 def main():
@@ -65,11 +64,14 @@ def main():
     codenames = ['b307_049_h2_pressure', 'b307_049_temperature', 'b307_049_humidity']
 
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(reader, comp_val=0.1, maximumtime=10, comp_type='lin', channel=0)
+    loggers[codenames[0]] = ValueLogger(reader, comp_val=0.1, maximumtime=600,
+                                        comp_type='lin', channel=0)
     loggers[codenames[0]].start()
-    loggers[codenames[1]] = ValueLogger(reader, comp_val=0.2, maximumtime=10, comp_type='lin', channel=1)
+    loggers[codenames[1]] = ValueLogger(reader, comp_val=0.2, maximumtime=600,
+                                        comp_type='lin', channel=1)
     loggers[codenames[1]].start()
-    loggers[codenames[2]] = ValueLogger(reader, comp_val=0.5, maximumtime=10, comp_type='lin', channel=2)
+    loggers[codenames[2]] = ValueLogger(reader, comp_val=0.5, maximumtime=600,
+                                        comp_type='lin', channel=2)
     loggers[codenames[2]].start()
 
     livesocket = LiveSocket('307_049 Logger', codenames)
@@ -79,7 +81,7 @@ def main():
                                 timeouts=[1.0] * len(loggers))
     socket.start()
 
-    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_307_049',
+    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_b307_049',
                                     username=credentials.user,
                                     password=credentials.passwd,
                                     measurement_codenames=codenames)
@@ -93,7 +95,7 @@ def main():
             socket.set_point_now(name, value)
             if loggers[name].read_trigged():
                 print(name + ': ' + str(value))
-                #db_logger.save_point_now(name, value)
+                db_logger.save_point_now(name, value)
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
