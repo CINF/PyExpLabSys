@@ -326,7 +326,7 @@ class PizzaCore(object):
 
         # Add sum of all time
         self.cursor.execute(
-            'SELECT sum(amount) FROM pizza_transactions'
+            'SELECT sum(amount) FROM pizza_transactions WHERE user_id!="test"'
         )
         all_time_sum = self.cursor.fetchone()[0]
         status += '<p>All time sum (money box balance): <b>{}</b></p>'.format(all_time_sum)
