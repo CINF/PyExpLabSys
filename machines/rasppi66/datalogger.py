@@ -9,8 +9,9 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.omron_d6fph as omron_d6fph
 import PyExpLabSys.drivers.honeywell_6000 as honeywell_6000
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
-
+python2_and_3(__file__)
 
 class Reader(threading.Thread):
     """ Pressure reader """
