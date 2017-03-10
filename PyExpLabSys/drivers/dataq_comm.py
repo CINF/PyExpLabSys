@@ -14,6 +14,7 @@ class DataQ(object):
     """ driver for the DataQ Instrument """
     def __init__(self, port):
         self.serial = serial.Serial(port)
+        self.set_float_mode() # This is currently the only implemented mode
         self.scan_list_counter = 0
         self.stop_measurement()
         self.scanning = False
@@ -83,7 +84,9 @@ class DataQ(object):
         while scan_data[-1] != end_char:
             scan_data += self.serial.read(1)
         scan_data = scan_data.decode('ascii')
-        scan_data = scan_data.strip().split('  ')
+        # Remove double spaces to have a unique split identifier
+        scan_data = scan_data.strip().replace('  ', ' ')
+        scan_data = scan_data.split(' ')
         scan_values = [float(i) for i in scan_data]
         return_values = {}
         for i in range(0, len(scan_values)):
@@ -163,6 +166,6 @@ if __name__ == '__main__':
     DATAQ.add_channel(3)
     DATAQ.add_channel(4)
     print(DATAQ.start_measurement())
-    for _ in range(0, 10):
+    for _ in range(0, 100000):
         print(DATAQ.read_measurements())
     DATAQ.stop_measurement()
