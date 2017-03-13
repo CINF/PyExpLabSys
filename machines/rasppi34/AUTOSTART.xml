@@ -2,7 +2,7 @@
   <name>RASPPI34_AUTOSTART</name> <!-- no spaces -->
   <session>
     <startdelay>5</startdelay>
-    <command>python monitor.py</command>
+    <command>python2 monitor.py</command>
     <name>Gas Alarm Monitor</name>
   </session>
 </autostart>
