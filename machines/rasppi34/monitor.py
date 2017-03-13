@@ -14,11 +14,13 @@ import credentials
 from PyExpLabSys.drivers.crowcon import Vortex
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import LiveSocket
-from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.utilities import get_logger, activate_library_logging
 # Set log filesize to 10 MB
 LOGGER = get_logger('b307gasalarm', level='debug')
 import MySQLdb
 
+activate_library_logging('PyExpLabSys.drivers.crowcon', logger_to_inherit_from=LOGGER,
+                         level='warn')
 
 # pylint: disable=R0902
 class GasAlarmMonitor(object):
