@@ -80,7 +80,7 @@ class Vortex(Instrument):
         modbus they need to be 0 based.
     """
 
-    def __init__(self, serial_device, slave_address, debug=False, cache=True):
+    def __init__(self, serial_device, slave_address, debug=False, cache=True, retries=3):
         """Initialize the driver
 
         Args:
@@ -97,6 +97,7 @@ class Vortex(Instrument):
         self.serial.baudrate = 9600
         self.serial.stopbits = 2
         self.serial.timeout = 2.0
+        self.retries = retries
         # Variables
         self.debug = debug
         self.cache = cache
@@ -110,6 +111,42 @@ class Vortex(Instrument):
         LOGGER.info('close called')
         self.serial.close()
         LOGGER.info('close complete')
+
+    def read_register(self, *args, **kwargs):
+        """Read register from instrument (with retries)
+
+        The argument definition is the same as for the minimalmodbus method, see the full
+        documentation `here <https://minimalmodbus.readthedocs.io/en/master/apiminimalmodbus
+        .html#minimalmodbus.Instrument.read_register>`_ for details.
+        """
+        for retry in range(0, self.retries + 1):
+            try:
+                return Instrument.read_register(self, *args, **kwargs)
+            except ValueError as exception:
+                if retry < self.retries:
+                    LOGGER.warning("Communication error in read_register, retrying %s "
+                                   "out of %s times", retry + 1, self.retries)
+                    continue
+                else:
+                    raise exception
+
+    def read_string(self, *args, **kwargs):
+        """Read string from instrument (with retries)
+
+        The argument definition is the same as for the minimalmodbus method, see the full
+        documentation `here <https://minimalmodbus.readthedocs.io/en/master/apiminimalmodbus
+        .html#minimalmodbus.Instrument.read_string>`_ for details.
+        """
+        for retry in range(0, self.retries + 1):
+            try:
+                return Instrument.read_string(self, *args, **kwargs)
+            except ValueError as exception:
+                if retry < self.retries:
+                    LOGGER.warning("Communication error in read_string, retrying %s "
+                                   "out of %s times", retry + 1, self.retries)
+                    continue
+                else:
+                    raise exception
 
     def read_bool(self, register):
         """Read int from register and convert to boolean value
