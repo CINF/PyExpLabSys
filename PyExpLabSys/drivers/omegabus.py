@@ -31,8 +31,9 @@ class OmegaBus(object):
     def read_value(self, channel, convert_to_celcius=True):
         """ Read the measurement value """
         value_string = self.comm("$" + str(channel) + "RD")
-        if value_string[1] == "*":
-            value_string = value_string[3:]
+        # The value string is after the *
+        if '*' in value_string:
+            value_string = value_string.split('*', 1)[1]
         value = float(value_string)
         if convert_to_celcius and self.setup['model'] in ['D5311', 'D5321', 'D5331', 'D5431']:
             if self.setup['temp_unit'] == 'F':
@@ -56,8 +57,10 @@ class OmegaBus(object):
     def read_setup(self):
         """ Read Device setup information """
         rs_string = self.comm("$" + "1RS")
-        if rs_string[1] == "*":
-            rs_string = rs_string[2:]
+
+        if '*' in rs_string:
+            rs_string = rs_string.split('*', 1)[1]
+
         byte1 = rs_string[0:2]
         byte2 = rs_string[2:4]
         byte3 = rs_string[4:6]
