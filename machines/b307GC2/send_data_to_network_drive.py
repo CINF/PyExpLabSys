@@ -4,10 +4,12 @@
 
 from __future__ import print_function
 
+from os import listdir
 import os.path as path
 import sys
 import argparse
 import subprocess
+import time
 
 from PyExpLabSys.common.supported_versions import python3_only
 python3_only(__file__)
@@ -16,8 +18,8 @@ python3_only(__file__)
 if sys.version_info.major != 3:
     raise RuntimeError('Run using Python 3')
 
-DATA_PATH = '/home/surfcat/measurements'
-NETWORK_DRIVE_PATH = '/home/surfcat/o/FYSIK/list-SurfCat/setups/307_GC2'
+DATA_PATH = '/run/user/1000/gvfs/smb-share:domain=Workgroup,server=case-ec-gc-02,share=1,user=gc/'
+NETWORK_DRIVE_PATH = '/home/surfcat/o/FYSIK/list-SurfCat/setups/307_GC2/active'
 MOUNT_PATH = '/home/surfcat/o'
 MOUNT_COMMAND = (
     'sudo mount.cifs //dtu-storage.win.dtu.dk/Department {mount_path} '
@@ -66,6 +68,49 @@ def mount_network_drive():
             continue
 
         stop_trying = True
+
+
+def virtual_machine_share_is_mounted():
+    """Is the virtual machine share mounted"""
+    try:
+        content = listdir(DATA_PATH)
+    except OSError:
+        time.sleep(1)
+    except:
+        pass
+    
+    try:
+        content = listdir(DATA_PATH)
+    except FileNotFoundError:
+        return False
+        
+    return len(content) > 4
+
+
+def mount_virtual_machine_share():
+    """Mount the folder shared onto the private network from the virtual machine"""
+    # Should not be mounted
+    if virtual_machine_share_is_mounted():
+        print("Virtual machine share already mounted, unmounting")
+        unmount_virtual_machine_share()
+        time.sleep(3)
+        
+    subprocess.call("/home/surfcat/mount.expect")
+    time.sleep(2)
+
+    error_msg = ("!!!!!!!!!! FAILED !!!!!!!!!!\n\n"
+                 "Failed to mount shared drive from the virtual "
+                 "machine. Make the GC virtual machine is running\n\n"
+                 "!!!!!!!!!! FAILED !!!!!!!!!!")
+
+    if not virtual_machine_share_is_mounted():
+        print(error_msg)
+        raise SystemExit(1)
+
+
+def unmount_virtual_machine_share():
+    """Unmount above"""
+    subprocess.call("gvfs-mount -u /run/user/1000/gvfs/smb-share:domain=Workgroup,server=case-ec-gc-02,share=1,user=gc/", shell=True)
 
 
 def synchronize():
@@ -160,7 +205,11 @@ def main():
     else:
         print('Network drive already mounted')
 
+    mount_virtual_machine_share()
     synchronize()
+    unmount_virtual_machine_share()
 
-
+start = time.time()
 main()
+print("Done. {:.1f} s".format(time.time() - start))
+input("Press enter to exit")

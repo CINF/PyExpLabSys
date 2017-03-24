@@ -1,0 +1,7 @@
+#!/usr/bin/expect --
+# This is a copy of the script actually used, which is located in the home folderq
+set timeout -1
+spawn gvfs-mount gvfs-mount smb://Workgroup\;gc@case-ec-gc-02/1
+expect "Password:"
+send "xxxxx\n"
+expect eof
