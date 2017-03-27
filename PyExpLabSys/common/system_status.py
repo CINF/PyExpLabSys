@@ -5,9 +5,11 @@ This module is Python 2 and 3 compatible.
 
 from __future__ import unicode_literals
 import os
+from os import path
 import re
 import sys
 import socket
+import codecs
 try:
     import fcntl
 except ImportError:
@@ -19,6 +21,7 @@ try:
     import resource
 except ImportError:
     resource = None  # pylint: disable=C0103
+
 
 # Source: http://www.raspberrypi-spy.co.uk/2012/09/checking-your-raspberry-pi-board-version/
 RPI_REVISIONS = {
@@ -55,12 +58,27 @@ def works_on(platform):
 class SystemStatus(object):
     """Class that fetches set of system status information"""
 
-    def __init__(self):
+    def __init__(self, machinename=None):
+        """Initialize the system status object
+
+        Args:
+            machinename (str): Machinename if different from what is returned by
+                socket.gethostname()
+        """
         # Form the list of which items to measure on different platforms
         if 'linux' in sys.platform:
             platforms = {'all', 'linux', 'linux2'}
         else:
             platforms = {'all', sys.platform}
+
+        # Set the machine name (as used to find purpose)
+        if machinename is None:
+            self._machinename = socket.gethostname()
+        else:
+            self._machinename = machinename
+
+        # Cache for fairly static information like purpose
+        self._cache = {}
 
         # Form the list methods that work in this platform, using the _works_on attribute
         # that is appended with a decorator
@@ -94,6 +112,7 @@ class SystemStatus(object):
             return os.path.getmtime(fetch_head_file)
         else:
             return None
+
 
     @staticmethod
     @works_on('all')
@@ -247,6 +266,51 @@ class SystemStatus(object):
             return serial
         except IOError:
             return None
+
+    @works_on('linux2')
+    def purpose(self):
+        """Returns the information from the purpose file"""
+        if 'purpose' in self._cache:
+            return self._cache['purpose']
+
+        purpose = {'id': None, 'purpose': None, 'long_description': None}
+        self._cache['purpose'] = purpose
+
+        # Read the purpose file
+        filepath = path.join(path.expanduser('~'), 'PyExpLabSys', 'machines',
+                             self._machinename, 'PURPOSE')
+        try:
+            with codecs.open(filepath, encoding='utf-8') as file_:
+                purpose_lines = file_.readlines()
+                pass
+        except IOError:
+            return purpose
+
+        # New style purpose file
+        if purpose_lines[0].startswith("id:"):
+            # Get id
+            purpose['id'] = purpose_lines[0].split(':', 1)[1].strip()
+
+            # If there is id:, insist that there is also purpose: and parse it
+            if not purpose_lines[1].startswith('purpose:'):
+                message = ('With the new style purpose file (where first line starts '
+                           'with "id:", the second line must start with "purpose:"')
+                raise ValueError(message)
+            purpose['purpose'] = purpose_lines[1].split(':', 1)[1].strip()
+            purpose['long_description'] = ''.join(purpose_lines[2:]).strip()
+        else:
+            # With old stype purpose file, turn entire content into long_description
+            purpose['long_description'] = ''.join(purpose_lines)
+
+        if purpose['long_description'] == '':
+            purpose['long_description'] = None
+
+        return purpose
+
+    @works_on('linux2')
+    def machine_name(self):
+        """Return the machine name"""
+        return self._machinename
 
 
 if __name__ == '__main__':
