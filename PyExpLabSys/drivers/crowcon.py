@@ -540,7 +540,17 @@ def main():
     #logging.basicConfig(level=logging.DEBUG)
     #logging.debug('Start')
 
-    vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2)
+    vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2, cache=False)
+    vortex.debug = True
+
+    while True:
+        vortex.read_bool(109)#detector_configuration(1)
+        #print("####################")
+        #print('Power status :', vortex.get_system_power_status())
+        #vortex.get_detector_levels(1)
+
+    #print('serial version:', serial.__version__)
+    #print('serial module:', serial)
 
     print('Type         :', vortex.get_type())
     print('System status:', vortex.get_system_status())
