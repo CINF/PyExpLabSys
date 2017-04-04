@@ -39,7 +39,7 @@ class FlowControl(threading.Thread):
                 self.livesocket.set_point_now(mfc, flow)
 
 port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWGRKWL-if00-port0'
-devices = ['21984839', '21984838', '21984878', '21984877', '21984876', '21984879']
+devices = ['21984839', '21984838', '21984878', '21984877', '21984876', '21984879','22134788']
 
 Datasocket = DateDataPullSocket('microreactor_mks_mfc_control',
                                 devices, timeouts=[3.0]*len(devices), port=9000)
