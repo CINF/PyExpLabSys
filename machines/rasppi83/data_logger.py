@@ -17,7 +17,7 @@ class TcReader(threading.Thread):
     def __init__(self, port):
         self.comm = minimalmodbus.Instrument(port, 1)
         self.comm.serial.baudrate = 9600
-        self.comm.serial.parity = serial.PARITY_NONE
+        self.comm.serial.parity = serial.PARITY_EVEN
         self.comm.serial.timeout = 0.5
         error = 0
         while error < 10:
