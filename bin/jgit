@@ -1,0 +1,10 @@
+#!/bin/bash
+
+user="Jakob Ejler Sørensen"
+email="lillebror.jakobes@gmail.com"
+
+git config --global user.name "$user"
+git config --global user.email $email
+
+
+git "$@"
