@@ -2,6 +2,8 @@
 
 import smbus
 import time
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class OmronD6fph(object):
     """ Class for reading pressure and temperature from Omron D6F-PH series
