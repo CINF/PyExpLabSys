@@ -32,6 +32,7 @@
  rasppi36,  Raspberry Pi, socket, &micro;-reactors, Pressure readout
  rasppi37,  Raspberry Pi, socket, &micro;-reactors, MKS MFCs
  rasppi39,  Raspberry Pi, ls,     PS, Mass Spec High pressure cell
+ rasppi42,  Raspberry Pi, socket, General, Host checker
  rasppi43,  Raspberry Pi, socket, VHP, Pressure and temperature readout
  rasppi44,  Raspberry Pi, socket, &micro;-reactorNG, Valve Control box
  rasppi45,  Raspberry Pi, ls,     sniffer, Pressure controller - bronkhorst
@@ -62,6 +63,7 @@
  rasppi72,  Raspberry Pi, socket, b312, Large office Temp + humidity
  rasppi74,  Raspberry Pi, socket, TOF, Voltage control
  rasppi76,  Raspberry Pi, socket, 307 Photo, Brooks flow control
+ rasppi78,  Raspberry Pi, socket, 307 Photo, Multichannel photo IV measuement
  rasppi100, Raspberry Pi, socket, &micro;-reactor, Turbo controller
  rasppi103, Raspberry Pi, socket, Palle, Temperature control
  rasppi103, Raspberry Pi, 9001,   Palle, Temperature reader
