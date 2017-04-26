@@ -11,6 +11,8 @@ import sys
 import pickle
 import os
 
+CACHE_PATH = '/var/www/html/cache/'
+
 def host_status(hostname, method=""):
     """ Report if a host i available on the network """
     host_is_up = True
@@ -107,15 +109,15 @@ def uptime(hostname, method, username='pi', password='cinf123'):
         # If host has been determined to be down, we attempt to load from cache
         if return_value['up'] == 'Down':
             try:
-                host_cache = pickle.load(open('/srv/http/cache/' + hostname + '.p', 'rb'))
+                host_cache = pickle.load(open(CACHE_PATH + hostname + '.p', 'rb'))
                 return_value['git'] = host_cache['git']
                 return_value['model'] = host_cache['model']
                 return_value['python_version'] = host_cache['python_version']
             except IOError:
                 pass
         else: # Update cache
-            pickle.dump(return_value, open('/srv/http/cache/' + hostname + '.p', 'wb'))
-            os.chmod('/srv/http/cache/' + hostname + '.p', 0777)
+            pickle.dump(return_value, open(CACHE_PATH + hostname + '.p', 'wb'))
+            #os.chmod(CACHE_PATH + hostname + '.p', 0777) # Halts when run as apache user....
     return return_value
 
 class CheckHost(threading.Thread):
