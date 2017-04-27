@@ -9,7 +9,7 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
-import PyExpLabSys.drivers.agilent_34972A as agilent_34972A
+import PyExpLabSys.drivers.agilent_34410A as agilent_34410A
 import emission_tui
 from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
@@ -47,8 +47,10 @@ class EmissionControl(threading.Thread):
         self.bias['grid_voltage'] = 0
         self.bias['grid_current'] = 0
         self.bias['device'].output_status(True)
-        self.bias['current_reader'] = agilent_34972A.Agilent34972ADriver('10.54.6.72')
+        self.bias['current_reader'] = agilent_34410A.Agilent34410ADriver(interface='usbtmc',
+                                                                         connection_string='USB0::0x0957::0x0607::MY45000583::INSTR')
 
+        self.bias['current_reader'].select_measurement_function('CURRENT')
         self.pid = pid.PID(0.01, 0.1, 0, 4)
         self.looptime = 0
         self.setpoint = 0.05
@@ -88,8 +90,7 @@ class EmissionControl(threading.Thread):
 
     def read_emission_current(self):
         """ Read the grid current as measured by power supply """
-        mux_list = self.bias['current_reader'].read_single_scan()
-        emission_current = mux_list[0]
+        emission_current = self.bias['current_reader'].read()
         emission_current = emission_current * -1000
         return emission_current
 
