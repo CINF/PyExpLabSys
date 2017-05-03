@@ -7,8 +7,13 @@ python2_and_3(__file__)
 
 class Agilent34972ADriver(SCPI):
     """ Driver for Agilent 34972A multiplexer """
-    def __init__(self, name='volvo-agilent-34972a'):
-        SCPI.__init__(self, interface='lan', hostname=name)
+    def __init__(self, interface='lan', hostname='', connection_string=''):
+        if interface == 'lan': # the LAN interface
+            SCPI.__init__(self, interface=interface, hostname=hostname)
+        if interface == 'file': # For distributions that mounts usbtmc as a file (eg. ubuntu)
+            SCPI.__init__(self, interface=interface, device='/dev/usbtmc0')
+        if interface == 'usbtmc': # For python-usbtmc (preferred over file)
+            SCPI.__init__(self, interface=interface, visa_string=connection_string)
 
     def read_single_scan(self):
         """ Read a single scan-line """
