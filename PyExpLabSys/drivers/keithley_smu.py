@@ -9,9 +9,9 @@ python2_and_3(__file__)
 class KeithleySMU(SCPI):
     """ Simple driver for Keithley SMU """
 
-    def __init__(self, interface, hostname='', device=''):
+    def __init__(self, interface, hostname='', device='', baudrate=19200):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device, baudrate=19200)
+            SCPI.__init__(self, interface=interface, device=device, baudrate=baudrate)
             self.f.timeout = 5
         if interface == 'lan':
             SCPI.__init__(self, interface=interface, hostname=hostname)
@@ -49,18 +49,45 @@ class KeithleySMU(SCPI):
             logging.error('Voltage string: ' + str(voltage_string))
         return voltage
 
+    def iv_scan(self, v_from, v_to, stepsize, channel=1):
+        """ Do an IV-scan """
+        assert(v_from < v_to)
+        assert(stepsize > 0)
+        voltages = []
+        currents = []
+        current_voltage = v_from
+        while current_voltage < v_to:
+            self.set_voltage(current_voltage, channel)
+            current = self.read_current(channel)
+            voltages.append(current_voltage)
+            currents.append(current)
+            current_voltage +=stepsize
+        return(voltages, currents)
+
+    def set_current_limit(self, current, channel=1):
+        """ Set the desired current limit """
+        self.scpi_comm('smu' + self.channel_names[channel] +
+                       '.source.limiti = ' + str(current))
+
     def set_voltage(self, voltage, channel=1):
         """ Set the desired voltage """
         self.scpi_comm('smu' + self.channel_names[channel] +
                        '.source.levelv = ' + str(voltage))
+
 if __name__ == '__main__':
     PORT = '/dev/serial/by-id/'
-    PORT += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+    PORT += 'usb-1a86_USB2.0-Ser_-if00-port0'
 
-    SMU = KeithleySMU(interface='serial', device=PORT)
+    SMU = KeithleySMU(interface='serial', device=PORT, baudrate=9600)
     print(SMU)
+    SMU.output_state(True)
     SMU.set_voltage(0.24)
+    print(SMU.set_current_limit(1))
     time.sleep(1)
+    print('-')
     print(SMU.read_software_version())
+    print('-')
     print(SMU.read_current())
+    print('-')
     print(SMU.read_voltage())
+    print('-')
