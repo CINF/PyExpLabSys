@@ -1,9 +1,9 @@
 """ Implementation of SCPI standard """
 from __future__ import print_function
 import time
-import serial
 import logging
 import telnetlib
+import serial
 try:
     import usbtmc
 except ImportError:
@@ -19,46 +19,56 @@ LOGGER.addHandler(logging.NullHandler())
 class SCPI(object):
     """ Driver for scpi communication """
     def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600,
-                 visa_string=''):
+                 visa_string='', line_ending='\r'):
         self.device = device
         self.interface = interface
         if self.interface == 'file':
-            self.f = open(self.device, 'w')
-            self.f.close()
+            self.comm_dev = open(self.device, 'w')
+            self.comm_dev.close()
         if self.interface == 'serial':
-            self.f = serial.Serial(self.device, baudrate, timeout=1, xonxoff=True)
+            self.comm_dev = serial.Serial(self.device, baudrate, timeout=2, xonxoff=True)
+            self.line_ending = line_ending
         if self.interface == 'lan':
-            self.f = telnetlib.Telnet(hostname, tcp_port)
+            self.comm_dev = telnetlib.Telnet(hostname, tcp_port)
         if self.interface == 'usbtmc':
             if usbtmc is None:
                 exit('usbtmc is not availalbe')
-            self.f = usbtmc.Instrument(visa_string)
+            self.comm_dev = usbtmc.Instrument(visa_string)
 
     def scpi_comm(self, command, expect_return=False):
         """ Implements actual communication with SCPI instrument """
         return_string = ""
         if self.interface == 'file':
-            self.f = open(self.device, 'w')
-            self.f.write(command)
+            self.comm_dev = open(self.device, 'w')
+            self.comm_dev.write(command)
             time.sleep(0.02)
-            self.f.close()
+            self.comm_dev.close()
             time.sleep(0.05)
             if command.find('?') > -1:
-                self.f = open(self.device, 'r')
-                return_string = self.f.readline()
-                self.f.close()
-        command_text = command + '\n'
+                self.comm_dev = open(self.device, 'r')
+                return_string = self.comm_dev.readline()
+                self.comm_dev.close()
+        command_text = command + self.line_ending
 
         if self.interface == 'serial':
-            self.f.write(command_text.encode('ascii'))
+            self.comm_dev.write(command_text.encode('ascii'))
             if command.endswith('?') or (expect_return is True):
-                return_string = self.f.readline().decode()
+                return_string = ''
+                while True:
+                    next_char = self.comm_dev.read(1)
+                    #print(ord(next_char))
+                    #print(ord(self.line_ending))
+                    if ord(next_char) == ord(self.line_ending):
+                        break
+                    return_string += next_char
+                return_string = return_string.decode()
 
         if self.interface == 'lan':
             lan_time = time.time()
-            self.f.write(command_text.encode('ascii'))
+            self.comm_dev.write(command_text.encode('ascii'))
             if (command.find('?') > -1) or (expect_return is True):
-                return_string = self.f.read_until(chr(10).encode('ascii'), 2).decode()
+                return_string = self.comm_dev.read_until(chr(10).encode('ascii'),
+                                                         2).decode()
             LOGGER.info('Return string length: ' + str(len(return_string)))
             #time.sleep(0.025)
             LOGGER.info('lan_time for coomand ' + command_text.strip() +
@@ -66,9 +76,9 @@ class SCPI(object):
 
         if self.interface == 'usbtmc':
             if command.find('?') > -1:
-                return_string = self.f.ask(command_text)
+                return_string = self.comm_dev.ask(command_text)
             else:
-                self.f.write(command_text)
+                self.comm_dev.write(command_text)
                 return_string = 'command_text'
         return return_string
 
