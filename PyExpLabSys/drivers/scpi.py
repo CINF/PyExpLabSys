@@ -21,19 +21,20 @@ class SCPI(object):
     def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600,
                  visa_string='', line_ending='\r'):
         self.device = device
+        self.line_ending = line_ending
         self.interface = interface
         if self.interface == 'file':
             self.comm_dev = open(self.device, 'w')
             self.comm_dev.close()
         if self.interface == 'serial':
             self.comm_dev = serial.Serial(self.device, baudrate, timeout=2, xonxoff=True)
-            self.line_ending = line_ending
         if self.interface == 'lan':
             self.comm_dev = telnetlib.Telnet(hostname, tcp_port)
         if self.interface == 'usbtmc':
             if usbtmc is None:
                 exit('usbtmc is not availalbe')
             self.comm_dev = usbtmc.Instrument(visa_string)
+
 
     def scpi_comm(self, command, expect_return=False):
         """ Implements actual communication with SCPI instrument """
