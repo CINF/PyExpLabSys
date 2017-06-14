@@ -64,6 +64,8 @@
  rasppi74,  Raspberry Pi, socket, TOF, Voltage control
  rasppi76,  Raspberry Pi, socket, 307 Photo, Brooks flow control
  rasppi78,  Raspberry Pi, socket, 307 Photo, Multichannel photo IV measuement
+ rasppi82,  Raspberry Py, socket, 307-049, Temperature and humidity + H2 pressure
+ rasppi86,  Raspberry Pi, socket, Propene Oxidation Setup
  rasppi100, Raspberry Pi, socket, &micro;-reactor, Turbo controller
  rasppi103, Raspberry Pi, socket, Palle, Temperature control
  rasppi103, Raspberry Pi, 9001,   Palle, Temperature reader
