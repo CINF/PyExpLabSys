@@ -39,7 +39,7 @@ class TcReader(threading.Thread):
     def run(self):
         while not self.quit:
             time.sleep(0.25)
-            self.temperature = self.comm.read_register(4096, 1)
+            self.temperature = self.comm.read_register(4096, 1, signed=True)
 
 def main():
     """ Main fnuction """
