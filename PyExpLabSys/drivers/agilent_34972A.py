@@ -9,7 +9,7 @@ class Agilent34972ADriver(SCPI):
     """ Driver for Agilent 34972A multiplexer """
     def __init__(self, interface='lan', hostname='', connection_string=''):
         if interface == 'lan': # the LAN interface
-            SCPI.__init__(self, interface=interface, hostname=hostname)
+            SCPI.__init__(self, interface=interface, hostname=hostname, line_ending='\n')
         if interface == 'file': # For distributions that mounts usbtmc as a file (eg. ubuntu)
             SCPI.__init__(self, interface=interface, device='/dev/usbtmc0')
         if interface == 'usbtmc': # For python-usbtmc (preferred over file)
@@ -96,6 +96,7 @@ class Agilent34972ADriver(SCPI):
 
 if __name__ == "__main__":
     DEVICE = Agilent34972ADriver()
+    print(DEVICE.read_software_version())
     print(DEVICE.read_scan_list())
     print(DEVICE.read_configuration())
     print(DEVICE.read_single_scan())
