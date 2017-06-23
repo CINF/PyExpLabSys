@@ -19,6 +19,7 @@ class SolarCellTester(object):
         mux.scpi_comm('INSTRUMENT:DMM OFF') # Turn off DMM to allow use as mux device
         self.smu.set_current_limit(0.01) # Current limit, 10mA
         self.smu.set_current_measure_range(current_range=0.01) # Measurement range 10mA
+        self.smu.set_integration_time(1)
 
     def run_measurement(self, v_from, v_to, scan_both_ways):
         """ Perform the actual measurement """
@@ -34,12 +35,15 @@ class SolarCellTester(object):
             print('Channel: ' + str(channel))
             self.mux.scpi_comm('ROUTE:CLOSE (@10' + str(channel) + ')')
             time.sleep(0.2)
-            voltage, current = self.smu.iv_scan(v_from, v_to, 0.02)
+
+            voltage, current = self.smu.iv_scan(v_from=v_from, v_to=v_to,
+                                                steps=10, settle_time=0)
             for i in range(0, len(current)):
                 self.data_set_saver.save_point('Ch' + str(channel), (voltage[i], current[i]))
 
             if scan_both_ways:
-                voltage, current = self.smu.iv_scan(v_to, v_from, -0.02)
+                voltage, current = self.smu.iv_scan(v_from=v_to, v_to=v_from,
+                                                    steps=50, settle_time=0)
                 for i in range(0, len(current)):
                     self.data_set_saver.save_point('Ch' + str(channel),
                                                    (voltage[i], current[i]))
@@ -55,10 +59,10 @@ def main():
     conn_string = 'USB0::0x0957::0x2007::MY49011193::INSTR'
     mux = agilent_34972A.Agilent34972ADriver(interface='usbtmc',
                                              connection_string=conn_string)
-    mux.read_software_version()
+    print(mux.read_software_version())
 
     smu = keithley_smu.KeithleySMU(interface='serial', device='/dev/ttyUSB0', baudrate=9600)
-    smu.read_software_version()
+    print(smu.read_software_version())
 
     time.sleep(0.2)
 
