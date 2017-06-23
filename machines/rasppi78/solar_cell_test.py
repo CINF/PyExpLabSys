@@ -4,7 +4,9 @@ import time
 import PyExpLabSys.drivers.agilent_34972A as agilent_34972A
 import PyExpLabSys.drivers.keithley_smu as keithley_smu
 from PyExpLabSys.common.database_saver import DataSetSaver, CustomColumn
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
 class SolarCellTester(object):
     """ Performs an IV test """
