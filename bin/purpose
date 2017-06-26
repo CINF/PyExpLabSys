@@ -20,14 +20,14 @@ def print_machine(machine, purpose, highlight=None):
         machine = machine.replace(highlight, '\033[1m\033[35m{}\033[0m'.format(highlight))
 
     # Add to the width of the machine padding, if there is a highligting in machine
-    width = 18
+    width = 23
     if '\033[1m\033[35m' in machine:
-        width = 18 + 13
+        width = 23 + 13
 
     wrapped = textwrap.wrap(purpose, 60)
     print('{{: <{}}}{{}}'.format(width).format(machine, wrapped[0]))
     for line in wrapped[1:]:
-        print('{: <18}{}'.format('', line))
+        print('{: <23}{}'.format('', line))
 
 
 # Parse arguments
@@ -51,6 +51,18 @@ for machine in machines:
     if os.path.isfile(purpose):
         with open(purpose) as file_:
             purpose = file_.read()
+
+            # The purpose files have had two different formats, check for the new one
+            purpose_lines = purpose.split('\n')
+            # New format
+            if len(purpose_lines) > 1 and\
+               purpose_lines[0].startswith('id:') and\
+               purpose_lines[1].startswith('purpose:'):
+                # Strip the first two lines of id and shorthand purpose
+                purpose = ''.join(purpose_lines[2:]).strip()
+                if len(purpose) == 0:
+                    purpose = purpose_lines[1].replace('purpose:', '').strip()
+            
         if len(args) == 0:
             print_machine(machine, purpose)
         else:

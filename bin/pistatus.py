@@ -32,6 +32,7 @@ from __future__ import print_function
 import sys
 import shutil
 import socket
+import argparse
 from textwrap import wrap
 from functools import partial
 from subprocess import check_output
@@ -55,8 +56,28 @@ else:
         pass
 
 WIDTH = COL - 4
+
+# Parse args for possible other HOSTNAME
+def get_hostname():
+    """Return the hostname to use"""
+    parser = argparse.ArgumentParser(description='Show raspberry pi status')
+    parser.add_argument('pi', nargs='?', default=None,
+                        help='')
+    args = parser.parse_args()
+    pi = args.pi
+    if pi is None:
+        return socket.gethostname()
+    else:
+        if pi.isdigit():
+            return 'rasppi' + pi
+        else:
+            return pi
+
+
 # Machine folder
-HOSTNAME = socket.gethostname()
+HOSTNAME = get_hostname()
+
+
 MACHINE_DIR = join(expanduser('~'), 'PyExpLabSys', 'machines', HOSTNAME)
 if not isdir(MACHINE_DIR):
     MACHINE_DIR = None
@@ -102,7 +123,7 @@ def value_pair(key, value, key_width=KEY_WIDTH):
         framed(blue('{{: <{}}}'.format(key_width).format(key)) + ': ' + value)
     else:
         framed(blue(key) + ': ' + value)
-
+        
 
 def machine_status():
     """Output machine status"""
@@ -116,6 +137,16 @@ def machine_status():
                 purpose = file_.read()
         except IOError:
             pass
+
+    # The purpose files have had two different formats, check for the new one
+    purpose_lines = purpose.split('\n')
+    # New format
+    if len(purpose_lines) > 1 and purpose_lines[0].startswith('id:') and purpose_lines[1].startswith('purpose:'):
+        # Strip the first two lines of id and shorthand purpose
+        purpose = ''.join(purpose_lines[2:]).strip()
+        if len(purpose) == 0:
+            purpose = purpose_lines[1].replace('purpose:', '').strip()
+            
 
     spaces = ' ' * (KEY_WIDTH - 7)
     purpose_key = 'purpose' + spaces + ': '
