@@ -32,6 +32,13 @@ bashrc_addition='
 export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin
 export PYTHONPATH=$HOME/PyExpLabSys
 stty -ixon
+
+machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME
+if [ -d $machin_dir ]; then
+    echo "Entering machine dir: $machine_dir"
+    cd $machine_dir
+fi
+pistatus.py
 '
 
 # These lines will be added to ~/.bash_aliases
@@ -123,10 +130,26 @@ if [ $1 == "bash" ] || [ $1 == "all" ];then
 	    echo "$bashrc_addition" >> ~/.bashrc
 	    echobad "---> Replacing old PATH setting with new one"
 	fi
+
+	# the stty setting was added later, check whether it is there
+	# and otherwise add it
 	grep "stty" ~/.bashrc > /dev/null
 	if [ $? -ne 0 ];then
 	    echo "stty -ixon" >> ~/.bashrc
 	    echogood "---> .bashrc missed 'stty -ixon line', added it"
+	fi
+
+	# Change dir and pistatus was added later, check whether it is
+	# there and otherwise add it
+	grep "pistatus" ~/.bashrc > /dev/null
+	if [ $? -ne 0 ];then
+	    echo 'machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME' >> ~/.bashrc
+	    echo 'if [ -d $machin_dir ]; then' >> ~/.bashrc
+	    echo '    echo \"Entering machine dir: $machine_dir\"' >> ~/.bashrc
+	    echo '    cd $machine_dir' >> ~/.bashrc
+	    echo 'fi' >> ~/.bashrc
+	    echo 'pistatus.py' >> ~/.bashrc
+	    echogood "---> .bashrc missed change dir and pistatus, added it"
 	fi
     else
 	echoblue "---> Modifying .bashrc includes PATH and PYTHONPATH setup"
