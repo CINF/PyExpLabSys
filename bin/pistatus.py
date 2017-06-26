@@ -222,6 +222,18 @@ def git():
     # Change cwd back
     chdir(cwd)
 
+
+def tips():
+    """Display tips"""
+    framed(bold('tips'))
+    framed(bold('===='))
+    framed("To run this script use: pistatus.py")
+    framed("Navigate PyExpLabSys folder with one-letter commands: " +
+           bold("a") + "=apps, " + bold("c") + "=common, ")
+    framed(" " + bold("d") + "=drivers, " + bold("m") + "=this machine "
+           "folder or machines, " + bold("p") + "=~/PyExpLabSys/PyExpLabSys")
+
+
 def main():
     """main function"""
     # Header
@@ -236,6 +248,9 @@ def main():
     framed('')
 
     git()
+    framed('')
+
+    tips()
 
     # Footer
     hline()

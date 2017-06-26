@@ -53,6 +53,12 @@ alias ll=\"ls -lh\"
 alias df=\"df -h\"
 alias emacs-nolint=\"emacs -q --load ~/PyExpLabSys/bootstrap/.emacs-simple\"
 alias python=\"/usr/bin/python3\"
+
+alias a=\"cd ~/PyExpLabSys/PyExpLabSys/apps\"
+alias c=\"cd ~/PyExpLabSys/PyExpLabSys/common\"
+alias d=\"cd ~/PyExpLabSys/PyExpLabSys/drivers\"
+alias m=\"if [ -d ~/PyExpLabSys/machines/$HOSTNAME ];then cd ~/PyExpLabSys/machines/\$HOSTNAME; else cd ~/PyExpLabSys/machines; fi\"
+alias p=\"cd ~/PyExpLabSys/PyExpLabSys\"
 "
 
 # Usage string, edit if adding another section to the script
