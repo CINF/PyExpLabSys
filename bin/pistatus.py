@@ -29,10 +29,13 @@ Pi healt (from SystemStatus) TODO:
 
 from __future__ import print_function
 
+from time import time
+T0 = time()
 import sys
 import shutil
 import socket
 import argparse
+from threading import Thread
 from textwrap import wrap
 from functools import partial
 from subprocess import check_output
@@ -73,7 +76,6 @@ def get_hostname():
         else:
             return pi
 
-
 # Machine folder
 HOSTNAME = get_hostname()
 
@@ -89,6 +91,8 @@ KEY_WIDTH = 16
 USERNAME = getlogin()
 SCREEN_FOLDER = join(abspath(sep), 'var', 'run', 'screen', 'S-' + USERNAME)
 
+# Dict used to collect data from thread
+THREAD_COLLECT = {}
 
 # Utility functions
 def color_(line, color):
@@ -105,9 +109,9 @@ YES = green('Yes')
 NO = red('NO')
 
 
-def hline():
+def hline(end='\n'):
     """Prints out a horizontal line"""
-    print("#" * COL)
+    print("#" * COL, end=end)
 
 
 def framed(line, align='<'):
@@ -123,7 +127,7 @@ def value_pair(key, value, key_width=KEY_WIDTH):
         framed(blue('{{: <{}}}'.format(key_width).format(key)) + ': ' + value)
     else:
         framed(blue(key) + ': ' + value)
-        
+
 
 def machine_status():
     """Output machine status"""
@@ -162,6 +166,12 @@ def machine_status():
         value_pair('Has autostart', 'NO')
 
 
+def collect_running_programs():
+    processes = check_output('ps -eo command', shell=True).decode('utf-8')\
+        .split('\n')
+    THREAD_COLLECT['processes'] = processes
+
+
 def running_programs():
     """Out running programs status"""
     framed(bold('Running programs'))
@@ -178,10 +188,8 @@ def running_programs():
     else:
         value_pair('Screens', 'None')
 
-    processes = check_output('ps -eo command', shell=True).decode('utf-8')\
-        .split('\n')
     python_processes = []
-    for process in processes:
+    for process in THREAD_COLLECT['processes']:
         if 'python' in process.split(' ')[0]:
             if any(skip in process for skip in ('pistatus', 'pylint')):
                 continue
@@ -195,6 +203,19 @@ def running_programs():
         value_pair('Python processes', 'None')
 
 
+def collect_last_commit():
+    last_commit = check_output(
+        'git log --date=iso -n 1 --pretty=format:"%ad"',
+        shell=True,
+    ).decode('utf-8')
+    THREAD_COLLECT['last_commit'] = last_commit
+
+
+def collect_git_status():
+    git_status = check_output('git status --porcelain', shell=True)
+    THREAD_COLLECT['git_status'] = git_status
+
+
 def git():
     """Display the git status"""
     framed(bold('git'))
@@ -206,15 +227,10 @@ def git():
     chdir(join(expanduser("~"), "PyExpLabSys"))
 
     # date of last commit
-    last_commit = check_output(
-        'git log --date=iso -n 1 --pretty=format:"%ad"',
-        shell=True,
-    ).decode('utf-8')
-    value_pair('Last commit', last_commit)
+    value_pair('Last commit', THREAD_COLLECT['last_commit'])
 
     # git clean
-    git_status = check_output('git status --porcelain', shell=True)
-    if len(git_status) == 0:
+    if len(THREAD_COLLECT['git_status']) == 0:
         value_pair('Git clean', YES)
     else:
         value_pair('Git clean', NO)
@@ -237,24 +253,43 @@ def tips():
 
 def main():
     """main function"""
+    # On Raspberry pi it takes time to call command on the command
+    # line, so we put the three calls to the command line out into
+    # threads
+    threads = []
+    for function in collect_running_programs, collect_last_commit, collect_git_status:
+        thread = Thread(target=function)
+        thread.start()
+        threads.append(thread)
+
     # Header
     hline()
     framed(yellow('Raspberry Pi status ({})'.format(HOSTNAME)), align='^')
     hline()
 
+
     machine_status()
     framed('')
 
+    # Join the processes thread, since we need the processes output now
+    threads[0].join()
     running_programs()
     framed('')
 
+    # Join git threads
+    for thread in threads[1:]:
+        thread.join()
     git()
     framed('')
 
     tips()
 
-    # Footer
-    hline()
+    # Footer (include time to run)
+    timeline = " {:.2f}s #".format(time() - T0)
+    global COL
+    COL -= len(timeline)
+    hline(end='')
+    print(timeline, end='')
 
 
 main()
