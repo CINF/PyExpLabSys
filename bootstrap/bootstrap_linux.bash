@@ -59,6 +59,7 @@ alias c=\"cd ~/PyExpLabSys/PyExpLabSys/common\"
 alias d=\"cd ~/PyExpLabSys/PyExpLabSys/drivers\"
 alias m=\"if [ -d ~/PyExpLabSys/machines/$HOSTNAME ];then cd ~/PyExpLabSys/machines/\$HOSTNAME; else cd ~/PyExpLabSys/machines; fi\"
 alias p=\"cd ~/PyExpLabSys/PyExpLabSys\"
+alias b=\"cd ~/PyExpLabSys/bootstrap\"
 "
 
 # Usage string, edit if adding another section to the script
@@ -151,7 +152,7 @@ if [ $1 == "bash" ] || [ $1 == "all" ];then
 	if [ $? -ne 0 ];then
 	    echo 'machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME' >> ~/.bashrc
 	    echo 'if [ -d $machin_dir ]; then' >> ~/.bashrc
-	    echo '    echo \"Entering machine dir: $machine_dir\"' >> ~/.bashrc
+	    echo '    echo "Entering machine dir: $machine_dir"' >> ~/.bashrc
 	    echo '    cd $machine_dir' >> ~/.bashrc
 	    echo 'fi' >> ~/.bashrc
 	    echo 'pistatus.py' >> ~/.bashrc

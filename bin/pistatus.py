@@ -228,10 +228,11 @@ def tips():
     framed(bold('tips'))
     framed(bold('===='))
     framed("To run this script use: pistatus.py")
-    framed("Navigate PyExpLabSys folder with one-letter commands: " +
-           bold("a") + "=apps, " + bold("c") + "=common, ")
-    framed(" " + bold("d") + "=drivers, " + bold("m") + "=this machine "
-           "folder or machines, " + bold("p") + "=~/PyExpLabSys/PyExpLabSys")
+    framed("Navigate PyExpLabSys folders with one-letter commands: ")
+    framed(" " + bold("a") + "=apps, " + bold("b") + "=bootstrap," +
+           " " + bold("c") + "=common, " + bold("d") + "=drivers, ")
+    framed(" " + bold("m") + "=this machine folder or machines, " +
+           bold("p") + "=~/PyExpLabSys/PyExpLabSys")
 
 
 def main():
