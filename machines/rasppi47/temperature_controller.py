@@ -79,7 +79,7 @@ class PowerCalculatorClass(threading.Thread):
         self.pushsocket = pushsocket
         self.power = 0
         self.setpoint = 50
-        self.pid = PID.PID(pid_p=0.015, pid_i=0.000025, p_max=1)
+        self.pid = PID.PID(pid_p=0.013, pid_i=0.000015, p_max=1)
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -104,21 +104,25 @@ class PowerCalculatorClass(threading.Thread):
             self.ramp['temp'] = {}
             self.ramp['time'] = {}
             self.ramp['step'] = {}
-            self.ramp['time'][0] = 600.0
-            self.ramp['time'][1] = 1200.0
-            self.ramp['time'][2] = 900.0
-            self.ramp['time'][3] = 2500.0
-            self.ramp['time'][4] = 900.0
-            self.ramp['temp'][0] = 100.0
-            self.ramp['temp'][1] = 50.0
-            self.ramp['temp'][2] = 60.0
-            self.ramp['temp'][3] = 90.0
-            self.ramp['temp'][4] = 70.0
-            self.ramp['step'][0] = False
-            self.ramp['step'][1] = False
+            self.ramp['time'][0] = 20.0
+            self.ramp['time'][1] = 2500.0
+            self.ramp['time'][2] = 10800.0
+            self.ramp['time'][3] = 10800.0
+            self.ramp['time'][4] = 10800.0
+            self.ramp['time'][5] = 10800.0
+            self.ramp['temp'][0] = 0.0
+            self.ramp['temp'][1] = 450.0
+            self.ramp['temp'][2] = 0.0
+            self.ramp['temp'][3] = 0.0
+            self.ramp['temp'][4] = 0.0
+            self.ramp['temp'][5] = 0.0
+            self.ramp['step'][0] = True
+            self.ramp['step'][1] = True
             self.ramp['step'][2] = True
-            self.ramp['step'][3] = False
-            self.ramp['step'][4] = True
+            self.ramp['step'][3] = True
+            self.ramp['step'][4] = False
+            self.ramp['step'][4] = False
+            self.ramp['step'][4] = False
         self.ramp['temp'][len(self.ramp['time'])] = 0
         self.ramp['step'][len(self.ramp['time'])] = True
         self.ramp['time'][len(self.ramp['time'])] = 999999999
@@ -139,17 +143,18 @@ class PowerCalculatorClass(threading.Thread):
         return return_value
 
     def run(self):
-        data_temp = b'T1#raw'
+        data_temp = b'fr307_furnace_1_T#raw'
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
-        #ramp_time = 0
-        ramp_time = time.time()
+        ramp_time = 0
+        #ramp_time = time.time()
         sp_updatetime = 0
         ramp_updatetime = 0
         while not self.quit:
             sock.sendto(data_temp, ('localhost', 9001))
             received = sock.recv(1024).decode()
             self.temperature = float(received[received.find(',') + 1:])
+            self.datasocket.set_point_now('temperature', self.temperature)
             self.power = self.pid.wanted_power(self.temperature)
 
             #  Handle the setpoint from the network
@@ -172,7 +177,10 @@ class PowerCalculatorClass(threading.Thread):
             if ramp == 'stop':
                 ramp_time = 0
             if (ramp is not None) and (ramp != 'stop'):
-                ramp = pickle.loads(ramp)
+                try: # Python 3
+                    ramp = pickle.loads(ramp.encode('ascii'), fix_imports=True)
+                except TypeError: # Python 2
+                    ramp = pickle.loads(ramp)
                 if new_update > ramp_updatetime:
                     ramp_updatetime = new_update
                     self.ramp = ramp
@@ -202,6 +210,9 @@ class HeaterClass(threading.Thread):
         while not self.quit:
             self.dutycycle = self.pc.read_power()
             self.datasocket.set_point_now('dutycycle', self.dutycycle)
+            self.datasocket.set_point_now('pid_p', self.pc.pid.proportional_contribution())
+            self.datasocket.set_point_now('pid_i', self.pc.pid.integration_contribution())
+                        
             for i in range(0, self.beatsteps):
                 time.sleep(1.0 * self.beatperiod / self.beatsteps)
                 if i < self.beatsteps * self.dutycycle:
@@ -210,13 +221,13 @@ class HeaterClass(threading.Thread):
                     wp.digitalWrite(self.pinnumber, 0)
         wp.digitalWrite(self.pinnumber, 0)
 
+
 def main():
     """ Main function """
     wp.wiringPiSetup()
     datasocket = DateDataPullSocket('furnaceroom_controller',
-                                    ['setpoint', 'dutycycle'],
-                                    timeouts=[999999, 3.0],
-                                    port=9000)
+                                    ['temperature', 'setpoint', 'dutycycle', 'pid_p', 'pid_i'],
+                                    timeouts=999999, port=9000)
     datasocket.start()
 
     pushsocket = DataPushSocket('furnaceroom_push_control', action='store_last')

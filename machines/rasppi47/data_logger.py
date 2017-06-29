@@ -1,5 +1,5 @@
 """ Data logger for the furnaceroom, 307 """
-
+from __future__ import print_function
 import threading
 import logging
 import time
@@ -27,53 +27,53 @@ class TemperatureReader(threading.Thread):
     def value(self):
         """ Return current temperature """
         return self.temperature
-        
+
     def run(self):
         while not self.quit:
-            time.sleep(0.1)
+            time.sleep(1)
             self.temperature = self.comm.read_register(4096, 1)
-
 
 def main():
     """ Main function """
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
-    datasocket = DateDataPullSocket('furnaceroom_reader',
-                                    ['T1', 'T2', 'S1', 'S2'],
-                                    timeouts=[3.0, 3.0, 9999999, 99999999], port=9001)
+    codenames = ['fr307_furnace_1_T', 'fr307_furnace_2_T']
+
+    datasocket = DateDataPullSocket('furnaceroom_reader', codenames,
+                                    timeouts=[3.0, 3.0], port=9001)
     datasocket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_furnaceroom307',
                                     username=credentials.user,
                                     password=credentials.passwd,
-                                    measurement_codenames=['fr307_furnace_1_T',
-                                                           'fr307_furnace_2_T'])
+                                    measurement_codenames=codenames)
+    db_logger.start()
 
     ports = {}
-    ports[1] = 'usb-FTDI_USB-RS485_Cable_FTWGRL9C-if00-port0'
-    ports[2] = 'usb-FTDI_USB-RS485_Cable_FTWGRN2W-if00-port0'
-    furnaces = {}
+    ports['fr307_furnace_1_T'] = 'usb-FTDI_USB-RS485_Cable_FTWGRL9C-if00-port0'
+    ports['fr307_furnace_2_T'] = 'usb-FTDI_USB-RS485_Cable_FTWGRN2W-if00-port0'
     loggers = {}
-    for i in [1, 2]:
-        furnaces[i] = TemperatureReader(ports[i])
-        furnaces[i].daemon = True
-        furnaces[i].start()
-        loggers[i] = ValueLogger(furnaces[i], comp_val=0.2)
-        loggers[i].start()
+    temperature_readers = {}
+    for logger_name in codenames:
+        temperature_readers[logger_name] = TemperatureReader(ports[logger_name])
+        temperature_readers[logger_name].daemon = True
+        temperature_readers[logger_name].start()
+        loggers[logger_name] = ValueLogger(temperature_readers[logger_name], comp_val=0.09)
+        loggers[logger_name].start()
 
-    db_logger.start()
     time.sleep(5)
+
     values = {}
     while True:
-        time.sleep(0.1)
-        for i in [1, 2]:
-            values[i] = loggers[i].read_value()
-            datasocket.set_point_now('T' + str(i), values[i])
-            if loggers[i].read_trigged():
-                print('Furnace: ' + str(i) + ': ' + str(values[i]))
-                db_logger.save_point_now('fr307_furnace_' + str(i) + '_T', values[i])
-                loggers[i].clear_trigged()
+        time.sleep(1)
+        for logger_name in codenames:
+            values[logger_name] = loggers[logger_name].read_value()
+            datasocket.set_point_now(logger_name, values[logger_name])
+            if loggers[logger_name].read_trigged():
+                print(logger_name + ': ' + str(values[logger_name]))
+                db_logger.save_point_now(logger_name, values[logger_name])
+                loggers[logger_name].clear_trigged()
 
 
 if __name__ == '__main__':
