@@ -14,7 +14,10 @@ from time import time, sleep
 from threading import Thread
 from functools import partial
 import subprocess
-from queue import Queue
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
 import argparse
 from pprint import pformat
 import traceback
@@ -486,7 +489,9 @@ def main():
     global APP  # pylint: disable=global-variable-undefined
     APP = QApplication(sys.argv)
     SteppedProgramRunner(my_program)
+    print('BEFORE app exec')
     sys.exit(APP.exec_())
+    print('AFTER app exec')
 
 
 try:
