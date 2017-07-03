@@ -1,13 +1,15 @@
 """ Logger module for the UPS """
+from __future__ import print_function
 import threading
-import logging
 import time
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.galaxy_3500 as galaxy_3500
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
 class UpsReader(threading.Thread):
     """ Run the ups-instance and keep status updated """
@@ -37,7 +39,7 @@ class UpsReader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            print self.ttl
+            print(self.ttl)
             self.ups.alarms()
             self.ups.battery_charge()
             self.ups.output_measurements()

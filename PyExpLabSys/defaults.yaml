@@ -1,0 +1,16 @@
+# PyExpLabSys settings defaults
+
+# Common
+common_sql_reader_user: null
+common_sql_reader_password: null
+# The host can be hostname or IP-address
+common_liveserver_host: null
+common_liveserver_port: null
+
+# PyExpLabSys.common.utilities settings
+util_log_warning_email: null
+util_log_error_email: null
+util_log_mail_host: null
+util_log_max_emails_per_period: 5
+util_log_email_throttle_time: 86400  # 1 day
+util_log_backlog_limit: 250

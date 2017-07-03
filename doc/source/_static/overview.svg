@@ -1,0 +1,935 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1000"
+   height="630"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="overview.svg">
+  <defs
+     id="defs4">
+    <marker
+       inkscape:stockid="TriangleInM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleInM"
+       style="overflow:visible">
+      <path
+         id="path4512"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(-0.4,-0.4)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM"
+       style="overflow:visible">
+      <path
+         id="path4521"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow2Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow2Lend"
+       style="overflow:visible">
+      <path
+         id="path4397"
+         style="fill-rule:evenodd;stroke-width:0.625;stroke-linejoin:round"
+         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
+         transform="matrix(-1.1,0,0,-1.1,-1.1,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Lend"
+       style="overflow:visible">
+      <path
+         id="path4379"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lstart"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Lstart"
+       style="overflow:visible">
+      <path
+         id="path3796"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="matrix(0.8,0,0,0.8,10,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-3"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-7"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-2"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-3"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-4"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-9"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-1"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-36"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleInM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleInM-2"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4512-7"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(-0.4,-0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-1-7"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-36-9"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-1-8"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-36-3"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-1-3"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-36-0"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-1-85"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-36-2"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+    <marker
+       inkscape:stockid="TriangleOutM"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="TriangleOutM-1-0"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path4521-36-38"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="scale(0.4,0.4)" />
+    </marker>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.7"
+     inkscape:cx="566.8701"
+     inkscape:cy="173.34385"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="true"
+     inkscape:window-width="1638"
+     inkscape:window-height="919"
+     inkscape:window-x="181"
+     inkscape:window-y="101"
+     inkscape:window-maximized="0"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:snap-global="false">
+    <inkscape:grid
+       type="xygrid"
+       id="grid4658"
+       empspacing="5"
+       visible="true"
+       enabled="true"
+       snapvisiblegridlinesonly="true" />
+    <sodipodi:guide
+       orientation="1,0"
+       position="782.85714,298.57143"
+       id="guide3098" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-422.36221)">
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#d22600;stroke-width:5.75475502;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004"
+       width="157.29459"
+       height="226.81667"
+       x="23.687359"
+       y="437.26724"
+       ry="28.627346"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="32"
+       y="466.36218"
+       id="text4600"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602"
+         x="32"
+         y="466.36218"
+         style="font-size:20px;font-weight:bold">RPi/Lab PC 1</tspan></text>
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#d22600;stroke-width:5.72974348;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-2"
+       width="156.90117"
+       height="225.4131"
+       x="285.12637"
+       y="438.52344"
+       ry="28.450199"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="293.45154"
+       y="467.63089"
+       id="text4600-6"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-2"
+         x="293.45154"
+         y="467.63089"
+         style="font-size:20px;font-weight:bold">RPi/Lab PC 2</tspan></text>
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#d22600;stroke-width:5.80816746;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-4"
+       width="161.28178"
+       height="225.33469"
+       x="543.72406"
+       y="438.58301"
+       ry="28.440296"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="552.01001"
+       y="467.65121"
+       id="text4600-7"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-20"
+         x="552.01001"
+         y="467.65121"
+         style="font-size:20px;font-weight:bold">RPi/Lab PC 3</tspan></text>
+    <g
+       id="g3878"
+       transform="translate(2,172)"
+       style="opacity:0.34408605"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         transform="translate(0,308.2677)"
+         y="64.094482"
+         x="40"
+         height="40"
+         width="120"
+         id="rect3022"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839"
+         y="400.71933"
+         x="48"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:28px"
+           y="400.71933"
+           x="48"
+           id="tspan3841"
+           sodipodi:role="line">sockets</tspan></text>
+    </g>
+    <g
+       id="g3910"
+       transform="translate(0,174)"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         y="432.86218"
+         x="41.142857"
+         height="40"
+         width="120"
+         id="rect3022-8"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-1"
+         y="457.21933"
+         x="45.142857"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:14px"
+           y="457.21933"
+           x="45.142857"
+           id="tspan3841-2"
+           sodipodi:role="line">database_saver</tspan></text>
+    </g>
+    <g
+       id="g3972"
+       transform="translate(2,-10)"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         y="494.86218"
+         x="41.142857"
+         height="40"
+         width="120"
+         id="rect3022-4"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-6"
+         y="521.21936"
+         x="45.142857"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:19px"
+           y="521.21936"
+           x="45.142857"
+           id="tspan3841-8"
+           sodipodi:role="line">file_parsers</tspan></text>
+    </g>
+    <g
+       transform="translate(264.83251,172.16734)"
+       id="g3878-7"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         transform="translate(0,308.2677)"
+         y="64.094482"
+         x="40"
+         height="40"
+         width="120"
+         id="rect3022-6"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-3"
+         y="400.71933"
+         x="48"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:28px"
+           y="400.71933"
+           x="48"
+           id="tspan3841-21"
+           sodipodi:role="line">sockets</tspan></text>
+    </g>
+    <g
+       transform="translate(260.90286,172.43893)"
+       id="g3910-4"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         y="432.86218"
+         x="41.142857"
+         height="40"
+         width="120"
+         id="rect3022-8-8"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-1-2"
+         y="457.21933"
+         x="45.142857"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:14px"
+           y="457.21933"
+           x="45.142857"
+           id="tspan3841-2-3"
+           sodipodi:role="line">database_saver</tspan></text>
+    </g>
+    <g
+       id="g3977"
+       transform="translate(0,-10)"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         y="494.73767"
+         x="302.97464"
+         height="40"
+         width="120"
+         id="rect3022-8-8-9"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-1-2-6"
+         y="523.09485"
+         x="310.97464"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:28px"
+           y="523.09485"
+           x="310.97464"
+           id="tspan3841-2-3-0"
+           sodipodi:role="line">drivers</tspan></text>
+    </g>
+    <g
+       transform="translate(522.46967,172.32728)"
+       id="g3878-7-8"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         transform="translate(0,308.2677)"
+         y="64.094482"
+         x="40"
+         height="40"
+         width="120"
+         id="rect3022-6-1"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-3-2"
+         y="400.71933"
+         x="48"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:28px"
+           y="400.71933"
+           x="48"
+           id="tspan3841-21-8"
+           sodipodi:role="line">sockets</tspan></text>
+    </g>
+    <g
+       transform="translate(518.54002,172.59887)"
+       id="g3910-4-4"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         y="432.86218"
+         x="41.142857"
+         height="40"
+         width="120"
+         id="rect3022-8-8-2"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-1-2-5"
+         y="457.21933"
+         x="45.142857"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:14px"
+           y="457.21933"
+           x="45.142857"
+           id="tspan3841-2-3-00"
+           sodipodi:role="line">database_saver</tspan></text>
+    </g>
+    <g
+       id="g3977-5"
+       transform="translate(257.63716,-9.84006)"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.428572"
+         y="494.73767"
+         x="302.97464"
+         height="40"
+         width="120"
+         id="rect3022-8-8-9-9"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-1-2-6-0"
+         y="523.09485"
+         x="310.97464"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:28px"
+           y="523.09485"
+           x="310.97464"
+           id="tspan3841-2-3-0-5"
+           sodipodi:role="line">drivers</tspan></text>
+    </g>
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#00887c;stroke-width:3.21823001;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-24"
+       width="178.01384"
+       height="62.678036"
+       x="412.02872"
+       y="716.59924"
+       ry="0"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="419.91693"
+       y="756.02686"
+       id="text4600-7-9"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-20-1"
+         x="419.91693"
+         y="756.02686"
+         style="font-size:20px;font-weight:bold">MySQL Server</tspan></text>
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#00887c;stroke-width:3.97974515;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-24-2"
+       width="177.25233"
+       height="96.261703"
+       x="412.07959"
+       y="799.66779"
+       ry="0"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="434.10983"
+       y="829.52423"
+       id="text4600-7-9-7"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-20-1-7"
+         x="434.10983"
+         y="829.52423"
+         style="font-size:20px;font-weight:bold">Web Server</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:6, 12;stroke-dashoffset:0"
+       d="M 1.0536087,694.68471 1001.0177,695.60794"
+       id="path4141"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:6, 12;stroke-dashoffset:0"
+       d="m 0.96729,916.4436 989.86257,-0.0869"
+       id="path4141-7"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <g
+       id="g3977-1"
+       transform="translate(130.61936,348.802)"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113">
+      <rect
+         ry="11.401554"
+         y="494.78494"
+         x="303.02191"
+         height="39.905437"
+         width="127.98666"
+         id="rect3022-8-8-9-1"
+         style="fill:#c0c0c0;fill-opacity:1;stroke:#201cca;stroke-width:3.09456086;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3839-1-2-6-3"
+         y="523.09485"
+         x="310.97464"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="font-size:28px"
+           y="523.09485"
+           x="310.97464"
+           id="tspan3841-2-3-0-9"
+           sodipodi:role="line">cinfdata</tspan></text>
+    </g>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#TriangleOutM)"
+       d="m 96.974645,649.18439 c 61.456965,50.89326 372.554365,20.07969 372.998825,57.32615"
+       id="path4188"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#TriangleOutM)"
+       d="m 615.44454,645.31782 c -4.17164,29.29442 -85.75382,29.79949 -85.73669,61.24048"
+       id="path4188-7"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="1142.0267"
+       inkscape:export-ydpi="1142.0267" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#TriangleOutM)"
+       d="m 356.60894,647.50823 c 18.8369,33.44485 143.14368,29.15167 143.44167,58.96766"
+       id="path4188-70"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:url(#TriangleInM);marker-end:url(#TriangleOutM-1)"
+       d="m 426.28437,563.32142 133.34014,1.01015"
+       id="path5476"
+       inkscape:connector-curvature="0"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png" />
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#88006d;stroke-width:2.36223817;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-24-3"
+       width="119.27082"
+       height="50.402042"
+       x="64.255508"
+       y="990.20422"
+       ry="0"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#88006d;stroke-width:2.68692303;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-24-3-3"
+       width="155.31163"
+       height="50.077358"
+       x="210.62601"
+       y="990.67114"
+       ry="0"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#88006d;stroke-width:2.82144213;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-24-3-3-2"
+       width="168.3091"
+       height="50.952995"
+       x="394.7948"
+       y="989.64709"
+       ry="0"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="75.632599"
+       y="1021.174"
+       id="text4600-7-9-3"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-20-1-9"
+         x="75.632599"
+         y="1021.174"
+         style="font-size:20px;font-weight:bold">Browser</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="217.57556"
+       y="1022.2923"
+       id="text4600-7-9-3-6"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-20-1-9-9"
+         x="217.57556"
+         y="1022.2923"
+         style="font-size:20px;font-weight:bold">Data Export</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="404.60901"
+       y="1021.0797"
+       id="text4600-7-9-3-6-0"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-20-1-9-9-7"
+         x="404.60901"
+         y="1021.0797"
+         style="font-size:20px;font-weight:bold">Smart Phone</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:none;marker-end:url(#TriangleOutM-1)"
+       d="m 498.0052,897.17683 c 1.31886,40.06513 -24.94049,50.64712 -24.24366,85.86297"
+       id="path5476-8"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:none;marker-end:url(#TriangleOutM-1)"
+       d="m 499.57195,896.59492 c 0.85662,66.74472 -218.71644,40.39261 -218.19296,86.87312"
+       id="path5476-8-9"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:none;marker-end:url(#TriangleOutM-1)"
+       d="m 499.43876,897.56208 c -12.86753,84.65724 -378.40561,18.32407 -377.79707,83.84266"
+       id="path5476-8-9-7"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="779.65503"
+       y="573.42297"
+       id="text6669"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan6671"
+         x="779.65503"
+         y="573.42297">Acquisition</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="776.7843"
+       y="1023.8745"
+       id="text6669-6"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan6671-5"
+         x="776.7843"
+         y="1023.8745">Users</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="777.79449"
+       y="808.71198"
+       id="text6669-68-8"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan6671-2-1"
+         x="777.79449"
+         y="808.71198">Servers</tspan></text>
+    <rect
+       style="fill:#e4e4e4;fill-opacity:1;stroke:#88006d;stroke-width:2.82144213;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3004-24-3-3-2-9"
+       width="168.3091"
+       height="50.952995"
+       x="590.2771"
+       y="989.26129"
+       ry="0"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="614.84253"
+       y="1009.1837"
+       id="text4600-7-9-3-6-0-3"
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"><tspan
+         sodipodi:role="line"
+         id="tspan4602-20-1-9-9-7-1"
+         x="614.84253"
+         y="1009.1837"
+         style="font-size:20px;font-weight:bold">Direct data</tspan><tspan
+         sodipodi:role="line"
+         x="614.84253"
+         y="1034.1837"
+         style="font-size:20px;font-weight:bold"
+         id="tspan6745">retrievel</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:none;marker-end:url(#TriangleOutM-1)"
+       d="m 591.5535,749.63869 c 77.0803,97.64383 77.08491,196.10909 77.78174,231.32494"
+       id="path5476-8-0"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:none;marker-end:url(#TriangleOutM-1)"
+       d="m 501.4759,780.82784 c -0.0701,5.21488 0.0608,2.41234 -1e-5,8.46002"
+       id="path5476-8-0-0"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       inkscape:export-xdpi="107.96113"
+       inkscape:export-ydpi="107.96113"
+       inkscape:export-filename="/home/kenni/PyExpLabSys/doc/source/_static/overview.png" />
+  </g>
+</svg>

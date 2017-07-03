@@ -5,6 +5,14 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)  # Comment in for more logging output
 from collections import defaultdict
 from PyExpLabSys.file_parsers.chemstation import Sequence
+
+### REMOVE after database move is complete
+
+from PyExpLabSys.common import database_saver
+database_saver.HOSTNAME = 'cinfsql'
+
+### REMOVE after database move is complete
+
 from PyExpLabSys.common.database_saver import DataSetSaver
 from PyExpLabSys.common.database_saver import CustomColumn
 import credentials
@@ -20,13 +28,35 @@ already_uploaded = data_set_saver.get_unique_values_from_measurements('relative_
 print('Fetched relative paths for {} known sequences'.format(len(already_uploaded)))
 
 # This is the measurement path, should be generated somehow
-basefolder = '/home/cinf/Desktop/Shared_folder'
+basefolder = '/home/cinf/o/FYSIK/list-SurfCat/setups/vhp-setup'
 sequence_identifyer = 'sequence.acaml'
 
-for root, dirs, files in os.walk(basefolder):
+# Find the active month
+newest = None
+highest_value = 0
+for dir_ in os.listdir(basefolder):
+    dir_split = dir_.split(' ')
+    if len(dir_split) != 2:
+        continue
+    try:
+        month, year = [int(component) for component in dir_split]
+    except ValueError:
+        continue
+    value = year * 100 + month
+    if value > highest_value:
+        newest = dir_
+        highest_value = value
+
+if newest is None:
+    raise RuntimeError('Unable to find month folder')
+
+print('Found newest folder: "{}" in basefolder'.format(newest))
+
+for root, dirs, files in os.walk(os.path.join(basefolder, newest)):
     if sequence_identifyer in files:
         # Check if file is known
         relative_path = root.replace(basefolder, '').strip(os.sep)
+        print(relative_path)
         if relative_path in already_uploaded:
             continue
 
@@ -60,6 +90,9 @@ for root, dirs, files in os.walk(basefolder):
             data_set_saver.add_measurement(codename, data_set_metadata)
             data_set_saver.save_points_batch(codename, x, y)
         print('   Summary datasets uploaded........: {}'.format(len(data_set)))
+
+        # Do not uploade raw data right now, since we have database troubles
+        continue
 
         # Upload the raw spectra
         raw_spectra = defaultdict(list)
@@ -103,6 +136,4 @@ for root, dirs, files in os.walk(basefolder):
 logging.basicConfig(level=logging.INFO)
 data_set_saver.stop()
 print('ALL DONE')
-       
-
 

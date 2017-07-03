@@ -1,0 +1,7 @@
+<autostart>
+  <name>RASPPI20AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <command>python chiller_logger.py</command>
+    <name>Omicron chiller logging</name>
+  </session>
+</autostart>

@@ -1,0 +1,104 @@
+<?xml version='1.0' standalone='yes'?>
+<kiosk>
+  
+  <figure id="figure_id">
+    <!-- MANDATORY SECTION -->
+    <!-- size (mandatory): In pixels; width, height -->
+    <size type="[int]">600, 400</size>
+    <!-- grid (mandatory): The grid is specified as:
+            row, col, rowspan, colspan
+         OR
+            row, col
+         See the comment below about the layout -->
+    <grid type="[int]">0, 2, 2, 1</grid>
+
+    <!-- OPTIONAL SECTION -->
+    <!-- title (optional) -->
+    <title>MyTitle</title>
+    <!-- title_size (optional): In pixels, see defaults below -->
+    <title_size>18</title_size>
+    <!-- label (optional): One or more labels of axis, position can be
+         "left" or "bottom" for the y and x axis respectively -->
+    <label position="left">MyLabel</label>
+    <!-- x_window (optional): x-axis width, see defaults below -->
+    <x_window type="int">3600</x_window>
+    <!-- jump_ahead (optional): How large a fraction of the x_window
+         to leave empty on the right side when the data reaches max
+         x. See defaults below. -->
+    <jump_ahead type="float">0.3</jump_ahead>
+    <!-- ylogscale (optional): Whether the y-scale should be logarrithmic -->
+    <ylogscale type="bool">True</ylogscale>
+
+    <!-- PLOT DEFINITION -->
+    <!-- one or more plots, in priciple optional, but not very useful without it -->
+    <plot>
+      <!-- data_channel (mandatory) -->
+      <data_channel>rasppi257:test_data_channel</data_channel>
+      <!-- color (optional) -->
+      <color>#990099</color>
+      <!-- label (optional): The "table" property indicates the id of
+           the table to use as "legend" for this plot. This table will
+           then contain the line color, label, x and y. The position
+           property is optional; if present it will indicate the
+           absolute row number of this entry in the tables. If
+           position is used in labels, the resulting list of positions
+           must be consequtive and start at 0 -->
+      <label table="values" position="0">My measurement</label>
+      <!-- unit (optional): Used in table if defined in label -->
+      <unit>°C</unit>
+      <!-- old_data_query (optional): MySQL query to fetch old data
+           for this plot. Should return unixtimestamp, value pairs. -->
+      <!-- line_width (optional): The line width in pixels. See defaults below. -->
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where type=(SELECT id FROM dateplots_descriptions where codename="n5_argon_pressure") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <table>
+    
+  </table>
+
+  <!--
+      ====== Parameter Explanation =====
+      
+      In the following all the parameters above will be explained. The
+      defaults for the optional settings are:
+
+      DEFAULTS = {
+      'x_window': 600,
+      'jump_ahead': 0.2,
+      'color': pg.getConfigOption('foreground'),
+      'line_width': 2,
+      'unit': '',
+      'column_defs': ('color', 'label', 'x', 'y'),
+      'column_headers': ('', 'Label', 'Time', 'Value'),
+      'column_widths': (None, None, 100, None),  # The last one is ignored
+      'xaxis': 'time',
+      'xformat': 'HH:mm:ss',
+      'yformat': '.2f',
+      'table_padding': 5,
+      'title_size': 26,
+      # Data reduction
+      'x_absolute': 10,
+      }
+      
+      === The figure item ===
+      
+      Mandatory Tags:
+
+      size [int]: In pixels; width, height
+      grid [int]: The grid is specified as;
+          row, col, rowspan, colspan  OR  row, col
+        See the comment below about the grid layouting
+
+      Optional Tags: 
+      title (str)
+      title_size (int): In pixels
+      label (str): A number of axis labels. "Position" can be "left" or "bottom"
+        for the y and x axis respectively 
+      x_window (int): x-axis width, see defaults below 
+      jump_ahead (float): How large a fraction of the x_window to leave empty
+        on the right side when the data reaches max x
+      ylogscale (bool): Whether the y-scale should be logarithmic 
+      
+  -->
+</kiosk>

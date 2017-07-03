@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI02_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>15</startdelay>
+    <command>python3 /home/pi/PyExpLabSys/machines/rasppi53/data_logger.py</command>
+    <name>Palle Pressure Readout</name>
+  </session>
+</autostart>

@@ -1,0 +1,8 @@
+<autostart>
+  <name>SoCoBot</name> <!-- no spaces -->
+  <session>
+    <startdelay>10</startdelay>
+    <command>python2 /home/kenni/code/chatbot/chatbot.py SoCoBot \\\\#SoCo SoCo\\/SoCo</command>
+    <name>SoCoBot</name>
+  </session>
+</autostart>

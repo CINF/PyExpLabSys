@@ -3,7 +3,6 @@ from __future__ import print_function
 import time
 import threading
 import socket
-import curses
 import pickle
 import PyExpLabSys.auxiliary.pid as PID
 import PyExpLabSys.drivers.cpx400dp as cpx
@@ -11,70 +10,35 @@ import PyExpLabSys.drivers.agilent_34410A as dmm
 import PyExpLabSys.auxiliary.rtd_calculator as rtd_calculator
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.utilities import activate_library_logging
+from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.microreactor_temperature_control import HeaterClass
+from PyExpLabSys.common.microreactor_temperature_control import CursesTui
+import PyExpLabSys.common.utilities
+from PyExpLabSys.common.supported_versions import python2_and_3
+PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
+python2_and_3(__file__)
 
+try:
+    MICRO = chr(0x03BC) # Python 2
+except ValueError:
+    MICRO = unichr(0x03BC) # Python 2
 
-class CursesTui(threading.Thread):
-    """ Text user interface for furnace heating control """
-    def __init__(self, heating_class):
-        threading.Thread.__init__(self)
-        self.start_time = time.time()
-        self.quit = False
-        self.hc = heating_class
-        self.screen = curses.initscr()
-        curses.noecho()
-        curses.cbreak()
-        curses.curs_set(False)
-        self.screen.keypad(1)
-        self.screen.nodelay(1)
+LOGGER = get_logger(MICRO + '-reactor Temperature control', level='WARN', file_log=True,
+                    file_name='temp_control.log', terminal_log=False, email_on_warnings=False)
 
-    def run(self):
-        while not self.quit:
-            self.screen.addstr(3, 2, 'Running')
-            val = self.hc.pc.setpoint
-            self.screen.addstr(9, 40, "Setpoint: {0:.2f}C  ".format(val))
-            val = self.hc.pc.temperature
-            try:
-                self.screen.addstr(9, 2, "Temeperature: {0:.4f}C  ".format(val))
-            except ValueError:
-                self.screen.addstr(9, 2, "Temeperature: -         ".format(val))
-            val = self.hc.voltage
-            self.screen.addstr(10, 2, "Actual Voltage: {0:.2f} ".format(val))
-            val = self.hc.pc.pid.setpoint
-            self.screen.addstr(11, 2, "PID-setpint: {0:.2f}C  ".format(val))
-            val = self.hc.pc.pid.int_err
-            self.screen.addstr(12, 2, "PID-error: {0:.3f} ".format(val))
-            val = time.time() - self.start_time
-            self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
+activate_library_logging('PyExpLabSys.common.microreactor_temperature_control',
+                         logger_to_inherit_from=LOGGER)
+activate_library_logging('PyExpLabSys.auxiliary.pid', logger_to_inherit_from=LOGGER)
 
-            self.screen.addstr(17, 2, "Message:" + self.hc.pc.message)
-
-            self.screen.addstr(20, 2, "Message:" + self.hc.pc.message2)
-
-            n = self.screen.getch()
-            if n == ord('q'):
-                self.hc.quit = True
-                self.quit = True
-            if n == ord('i'):
-                self.hc.pc.update_setpoint(self.hc.pc.setpoint + 1)
-            if n == ord('d'):
-                self.hc.pc.update_setpoint(self.hc.pc.setpoint - 1)
-
-            self.screen.refresh()
-            time.sleep(0.2)
-        self.stop()
-
-    def stop(self):
-        """ Clean up console """
-        curses.nocbreak()
-        self.screen.keypad(0)
-        curses.echo()
-        curses.endwin()
+LOGGER.warn('Program started')
 
 class RtdReader(threading.Thread):
     """ Read resistance of RTD and calculate temperature """
-    def __init__(self, hostname, calib_temp):
-        self.rtd_reader = dmm.Agilent34410ADriver(interface='lan',
-                                                  hostname=hostname)
+    def __init__(self, calib_temp):
+        visa_string = 'usb0::2391::1543::MY47002726::INSTR'
+        self.rtd_reader = dmm.Agilent34410ADriver(interface='usbtmc',
+                                                  connection_string=visa_string)
         self.rtd_reader.select_measurement_function('FRESISTANCE')
         self.calib_temp = calib_temp
         time.sleep(0.2)
@@ -103,28 +67,26 @@ class PowerCalculatorClass(threading.Thread):
         self.value_reader = value_reader
         self.pullsocket = pullsocket
         self.pushsocket = pushsocket
-        self.power = 0
-        self.setpoint = 9
-        self.pid = PID.PID()
-        self.pid.Kp = 0.20
-        self.pid.Ki = 0.05
-        self.pid.Pmax = 45
-        self.update_setpoint(self.setpoint)
+        self.values = {}
+        self.values['voltage'] = 0
+        self.values['current'] = 0
+        self.values['power'] = 0
+        self.values['setpoint'] = -1
+        self.values['temperature'] = None
+        self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        self.update_setpoint(self.values['setpoint'])
         self.quit = False
-        self.temperature = None
         self.ramp = None
-        self.message = '**'
-        self.message2 = '*'
 
     def read_power(self):
         """ Return the calculated wanted power """
-        return self.power
+        return self.values['voltage']
 
     def update_setpoint(self, setpoint=None, ramp=0):
         """ Update the setpoint """
         if ramp > 0:
             setpoint = self.ramp_calculator(time.time()-ramp)
-        self.setpoint = setpoint
+        self.values['setpoint'] = setpoint
         self.pid.update_setpoint(setpoint)
         self.pullsocket.set_point_now('setpoint', setpoint)
         return setpoint
@@ -158,19 +120,18 @@ class PowerCalculatorClass(threading.Thread):
         sp_updatetime = 0
         ramp_updatetime = 0
         while not self.quit:
-            self.temperature = self.value_reader.value()
-            self.pullsocket.set_point_now('temperature', self.temperature)
-            self.power = self.pid.wanted_power(self.temperature)
+            self.values['temperature'] = self.value_reader.value()
+            self.pullsocket.set_point_now('temperature', self.values['temperature'])
+            self.values['voltage'] = self.pid.wanted_power(self.values['temperature'])
 
             #  Handle the setpoint from the network
             try:
                 setpoint = self.pushsocket.last[1]['setpoint']
                 new_update = self.pushsocket.last[0]
-                self.message = str(new_update)
             except (TypeError, KeyError): #  Setpoint has never been sent
-                self.message = str(self.pushsocket.last)
                 setpoint = None
-            if (setpoint is not None) and (setpoint != self.setpoint) and (sp_updatetime < new_update):
+            if ((setpoint is not None) and
+                (setpoint != self.values['setpoint']) and (sp_updatetime < new_update)):
                 self.update_setpoint(setpoint)
                 sp_updatetime = new_update
 
@@ -178,7 +139,6 @@ class PowerCalculatorClass(threading.Thread):
             try:
                 ramp = self.pushsocket.last[1]['ramp']
                 new_update = self.pushsocket.last[0]
-                self.message2 = str(new_update)
 
             except (TypeError, KeyError): #  Ramp has not yet been set
                 ramp = None
@@ -197,28 +157,8 @@ class PowerCalculatorClass(threading.Thread):
             time.sleep(1)
 
 
-class HeaterClass(threading.Thread):
-    """ Do the actual heating """
-    def __init__(self, power_calculator, pullsocket, ps):
-        threading.Thread.__init__(self)
-        self.pc = power_calculator
-        self.pullsocket = pullsocket
-        self.ps = ps
-        self.voltage = 0
-        self.quit = False
-
-    def run(self):
-        while not self.quit:
-            self.voltage = self.pc.read_power()
-            self.pullsocket.set_point_now('voltage', self.voltage)
-            for i in range(1, 3):
-                self.ps[i].set_voltage(self.voltage)
-            time.sleep(0.25)
-        for i in range(1, 3):
-            self.ps[i].set_voltage(0)
-            self.ps[i].output_status(False)
-
 def main():
+    """ Main function """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(1)
     try:
@@ -226,43 +166,41 @@ def main():
         sock.sendto(temperature_string.encode('ascii'), ('rasppi12', 9000))
         received = sock.recv(1024).decode('ascii')
         start_temp = float(received[received.find(',') + 1:])
-        agilent_hostname = '10.54.6.79'
-        rtd_reader = RtdReader(agilent_hostname, start_temp)
-    except:
+    except socket.gaierror:
         print('Could not find rasppi12')
         exit()
+    except ValueError:
+        print('Bad reply from rasppi12')
+        exit()
+    rtd_reader = RtdReader(start_temp)
 
     rtd_reader.daemon = True
     rtd_reader.start()
     time.sleep(1)
 
-    PS = {}
+    power_supply = {}
     for k in range(1, 3):
-        PS[k] = cpx.CPX400DPDriver(k, interface='serial', device='/dev/ttyACM0')
-        PS[k].set_voltage(0)
-        PS[k].output_status(True)
+        power_supply[k] = cpx.CPX400DPDriver(k, interface='serial', device='/dev/ttyACM0')
+        power_supply[k].set_voltage(0)
+        power_supply[k].output_status(True)
 
-    try:
-        micro = chr(0x03BC) # Python 3
-    except ValueError:
-        micro = unichr(0x03BC) # Python 2
-    Pullsocket = DateDataPullSocket(micro + 'reactor temp_control',
-                                    ['setpoint', 'voltage', 'temperature'], 
-                                    timeouts=[999999, 3.0, 3.0],
-                                    port=9000)
-    Pullsocket.start()
+    codenames = ['setpoint', 'wanted_voltage', 'actual_voltage_1', 'actual_voltage_2',
+                 'actual_current_1', 'actual_current_2', 'power', 'temperature']
+    pullsocket = DateDataPullSocket(MICRO + '-reactor_temp_control', codenames,
+                                    timeouts=[999999, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0])
+    pullsocket.start()
+            
+    pushsocket = DataPushSocket(MICRO + '-reactor push control', action='store_last')
+    pushsocket.start()
 
-    Pushsocket = DataPushSocket(micro + '-reactor push control', action='store_last')
-    Pushsocket.start()
+    power_calculator = PowerCalculatorClass(pullsocket, pushsocket, rtd_reader)
+    power_calculator.daemon = True
+    power_calculator.start()
 
-    pcc = PowerCalculatorClass(Pullsocket, Pushsocket, rtd_reader)
-    pcc.daemon = True
-    pcc.start()
-
-    heater = HeaterClass(P, Pullsocket, PS)
+    heater = HeaterClass(power_calculator, pullsocket, power_supply)
     heater.start()
 
-    tui = CursesTui(H)
+    tui = CursesTui(heater)
     tui.daemon = True
     tui.start()
 

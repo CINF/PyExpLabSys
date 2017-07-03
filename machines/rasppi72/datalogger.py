@@ -2,13 +2,23 @@
 from __future__ import print_function
 import threading
 import time
-import logging
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.honeywell_6000 as honeywell_6000
+import PyExpLabSys.common.utilities
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
+python2_and_3(__file__)
+
+LOGGER = get_logger('Small office temperature logger', level='WARN', file_log=True,
+                    file_name='temp_control.log', terminal_log=False, email_on_warnings=False)
+
+LOGGER.warn('Program started')
+
 
 class Reader(threading.Thread):
     """ Pressure reader """
@@ -40,9 +50,6 @@ class Reader(threading.Thread):
 
 def main():
     """ Main function """
-    logging.basicConfig(filename="logger.txt", level=logging.ERROR)
-    logging.basicConfig(level=logging.ERROR)
-
     hih_instance = honeywell_6000.HIH6130()
     reader = Reader(hih_instance)
     reader.start()
@@ -57,7 +64,7 @@ def main():
     loggers[codenames[1]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=2)
     loggers[codenames[1]].start()
 
-    livesocket = LiveSocket('Large Office 312 Air Logger', codenames, 2)
+    livesocket = LiveSocket('Large Office 312 Air Logger', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket('Large Office 312 Air Logger', codenames,

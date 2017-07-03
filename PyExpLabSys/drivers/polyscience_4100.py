@@ -1,12 +1,13 @@
 """ Driver and test case for Polyscience 4100 """
+from __future__ import print_function
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
-class Polyscience_4100():
+class Polyscience4100(object):
     """ Driver for Polyscience 4100 chiller """
     def __init__(self, port='/dev/ttyUSB0'):
-        self.f = serial.Serial(port, 9600,timeout=0.5)
+        self.ser = serial.Serial(port, 9600, timeout=0.5)
         self.max_setpoint = 30
         self.min_setpoint = 10
         assert self.min_setpoint < self.max_setpoint
@@ -15,9 +16,8 @@ class Polyscience_4100():
         """ Send serial commands to the instrument """
         command = command + '\r'
         command = command.encode('ascii')
-        #self.f.write(command + '\r')
-        self.f.write(command)
-        reply = self.f.readline().decode()
+        self.ser.write(command)
+        reply = self.ser.readline().decode()
         return reply[:-1]
 
     def set_setpoint(self, value):
@@ -39,9 +39,9 @@ class Polyscience_4100():
 
     def turn_unit_on(self, turn_on):
         """ Turn on or off the unit """
-        if turn_on == True:
+        if turn_on is True:
             value = self.comm('SO1')
-        if turn_on == False:
+        if turn_on is False:
             value = self.comm('SO0')
         return value
 
@@ -54,6 +54,7 @@ class Polyscience_4100():
         return float(value)
 
     def read_unit(self):
+        """ Read the measure unit """
         value = self.comm('RU')
         return value
 
@@ -105,7 +106,6 @@ class Polyscience_4100():
             value = float('nan')
         return value
 
-
     def read_status(self):
         """ Answers if the device is turned on """
         value = self.comm('RW')
@@ -117,13 +117,12 @@ class Polyscience_4100():
         return status
 
 if __name__ == '__main__':
-    chiller = Polyscience_4100('/dev/ttyUSB0')
-    print(chiller.read_status())
-        
-    print('Setpoint: {0:.1f}'.format(chiller.read_setpoint()))
-    print('Temperature: {0:.1f}'.format(chiller.read_temperature()))
-    print('Flow rate: {0:.2f}'.format(chiller.read_flow_rate()))
-    print('Pressure: {0:.3f}'.format(chiller.read_pressure()))
-    print('Status: ' + chiller.read_status())
-    print('Ambient temperature: {0:.2f}'.format(chiller.read_ambient_temperature()))
+    CHILLER = Polyscience4100('/dev/ttyUSB0')
+    print(CHILLER.read_status())
 
+    print('Setpoint: {0:.1f}'.format(CHILLER.read_setpoint()))
+    print('Temperature: {0:.1f}'.format(CHILLER.read_temperature()))
+    print('Flow rate: {0:.2f}'.format(CHILLER.read_flow_rate()))
+    print('Pressure: {0:.3f}'.format(CHILLER.read_pressure()))
+    print('Status: ' + CHILLER.read_status())
+    print('Ambient temperature: {0:.2f}'.format(CHILLER.read_ambient_temperature()))

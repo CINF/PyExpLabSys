@@ -1,0 +1,17 @@
+APT
+numpy
+libssl-dev
+libffi-dev
+python3-pyqt4
+libmysqlclient-dev
+
+PIP
+service_identity
+pyqtgraph
+pyopenssl
+cryptography
+autobahn
+twisted
+mysqlclient
+
+

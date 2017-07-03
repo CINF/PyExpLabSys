@@ -1,16 +1,24 @@
 """ App to control PW-modulated bakeout boxes """
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 import time
 import sys
 import threading
 import curses
-import wiringpi2 as wp # pylint: disable=F0401
+import wiringpi as wp # pylint: disable=F0401
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
-sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
+try:
+    sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
+except IndexError:
+    print('You need to give the name of the raspberry pi as an argument')
+    print('This will ensure that the correct settings file will be used')
+    exit()
 import settings # pylint: disable=F0401
 
 LOGGER = get_logger('Bakeout', level='info', file_log=True,
@@ -38,8 +46,8 @@ class CursesTui(threading.Thread):
             tui_string = "Watchdog Timer: {0:.1f}"
             self.screen.addstr(5, 2, tui_string.format(time.time() -
                                                        self.watchdog.timer) + '  ')
-            self.screen.addstr(6, 2, "Watchdog safe: " + 
-                               str(self.watchdog.watchdog_safe) + ' ') 
+            self.screen.addstr(6, 2, "Watchdog safe: " +
+                               str(self.watchdog.watchdog_safe) + ' ')
             self.screen.addstr(8, 2, 'Current channel status:')
             for channel in range(1, 7):
                 if settings.count_from_right:
@@ -53,8 +61,6 @@ class CursesTui(threading.Thread):
                 self.screen.addstr(13, 7 * i, str(self.baker.dutycycles[i - 1]) + '    ')
 
             key = self.screen.getch()
-
-            self.screen.addstr(20, 2, str(key) + '     ')
 
             keyboard_actions = {ord('1'): [1, 1], ord('!'): [1, -1],
                                 ord('2'): [2, 1], ord('"'): [2, -1],
@@ -70,6 +76,10 @@ class CursesTui(threading.Thread):
                 self.baker.quit = True
                 self.screen.addstr(2, 2, 'Quitting....')
 
+            message = 'Press 1 to increase channel 1, shift-1 to decrease channel 1'
+            self.screen.addstr(16, 2, message)
+            self.screen.addstr(17, 2, 'Likewise for other channels, press q to quit')
+
             self.screen.refresh()
             time.sleep(0.2)
 
@@ -78,7 +88,7 @@ class CursesTui(threading.Thread):
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
-        curses.endwin()    
+        curses.endwin()
 
 
 class Watchdog(threading.Thread):
@@ -132,7 +142,7 @@ class Bakeout(threading.Thread):
     """ The actual heater """
     def __init__(self):
         threading.Thread.__init__(self)
-        self.watchdog = Watchdog() 
+        self.watchdog = Watchdog()
         self.watchdog.daemon = True
         self.watchdog.start()
         time.sleep(1)
@@ -143,10 +153,16 @@ class Bakeout(threading.Thread):
             wp.pinMode(i, 1)
         self.setup = settings.setup
         self.dutycycles = [0, 0, 0, 0, 0, 0]
+
         channels = ['1', '2', '3', '4', '5', '6']
-        self.livesocket = LiveSocket(self.setup + '-bakeout', channels)
+        # Setup up extra status for the diode relay status
+        diode_channels = ['diode' + number for number in channels];
+        self.diode_channel_last = {name: None for name in diode_channels}
+
+        # Setup sockets
+        self.livesocket = LiveSocket(self.setup + '-bakeout', channels + diode_channels)
         self.livesocket.start()
-        self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=[2]*6)
+        self.pullsocket = DateDataPullSocket(self.setup + '-bakeout', channels, timeouts=None)
         self.pullsocket.start()
         self.pushsocket = DataPushSocket(self.setup + '-push_control', action='enqueue')
         self.pushsocket.start()
@@ -159,8 +175,16 @@ class Bakeout(threading.Thread):
             pin = 7 - pin
         if self.watchdog.watchdog_safe:
             wp.digitalWrite(pin, 1)
+            new_status = True
         else:
             wp.digitalWrite(pin, 0)
+            new_status = False
+
+        # Send on/off status out on live socket
+        name = 'diode{}'.format(pin)
+        if self.diode_channel_last[name] is not new_status:
+            self.livesocket.set_point_now(name, new_status)
+            self.diode_channel_last[name] = new_status
 
     def deactivate(self, pin):
         """ De-activate a pin """
@@ -170,10 +194,16 @@ class Bakeout(threading.Thread):
             pin = 7 - pin
         wp.digitalWrite(pin, 0)
 
+        # Send on/off status out on live socket
+        name = 'diode{}'.format(pin)
+        if self.diode_channel_last[name] is not False:
+            self.livesocket.set_point_now(name, False)
+            self.diode_channel_last[name] = False
+
     def modify_dutycycle(self, channel, amount=None, value=None):
         """ Change the dutycycle of a channel """
         if amount is not None:
-            self.dutycycles[channel-1] =  self.dutycycles[channel-1] + amount
+            self.dutycycles[channel-1] = self.dutycycles[channel-1] + amount
         if value is not None:
             self.dutycycles[channel-1] = value
 
@@ -197,9 +227,9 @@ class Bakeout(threading.Thread):
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 LOGGER.debug('Element: ' + str(element))
-                channel = element.keys()[0]
+                channel =list(element.keys())[0]
                 value = element[channel]
-                self.modify_dutycycle(int(channel), value=value) 
+                self.modify_dutycycle(int(channel), value=value)
                 qsize = self.pushsocket.queue.qsize()
 
             self.watchdog.reset_ttl()
@@ -230,8 +260,9 @@ if __name__ == '__main__':
     BAKER.start()
 
     TUI = CursesTui(BAKER)
-    TUI.start()
+    TUI.start()  # Runs until quit
 
     while not BAKER.quit:
         time.sleep(1)
+    TUI.stop()
 

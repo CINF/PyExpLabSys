@@ -1,19 +1,16 @@
 # -*- coding: utf-8 -*-
 """ This module contains drivers for equipment from Omega. Specifically it
-contains a driver for the ??? thermol couple read out unit.
+contains a driver for the ??? thermo couple read out unit.
 """
-
-
+from __future__ import print_function
 import time
 import logging
 import serial
-
-
+from PyExpLabSys.common.supported_versions import python2_and_3
+# Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
-# Make the logger follow the logging setup from the caller
-#LOGGER.addHandler(logging.NullHandler())
-LOGGER.addHandler(logging.StreamHandler())
-
+LOGGER.addHandler(logging.NullHandler())
+python2_and_3(__file__)
 
 class ISeries(object):
     """Driver for the iSeries omega temperature controllers"""
@@ -46,16 +43,16 @@ class ISeries(object):
             response from the device.
         :type response_length: int
         """
-        if address == None and self.comm_stnd == 'rs485':
+        if address is None and self.comm_stnd == 'rs485':
             address = '1'
 
         LOGGER.debug('command called with {}, {}'.format(command,
                                                          response_length))
         if self.comm_stnd == 'rs485':
             command = '0' + str(address) + command
-        comm_string = (self.pre_string + command + self.end_string)
+        comm_string = (self.pre_string + command + self.end_string).encode('ascii')
         #print('Comm string: ' + comm_string)
-        
+
         self.serial.write(comm_string)
 
         if response_length is not None:
@@ -67,7 +64,8 @@ class ISeries(object):
             # executed in 0.5 seconds
             time.sleep(0.5)
         response = self.serial.read(self.serial.inWaiting())
-        #print('Response: ' + response)
+        response = response.decode()
+
         if len(response) > 15:
             response2 = []
             for el in response:
@@ -107,11 +105,6 @@ class ISeries(object):
                 LOGGER.debug('read_temperature return {}'.format(response))
         return response
 
-    def set_reading_format(self, address=None):
-        """Set temperature readout format"""
-        LOGGER.debug('set_reading_format called')
-        command = 'R08'
-
     def close(self):
         """Close the connection to the device"""
         LOGGER.debug('Driver asked to close')
@@ -127,23 +120,13 @@ class CNi3244_C24(ISeries):
 
         :param port: A serial port designation as understood by `pySerial
             <http://pyserial.sourceforge.net/pyserial_api.html#native-ports>`_
-        """        
+        """
         super(CNi3244_C24, self).__init__(port)
 
 if __name__ == '__main__':
     # This port name should be chages to a local port to do a local test
-    port = '/dev/serial/by-id/' +'usb-FTDI_USB-RS232_Cable_FTWR5F6W-if00-port0'
-    port = '/dev/ttyACM2'
-    port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTWEA5HJ-if00-port0'
-    port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTYIWHC9-if00-port0'
-    omega = ISeries(port, 9600, comm_stnd='rs485')
-    #print omega.identify_device(1)
-    #print omega.identify_device(2)
-    #print(omega.command('W0705')) # 100Ohm 392.3 (3 W)
-    #print(omega.command('R07')) # 100Ohm 392.3 (3 W)
-    #time.sleep(2)
-    #print(omega.reset_device())
-    #time.sleep(3)
-    print(omega.read_temperature())
-    #print omega.read_temperature(2)
-
+    OMEGA = ISeries('/dev/ttyUSB0', 9600, comm_stnd='rs485')
+    #print(OMEGA.identify_device(1))
+    #print(OMEGA.identify_device(2))
+    print(OMEGA.read_temperature())
+    print(OMEGA.read_temperature(2))

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>The Bakeout Box Webapp</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='frontpage.css') }}">
+  </head>
+  <body id="body">
+    <div class="main">
+      <header><h1>Bakeout Box Webapp</h1></header>
+
+      <!-- Main controls -->
+      <table border="1">
+        {# table header #}
+        <tr>
+          <th></th>
+          {% for channel_number in range(1, 7) %}
+          <th>Channel {{ channel_number }}</th>
+          {% endfor %}
+        </tr>
+        {# table body #}
+        {% for id_prefix, title, element in row_elements %}
+        <tr>
+          <td>{{ title }}</td>
+          {% for channel_number in range(1, 7) %}
+          <td id="{{ id_prefix.format(channel_number) }}">{{ element.format(channel_number=channel_number)|safe }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </table>
+      <p>Using websocket: <span id="websocket_status">Unkonwn</span></p>
+      <a href="javascript:toggle('keymap')" title="Press to show the keymap"><h2>Keymap</h2></a>
+      <div id="keymap" style="display: none;">
+        <table class="nicetable">
+          <tr>
+            <th>Channel</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+            <th>6</th>
+          </tr>
+          <tr>
+            <td>Increase</td>
+            <td>1 or q</td>
+            <td>2 or w</td>
+            <td>3 or e</td>
+            <td>4 or r</td>
+            <td>5 or t</td>
+            <td>6 or y</td>
+          </tr>
+          <tr>
+            <td>Decrease</td>
+            <td>Shift-1 or a</td>
+            <td>Shift-2 or s</td>
+            <td>Shift-3 or d</td>
+            <td>Shift-4 or f</td>
+            <td>Shift-5 or g</td>
+            <td>Shift-6 or h</td>
+          </tr>
+        </table>
+        <p>
+      </div>
+      <footer></footer>
+    </div>
+    <script>
+      var input_as_json = '{{ json_input|tojson }}';
+    </script>
+    <script src="{{ url_for('static', filename='frontpage.js') }}"></script>
+  </body>
+</html>
+
+

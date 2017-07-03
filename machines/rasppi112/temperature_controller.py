@@ -12,13 +12,13 @@ import temperature_tui
 
 class PowerCalculatorClass(threading.Thread):
     """ Calculate the wanted amount of power """
-    def __init__(self, pullsocket, pushsocket, data_command):
+    def __init__(self, pullsocket, pushsocket, data_command, pid_params):
         threading.Thread.__init__(self)
         self.pullsocket = pullsocket
         self.pushsocket = pushsocket
         self.power = 0
         self.setpoint = 0
-        self.pid = PID.PID(pid_p=0.2, pid_i=0.001, p_max=45)
+        self.pid = PID.PID(pid_p=pid_params[0], pid_i=pid_params[1], p_max=pid_params[2])
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
@@ -62,10 +62,10 @@ class CommonPowerSupply(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         port = '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_5512626F-if00'
-        self.dca = cpx.CPX400DPDriver(1, interface='serial', device=port)
-        self.mai = cpx.CPX400DPDriver(2, interface='serial', device=port)
-        self.dca.set_current_limit(9)
-        self.mai.set_current_limit(5)
+        self.mai = cpx.CPX400DPDriver(1, interface='serial', device=port)
+        self.dca = cpx.CPX400DPDriver(2, interface='serial', device=port)
+        self.dca.set_current_limit(7)
+        self.mai.set_current_limit(11)
         self.voltage = {}
         self.voltage['mai'] = 0
         self.voltage['dca'] = 0
@@ -133,11 +133,15 @@ Pushsocket_mai.start()
 Pushsocket_dca = DataPushSocket('pvd309_push_control_dca', action='store_last', port=8502)
 Pushsocket_dca.start()
 
-P_mai = PowerCalculatorClass(Pullsocket_mai, Pushsocket_mai, 'pvd309_temp_mai_cell#raw')
+Pid_Params = [0.6, 0.0035, 5]
+P_mai = PowerCalculatorClass(Pullsocket_mai, Pushsocket_mai,
+                             'pvd309_temp_mai_cell#raw', pid_params=Pid_Params)
 P_mai.daemon = True
 P_mai.start()
 
-P_dca = PowerCalculatorClass(Pullsocket_mai, Pushsocket_dca, 'pvd309_temp_dca_cell#raw')
+Pid_Params = [0.2, 0.001, 9]
+P_dca = PowerCalculatorClass(Pullsocket_dca, Pushsocket_dca,
+                             'pvd309_temp_dca_cell#raw', pid_params=Pid_Params)
 P_dca.daemon = True
 P_dca.start()
 

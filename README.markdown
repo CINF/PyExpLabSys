@@ -13,17 +13,32 @@
 # Python for Experimental Labs System
 
 ## About PyExpLabSys
-This project contains various python code useful in experimental labs, such as
-drivers, plotting tools and data-logging.
 
-The project is [documented](http://pyexplabsys.readthedocs.org/en/latest/) with [Sphinx](http://sphinx-doc.org/) on the [read the docs webpage](https://readthedocs.org/), but the documentation is still in its early stages.
+This project contains various python code useful in experimental labs,
+such as equipment drivers, data logging and network data exchange
+components.
 
-The project is in a very early state of development and much functionality and
-configurations options are still not implemented, however, much of the code are
-already now rather useful. Code documentation is unfortunately not very
-complete at this point.
+The project is
+[documented](http://pyexplabsys.readthedocs.org/en/latest/) with
+[Sphinx](http://sphinx-doc.org/) on the [read the docs
+webpage](https://readthedocs.org/), but the documentation is still in
+its early stages.
+
+PyExpLabSys is an attempt to share the Python code produced at the
+SurfCat section at the Technical University of Denmark (DTU). As such,
+the development is driven by the needs of the department, which means
+that different components have different levels of maturity.
+
+## Support
+
+Support is provided by the authors in their spare time, so we cannot
+always reply immediately, but we will try to help when we can.
+
+Support is provided via the #PyExpLabSys IRC channel on freenode and
+issues on Github.
 
 ## Drivers
+
 The project includes project drivers for a number of instruments. Currently all
 of the drivers must be configured by manually changing hard-coded values in the
 code. The list of instruments with usable (but non-complete drivers), are:
@@ -48,13 +63,15 @@ code. The list of instruments with usable (but non-complete drivers), are:
   example implementation of how to read out values from instruments that
   exposes an analog output.
   
-## Data logging 
+## Data logging
+
 The project includes example code showing how to make a continuously running
 data-logger. The program will set up a number of threaded classes that will
 collect data in the background and log it to a MySQL database if the values
 changes more than a given amount or with regular time intervals.
 
 ## GUI-elements
+
 The projects includes two different example of gui-development usefull in an
 experimental lab. One example show how to make running plot of a measured
 value. The other example show a functional gui for the Agilent 34410A driver.

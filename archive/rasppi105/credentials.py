@@ -1,2 +1,0 @@
-user = 'omicron'
-psswd = 'omicron'

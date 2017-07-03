@@ -18,6 +18,8 @@ from PyExpLabSys.common.sockets import (
     bool_translate, socket_server_status, PullUDPHandler, CommonDataPullSocket, DataPullSocket,
     DateDataPullSocket, PushUDPHandler, DataPushSocket, CallBackThread
 )
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 ### Test data
 if sys.version_info[0] == 3:

@@ -1,0 +1,8 @@
+<autostart>
+  <name>AR5_LOGGER</name> <!-- no spaces -->
+  <session>
+    <startdelay>0.1</startdelay>
+    <command>python current_loop_logger.py</command>
+    <name>Ar5 Current Loop Logger</name>
+  </session>
+</autostart>

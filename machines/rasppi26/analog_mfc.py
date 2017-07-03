@@ -18,7 +18,7 @@ def main():
     flow_control = FlowControl(mfcs, micro + '-reactor')
     flow_control.start()
 
-    while True:
+    while flow_control.is_alive():
         time.sleep(0.5)
 
 if __name__ == '__main__':

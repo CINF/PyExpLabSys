@@ -18,6 +18,8 @@ import pytest
 import PyExpLabSys.common.sockets
 DATA = PyExpLabSys.common.sockets.DATA
 from PyExpLabSys.common.sockets import DataPullSocket, DateDataPullSocket
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 
 # Module variables

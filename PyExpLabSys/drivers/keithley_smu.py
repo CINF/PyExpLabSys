@@ -9,10 +9,13 @@ python2_and_3(__file__)
 class KeithleySMU(SCPI):
     """ Simple driver for Keithley SMU """
 
-    def __init__(self, interface, hostname='', device=''):
+    def __init__(self, interface, hostname='', device='', baudrate=19200):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device, baudrate=19200)
-            self.f.timeout = 5
+            SCPI.__init__(self, interface=interface, device=device,
+                          baudrate=baudrate, line_ending='\n')
+            self.comm_dev.timeout = 50
+            self.comm_dev.rtscts = True
+
         if interface == 'lan':
             SCPI.__init__(self, interface=interface, hostname=hostname)
         self.channel_names = {1: 'a', 2: 'b'}
@@ -24,6 +27,24 @@ class KeithleySMU(SCPI):
         else:
             self.scpi_comm('smu' + self.channel_names[channel] + '.source.output = 0')
         return output_on
+
+    def set_current_measure_range(self, current_range=None, channel=1):
+        """ Set the current measurement range """
+        ch_name = 'smu' + self.channel_names[channel] + '.'
+        if current_range is None:
+            self.scpi_comm(ch_name + 'measure.autorangei = ' + ch_name + 'AUTORANGE_ON')
+        else:
+            self.scpi_comm(ch_name + 'measure.rangei = ' + str(current_range))
+        return True
+
+    def set_integration_time(self, nplc=None, channel=1):
+        """ Set the measurement integration time """
+        ch_name = 'smu' + self.channel_names[channel] + '.'
+        if nplc is None:
+            self.scpi_comm(ch_name + 'measure.nplc = 1')
+        else:
+            self.scpi_comm(ch_name + 'measure.nplc = ' + str(nplc))
+        return True
 
     def read_current(self, channel=1):
         """ Read the measured current """
@@ -49,18 +70,51 @@ class KeithleySMU(SCPI):
             logging.error('Voltage string: ' + str(voltage_string))
         return voltage
 
+    def set_current_limit(self, current, channel=1):
+        """ Set the desired current limit """
+        self.scpi_comm('smu' + self.channel_names[channel] +
+                       '.source.limiti = ' + str(current))
+
     def set_voltage(self, voltage, channel=1):
         """ Set the desired voltage """
         self.scpi_comm('smu' + self.channel_names[channel] +
                        '.source.levelv = ' + str(voltage))
+
+    def iv_scan(self, v_from, v_to, steps, settle_time, channel=1):
+        """ Perform iv_scan """
+        ch_name = 'smu' + self.channel_names[channel]
+        self.scpi_comm('SweepVLinMeasureI('+ ch_name + ', ' +
+                       str(v_from) + ', ' +
+                       str(v_to) + ', ' +
+                       str(settle_time) + ', ' +
+                       str(steps) + ')')
+        readings = (self.scpi_comm('printbuffer(1, ' + str(steps) + ', ' + ch_name +
+                                   '.nvbuffer1.readings)', True))
+        sourcevalues = (self.scpi_comm('printbuffer(1, ' + str(steps) + ', ' + ch_name +
+                                       '.nvbuffer1.sourcevalues)', True))
+        readings = readings.split(',')
+        sourcevalues = sourcevalues.split(',')
+        for i in range(0, steps):
+            readings[i] = float(readings[i])
+            sourcevalues[i] = float(sourcevalues[i])
+        return (sourcevalues, readings)
+
 if __name__ == '__main__':
     PORT = '/dev/serial/by-id/'
-    PORT += 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
-
-    SMU = KeithleySMU(interface='serial', device=PORT)
-    print(SMU)
-    SMU.set_voltage(0.24)
-    time.sleep(1)
+    PORT += 'usb-1a86_USB2.0-Ser_-if00-port0'
+    SMU = KeithleySMU(interface='serial', device=PORT, baudrate=9600)
     print(SMU.read_software_version())
+
+    #print(SMU)
+    SMU.output_state(True)
+    SMU.set_voltage(0.04)
+    print(SMU.set_current_limit(1))
+    time.sleep(1)
+    print('-')
+    print(SMU.read_software_version())
+    print('-')
     print(SMU.read_current())
+    print('-')
     print(SMU.read_voltage())
+    print('-')
+    print(SMU.iv_scan(v_from=-1.1, v_to=0, steps=10, settle_time=0))

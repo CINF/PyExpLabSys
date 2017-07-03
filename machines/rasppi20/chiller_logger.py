@@ -9,7 +9,7 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 import credentials
 
-LOG = get_logger('chiller_logger_xrd')
+LOG = get_logger('chiller_logger_omicron')
 
 def main():
     """Main function"""
@@ -20,9 +20,9 @@ def main():
     reader.start()
     LOG.info('ChillerReader started')
 
-    codenames = ['ps_chiller_temperature', 'ps_chiller_flow',
-                 'ps_chiller_temperature_ambient', 'ps_chiller_pressure',
-                 'ps_chiller_temperature_setpoint']
+    codenames = ['omicron_chiller_temperature', 'omicron_chiller_flow',
+                 'omicron_chiller_temperature_ambient', 'omicron_chiller_pressure',
+                 'omicron_chiller_temperature_setpoint']
     LOG.debug('Using codenames %s', codenames)
 
     loggers = {}
@@ -30,12 +30,12 @@ def main():
         loggers[codenames[i]] = ValueLogger(reader, comp_val=0.1, channel=i)
         loggers[codenames[i]].start()
 
-    live_socket_name = 'Sputterchamber PS'
+    live_socket_name = 'Omicron Chiller'
     live_socket = LiveSocket(live_socket_name, codenames)
     live_socket.start()
     LOG.info('Live socket init and started with name "%s"', live_socket_name)
 
-    db_table = 'dateplots_ps'
+    db_table = 'dateplots_omicron'
     db_logger = ContinuousDataSaver(continuous_data_table=db_table,
                                     username=credentials.user,
                                     password=credentials.passwd,

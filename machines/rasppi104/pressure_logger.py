@@ -9,7 +9,9 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
 from  ABE_ADCPi import ADCPi
 from ABE_helpers import ABEHelpers
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
 class PressureReader(threading.Thread):
     """ Read Cooling water pressure """
@@ -24,6 +26,7 @@ class PressureReader(threading.Thread):
         return self.pressure
 
     def run(self):
+        time.sleep(0.2)
         while not self.quit:
             voltage = self.adc.read_voltage(1) * 8 / 5
             pressure = 10**(voltage - 5)
@@ -51,7 +54,7 @@ def main():
                                 codenames, timeouts=[2.0])
     socket.start()
 
-    live_socket = LiveSocket('chemlab312_sample_storage', codenames, 2)
+    live_socket = LiveSocket('chemlab312_sample_storage', codenames)
     live_socket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_chemlab312',

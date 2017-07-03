@@ -8,6 +8,8 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.honeywell_6000 as honeywell_6000
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 import credentials
 
 class Reader(threading.Thread):
@@ -45,6 +47,7 @@ def main():
 
     hih_instance = honeywell_6000.HIH6130()
     reader = Reader(hih_instance)
+    reader.daemon = True
     reader.start()
 
     time.sleep(5)
@@ -52,12 +55,14 @@ def main():
     codenames = ['chemlab312_temperature', 'chemlab312_humidity']
 
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=1)
+    loggers[codenames[0]] = ValueLogger(reader, comp_val=0.2, comp_type='lin', channel=1)
+    loggers[codenames[0]].daemon = True
     loggers[codenames[0]].start()
-    loggers[codenames[1]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=2)
+    loggers[codenames[1]] = ValueLogger(reader, comp_val=0.2, comp_type='lin', channel=2)
+    loggers[codenames[1]].daemon = True
     loggers[codenames[1]].start()
 
-    livesocket = LiveSocket('Chemlab312 Air Logger', codenames, 2)
+    livesocket = LiveSocket('Chemlab312 Air Logger', codenames)
     livesocket.start()
 
     socket = DateDataPullSocket('Chemlab312 Air Logger', codenames,
@@ -71,7 +76,7 @@ def main():
     db_logger.start()
 
     while reader.isAlive():
-        time.sleep(1)
+        time.sleep(0.5)
         for name in codenames:
             value = loggers[name].read_value()
             livesocket.set_point_now(name, value)

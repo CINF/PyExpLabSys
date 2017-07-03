@@ -1,34 +1,36 @@
 # pylint: disable=C0325
-
 """ Python interface for Galaxy 3500 UPS. The driver uses the
 telnet interface of the device.
 """
-
+from __future__ import print_function
 import telnetlib
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class Galaxy3500(object):
     """ Interface driver for a Galaxy3500 UPS. """
     def __init__(self, hostname):
         self.status = {}
         self.ups_handle = telnetlib.Telnet(hostname)
-        self.ups_handle.expect([': '])
-        self.ups_handle.write('apc' + '\r')
-        self.ups_handle.expect([': '])
-        self.ups_handle.write('apc' + '\r')
-        self.ups_handle.expect(['apc>'])
+        self.ups_handle.expect([b': '])
+        self.ups_handle.write(b'apc' + b'\r')
+        self.ups_handle.expect([b': '])
+        self.ups_handle.write(b'apc' + b'\r')
+        self.ups_handle.expect([b'apc>'])
 
     def comm(self, command, keywords=None):
         """ Send a command to the ups """
-        self.ups_handle.write(command + '\r')
-        echo = self.ups_handle.expect(['\r'])[2]
-        assert(echo == command + '\r')
-        code = self.ups_handle.expect(['\r'])[2]
-        assert('E000' in code)
-        output = self.ups_handle.expect(['apc>'])[2]
+        self.ups_handle.write(command.encode('ascii') + b'\r')
+        echo = self.ups_handle.expect([b'\r'])[2]
+        assert(echo == command.encode('ascii') + b'\r')
+        code = self.ups_handle.expect([b'\r'])[2]
+        assert('E000' in code.decode())
+        output = self.ups_handle.expect([b'apc>'])[2]
+        output = output.decode()
 
         if keywords is not None:
             return_val = {}
-            for param in keywords:
+            for param in list(keywords):
                 pos = output.find(param)
                 line = output[pos + len(param) + 1:pos + len(param) + 8].strip()
                 for i in range(0, 3):
@@ -101,11 +103,11 @@ class Galaxy3500(object):
 
 if __name__ == '__main__':
     UPS = Galaxy3500('ups-b312')
-    print UPS.alarms()
-    print UPS.battery_charge()
-    print UPS.output_measurements()
-    print UPS.input_measurements()
-    print UPS.battery_status()
-    print UPS.temperature()
-    print '---'
-    print UPS.status
+    print(UPS.alarms())
+    print(UPS.battery_charge())
+    print(UPS.output_measurements())
+    print(UPS.input_measurements())
+    print(UPS.battery_status())
+    print(UPS.temperature())
+    print('---')
+    print(UPS.status)

@@ -61,7 +61,7 @@ class PVCCommon(ModbusClient):
     class and the sub-class. These fields names can then be used with :meth:`.get_field` and
     :meth:`.get_fields` method or accessed as if they were attributes of the class.
 
-    Remember to call :meht:`.close` after use.
+    Remember to call ``.close()`` after use.
 
     """
 

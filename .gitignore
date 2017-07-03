@@ -9,3 +9,4 @@ machines/towermain/temperature_log*
 *credentials.py
 *error_log.txt
 *logger.txt
+.cache

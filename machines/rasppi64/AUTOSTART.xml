@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI64_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>10</startdelay>
+    <command>python2 /home/pi/PyExpLabSys/PyExpLabSys/apps/picture_logbook.py rasppi64</command>
+    <name>Picture Logbook</name>
+  </session>
+</autostart>

@@ -92,7 +92,7 @@ class QMS(object):
         query += preamp_range + '", time="' + timestamp + '", type="'
         query += str(measurement_type) + '"' + ', comment="' + comment + '"'
         query += ', timestep=' + str(timestep) + ', actual_mass=' + str(mass)
-        LOGGER.error(query)
+        LOGGER.info(query)
         cursor.execute(query)
         cnxn.commit()
         

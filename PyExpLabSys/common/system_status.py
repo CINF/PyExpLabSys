@@ -5,10 +5,15 @@ This module is Python 2 and 3 compatible.
 
 from __future__ import unicode_literals
 import os
+from os import path
 import re
 import sys
 import socket
-import fcntl
+import codecs
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # pylint: disable=invalid-name
 import struct
 import threading
 import subprocess
@@ -16,6 +21,7 @@ try:
     import resource
 except ImportError:
     resource = None  # pylint: disable=C0103
+
 
 # Source: http://www.raspberrypi-spy.co.uk/2012/09/checking-your-raspberry-pi-board-version/
 RPI_REVISIONS = {
@@ -52,12 +58,27 @@ def works_on(platform):
 class SystemStatus(object):
     """Class that fetches set of system status information"""
 
-    def __init__(self):
+    def __init__(self, machinename=None):
+        """Initialize the system status object
+
+        Args:
+            machinename (str): Machinename if different from what is returned by
+                socket.gethostname()
+        """
         # Form the list of which items to measure on different platforms
         if 'linux' in sys.platform:
             platforms = {'all', 'linux', 'linux2'}
         else:
             platforms = {'all', sys.platform}
+
+        # Set the machine name (as used to find purpose)
+        if machinename is None:
+            self._machinename = socket.gethostname()
+        else:
+            self._machinename = machinename
+
+        # Cache for fairly static information like purpose
+        self._cache = {}
 
         # Form the list methods that work in this platform, using the _works_on attribute
         # that is appended with a decorator
@@ -91,6 +112,7 @@ class SystemStatus(object):
             return os.path.getmtime(fetch_head_file)
         else:
             return None
+
 
     @staticmethod
     @works_on('all')
@@ -171,17 +193,30 @@ class SystemStatus(object):
     @staticmethod
     @works_on('linux2')
     def mac_address():
-        """Return the mac address of currently connected interface"""
-        sql_ip = socket.gethostbyname('servcinf-sql')
-        interface_string = subprocess.check_output(['ip', '-o', 'route',
-                                                    'get', sql_ip]).split()
-        ifname = interface_string[4]
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        info = fcntl.ioctl(sock.fileno(), 0x8927, struct.pack(b'256s', ifname[:15]))
-        if sys.version < '3':
-            return ':'.join(['%02x' % ord(char) for char in info[18:24]])
-        else:
-            return ':'.join(['%02x' % char for char in info[18:24]])
+        """Return the mac address of the currently connected interface"""
+        # This procedure has given us problems in the past, so sorround with try-except
+        try:
+            # Get the IP of servcinf-sql
+            sql_ip = socket.gethostbyname('servcinf-sql')
+            # Get the route for the servcinf-sql ip, it will look like one of these:
+            #10.54.6.26 dev eth0  src 10.54.6.43 \    cache
+            #130.225.86.27 via 10.54.6.1 dev eth0  src 10.54.6.43 \    cache
+            interface_string = subprocess.check_output(
+                ['ip', '-o', 'route', 'get', sql_ip]
+            ).split()
+
+            # The interface name e.g. "eth0" is the first item after "dev"
+            ifname = interface_string[interface_string.index('dev') + 1]
+
+            # Get an infostring for a socket connection of this interface name
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            info = fcntl.ioctl(sock.fileno(), 0x8927, struct.pack(b'256s', ifname[:15]))
+            if sys.version < '3':
+                return ':'.join(['%02x' % ord(char) for char in info[18:24]])
+            else:
+                return ':'.join(['%02x' % char for char in info[18:24]])
+        except:  # pylint: disable=bare-except
+            return 'MAC ADDRESS UNKNOWN'
 
     @staticmethod
     @works_on('linux2')
@@ -209,7 +244,7 @@ class SystemStatus(object):
             return None
         # Get temperature string
         if os.path.exists('/sys/class/thermal/thermal_zone0/temp'):
-            try:                                    
+            try:
                 temp_str = subprocess.check_output(['cat',
                                                     '/sys/class/thermal/thermal_zone0/temp'])
             except OSError:
@@ -231,6 +266,51 @@ class SystemStatus(object):
             return serial
         except IOError:
             return None
+
+    @works_on('linux2')
+    def purpose(self):
+        """Returns the information from the purpose file"""
+        if 'purpose' in self._cache:
+            return self._cache['purpose']
+
+        purpose = {'id': None, 'purpose': None, 'long_description': None}
+        self._cache['purpose'] = purpose
+
+        # Read the purpose file
+        filepath = path.join(path.expanduser('~'), 'PyExpLabSys', 'machines',
+                             self._machinename, 'PURPOSE')
+        try:
+            with codecs.open(filepath, encoding='utf-8') as file_:
+                purpose_lines = file_.readlines()
+                pass
+        except IOError:
+            return purpose
+
+        # New style purpose file
+        if purpose_lines[0].startswith("id:"):
+            # Get id
+            purpose['id'] = purpose_lines[0].split(':', 1)[1].strip()
+
+            # If there is id:, insist that there is also purpose: and parse it
+            if not purpose_lines[1].startswith('purpose:'):
+                message = ('With the new style purpose file (where first line starts '
+                           'with "id:", the second line must start with "purpose:"')
+                raise ValueError(message)
+            purpose['purpose'] = purpose_lines[1].split(':', 1)[1].strip()
+            purpose['long_description'] = ''.join(purpose_lines[2:]).strip()
+        else:
+            # With old stype purpose file, turn entire content into long_description
+            purpose['long_description'] = ''.join(purpose_lines)
+
+        if purpose['long_description'] == '':
+            purpose['long_description'] = None
+
+        return purpose
+
+    @works_on('linux2')
+    def machine_name(self):
+        """Return the machine name"""
+        return self._machinename
 
 
 if __name__ == '__main__':

@@ -14,11 +14,13 @@ import credentials
 from PyExpLabSys.drivers.crowcon import Vortex
 from PyExpLabSys.common.loggers import ContinuousLogger
 from PyExpLabSys.common.sockets import LiveSocket
-from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.utilities import get_logger, activate_library_logging
 # Set log filesize to 10 MB
 LOGGER = get_logger('b307gasalarm', level='debug')
 import MySQLdb
 
+activate_library_logging('PyExpLabSys.drivers.crowcon', logger_to_inherit_from=LOGGER,
+                         level='warn')
 
 # pylint: disable=R0902
 class GasAlarmMonitor(object):
@@ -41,8 +43,7 @@ class GasAlarmMonitor(object):
 
         # Each value is measured about every 5 sec, so sane interval about 2
         self.live_socket = LiveSocket(name='gas_alarm_307_live',
-                                      codenames=codenames,
-                                      sane_interval=2.0)
+                                      codenames=codenames)
         self.live_socket.start()
         LOGGER.info('Live socket started')
 
@@ -106,7 +107,18 @@ class GasAlarmMonitor(object):
         """Convert the identity the sensor returns to the codename used in the
         database
         """
-        identity = identity.replace(' ', '_').replace('/', '-')
+        # NOTE The identities was changed at some point, which is the reason where there
+        # is this manual mingling with name. The current names are:
+        # 'CO 51', 'H2 51', 'CO 55', 'H2 55', 'CO 59', 'H2 61', 'CO 61', 'H2 61',
+        # 'CO 42/43', 'H2 2 sal', 'CO 932', 'H2 932'
+        # and they need to be changed to the codenames in codenames (in __init__)
+
+        first, second = identity.split(' ', 1)
+        if len(second) == 2:
+            second = '0' + second
+        identity = first + ' ' + second
+
+        identity = identity.replace('2 sal', '2sal').replace(' ', '_').replace('/', '-')
         return 'B307_gasalarm_{}'.format(identity)
 
     def main(self):
@@ -125,6 +137,15 @@ class GasAlarmMonitor(object):
         # Get detector info and levels for this detector
         conf = self.detector_info[detector_num]
         codename = self.identity_to_codename(conf.identity)
+
+
+        ##### HACK HACK HACK FIXME There is a duplicate name error in the configuration
+        # which for now we fix here in code
+        if codename == "B307_gasalarm_H2_061" and detector_num == 6:
+            codename = "B307_gasalarm_H2_059"
+        ##### HACK HACK HACK FIXME
+
+
         LOGGER.debug('Use detector {} \'{}\''.format(detector_num, codename))
         levels = self.vortex.get_detector_levels(detector_num)
         LOGGER.debug('Levels read: {}'.format(levels))
@@ -159,6 +180,12 @@ class GasAlarmMonitor(object):
             now - self.detector_status_last_times[detector_num] > 86400
         status = {'inhibit': levels.inhibit, 'status': levels.status,
                   'codename': conf.identity}
+
+        ##### HACK HACK HACK FIXME There is a duplicate name error in the configuration
+        if detector_num == 6 and status['codename'] == 'H2 61':
+            status['codename'] = 'H2 59'
+        ##### HACK HACK HACK FIXME
+
         value_condition = \
             (status != self.detector_status_last_values[detector_num])
 

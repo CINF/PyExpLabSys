@@ -1,0 +1,8 @@
+<autostart>
+  <name>TEST_JJ</name> <!-- no spaces -->
+  <session>
+    <startdelay>0.1</startdelay>
+    <command>python bar_program.py</command>
+    <name>UU U</name>
+  </session>
+</autostart>

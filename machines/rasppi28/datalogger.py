@@ -8,7 +8,9 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 #from PyExpLabSys.common.sockets import LiveSocket
 import PyExpLabSys.drivers.xgs600 as xgs600
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
 class PressureReader(threading.Thread):
     """ Pressure reader """

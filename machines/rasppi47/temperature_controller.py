@@ -1,16 +1,15 @@
-
-# pylint: disable=R0913,W0142,C0103
-
 """ Temperature controller """
 import time
 import threading
 import socket
 import curses
 import pickle
-import wiringpi2 as wp
+import wiringpi as wp
 import PyExpLabSys.auxiliary.pid as PID
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 
 class CursesTui(threading.Thread):
@@ -35,20 +34,21 @@ class CursesTui(threading.Thread):
             val = self.hc.pc.temperature
             try:
                 self.screen.addstr(9, 2, "Temeperature: {0:.1f}C  ".format(val))
-            except ValueError:
+            except (ValueError, TypeError):
                 self.screen.addstr(9, 2, "Temeperature: -         ".format(val))
             val = self.hc.dutycycle
             self.screen.addstr(10, 2, "Wanted dutycycle: {0:.5f} ".format(val))
             val = self.hc.pc.pid.setpoint
             self.screen.addstr(11, 2, "PID-setpint: {0:.2f}C  ".format(val))
-            val = self.hc.pc.pid.IntErr
+            val = self.hc.pc.pid.int_err
             self.screen.addstr(12, 2, "PID-error: {0:.3f} ".format(val))
+            val = self.hc.pc.pid.pid_p * self.hc.pc.pid.error
+            self.screen.addstr(11, 40, "PID-P: {0:.6f}    ".format(val))
+            val = self.hc.pc.pid.pid_i * self.hc.pc.pid.int_err
+            self.screen.addstr(12, 40, "PID-I: {0:.6f}    ".format(val))
+
             val = time.time() - self.start_time
             self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
-
-            self.screen.addstr(17, 2, "Message:" + self.hc.pc.message)
-
-            self.screen.addstr(20, 2, "Message:" + self.hc.pc.message2)
 
             n = self.screen.getch()
             if n == ord('q'):
@@ -78,52 +78,51 @@ class PowerCalculatorClass(threading.Thread):
         self.datasocket = datasocket
         self.pushsocket = pushsocket
         self.power = 0
-        self.setpoint = 150
-        self.pid = PID.PID()
-        self.pid.Kp = 0.0150
-        self.pid.Ki = 0.0001
-        self.pid.Pmax = 1
+        self.setpoint = 50
+        self.pid = PID.PID(pid_p=0.013, pid_i=0.000015, p_max=1)
         self.update_setpoint(self.setpoint)
         self.quit = False
         self.temperature = None
         self.ramp = None
-        self.message = '*'
-        self.message2 = '*'
 
     def read_power(self):
         """ Return the calculated wanted power """
-        return(self.power)
+        return self.power
 
     def update_setpoint(self, setpoint=None, ramp=0):
         """ Update the setpoint """
         if ramp > 0:
             setpoint = self.ramp_calculator(time.time()-ramp)
         self.setpoint = setpoint
-        self.pid.UpdateSetpoint(setpoint)
+        self.pid.update_setpoint(setpoint)
         self.datasocket.set_point_now('setpoint', setpoint)
         return setpoint
 
-    """
     def ramp_calculator(self, time):
         if self.ramp is None:
+            self.ramp = {}
             self.ramp['temp'] = {}
             self.ramp['time'] = {}
             self.ramp['step'] = {}
             self.ramp['time'][0] = 20.0
-            self.ramp['time'][1] = 35.0
-            self.ramp['time'][2] = 30.0
-            self.ramp['time'][3] = 25.0
-            self.ramp['time'][4] = 35.0
-            self.ramp['temp'][0] = 100.0
-            self.ramp['temp'][1] = 50.0
-            self.ramp['temp'][2] = 60.0
-            self.ramp['temp'][3] = 90.0
-            self.ramp['temp'][4] = 70.0
-            self.ramp['step'][0] = False
-            self.ramp['step'][1] = False
+            self.ramp['time'][1] = 2500.0
+            self.ramp['time'][2] = 10800.0
+            self.ramp['time'][3] = 10800.0
+            self.ramp['time'][4] = 10800.0
+            self.ramp['time'][5] = 10800.0
+            self.ramp['temp'][0] = 0.0
+            self.ramp['temp'][1] = 450.0
+            self.ramp['temp'][2] = 0.0
+            self.ramp['temp'][3] = 0.0
+            self.ramp['temp'][4] = 0.0
+            self.ramp['temp'][5] = 0.0
+            self.ramp['step'][0] = True
+            self.ramp['step'][1] = True
             self.ramp['step'][2] = True
-            self.ramp['step'][3] = False
-            self.ramp['step'][4] = True
+            self.ramp['step'][3] = True
+            self.ramp['step'][4] = False
+            self.ramp['step'][4] = False
+            self.ramp['step'][4] = False
         self.ramp['temp'][len(self.ramp['time'])] = 0
         self.ramp['step'][len(self.ramp['time'])] = True
         self.ramp['time'][len(self.ramp['time'])] = 999999999
@@ -131,59 +130,37 @@ class PowerCalculatorClass(threading.Thread):
         self.ramp['temp'][-1] = 0
         i = 0
         while (time > 0) and (i < len(self.ramp['time'])):
-        time = time - self.ramp['time'][i]
-        i = i + 1
+            time = time - self.ramp['time'][i]
+            i = i + 1
         i = i - 1
         time = time + self.ramp['time'][i]
         if self.ramp['step'][i] is True:
-        return_value = self.ramp['temp'][i]
+            return_value = self.ramp['temp'][i]
         else:
-        time_frac = time / self.ramp['time'][i]
-        return_value = self.ramp['temp'][i-1] + time_frac * (self.ramp['temp'][i] - self.ramp['temp'][i-1])
+            time_frac = time / self.ramp['time'][i]
+            return_value = self.ramp['temp'][i-1] + time_frac * (self.ramp['temp'][i] -
+                                                                 self.ramp['temp'][i-1])
         return return_value
-    """
-
-    def ramp_calculator(self, time):
-        ramp = self.ramp
-        ramp['temp'][len(ramp['time'])] = 0
-        ramp['step'][len(ramp['time'])] = True
-        ramp['time'][len(ramp['time'])] = 999999999
-        ramp['time'][-1] = 0
-        ramp['temp'][-1] = 0
-        i = 0
-        #self.message = 'Klaf'
-        while (time > 0) and (i < len(ramp['time'])):
-            time = time - ramp['time'][i]
-            i = i + 1
-        i = i - 1
-        time = time + ramp['time'][i]
-        #self.message2 = 'Klaf'
-        if ramp['step'][i] is True:
-            return_value = ramp['temp'][i]
-        else:
-            time_frac = time / ramp['time'][i]
-            return_value = ramp['temp'][i-1] + time_frac * (ramp['temp'][i] - ramp['temp'][i-1])
-        return return_value
-
 
     def run(self):
-        data_temp = 'T1#raw'
+        data_temp = b'fr307_furnace_1_T#raw'
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(1)
-        t = 0
+        ramp_time = 0
+        #ramp_time = time.time()
         sp_updatetime = 0
         ramp_updatetime = 0
         while not self.quit:
             sock.sendto(data_temp, ('localhost', 9001))
-            received = sock.recv(1024)
+            received = sock.recv(1024).decode()
             self.temperature = float(received[received.find(',') + 1:])
-            self.power = self.pid.WantedPower(self.temperature)
+            self.datasocket.set_point_now('temperature', self.temperature)
+            self.power = self.pid.wanted_power(self.temperature)
 
             #  Handle the setpoint from the network
             try:
                 setpoint = self.pushsocket.last[1]['setpoint']
                 new_update = self.pushsocket.last[0]
-                self.message = str(new_update)
             except (TypeError, KeyError): #  Setpoint has never been sent
                 setpoint = None
             if ((setpoint is not None) and
@@ -195,23 +172,25 @@ class PowerCalculatorClass(threading.Thread):
             try:
                 ramp = self.pushsocket.last[1]['ramp']
                 new_update = self.pushsocket.last[0]
-                self.message2 = str(new_update)
-
             except (TypeError, KeyError): #  Ramp has not yet been set
                 ramp = None
             if ramp == 'stop':
-                t = 0
+                ramp_time = 0
             if (ramp is not None) and (ramp != 'stop'):
-                ramp = pickle.loads(ramp)
+                try: # Python 3
+                    ramp = pickle.loads(ramp.encode('ascii'), fix_imports=True)
+                except TypeError: # Python 2
+                    ramp = pickle.loads(ramp)
                 if new_update > ramp_updatetime:
                     ramp_updatetime = new_update
                     self.ramp = ramp
-                    t = time.time()
+                    ramp_time = time.time()
                 else:
                     pass
-            if t > 0:
-                self.update_setpoint(ramp=t)
-            time.sleep(1)
+
+            if ramp_time > 0:
+                self.update_setpoint(ramp=ramp_time)
+            time.sleep(0.5)
 
 
 class HeaterClass(threading.Thread):
@@ -231,6 +210,9 @@ class HeaterClass(threading.Thread):
         while not self.quit:
             self.dutycycle = self.pc.read_power()
             self.datasocket.set_point_now('dutycycle', self.dutycycle)
+            self.datasocket.set_point_now('pid_p', self.pc.pid.proportional_contribution())
+            self.datasocket.set_point_now('pid_i', self.pc.pid.integration_contribution())
+                        
             for i in range(0, self.beatsteps):
                 time.sleep(1.0 * self.beatperiod / self.beatsteps)
                 if i < self.beatsteps * self.dutycycle:
@@ -240,27 +222,27 @@ class HeaterClass(threading.Thread):
         wp.digitalWrite(self.pinnumber, 0)
 
 
-wp.wiringPiSetup()
-datasocket = DateDataPullSocket('furnaceroom_controller',
-                                ['setpoint', 'dutycycle'], 
-                                timeouts=[999999, 3.0],
-                                port=9000)
-datasocket.start()
+def main():
+    """ Main function """
+    wp.wiringPiSetup()
+    datasocket = DateDataPullSocket('furnaceroom_controller',
+                                    ['temperature', 'setpoint', 'dutycycle', 'pid_p', 'pid_i'],
+                                    timeouts=999999, port=9000)
+    datasocket.start()
 
-pushsocket = DataPushSocket('furnaceroom_push_control', action='store_last')
-pushsocket.start()
+    pushsocket = DataPushSocket('furnaceroom_push_control', action='store_last')
+    pushsocket.start()
 
-P = PowerCalculatorClass(datasocket, pushsocket)
-#print P.ramp_calculator(2)
-#print P.ramp_calculator(2000)
-P.daemon = True
-P.start()
+    power_calculator = PowerCalculatorClass(datasocket, pushsocket)
+    power_calculator.daemon = True
+    power_calculator.start()
 
-H = HeaterClass(P, datasocket)
-#H.daemon = True
-H.start()
+    heater = HeaterClass(power_calculator, datasocket)
+    heater.start()
 
-T = CursesTui(H)
-T.daemon = True
-T.start()
+    tui = CursesTui(heater)
+    tui.daemon = True
+    tui.start()
 
+if __name__ == '__main__':
+    main()

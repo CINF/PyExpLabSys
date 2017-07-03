@@ -9,6 +9,50 @@ each describe a small task.
 .. contents:: Table of Contents
    :depth: 4
 
+Setting up logging for a component of PyExpLabSys
+=================================================
+
+This section describes how to set up logging for a component in PyExpLabSys with the
+:py:mod:`logging` module (i.e. the meaning of the word "logging" that refers to text
+output of debug and status information to e.g. terminal and text files NOT sending data to
+the database).
+
+.. note:: This section specifically deals with setting up **logging for a component in
+   PyExpLabSys, not of a program merely using PyExpLabSys**. For information about how to
+   set up logging for a program merely using PyExpLabSys, see the `standard library
+   documentation <https://docs.python.org/3/howto/logging.html>`_ and
+   :ref:`user_notes_logging` for how to use some convenience functions in PyExpLabSys.
+
+Setting up a logger for a component of PyExpLabSys should be done in
+the manner recommended by the `standard library documentation for
+logging from libraries
+<https://docs.python.org/3/howto/logging.html#configuring-logging-for-a-library>`_. I.e. in
+the beginning of the file to the following:
+
+.. code-block:: python
+
+   import logging
+   LOG = logging.getLogger(__name__)
+   LOG.addHandler(logging.NullHandler())
+
+Where using ``__name__`` as the name, will ensure that it gets a name that is the full
+qualified name of the module e.g. ``PyExpLabSys.common.utilities``.
+
+If more fine grained logging is required, e.g. if a module consist of several large
+classes and it would preferable with a logger per class, they can be set up in the same
+manner. Such class loggers should keep the ``__name__`` as a prefix followed by a "." and
+the name of the class, i.e:
+
+.. code-block:: python
+
+   # Assuming logging is already imported for the module logger
+   MYCLASS_LOG = logging.getLogger(__name__ + '.MyClass')
+   MYCLASS_LOG.addHandler(logging.NullHandler())
+
+   class MyClass(object):
+       """My fancy class"""
+       pass
+
 Editing/Updating Documentation
 ==============================
 

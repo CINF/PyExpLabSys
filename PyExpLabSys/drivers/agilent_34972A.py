@@ -7,21 +7,26 @@ python2_and_3(__file__)
 
 class Agilent34972ADriver(SCPI):
     """ Driver for Agilent 34972A multiplexer """
-    def __init__(self, name='volvo-agilent-34972a'):
-        SCPI.__init__(self, interface='lan', hostname=name)
+    def __init__(self, interface='lan', hostname='', connection_string=''):
+        if interface == 'lan': # the LAN interface
+            SCPI.__init__(self, interface=interface, hostname=hostname, line_ending='\n')
+        if interface == 'file': # For distributions that mounts usbtmc as a file (eg. ubuntu)
+            SCPI.__init__(self, interface=interface, device='/dev/usbtmc0')
+        if interface == 'usbtmc': # For python-usbtmc (preferred over file)
+            SCPI.__init__(self, interface=interface, visa_string=connection_string)
 
     def read_single_scan(self):
         """ Read a single scan-line """
         self.scpi_comm("TRIG:SOURCE TIMER")
         self.scpi_comm("TRIG:COUNT 1")
         self.scpi_comm("INIT")
-        time.sleep(0.1)
+        time.sleep(0.025)
         status = int(self.scpi_comm("STATUS:OPERATION:CONDITION?"))
         status_bin = bin(status)[2:].zfill(16)
         while status_bin[11] == '1':
             status = int(self.scpi_comm("STATUS:OPERATION:CONDITION?"))
             status_bin = bin(status)[2:].zfill(16)
-            time.sleep(0.1)
+            time.sleep(0.025)
         response = self.scpi_comm("FETCH?")
         response = response.split(',')
         return_values = []
@@ -91,6 +96,7 @@ class Agilent34972ADriver(SCPI):
 
 if __name__ == "__main__":
     DEVICE = Agilent34972ADriver()
+    print(DEVICE.read_software_version())
     print(DEVICE.read_scan_list())
     print(DEVICE.read_configuration())
     print(DEVICE.read_single_scan())

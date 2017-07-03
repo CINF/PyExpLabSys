@@ -17,7 +17,9 @@
 
 (require 'flymake-cursor)
 
-(add-hook 'python-mode-hook 'flymake-mode)
+;;(add-hook 'python-mode-hook 'flymake-mode)
+(global-set-key (kbd "<f5>") 'flymake-start-syntax-check)
+(global-set-key (kbd "<f6>") 'flymake-display-err-menu-for-current-line)
 
 ;; enable visual feedback on selections
 (setq transient-mark-mode t)

@@ -8,10 +8,11 @@ import time
 import curses
 import threading
 import logging
-
+from PyExpLabSys.common.supported_versions import python2_and_3
+# Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
-# Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
+python2_and_3(__file__)
 
 class CursesTui(threading.Thread):
     """ Text gui for controlling the pump """

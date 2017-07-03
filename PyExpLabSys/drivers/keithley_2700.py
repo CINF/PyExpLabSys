@@ -1,125 +1,85 @@
-import telnetlib
+""" Simple driver for Keithley Model 2700 """
+from __future__ import print_function
 import time
+from PyExpLabSys.drivers.scpi import SCPI
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
-from scpi import SCPI
+class KeithleySMU(SCPI):
+    """ Simple driver for Keithley Model 2700 """
 
-
-class InterfaceOutOfBoundsError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
-
-class Keithley2700(SCPI):
-    """
-    http://www.keithley.com/data?asset=10642
-    """
-    def __init__(self, interface = 'serial', hostname='', device='', tcp_port=0):
-        if interface == 'lan':
-            SCPI.__init__(self, 'lan', tcp_port=tcp_port, hostname=hostname)
+    def __init__(self, interface, device='/dev/ttyUSB0'):
         if interface == 'serial':
-            SCPI.__init__(self, 'serial', device=device)
-        self.unit_list = ['VDC', 'VAC', 'ADC', 'AAC', 'OHM', 'OHM4W', 'HZ', 'SECS', 'C', 'F', 'K']
-        #if not (output == 1 or output == 2):
-        #    raise InterfaceOutOfBoundsError(output)
-        #else:
-        #    self.output = str(output)
+            SCPI.__init__(self, interface='serial', device=device, baudrate=9600)
+            self.scpi_comm('FORMAT:ELEMENTS READ') # Set short read-format
 
-    def read_voltage(self):
-        """Reads the actual output voltage"""
-        function_string = 'MEASURE:VOLT:DC?'
-        value_string = self.scpi_comm(function_string)
-        #value_string = '-2.01954693E-03VDC,+8816.272SECS,+62019RDNG#\r'
-        try:
-            value_split = value_string.split(',')
-            value = float(value_split[0].replace("VDC",""))
-        except ValueError:
-            value = -999999
-        return(value)
+    def select_measurement_function(self, function):
+        """ Select a measurement function.
 
-    def read_resistance(self,):
-        """Reads the actual output voltage"""
-        function_string = 'MEASURE:RES?'
-        value_string = self.scpi_comm(function_string)
-        #try:
-        #    value = float(value_string.replace('V', ''))
-        #except ValueError:
-        #    value = -999999
-        return(value_string)
+        Keyword arguments:
+        Function -- A string stating the wanted measurement function.
 
-    def fast_voltage(self,):
-        command_list = [":SENSE:FUNCTION 'VOLT:DC'", 
-                        ":FORMAT:ELEMENT READ", 
-                        ":SYSTEM:AZERO:STATE OFF", 
-                        ":SENSE:VOLT:DC:AVERAGE:STATE OFF", 
-                        ":SENSE:VOLT:DC:NPLC 0.01", 
-                        ":SENSE:VOLT:DC:RANGE 10", 
-                        ":SENSE:VOLT:DC:DIGITS 4", 
-                        ":TRIGGER:COUNT 1", 
-                        ":SAMPLE:COUNT 100", 
-                        ":TRIGGER:DELAY 0.0", 
-                        ":DISPLAY:ENABLE OFF"]
-        for command in command_list:
-            value_string = self.scpi_comm(command)
-            #print(value_string)
-        value_string = self.scpi_comm(":READ?")
-        try:
-            value_split = value_string.split("#")
-            print(len(value_split))
-            print(value_split[0])
-            volts = []
-            for v in value_split:
-                volts += [float(v.split(",")[0][:-3])]
-            value = sum(volts)
-        except ValueError:
-            value = -999999
-        return(value)
+        """
 
-    def read_value(self,):
-        """Reads the actual output voltage"""
-        function_string = ':READ?'
-        value_string = self.scpi_comm(function_string)
-        data_results = value_string.replace("\r","").split("#")
-        values = []
-        times = []
-        readings = []
-        for data_result in data_results[:-1]:
-            split = data_result.split(",")
-            values += [float(split[0].replace("VDC",""))]
-            times += [float(split[1].replace("SECS",""))]
-            readings += [int(split[2].replace("RDNG",""))]
-        return(values, times, readings)
-    
-    def read(self,):
-        function_string = ':READ?'
-        value_string = self.scpi_comm(function_string)
-        return(value_string)
-    
-    def setup_voltage(self,):
-        self.scpi_comm(":SENSE:FUNC 'VOLT'")
-        self.scpi_comm(":FORM:ELEM READ")
-        value_string = self.scpi_comm(":READ?")
-        return(value_string)
+        values = ['CAPACITANCE', 'CONTINUITY', 'CURRENT', 'DIODE', 'FREQUENCY',
+                  'RESISTANCE', 'FRESISTANCE', 'TEMPERATURE', 'VOLTAGE']
+        return_value = False
+        if function in values:
+            return_value = True
+            function_string = "FUNCTION " + "\"" + function + "\""
+            self.scpi_comm(function_string)
+        return return_value
 
+    def read(self):
+        """ Read a value from the device """
+        value = float(self.scpi_comm("READ?"))
+        return value
+            
 if __name__ == '__main__':
-    ports = {}
-    ports[0] = '/dev/serial/by-id/usb-9710_7840-if00-port0'
-    ports[1] = '/dev/serial/by-id/usb-9710_7840-if00-port1'
-    ports[2] = '/dev/serial/by-id/usb-9710_7840-if00-port2'
-    ports[3] = '/dev/serial/by-id/usb-9710_7840-if00-port3'
+    PORT = '/dev/ttyUSB0'
 
-    dmm = Keithley2700('serial', device=ports[0])
-    print(dmm.read_software_version())
-    #for i in range(10):
-    #    print(dmm.read_value())
-    #print(dmm.read_resistance())
-    #print(dmm.read_voltage())
-    #print(dmm.fast_voltage())
-    print(dmm.setup_voltage)
-    print('output')
-    for i in range(3):
-        print(dmm.read_value())
-    print(dmm.scpi_comm("FORMat:ELEMents READing, UNITs, TSTamp, RNUMber, CHANnel, LIMits"))
-    print(dmm.read())
-    print(dmm.scpi_comm("MEAS:VOLT:DC? 10, 0.01, @101:110"))
-    print(dmm.read())
+    K2700 = KeithleySMU(interface='serial', device=PORT)
+    #K2700.reset_device()
+    time.sleep(1)
+    print(K2700.read_software_version())
+    #print('--')
+    #print(K2700.read())
+    #print('--')
+    #K2700.select_measurement_function('RESISTANCE')
+    #print(K2700.read())
+    #print('--')
+    #K2700.select_measurement_function('TEMPERATURE')
+    #print(K2700.read())
+    #print('--')
+    #print(K2700.scpi_comm('ROUTE:SCAN (@101:108)'))
+    #print(K2700.scpi_comm('ROUTE:SCAN?'))
+    #print(K2700.scpi_comm('TRIGGER:COUNT 1'))
+    #print(K2700.scpi_comm('SAMP:COUNT 8'))
+    #print(K2700.scpi_comm('READ?'))
+    #print(K2700.scpi_comm('ROUNT:SCAN:NVOL ON'))
+    #K2700.scpi_comm('INIT')
+    #print(K2700.scpi_comm('READ?'))
+    #print(K2700.scpi_comm('ROUTE:SCAN:LSEL NONE'))
+    #print(K2700.scpi_comm('CALC1:DATA?'))
+    #print(K2700.read())
+
+    K2700.scpi_comm('TRAC:CLE')
+    K2700.scpi_comm('INIT:CONT OFF')
+    K2700.scpi_comm('TRAC:CLE')
+    K2700.scpi_comm('TRIG:SOUR IMM')
+    K2700.scpi_comm('TRIG COUN 1')
+    K2700.scpi_comm('SAMP:COUNT 1')
+
+    for i in range(1, 11):
+        scan_list = '(@1' + str(i).zfill(2) + ')'
+        time.sleep(0.25)
+        command = "SENS:FUNC 'RESISTANCE', " + scan_list
+        print(command)
+        K2700.scpi_comm(command)
+        time.sleep(0.25)
+
+        K2700.scpi_comm('ROUNT:SCAN ' + scan_list)
+        K2700.scpi_comm('ROUT:SCAN:TSO IMM')
+        K2700.scpi_comm('ROUT:SCAN:LSEL INT')
+        print(K2700.scpi_comm('READ?'))
+        K2700.scpi_comm('ROUT:SCAN:LSEL NONE')

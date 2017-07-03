@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI67_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>10</startdelay>
+    <command>python3 temperature_controller.py</command>
+    <name>Temperature Control</name>
+  </session>
+</autostart>

@@ -12,7 +12,8 @@ try:
     import PyQt4.Qwt5 as Qwt
 except ImportError:
     # If we are building docs for read the docs, make fake version else re-raise
-    if os.environ.get('READTHEDOCS', None) == 'True':
+    import sys
+    if os.environ.get('READTHEDOCS', None) == 'True' or 'sphinx' in sys.modules:
         class Qwt:
             QwtPlot = list
     else:

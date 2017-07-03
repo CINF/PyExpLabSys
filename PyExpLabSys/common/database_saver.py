@@ -1,4 +1,4 @@
-# pylint: disable=too-many-arguments,too-many-instance-attributes
+# pylint: disable=too-many-arguments,too-many-instance-attributes,no-member
 
 """Classes for saving coninuous data and data sets to a database"""
 
@@ -8,6 +8,7 @@ import re
 import time
 import logging
 import threading
+import socket
 from collections import namedtuple
 # Py2/3 import of Queue
 try:
@@ -15,7 +16,11 @@ try:
 except ImportError:
     from queue import Queue  # pylint: disable=import-error
 
-import MySQLdb
+try:
+    import MySQLdb
+except ImportError:
+    import pymysql as MySQLdb
+    MySQLdb.install_as_MySQLdb()
 
 # Mark this module as supporting Python 2 and 3
 from PyExpLabSys.common.supported_versions import python2_and_3
@@ -121,8 +126,12 @@ class DataSetSaver(object):
         self.select_distict_query = 'SELECT DISTINCT {{}} from {}'.format(measurements_table)
 
         # Init local database connection
-        self.connection = MySQLdb.connect(host=HOSTNAME, user=username,
-                                          passwd=password, db=DATABASE)
+        self.connection = MySQLdb.connect(
+            host=socket.gethostbyname(HOSTNAME),
+            user=username,
+            passwd=password,
+            db=DATABASE
+        )
         self.cursor = self.connection.cursor()
 
         # Initialize measurement ids
@@ -330,8 +339,12 @@ class ContinuousDataSaver(object):
         self.password = password
 
         # Init local database connection
-        self.connection = MySQLdb.connect(host=HOSTNAME, user=username,
-                                          passwd=password, db=DATABASE)
+        self.connection = MySQLdb.connect(
+            host=socket.gethostbyname(HOSTNAME),
+            user=username,
+            passwd=password,
+            db=DATABASE
+        )
         self.cursor = self.connection.cursor()
 
         # Dict used to translate code_names to measurement numbers
@@ -465,8 +478,12 @@ class SqlSaver(threading.Thread):
 
         # Initialize database connection
         SQL_SAVER_LOG.debug('Open connection to MySQL database')
-        self.connection = MySQLdb.connect(host=HOSTNAME, user=username,
-                                          passwd=password, db=DATABASE)
+        self.connection = MySQLdb.connect(
+            host=socket.gethostbyname(HOSTNAME),
+            user=username,
+            passwd=password,
+            db=DATABASE
+        )
         self.cursor = self.connection.cursor()
         SQL_SAVER_LOG.debug('Connection opened, init done')
 
@@ -491,7 +508,8 @@ class SqlSaver(threading.Thread):
                 to be formatted into the query. ``query`` and ``query_args`` in combination
                 are the arguments to cursor.execute.
         """
-        SQL_SAVER_LOG.debug('Enqueue query\n\'%.70s...\'\nwith args: %.60s...', query, query_args)
+        SQL_SAVER_LOG.debug('Enqueue query\n\'%.70s...\'\nwith args: %.60s...', query,
+                            query_args)
         self.queue.put((query, query_args))
 
     def run(self):
@@ -517,7 +535,8 @@ class SqlSaver(threading.Thread):
                 try:
                     self.cursor.execute(query, args=args)
                     success = True
-                    SQL_SAVER_LOG.debug('Executed query\n\'%.70s\'\nwith args: %.60s', query, args)
+                    SQL_SAVER_LOG.debug('Executed query\n\'%.70s\'\nwith args: %.60s', query,
+                                        args)
                 except MySQLdb.OperationalError: # Failed to perfom commit
                     SQL_SAVER_LOG.error(
                         'Executing a query raised an MySQLdb.OperationalError. Make new '
@@ -526,7 +545,9 @@ class SqlSaver(threading.Thread):
                     time.sleep(5)
                     try:
                         self.connection = MySQLdb.connect(
-                            host=HOSTNAME, user=self.username, passwd=self.password,
+                            host=socket.gethostbyname(HOSTNAME),
+                            user=self.username,
+                            passwd=self.password,
                             db=DATABASE
                         )
                         self.cursor = self.connection.cursor()
@@ -548,3 +569,48 @@ class SqlSaver(threading.Thread):
         """
         while self.queue.qsize() > 0:
             time.sleep(0.01)
+
+
+def run_module():
+    """Run the module to perform elementary functional test"""
+    import numpy
+    print('Test DataSetSaver.\nInit and start.')
+    data_set_saver = DataSetSaver('measurements_dummy', 'xy_values_dummy', 'dummy', 'dummy')
+    data_set_saver.start()
+    print('Make 2 data sets. Save data as mass spectra')
+    metadata = {'type': 4, 'comment': 'Test sine1', 'sem_voltage': 47, 'mass_label': 'Sine',
+                'preamp_range': -9}
+    data_set_saver.add_measurement('sine1', metadata)
+    metadata['comment'] = 'Test sine2'
+    data_set_saver.add_measurement('sine2', metadata)
+    # Make measurement
+    x = numpy.arange(0, 3, 0.03)
+    y = numpy.sin(x)
+    # Save all at once
+    data_set_saver.save_points_batch('sine1', x, y)
+    print('Saved "sine1" as a batch')
+    # Save point by point
+    for xpoint, ypoint in zip(x, y):
+        data_set_saver.save_point('sine2', (xpoint, ypoint + 0.3))
+    print('Saved "sine2" as single points')
+    data_set_saver.stop()
+    print('Stop DataSetSaver\n')
+
+    print('Test ContinuousDataSaver.\nInit and start')
+    continuous_data_saver = ContinuousDataSaver('dateplots_dummy', 'dummy', 'dummy')
+    continuous_data_saver.start()
+    print('Use dateplots "sine1" and "sine2"')
+    continuous_data_saver.add_continuous_measurement('dummy_sine_one')
+    continuous_data_saver.add_continuous_measurement('dummy_sine_two')
+    print('Save 10 points for each, 0.1 s apart (will take 1s)')
+    for _ in range(10):
+        continuous_data_saver.save_point_now('dummy_sine_one', numpy.sin(time.time()))
+        continuous_data_saver.save_point_now('dummy_sine_two',
+                                             numpy.sin(time.time() + numpy.pi))
+        time.sleep(0.1)
+    continuous_data_saver.stop()
+    print('Stop ContinuousDataSaver')
+
+
+if __name__ == '__main__':
+    run_module()

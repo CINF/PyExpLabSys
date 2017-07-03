@@ -1,0 +1,24 @@
+
+#pH 5 +20%
+python ph_increment.py 5.0 --direction down --main-offset=2.0 --second-min=0.5 --second-max=0.6 --second-offset=0.5
+
+#pH 7 +20%
+python ph_increment.py 7.0 --direction down --main-offset=2.0 --second-min=0.8 --second-max=1 --second-offset=0.8
+
+# pH 8 +20%
+python ph_increment.py 8.0 --direction up --main-offset=2.0 --second-min=1.4 --second-max=1.9 --second-offset=1.9
+
+#pH 9 +20% NOT YET IDENTIFIED
+python ph_increment.py 5.0 --direction down --main-offset=2.0 --second-min=0.5 --second-max=0.6 --second-offset=.5
+
+#pH 5
+python ph_increment.py 5.0 --direction down --main-offset=2.0 --second-min=0.65 --second-max=0.8 --second-offset=0.6
+
+#pH 7
+python ph_increment.py 7.0 --direction down --main-offset=2.0 --second-min=0.9 --second-max=1.55 --second-offset=1.1
+
+# pH 8
+python ph_increment.py 8.0 --direction up --main-offset=2.0 --second-min=1.4 --second-max=1.9 --second-offset=1.9
+
+#pH 9 NOT YET IDENTIFIED
+python ph_increment.py 9.0 --direction up --main-offset=2.0 --second-min=1.7 --second-max=2.5 --second-offset=2.5

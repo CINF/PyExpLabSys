@@ -18,10 +18,13 @@ Contents:
    :maxdepth: 2
 
    overview
+   user_notes
    common
    file-parsers
+   apps
    drivers
    drivers_autogen_only
+   howtos
    developer-notes
 
 

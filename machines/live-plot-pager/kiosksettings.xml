@@ -1,0 +1,160 @@
+<?xml version='1.0' standalone='yes'?>
+<kiosk>
+
+  <figure id="cooling water pressure">
+    <title>Cooling Water Pressure [bar]</title>
+    <grid type="[int]">0, 0</grid>
+    <line_width type="int">3</line_width>
+    <plot>
+      <data_channel>rasppi02:hall_coolingwater_pressure</data_channel>
+      <label table="values" position="0">Cooling Water Pressure</label>
+      <unit>bar</unit>
+      <color>#990099</color>
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where type=(SELECT id FROM dateplots_descriptions where codename="hall_coolingwater_pressure") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <figure id="n5 argon pressure and hall temperature">
+    <title>N5 Argon, Hall Temperature</title>
+    <grid type="[int]">0, 1</grid>
+    <line_width type="int">3</line_width>
+    <plot>
+      <data_channel>rasppi01:n5_argon_pressure</data_channel>
+      <label table="values" position="1">N5 Argon Pressure [bar]</label>
+      <unit>bar</unit>
+      <color>#009900</color>
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where type=(SELECT id FROM dateplots_descriptions where codename="n5_argon_pressure") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <data_channel>rasppi66:hall_temperature</data_channel>
+      <label table="values" position="4">Hall Temperature</label>
+      <unit>°C</unit>
+      <color>#FF0000</color>
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where value > -100 and type=(SELECT id FROM dateplots_descriptions where codename="hall_temperature") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <figure id="cooling water temperatures">
+    <title>Cooling Water Temperatures [°C]</title>
+    <grid type="[int]">0, 2</grid>
+    <line_width type="int">3</line_width>
+    <plot>
+      <data_channel>rasppi61:cooling_water_hot</data_channel>
+      <label table="values" position="2">Cooling water temp. hot</label>
+      <unit>°C</unit>
+      <color>#FF0000</color>
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where type=(SELECT id FROM dateplots_descriptions where codename="cooling_water_hot") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <data_channel>rasppi61:cooling_water_cold</data_channel>
+      <label table="values" position="3">Cooling water temp. cold</label>
+      <unit>°C</unit>
+      <color>#0000FF</color>
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where type=(SELECT id FROM dateplots_descriptions where codename="cooling_water_cold") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <figure id="chiller temperature">
+    <title>Chiller Temperature [C]</title>
+    <grid type="[int]">1, 0</grid>
+    <plot>
+      <color>#0000FF</color>
+      <data_channel>rasppi57:thetaprobe_chiller_temperature</data_channel>
+      <label>Thetaprobe Temperature</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_thetaprobe where type=(SELECT id FROM dateplots_descriptions where codename="thetaprobe_chiller_temperature") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <color>#00FF00</color>
+      <data_channel>rasppi60:xrd_chiller_temperature</data_channel>
+      <label>XRD Temperature</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_xrd where type=(SELECT id FROM dateplots_descriptions where codename="xrd_chiller_temperature") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <color>#FF0000</color>
+      <data_channel>rasppi21:sputterchamber_chiller_temperature</data_channel>
+      <label>Sputterchamber Temperature</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_sputterchamber where type=(SELECT id FROM dateplots_descriptions where codename="sputterchamber_chiller_temperature") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <figure id="chiller pressure">
+    <title>Chiller Pressure [Bar]</title>
+    <grid type="[int]">1, 1</grid>
+    <plot>
+      <color>#0000FF</color>
+      <data_channel>rasppi57:thetaprobe_chiller_pressure</data_channel>
+      <label>Thetaprobe Pressure</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_thetaprobe where type=(SELECT id FROM dateplots_descriptions where codename="thetaprobe_chiller_pressure") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <color>#00FF00</color>
+      <data_channel>rasppi60:xrd_chiller_pressure</data_channel>
+      <label>XRD Pressure</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_xrd where type=(SELECT id FROM dateplots_descriptions where codename="xrd_chiller_pressure") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <color>#FF0000</color>
+      <data_channel>rasppi21:sputterchamber_chiller_pressure</data_channel>
+      <label>Sputterchamber Pressure</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_sputterchamber where type=(SELECT id FROM dateplots_descriptions where codename="sputterchamber_chiller_pressure") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <figure id="ventilation pressure">
+    <title>Ventilation Pressure [Pa]</title>
+    <grid type="[int]">1, 2</grid>
+    <line_width type="int">3</line_width>
+    <plot>
+      <data_channel>rasppi66:hall_ventilation_pressure</data_channel>
+      <label table="values" position="5">Ventilation Pressure</label>
+      <unit>Pa</unit>
+      <color>#009999</color>
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where type=(SELECT id FROM dateplots_descriptions where codename="hall_ventilation_pressure") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <figure id="ups">
+    <title>kVA [kW]</title>
+    <grid type="[int]">2, 0</grid>
+    <plot>
+      <color>#FFFFFF</color>
+      <data_channel>rasppi14:b312_ups_kVAPh1</data_channel>
+      <label>kVA / Ph1</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_ups_b312 where type=(SELECT id FROM dateplots_descriptions where codename="b312_ups_kVAPh1") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <color>#0000FF</color>
+      <data_channel>rasppi14:b312_ups_kVAPh2</data_channel>
+      <label>kVA / Ph2</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_ups_b312 where type=(SELECT id FROM dateplots_descriptions where codename="b312_ups_kVAPh2") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+    <plot>
+      <color>#FF0000</color>
+      <data_channel>rasppi14:b312_ups_kVAPh3</data_channel>
+      <label>kVA / Ph3</label>
+      <old_data_query>select unix_timestamp(time), value from dateplots_ups_b312 where type=(SELECT id FROM dateplots_descriptions where codename="b312_ups_kVAPh3") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <figure id="humidity">
+    <title>Humidity [%]</title>
+    <grid type="[int]">2, 1</grid>
+    <line_width type="int">3</line_width>
+    <plot>
+      <data_channel>rasppi66:hall_humidity</data_channel>
+      <label>Humidity</label>
+      <color>#009999</color>
+      <old_data_query>select unix_timestamp(time), value from dateplots_hall where type=(SELECT id FROM dateplots_descriptions where codename="hall_humidity") and unix_timestamp(time) > {from}</old_data_query>
+    </plot>
+  </figure>
+
+  <table id="values">
+    <grid type="[int]">2, 2</grid>
+  </table>
+
+  <defaults>
+    <size type="[int]">480, 300</size>
+    <x_window type="int">6400</x_window>
+  </defaults>
+
+</kiosk>

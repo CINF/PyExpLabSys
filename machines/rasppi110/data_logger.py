@@ -1,13 +1,13 @@
 """ Pressure data logger for XRD """
 from __future__ import print_function
 import threading
-import logging
 import time
 import PyExpLabSys.drivers.edwards_agc as EdwardsAGC
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.utilities import get_logger
 import credentials
 
 class PressureReader(threading.Thread):
@@ -43,8 +43,9 @@ class PressureReader(threading.Thread):
 
 def main():
     """ Main function """
-    logging.basicConfig(filename="logger.txt", level=logging.ERROR)
-    logging.basicConfig(level=logging.ERROR)
+    log = get_logger('pressure readout', level='debug')
+    #logging.basicConfig(filename="logger.txt", level=logging.ERROR)
+    #logging.basicConfig(level=logging.ERROR)
 
     port = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port'
     port = '/dev/ttyUSB0'
@@ -65,27 +66,43 @@ def main():
 
     socket = DateDataPullSocket('XRD Pressure', codenames, timeouts=[2.0] * len(codenames))
     socket.start()
-    live_socket = LiveSocket('XRD pressure', codenames, 2)
+    log.info('DateDataPullSocket started')
+    live_socket = LiveSocket('XRD pressure', codenames)
     live_socket.start()
+    log.info('LiveSocket started')
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_xrd',
                                     username=credentials.user,
                                     password=credentials.passwd,
                                     measurement_codenames=codenames)
     db_logger.start()
+    log.info('ContinuousDataSaver started')
 
     time.sleep(5)
-    while True:
-        time.sleep(0.25)
-        for name in codenames:
-            value = loggers[name].read_value()
-            socket.set_point_now(name, value)
-            live_socket.set_point_now(name, value)
-            if loggers[name].read_trigged():
-                print(name + ': ' + str(value))
-                db_logger.save_point_now(name, value)
-                loggers[name].clear_trigged()
 
+    try:
+        while True:
+            time.sleep(0.25)
+            for name in codenames:
+                value = loggers[name].read_value()
+                log.debug('Read codename %s value %s', name, value)
+                socket.set_point_now(name, value)
+                live_socket.set_point_now(name, value)
+                if loggers[name].read_trigged():
+                    log.debug('Saved codename %s value %s', name, value)
+                    db_logger.save_point_now(name, value)
+                    loggers[name].clear_trigged()
+    except KeyboardInterrupt:
+        log.info('Stopping everything and waiting 5 s')
+        socket.stop()
+        live_socket.stop()
+        db_logger.stop()
+        time.sleep(5)
+        log.info('Everything stopped, bye!')
+    except Exception:
+        # Unexpected exception, log it
+        log.exception('Unexpected exception during main loop')
+        raise
 
 if __name__ == '__main__':
     main()

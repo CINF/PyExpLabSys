@@ -89,6 +89,7 @@ if __name__ == '__main__':
     MS.sem_and_filament(True, 1800)
     #time.sleep(10)
     #MS.leak_search()
+
     
     MS.mass_time_scan()
     while True:
