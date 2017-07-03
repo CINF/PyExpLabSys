@@ -28,7 +28,7 @@ class qmg_422():
     def __init__(self, port='/dev/ttyS0', speed=19200):
         """ Initialize the module
         """
-        self.serial = serial.Serial(port, speed, timeout=1.0)
+        self.serial = serial.Serial(port, speed, timeout=2.0)
         self.reverse_range = False
         self.type = '422'
         self.communication_mode(computer_control=True)
@@ -93,7 +93,10 @@ class qmg_422():
                 LOGGER.info('Value of string: ' + ret)
                 time.sleep(0.5)
                 self.serial.write(chr(5))
-                ret = self.serial.readline()
+                ret = ' '
+                while not (ret[-1] == '\n'):
+                    ret += self.serial.read(1)
+                #ret = self.serial.readline()
                 ret_string = ret.strip()
                 LOGGER.info("Ascii value of last char in ret: " +
                              str(ord(ret[-1])))
@@ -287,14 +290,17 @@ class qmg_422():
         """ Read a single sample from the device """
         samples = 0
         while samples == 0:
-            status = self.comm('MBH')
-            LOGGER.info(status)
-            status = status.split(',')
             try:
+                status = self.comm('MBH')
+            except:
+                LOGGER.error('Serial timeout, continuing measurement')
+            LOGGER.info('Status: ' + status)
+            try:
+                status = status.split(',')
                 samples = int(status[3])
             except:
                 LOGGER.warn('Could not read status, continuing measurement')
-            time.sleep(0.05)
+            #time.sleep(0.05)
         try:
             value = self.comm('MDB')
         except:
@@ -325,7 +331,7 @@ class qmg_422():
         if amp_range == 0:
             self.comm('AMO, 1')  #Auto range with lower limit
             # TODO: Lower limit should be read from config file
-            self.comm('ARL, -8') # Lower auto range level
+            self.comm('ARL, -11') # Lower auto range level
         else:
             self.comm('AMO, 0')  #Fix range
             self.comm('ARA, ' + str(self.actual_range(amp_range)))
@@ -341,10 +347,19 @@ class qmg_422():
 
     def measurement_running(self):
         """ Check if a measurement is running """
-        status = self.comm('MBH')
-        status = status.split(',')
-        running = int(status[0])
-        return_val = running == 0
+        error = 0
+        while error < 10:
+            status = self.comm('MBH')
+            status = status.split(',')
+            try:
+                running = int(status[0])
+                break
+            except ValueError:
+                error = error + 1
+        if error < 9:
+            return_val = running == 0
+        else:
+            return_val = False
         return return_val
         
     def waiting_samples(self):
@@ -373,7 +388,7 @@ class qmg_422():
             13: 10,
             14: 20,
             15: 60} # unit: [s/amu]
-        speed = 10
+        speed = 9
         try:
             total_time = scan_width * speed_list[speed]
         except:
@@ -382,7 +397,7 @@ class qmg_422():
         if amp_range == 0:
             self.comm('AMO, 1')  #Auto range with lower limit
             # TODO: Lower limit should be read from config file
-            self.comm('ARL, -8') # Lower auto range level
+            self.comm('ARL, -11') # Lower auto range level
         else:
             self.comm('AMO, 0')  #Fix range
             self.comm('ARA, ' + str(self.actual_range(amp_range)))
@@ -392,9 +407,9 @@ class qmg_422():
         self.comm('DSE ,0') #Use default SEM voltage
         self.comm('DTY ,1') #Use SEM for ion detection
         self.comm('SDT ,1') #Use SEM for ion detection
-        self.comm('MRE ,15') #Resolve peak
+        self.comm('MRE ,1') #Resolve peak
         self.comm('MMO, 0') #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST, 0') #Steps 0: 1: 2: 64/amu
+        self.comm('MST, 1') #Steps 0: 1: 2: 64/amu
         self.comm('MSD, ' + str(speed)) #Speed
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
