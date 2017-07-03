@@ -5,4 +5,5 @@ port = '/dev/ttyS0'
 username = 'sniffer'
 chamber  = 'sniffer'
 #chamber  = 'dummy'
-reverse_range = True
+reverse_range = False
+name = 'sniffer'
