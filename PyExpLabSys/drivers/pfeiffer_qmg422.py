@@ -13,18 +13,16 @@ electronics. The qme-125 has many limitations compared to the qme-???
 and these limitations are not always properly expressed in the code
 or the output of the module
 """
-
-import serial
 import time
 import logging
+import serial
 
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
 
-class qmg_422():
-    """ The actual driver class.
-    """ 
+class qmg_422(object):
+    """ The actual driver class.  """
     def __init__(self, port='/dev/ttyS0', speed=19200):
         """ Initialize the module
         """
@@ -35,7 +33,7 @@ class qmg_422():
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer
-        
+
         Implements the low-level protocol for RS-232 communication with the
         instrument. High-level protocol can be implemented using this as a
         helper
@@ -55,7 +53,7 @@ class qmg_422():
             if n > 0: #Skip characters that are currently waiting in line
                 debug_info = self.serial.read(n)
                 LOGGER.debug("Elements not read: " + str(n) + ": Contains: " + debug_info)
-            
+
             ret = " "
             error_counter = 0
             while not ret[0] == chr(6):
@@ -89,17 +87,17 @@ class qmg_422():
             else:
                 LOGGER.info("Wrong line termination")
                 LOGGER.info("Ascii value of last char in ret: "
-                             + str(ord(ret[-1])))
+                            + str(ord(ret[-1])))
                 LOGGER.info('Value of string: ' + ret)
                 time.sleep(0.5)
                 self.serial.write(chr(5))
                 ret = ' '
-                while not (ret[-1] == '\n'):
+                while not ret[-1] == '\n':
                     ret += self.serial.read(1)
                 #ret = self.serial.readline()
                 ret_string = ret.strip()
                 LOGGER.info("Ascii value of last char in ret: " +
-                             str(ord(ret[-1])))
+                            str(ord(ret[-1])))
                 LOGGER.info('Value of string: ' + ret)
                 LOGGER.info('Returning: ' + ret_string)
                 done = True
@@ -108,7 +106,7 @@ class qmg_422():
 
     def communication_mode(self, computer_control=False):
         """ Returns and sets the communication mode.
-        
+
         :param computer_control: Activates ASCII communication with the device
         :type computer_control: bool
         :return: The current communication mode
@@ -135,7 +133,7 @@ class qmg_422():
 
     def simulation(self):
         """ Chekcs wheter the instruments returns real or simulated data
-        
+
         :return: Message telling whether the device is in simulation mode
         :rtype: str
         """
@@ -247,12 +245,11 @@ class qmg_422():
                 ret_string = self.comm('SDT ,0')
         else:
             ret_string = self.comm('SDT')
-        
+
         if int(ret_string) > 0:
             detector = "SEM"
         else:
             detector = "Faraday Cup"
-        
         return detector
 
 
@@ -294,7 +291,7 @@ class qmg_422():
                 status = self.comm('MBH')
             except:
                 LOGGER.error('Serial timeout, continuing measurement')
-            LOGGER.info('Status: ' + status)
+            LOGGER.info('Status: ' + str(status))
             try:
                 status = status.split(',')
                 samples = int(status[3])
@@ -361,7 +358,7 @@ class qmg_422():
         else:
             return_val = False
         return return_val
-        
+
     def waiting_samples(self):
         """ Return number of waiting samples """
         header = self.comm('MBH')

@@ -1,8 +1,9 @@
-""" Mass spec program for Volvo """
+""" Mass spec program """
 import os
 import sys
 import time
 import Queue
+import SocketServer
 import PyExpLabSys.common.database_saver as database_saver
 import PyExpLabSys.drivers.pfeiffer_qmg420 as qmg420
 import PyExpLabSys.drivers.pfeiffer_qmg422 as qmg422
@@ -10,12 +11,11 @@ import PyExpLabSys.apps.qms.qms as ms
 import PyExpLabSys.apps.qms.qmg_status_output as qmg_status_output
 import PyExpLabSys.apps.qms.qmg_meta_channels as qmg_meta_channels
 from PyExpLabSys.common.sockets import LiveSocket
-from PyExpLabSys.common.sockets import DataPushSocket
-from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
+SocketServer.UDPServer.allow_reuse_address = True
 
 LOGGER = get_logger('Mass Spec', level='info', file_log=True,
                     file_name='qms.txt', terminal_log=False)
@@ -24,7 +24,8 @@ class MassSpec(object):
     """ User interface to mass spec code """
     def __init__(self):
         sql_queue = Queue.Queue()
-        self.data_saver = database_saver.SqlSaver(settings.username, settings.username, sql_queue)
+        self.data_saver = database_saver.SqlSaver(settings.username,
+                                                  settings.username, sql_queue)
         self.data_saver.start()
         if settings.qmg == '420':
             self.qmg = qmg420.qmg_420(settings.port)
@@ -67,8 +68,8 @@ class MassSpec(object):
         """ Perform a mass-time scan """
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         qms_channel_list = self.qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
-                                                     sys.argv[1] + '/channel_lists/' +
-                                                     channel_list + '.txt')
+                                                         sys.argv[1] + '/channel_lists/' +
+                                                         channel_list + '.txt')
         meta_udp = qmg_meta_channels.udp_meta_channel(self.qms, timestamp, qms_channel_list, 5)
         meta_udp.daemon = True
         meta_udp.start()
@@ -80,19 +81,13 @@ class MassSpec(object):
         time.sleep(1)
 
 if __name__ == '__main__':
-    #as recommended by an error message, 17E30:
-    print 'yes, you\'re running the script you think you are.'
-    import SocketServer
-    SocketServer.UDPServer.allow_reuse_address = True
-
     MS = MassSpec()
     MS.sem_and_filament(True, 1800)
     #time.sleep(10)
     #MS.leak_search()
 
-    
+
     MS.mass_time_scan()
     while True:
         MS.mass_scan(0, 50, '17F27_Nik1', amp_range=0)
         time.sleep(1800)
-
