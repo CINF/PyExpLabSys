@@ -207,7 +207,7 @@ class QMS(object):
         while self.stop == False:
             self.qmg.set_channel(1)
             self.qmg.start_measurement()
-            time.sleep(0.1)
+            #time.sleep(0.01)
             for channel in range(1, number_of_channels + 1):
                 self.measurement_runtime = time.time()-start_time
                 value = self.qmg.get_single_sample()
@@ -242,8 +242,8 @@ class QMS(object):
                     self.livesocket.set_point_now('qms-value', value)
                 if no_save is False:
                     self.sqlqueue.put((query, None))
-                time.sleep(0.25)
-            time.sleep(0.1)
+                #time.sleep(0.25)
+            #time.sleep(0.05)
         self.operating_mode = "Idling"
 
     def mass_scan(self, first_mass=0, scan_width=50,
