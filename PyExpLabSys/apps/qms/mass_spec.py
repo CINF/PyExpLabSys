@@ -12,13 +12,18 @@ import PyExpLabSys.apps.qms.qmg_status_output as qmg_status_output
 import PyExpLabSys.apps.qms.qmg_meta_channels as qmg_meta_channels
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.utilities import activate_library_logging
 BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
 SocketServer.UDPServer.allow_reuse_address = True
 
 LOGGER = get_logger('Mass Spec', level='info', file_log=True,
-                    file_name='qms.txt', terminal_log=False)
+                    file_name='qms.txt', terminal_log=False,
+                    email_on_warnings=False, email_on_errors=False)
+
+activate_library_logging('PyExpLabSys.drivers.pfeiffer_qmg422', logger_to_inherit_from=LOGGER)
+activate_library_logging('PyExpLabSys.apps.qms.qms', logger_to_inherit_from=LOGGER)
 
 class MassSpec(object):
     """ User interface to mass spec code """
