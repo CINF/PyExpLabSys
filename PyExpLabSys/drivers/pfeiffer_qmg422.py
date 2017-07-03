@@ -290,6 +290,7 @@ class qmg_422(object):
             try:
                 status = self.comm('MBH')
             except:
+                status = 'Error'
                 LOGGER.error('Serial timeout, continuing measurement')
             LOGGER.info('Status: ' + str(status))
             try:
