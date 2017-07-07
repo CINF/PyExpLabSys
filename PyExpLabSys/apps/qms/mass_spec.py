@@ -1,9 +1,12 @@
 """ Mass spec program """
+from __future__ import print_function
 import os
 import sys
 import time
-import Queue
-import SocketServer
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 import PyExpLabSys.common.database_saver as database_saver
 import PyExpLabSys.drivers.pfeiffer_qmg420 as qmg420
 import PyExpLabSys.drivers.pfeiffer_qmg422 as qmg422
@@ -13,10 +16,11 @@ import PyExpLabSys.apps.qms.qmg_meta_channels as qmg_meta_channels
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.utilities import activate_library_logging
+from PyExpLabSys.common.supported_versions import python2_and_3
 BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=F0401
-SocketServer.UDPServer.allow_reuse_address = True
+python2_and_3(__file__)
 
 LOGGER = get_logger('Mass Spec', level='info', file_log=True,
                     file_name='qms.txt', terminal_log=False,
@@ -28,14 +32,14 @@ activate_library_logging('PyExpLabSys.apps.qms.qms', logger_to_inherit_from=LOGG
 class MassSpec(object):
     """ User interface to mass spec code """
     def __init__(self):
-        sql_queue = Queue.Queue()
+        sql_queue = queue.Queue()
         self.data_saver = database_saver.SqlSaver(settings.username,
                                                   settings.username, sql_queue)
         self.data_saver.start()
         if settings.qmg == '420':
             self.qmg = qmg420.qmg_420(settings.port)
         if settings.qmg == '422':
-            print settings.port
+            print(settings.port)
             self.qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
 
         livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'])
@@ -87,12 +91,12 @@ class MassSpec(object):
 
 if __name__ == '__main__':
     MS = MassSpec()
-    MS.sem_and_filament(True, 1800)
+    #MS.sem_and_filament(True, 1800)
     #time.sleep(10)
     #MS.leak_search()
 
-
     MS.mass_time_scan()
-    while True:
-        MS.mass_scan(0, 50, '17F27_Nik1', amp_range=0)
-        time.sleep(1800)
+    #MS.mass_scan(0, 50, 'Background scan', amp_range=0)
+    #MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
+    #MS.mass_scan(0, 50, 'Background scan -9', amp_range=-9)
+    #MS.mass_scan(0, 50, 'Background scan -7', amp_range=-7)

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import serial
 import time
 import logging
@@ -144,7 +145,7 @@ class qmg_420():
 
     def read_voltages(self):
         """ Read the voltages on the lens system """
-        print 'Not possible on this QMG model'
+        print('Not possible on this QMG model')
 
     def set_channel(self, channel):
         """ Set the active measurement channel """

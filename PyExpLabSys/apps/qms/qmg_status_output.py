@@ -1,6 +1,8 @@
 import threading
 import curses
 import time
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class qms_status_output(threading.Thread):
 

@@ -1,9 +1,14 @@
 # pylint: disable=E1101
 """ Mass Spec Main program """
-import Queue
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 import time
 import logging
 import MySQLdb
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -17,7 +22,7 @@ class QMS(object):
         if not sqlqueue is None:
             self.sqlqueue = sqlqueue
         else: #We make a dummy queue to make the program work
-            self.sqlqueue = Queue.Queue()
+            self.sqlqueue = queue.Queue()
         self.operating_mode = "Idling"
         self.current_action = 'Idling'
         self.message = ''
@@ -135,7 +140,7 @@ class QMS(object):
                     params[j] = params[j].strip()
                 label = params[params.index('masslabel') + 1]
                 speed = int(params[params.index('speed') + 1])
-                mass = params[params.index('mass') + 1]
+                mass = float(params[params.index('mass') + 1])
                 amp_range = int(params[params.index('amp_range') + 1])
                 channel_list['ms'][ms_count] = {'masslabel':label, 'speed':speed,
                                                 'mass':mass, 'amp_range':amp_range}
@@ -277,7 +282,7 @@ class QMS(object):
         query += ' set measurement = ' + str(sql_id) + ', x = '
         self.current_action = 'Downloading samples from device'
         j = 0
-        for i in range(0, number_of_samples / 100):
+        for i in range(0, int(number_of_samples / 100)):
             self.measurement_runtime = time.time()-start_time
             samples = self.qmg.get_multiple_samples(100)
             for i in range(0, len(samples)):

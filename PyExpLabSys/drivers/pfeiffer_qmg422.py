@@ -54,7 +54,7 @@ class qmg_422(object):
 
             n = self.serial.inWaiting()
             if n > 0: #Skip characters that are currently waiting in line
-                debug_info = self.serial.read(n)
+                debug_info = self.serial.read(n).decode()
                 LOGGER.debug("Elements not read: " + str(n) + ": Contains: " + debug_info)
 
             ret = " "

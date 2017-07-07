@@ -4,6 +4,8 @@ import threading
 import time
 import socket
 import logging
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -63,9 +65,9 @@ class udp_meta_channel(threading.Thread):
                 sock.settimeout(0.2)
                 LOGGER.debug('Meta command: ' + channel['cmd'])
                 try:
-                    sock.sendto(channel['cmd'], (channel['host'], port))
+                    sock.sendto(channel['cmd'].encode('ascii'), (channel['host'], port))
                     received = sock.recv(1024)
-                    received = received.strip()
+                    received = received.strip().decode()
                 except socket.timeout:
                     received = ""
                 LOGGER.debug('Meta recieve: ' + received)
