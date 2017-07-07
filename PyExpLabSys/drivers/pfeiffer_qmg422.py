@@ -13,9 +13,12 @@ electronics. The qme-125 has many limitations compared to the qme-???
 and these limitations are not always properly expressed in the code
 or the output of the module
 """
+from __future__ import print_function
 import time
 import logging
 import serial
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -58,9 +61,12 @@ class qmg_422(object):
             error_counter = 0
             while not ret[0] == chr(6):
                 error_counter += 1
-                self.serial.write(command + '\r')
-                ret = self.serial.readline()
+                command_text = command + '\r'
+                LOGGER.debug('Command text: ' + command_text)
+                self.serial.write(command_text.encode('ascii'))
+                ret = self.serial.readline().decode()
                 LOGGER.debug("Debug: Error counter: " + str(error_counter))
+                LOGGER.debug("ret: " + str(ord(ret[0])))
                 LOGGER.debug("Debug! In waiting: " + str(n))
 
                 if error_counter == 3:
@@ -68,13 +74,13 @@ class qmg_422(object):
                     LOGGER.warning(error)
                 if error_counter == 10:
                     LOGGER.error("Communication error: " + str(error_counter))
-                if error_counter > 50:
+                if error_counter > 11:
                     LOGGER.error("Communication error! Quit program!")
                     quit()
 
             #We are now quite sure the instrument is ready to give back data
-            self.serial.write(chr(5))
-            ret = self.serial.readline()
+            self.serial.write(chr(5).encode('ascii'))
+            ret = self.serial.readline().decode()
 
             LOGGER.debug("Number in waiting after enq: " + str(n))
             LOGGER.debug("Return value after enq:" + ret)
@@ -255,15 +261,15 @@ class qmg_422(object):
 
     def read_voltages(self):
         """ Read the qme-voltages """
-        print "V01: " + self.comm('VO1') #0..150,   1V steps
-        print "V02: " + self.comm('VO2') #0..125,   0.5V steps
-        print "V03: " + self.comm('VO3') #-30..30,  0.25V steps
-        print "V04: " + self.comm('VO4') #0..60,    0.25V steps
-        print "V05: " + self.comm('VO5') #0..450,   2V steps
-        print "V06: " + self.comm('VO6') #0..450,   2V steps
-        print "V07: " + self.comm('VO7') #0..250,   1V steps
-        print "V08: " + self.comm('VO8') #-125..125,1V steps
-        print "V09: " + self.comm('VO9') #0..60    ,0.25V steps
+        print("V01: " + self.comm('VO1')) #0..150,   1V steps
+        print("V02: " + self.comm('VO2')) #0..125,   0.5V steps
+        print("V03: " + self.comm('VO3')) #-30..30,  0.25V steps
+        print("V04: " + self.comm('VO4')) #0..60,    0.25V steps
+        print("V05: " + self.comm('VO5')) #0..450,   2V steps
+        print("V06: " + self.comm('VO6')) #0..450,   2V steps
+        print("V07: " + self.comm('VO7')) #0..250,   1V steps
+        print("V08: " + self.comm('VO8')) #-125..125,1V steps
+        print("V09: " + self.comm('VO9')) #0..60    ,0.25V steps
 
     def start_measurement(self):
         """ Start the measurement """
@@ -423,16 +429,17 @@ class qmg_422(object):
 
 if __name__ == '__main__':
     qmg = qmg_422()
-    print qmg.communication_mode(computer_control=True)
-    print qmg.read_voltages()
-    print qmg.detector_status()
-    print qmg.comm('SMR')
-    print '---'
-    print 'DTY: ' + qmg.comm('DTY') # Signal source, 0: Faraday, 1: SEM
-    print 'DSE: ' + qmg.comm('SHV') # SEM Voltage
-    print 'ECU: ' + qmg.comm('ECU')
-    print 'SEM: ' + qmg.comm('SEM') # SEM Voltage
-    print 'SQA: ' + qmg.comm('SQA') # Type of analyzer, 0: 125, 1: 400, 4:200
-    print 'SMR: ' + qmg.comm('SMR') # Mass-range, this needs to go in a config-file
-    print 'SDT: ' + qmg.comm('SDT') # Detector type
-    print 'SIT: ' + qmg.comm('SIT') # Ion source
+    print(qmg.communication_mode(computer_control=True))
+    print(qmg.read_voltages())
+    print(qmg.detector_status())
+    print(qmg.comm('SMR'))
+    print('---')
+    print('DTY: ' + qmg.comm('DTY')) # Signal source, 0: Faraday, 1: SEM
+    print('DSE: ' + qmg.comm('SHV')) # SEM Voltage
+    print('ECU: ' + qmg.comm('ECU'))
+    print('SEM: ' + qmg.comm('SEM')) # SEM Voltage
+    print('SQA: ' + qmg.comm('SQA')) # Type of analyzer, 0: 125, 1: 400, 4:200
+    print('SMR: ' + qmg.comm('SMR')) # Mass-range, this needs to go in a config-file
+    print('SDT: ' + qmg.comm('SDT')) # Detector type
+    print('SIT: ' + qmg.comm('SIT')) # Ion source
+
