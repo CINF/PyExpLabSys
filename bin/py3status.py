@@ -65,6 +65,7 @@ def analyze_files(files):
     for filepath in files:
         # Look throgh the file and look for python 3 support and count lines
         python3_compat = False
+        line_number = 0
         with codecs.open(filepath, encoding='utf-8') as file_:
             for line_number, line in enumerate(file_, start=1):
                 if line.startswith('python2_and_3(') or\
@@ -100,11 +101,14 @@ def main():
     total_line_count, python3_line_count, non_python_3_files = analyze_files(python_files)
 
     # Print out stats of black sheeps
+    print("Non Python 3 compatible files")
     for filepath, line_num in sorted(non_python_3_files.items(), key=itemgetter(1)):
         print('{: <4} {}'.format(line_num, filepath))
+    print('{: <4} {}'.format(sum(non_python_3_files.values()), "Total"))
 
     # Print out totals
     print('\n{} out {} lines is Python 3 compatible ({:.1%})'.format(
         python3_line_count, total_line_count, python3_line_count / total_line_count))
+
 
 main()
