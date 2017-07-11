@@ -196,7 +196,7 @@ class PVCCommon(ModbusClient):
 
         Raises:
             KeyError: If the requested field_name is unknown
-            
+
         """
         address, convertion_function, _ = self.fields[field_name]
         raw = self._read_bytes(address)
@@ -270,7 +270,7 @@ class PVCCommon(ModbusClient):
             message = '\'{}\' object has no attribute {}'.format(self.__class__.__name__,
                                                                  attrname)
             raise AttributeError(message)
-        
+
 
 class PVCi(PVCCommon):
     """Driver for the PVCi device
@@ -300,7 +300,7 @@ class PVCi(PVCCommon):
             'slot_b_value_2': (0x96, bytes_to_float, None),
         })
 
-    
+
 ### Convertion Functions ###
 ############################
 
@@ -336,7 +336,7 @@ def bytes_to_float(bytes_):
 
 def bytes_to_slot_id(bytes_):
     """Convert 4 bytes to the slot ID"""
-    
+
     id_byte = bytes_[::-1][3]
     raise_if_not_set(byte_to_bits(id_byte), 0, 'slot_id_a')
     slot_id = SLOT_IDS[ord(id_byte) % 128]
@@ -361,7 +361,7 @@ def bytes_to_status(bytes_, status_type):
 
     # The 3 bit indicates whether status is used, sort out the rest
     all_states = [state for state in all_states if state[3]]
-    
+
     states = {}
     for state_num, state_bits in enumerate(all_states, start=1):  # Enumeration starts at 1
         # The first 3 bits has 3 different meanings: on, inhibit and override
@@ -421,7 +421,7 @@ def ion_gauge_status(bytes_, controller_type=None):
     for bit_number, value in zip([7, 6], ['rising', 'falling']):
         if bits[bit_number]:
             status['ion_gauge_trend'] = value
-        
+
     # Current ion gauge emission/degas setting
     if controller_type == 'pvci':
         byte = next(bytes_)
@@ -475,18 +475,18 @@ PVCI_ION_GAUGE_STATUSSES = {
 }
 
 UNIT_TYPE = {
-        (0x45, 0x58): 'PVCX',
-        (0x45, 0x44): 'PVCi',
-        (0x45, 0x32): 'PVCiDuo',
-    }
+    (0x45, 0x58): 'PVCX',
+    (0x45, 0x44): 'PVCi',
+    (0x45, 0x32): 'PVCiDuo',
+}
 
 SLOT_IDS = {
     0: 'empty',
     1: 'ion gauge (internally set)',
-    2: 'V module, VG pirani gauge head', 
-    3: 'K module, type K thermocouple', 
-    4: 'E module, M and Thyracont Pirani gauge head', 
-    5: 'U module, universal input range', 
+    2: 'V module, VG pirani gauge head',
+    3: 'K module, type K thermocouple',
+    4: 'E module, M and Thyracont Pirani gauge head',
+    5: 'U module, universal input range',
 }
 
 
@@ -511,8 +511,8 @@ def test():
             print(pvci.ion_gauge_1_status)
             for n in range(20):
                 print('Pressure {:.2e}  Setpoint: {:.2f}  Actual temp: {:.2f}'.format(
-                    pvci.ion_gauge_1_pressure, pvci.bake_out_setpoint, pvci.slot_b_value_1)
-                )
+                    pvci.ion_gauge_1_pressure, pvci.bake_out_setpoint, pvci.slot_b_value_1
+                ))
 
     except KeyboardInterrupt:
         print('closing')
@@ -521,4 +521,3 @@ def test():
 
 if __name__ == "__main__":
     test()
-        
