@@ -41,7 +41,7 @@ class qms_status_output(threading.Thread):
                 self.screen.addstr(7, 1, 'QMS-channels')
                 for i in range(1, len(self.qms.channel_list) + 1):
                     ch = self.qms.channel_list[i]
-                    self.screen.addstr(8+i, 1, ch['masslabel'] + ': ' + ch['value'] + '    ')
+                    self.screen.addstr(8+i, 1, ch['masslabel'] + ': ' + ch['value'] + '                 ')
             
             if self.qms.operating_mode == 'Mass-scan':
                 self.screen.addstr(2, 1, self.qms.message)

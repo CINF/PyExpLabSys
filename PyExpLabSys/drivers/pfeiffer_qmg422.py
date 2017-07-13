@@ -273,6 +273,9 @@ class qmg_422(object):
 
     def start_measurement(self):
         """ Start the measurement """
+        LOGGER.error('QMS Errors, ERR: ' + self.comm('ERR'))
+        LOGGER.error('QMS Warnings, EWN: ' + self.comm('EWN'))
+        LOGGER.error('QMS State, ESQ: ' + self.comm('ESQ'))
         self.comm('CRU ,2')
 
     def actual_range(self, amp_range):
@@ -292,10 +295,11 @@ class qmg_422(object):
     def get_single_sample(self):
         """ Read a single sample from the device """
         samples = 0
-        while samples == 0:
+        while (samples == 0):
             try:
                 status = self.comm('MBH')
             except:
+                samples = samples - 1
                 status = 'Error'
                 LOGGER.error('Serial timeout, continuing measurement')
             LOGGER.info('Status: ' + str(status))
@@ -304,13 +308,23 @@ class qmg_422(object):
                 samples = int(status[3])
             except:
                 LOGGER.warn('Could not read status, continuing measurement')
-            #time.sleep(0.05)
-        try:
-            value = self.comm('MDB')
-        except:
-            LOGGER.error('Error in MDB command')
+                samples = samples - 1
+            if samples < -30:
+                usefull_value = False
+                value = -1
+                break
+        if samples > 0:
+            try:
+                value = self.comm('MDB')
+                usefull_value = True
+            except:
+                LOGGER.error('Error in MDB command')
+                value = -1
+                usefull_value = False
+        else:
             value = -1
-        return value
+            usefull_value = False
+        return value, usefull_value
 
     def get_multiple_samples(self, number):
         """ Read multiple samples from the device """

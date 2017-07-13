@@ -24,7 +24,8 @@ python2_and_3(__file__)
 
 LOGGER = get_logger('Mass Spec', level='info', file_log=True,
                     file_name='qms.txt', terminal_log=False,
-                    email_on_warnings=False, email_on_errors=False)
+                    email_on_warnings=False, email_on_errors=False,
+                    file_max_bytes=104857600, file_backup_count=5)
 
 activate_library_logging('PyExpLabSys.drivers.pfeiffer_qmg422', logger_to_inherit_from=LOGGER)
 activate_library_logging('PyExpLabSys.apps.qms.qms', logger_to_inherit_from=LOGGER)

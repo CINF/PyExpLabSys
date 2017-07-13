@@ -209,12 +209,17 @@ class QMS(object):
         self.current_timestamp = ids[0]
 
         while self.stop is False:
+            LOGGER.info('start measurement run')
             self.qmg.set_channel(1)
+            scan_start_time = time.time()
             self.qmg.start_measurement()
             #time.sleep(0.01)
+            save_values = True # Will be set to false if we do not trust values for this scan
             for channel in range(1, number_of_channels + 1):
                 self.measurement_runtime = time.time()-start_time
-                value = self.qmg.get_single_sample()
+                value, usefull = self.qmg.get_single_sample()
+                if usefull is False:
+                    save_values = False
                 #self.channel_list[channel]['value'] = value
                 sqltime = str((time.time() - start_time) * 1000)
                 if value == "":
@@ -244,10 +249,11 @@ class QMS(object):
                 self.channel_list[channel]['value'] = str(value)
                 if self.livesocket is not None:
                     self.livesocket.set_point_now('qms-value', value)
-                if no_save is False:
+                if no_save is False and save_values is True:
                     self.sqlqueue.put((query, None))
                 #time.sleep(0.25)
             #time.sleep(0.05)
+            LOGGER.info('Scan time: ' + str(time.time() - scan_start_time))
         self.operating_mode = "Idling"
 
     def mass_scan(self, first_mass=0, scan_width=50,
