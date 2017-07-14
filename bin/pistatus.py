@@ -40,11 +40,18 @@ from textwrap import wrap
 from functools import partial
 from subprocess import check_output
 from os.path import expanduser, join, isdir, isfile, abspath
-from os import getlogin, listdir, sep, chdir, getcwd, popen
+from os import getlogin, listdir, sep, chdir, getcwd, popen, environ
 
 if sys.version_info.major < 3:
     print("This script is Python 3 or above only")
     raise SystemExit(1)
+
+try:
+    if environ['TERM'] == 'screen':
+        print("In screen. Do not run pistatus.")
+        raise SystemExit(2)
+except KeyError:
+    pass
 
 # Terminal width
 COL = 80
