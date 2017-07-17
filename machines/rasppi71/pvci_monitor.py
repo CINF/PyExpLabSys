@@ -12,17 +12,24 @@ from PyExpLabSys.drivers.epimax import PVCi
 import credentials
 
 
+
 CODENAME_TRANSLATION = {
     'thetaprobe_main_chamber_pressure': 'ion_gauge_1_pressure',
     'thetaprobe_load_lock_roughing_pressure': 'slot_a_value_1',
     'thetaprobe_main_chamber_temperature': 'slot_b_value_1',
 }
+EXTRA_LIVE = {
+    'thetaprobe_bakeout_setpoint': ('bake_out_setpoint',),
+    'thetaprobe_bakeout_remaining': ('remaining_bake_out_time',),
+    'thetaprobe_ion_gauge_settings': ('ion_gauge_1_status', 'ion_gauge_emission_setting'),
+    }
 LOG = get_logger('pvci_monitor', level='debug')
 
 
 
 def run(pvci, live_socket, database_saver, criterium_checker):
     """Measure and log"""
+    extra_live_value_cache = {key: None for key in EXTRA_LIVE}
     while True:
         values = pvci.get_fields('common')
         LOG.debug('Measured %s', values)
@@ -32,6 +39,22 @@ def run(pvci, live_socket, database_saver, criterium_checker):
             if criterium_checker.check(codename, value):
                 database_saver.save_point_now(codename, value)
                 LOG.debug('Saved value %s for codename \'%s\'', value, codename)
+        for codename, keys in EXTRA_LIVE.items():
+            value = pvci.get_field(keys[0])
+            LOG.debug('EXTRA ' + codename + str(value))
+            for key in keys[1:]:
+                value = value[key]
+            if codename == 'thetaprobe_ion_gauge_settings':
+                value = value['emission'] + '(' + value['mode'] + ')'
+            if codename == 'thetaprobe_bakeout_remaining':
+                if pvci.get_field('bakeout_flags')['status_flags'] == ['off']:
+                    value = 'Bakeout off'
+                else:
+                    value = '{:.1f} hour(s)'.format(value)
+            if value != extra_live_value_cache[codename]:
+                live_socket.set_point_now(codename, value)
+                extra_live_value_cache[codename] = value
+                LOG.debug('SEND ' + codename + str(value))
     print(values)
 
 
@@ -41,7 +64,10 @@ def main():
                 'usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
 
     # Start live socket
-    live_socket = LiveSocket('thetaprobe_pvci', list(CODENAME_TRANSLATION.keys()))
+    live_socket = LiveSocket(
+        'thetaprobe_pvci',
+        list(CODENAME_TRANSLATION.keys()) + list(EXTRA_LIVE.keys()),
+    )
     live_socket.start()
 
     # Start database saver
