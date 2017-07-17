@@ -153,6 +153,10 @@ class PVCCommon(minimalmodbus.Instrument):
                 )
 
 
+    def close(self):
+        """Close the serial connection"""
+        self.serial.close()
+
     def _read_bytes(self, register_start, count=4):
         """Read and return `count` number of bytes starting from `register_start`
 
