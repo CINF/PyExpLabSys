@@ -108,6 +108,7 @@ class PVCCommon(minimalmodbus.Instrument):
             # Group 5
             'slot_a_id': (0x42, bytes_to_slot_id, None),
             'slot_b_id': (0x44, bytes_to_slot_id, None),
+            'bakeout_flags': (0x48, bytes_to_bakeout_flags, None),
             # Group 9
             'trip_1_7_status': (0x80, partial(bytes_to_status, status_type='trip'), None),
             'digital_input_1_2_status': (0x82,
@@ -439,6 +440,32 @@ def ion_gauge_status(bytes_, controller_type=None):
     raise ValueError('Too many bytes for gauge status')
 
 
+def bytes_to_bakeout_flags(bytes_):
+    """Returns the bakeout flags from bytes"""
+    bytes_ = reversed(bytes_)
+    status = {}
+
+    # Degas at end of bake
+    bits = byte_to_bits(next(bytes_))
+    status['degas_at_end_of_bake'] = bits[7]
+
+    # Middle two bytes not implemented
+    next(bytes_)
+    next(bytes_)
+
+    # Bakeout status
+    bits = byte_to_bits(next(bytes_))
+    status_flags = []
+    for bit_number, flag in BAKEOUT_FLAGS.items():
+        if bits[bit_number]:
+            status_flags.append(flag)
+    if len(status_flags) == 0:
+        status_flags.append('off')
+    status['status_flags'] = status_flags
+
+    return status
+
+
 ### Constants ###
 #################
 
@@ -465,6 +492,16 @@ PVCI_ION_GAUGE_STATUSSES = {
     0xD: 'IGS_EM_20W',
     0xE: 'IGS_EM_30W',
 }
+
+
+BAKEOUT_FLAGS = {
+    7: 'bake-out started',
+    6: 'bake-out is inhibited by assigned digital inputs',
+    5: 'bake-out is inhibited by ion gauge pressure',
+    4: 'bake-out is suspended',
+    3: 'bake-out output is on',
+}
+
 
 UNIT_TYPE = {
     (0x45, 0x58): 'PVCX',
