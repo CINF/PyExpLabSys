@@ -1,0 +1,2 @@
+You can force Sphinx to build all files by doing
+make html OPTS=-a
