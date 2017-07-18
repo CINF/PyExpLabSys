@@ -62,16 +62,18 @@ def single_file_description(filepath):
                 break
 
     # Extract the first line from the module comment
+    description = NO_DESCRIPTION
     with codecs.open(filepath, encoding=encoding) as file_:
         content = file_.read()
+        # Look for the earlist comment match and make sure first match will be saved
+        found_at = len(content) * 10
         for COMMENT_RE in COMMENT:
             search = COMMENT_RE.search(content)
             if search:
-                comment = search.group(1).strip()
-                description = comment.split('\n\n')[0].replace('\n', ' ')
-                break
-        else:
-            description = NO_DESCRIPTION
+                if search.start() < found_at:
+                    comment = search.group(1).strip()
+                    description = comment.split('\n\n')[0].replace('\n', ' ')
+                    found_at = search.start()
 
     return description, content
 
