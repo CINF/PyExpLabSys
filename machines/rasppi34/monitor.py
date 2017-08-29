@@ -68,9 +68,18 @@ class GasAlarmMonitor(object):
              for detector_num in self.detector_numbers}
         # trip_levels are the differences that are required to force a log
         # The levels are set to 2 * the communication resolution
-        # (1000 values / full range)
-        self.trip_levels = {detector_num: info.range * 2.0 / 1000.0 for
-                            detector_num, info in self.detector_info.items()}
+        # (1000 values over the full range)
+        # NOTE. Since we have had a lot of noise on the CO channels, we
+        # increased the level to info.range * 7.0 / 1000.0 for those
+        #self.trip_levels = {detector_num: info.range * 2.0 / 1000.0 for
+        #                    detector_num, info in self.detector_info.items()}
+        self.trip_levels = {}
+        for detector_number, info in self.detector_info.items():
+            if info.unit == "PPM":
+                self.trip_levels[detector_number] = info.range * 7.0 / 1000.0
+            else:
+                self.trip_levels[detector_number] = info.range * 2.0 / 1000.0
+
 
         # Initiate last measured values and their corresponding times
         self.detector_levels_last_values = \
@@ -113,12 +122,13 @@ class GasAlarmMonitor(object):
         # 'CO 42/43', 'H2 2 sal', 'CO 932', 'H2 932'
         # and they need to be changed to the codenames in codenames (in __init__)
 
-        first, second = identity.split(' ', 1)
-        if len(second) == 2:
-            second = '0' + second
-        identity = first + ' ' + second
+        #first, second = identity.split(' ', 1)
+        #if len(second) == 2:
+        #    second = '0' + second
+        #identity = first + ' ' + second
 
-        identity = identity.replace('2 sal', '2sal').replace(' ', '_').replace('/', '-')
+        #identity = identity.replace('2 sal', '2sal').replace(' ', '_').replace('/', '-')
+        identity = identity.replace(' ', '_').replace('/', '-')
         return 'B307_gasalarm_{}'.format(identity)
 
     def main(self):
@@ -141,8 +151,8 @@ class GasAlarmMonitor(object):
 
         ##### HACK HACK HACK FIXME There is a duplicate name error in the configuration
         # which for now we fix here in code
-        if codename == "B307_gasalarm_H2_061" and detector_num == 6:
-            codename = "B307_gasalarm_H2_059"
+        #if codename == "B307_gasalarm_H2_061" and detector_num == 6:
+        #    codename = "B307_gasalarm_H2_059"
         ##### HACK HACK HACK FIXME
 
 
