@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3"
+apt1="openssh-server emacs graphviz screen ntp python python3"
 
 # apt install packages line 2, python extensions
 #
@@ -18,7 +18,7 @@ apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3
 apt2="python-pip python-mysqldb python3-pip"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
-declare -a apt3=("libpython2.7-dev" "libpython3-dev" "python-dev" "python3-dev")
+declare -a apt3=("libpython2.7-dev" "libpython3-dev" "python-dev" "python3-dev" "libmysqlclient-dev" "libmariadbclient-dev")
 
 # packages to be installe by pip
 pippackages="minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml pylint chainmap"
@@ -201,7 +201,7 @@ fi
 
 # Install packages
 if [ $1 == "install" ] || [ $1 == "all" ];then
-    echo 
+    echo
     echobold "===> INSTALLING PACKAGES"
     echoblue "---> Updating package archive information"
 
@@ -240,6 +240,9 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     $aptgetprefix autoremove
     echoblue "---> Clear apt cache"
     $aptgetprefix clean
+
+    echoblue "---> Enable ssh by creating /boot/ssh"
+    sudo touch /boot/ssh
     echogood "+++++> DONE"
 fi
 
