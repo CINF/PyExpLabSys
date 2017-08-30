@@ -60,6 +60,7 @@ alias d=\"cd ~/PyExpLabSys/PyExpLabSys/drivers\"
 alias m=\"if [ -d ~/PyExpLabSys/machines/$HOSTNAME ];then cd ~/PyExpLabSys/machines/\$HOSTNAME; else cd ~/PyExpLabSys/machines; fi\"
 alias p=\"cd ~/PyExpLabSys/PyExpLabSys\"
 alias b=\"cd ~/PyExpLabSys/bootstrap\"
+alias s=\"screen -x\"
 "
 
 # Usage string, edit if adding another section to the script
