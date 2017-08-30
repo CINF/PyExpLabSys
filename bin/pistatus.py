@@ -251,6 +251,7 @@ def tips():
     framed(bold('tips'))
     framed(bold('===='))
     framed("To run this script use: pistatus.py")
+    framed("Open running screen with one key-letter " + bold("s"))
     framed("Navigate PyExpLabSys folders with one-letter commands: ")
     framed(" " + bold("a") + "=apps, " + bold("b") + "=bootstrap," +
            " " + bold("c") + "=common, " + bold("d") + "=drivers, ")
