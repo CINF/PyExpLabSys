@@ -459,8 +459,8 @@ def bytes_to_bakeout_flags(bytes_):
     for bit_number, flag in BAKEOUT_FLAGS.items():
         if bits[bit_number]:
             status_flags.append(flag)
-    if len(status_flags) == 0:
-        status_flags.append('off')
+    #if len(status_flags) == 0:
+    #    status_flags.append('off')
     status['status_flags'] = status_flags
 
     return status
