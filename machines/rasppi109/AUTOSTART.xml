@@ -3,6 +3,6 @@
   <session>
     <startdelay>15</startdelay>
     <command>python3 /home/pi/PyExpLabSys/machines/rasppi109/datalogger.py</command>
-    <name>Rasppi103 Datalogger</name>
+    <name>Rasppi109 Datalogger</name>
   </session>
 </autostart>
