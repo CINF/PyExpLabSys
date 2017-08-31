@@ -64,7 +64,6 @@ def uptime(hostname, port, username='pi', password='cinf123'):
             received = sock.recv(4096)
             status = json.loads(received)
             system_status = status['system_status']
-            #return_value['sytem_status'] = system_status
             uptime_value = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
             load = str(system_status['load_average']['15m'])
             return_value['up'] = uptime_value
@@ -72,12 +71,21 @@ def uptime(hostname, port, username='pi', password='cinf123'):
         except:
             return_value['up'] = 'Down'
             return_value['load'] = 'Down'
+
+        try:
+            if system_status['purpose']['id'] is not None:
+                return_value['location'] = system_status['purpose']['id']
+                return_value['purpose'] = system_status['purpose']['purpose']
+        except (KeyError, UnboundLocalError):
+            pass
+            
         try:
             model = system_status['rpi_model']
             host_temperature = system_status['rpi_temperature']
         except (KeyError, UnboundLocalError):
             model = ''
             host_temperature = ''
+
         try:
             python_version = system_status['python_version']
         except (KeyError, UnboundLocalError):
@@ -138,9 +146,12 @@ class CheckHost(threading.Thread):
             uptime_val['hostname'] = host[1]
             uptime_val['up_or_down'] = host_is_up
             uptime_val['port'] = host[2]
-            uptime_val['location'] = host[3]
-            uptime_val['purpose'] = host[4]
+            if not 'location' in uptime_val:
+                uptime_val['location'] = '<i>' + host[3] + '</i>'
+                uptime_val['purpose'] = '<i>' + host[4] + '</i>'
             self.results.put(uptime_val)
+            print('host: ' + host[1] + ': ' + str(uptime_val))
+
             self.hosts.task_done()
 
 def main():
@@ -175,13 +186,10 @@ def main():
 
     status_string = ""
     for host in sorted_results.values():
-        print(host)
         if host['up_or_down']:
             query = ("update host_checker set attr = '" +
                      json.dumps(host) + "' where id = " + str(host['db_id']))
-            print(query)
             cursor.execute(query)
-    print(status_string)
 
 if __name__ == "__main__":
     main()
