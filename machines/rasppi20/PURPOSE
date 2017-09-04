@@ -1,0 +1,4 @@
+id: Omicron
+purpose: Chiller
+
+Reads the flow, temperature, pressure and setpoint of the chiller.
