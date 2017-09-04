@@ -1,1 +1,4 @@
-This Raspberry Pi logs chiller values from the chiller that is attached to the xrd
+id: XRDs
+purpose: Chiller
+
+Reads the flow, temperature, pressure and setpoint of the chiller.
