@@ -1,27 +1,27 @@
+# pylint: disable=E1101, E0611
 #! /usr/bin/python
 """QtDesigner test"""
-
+from __future__ import print_function
 import sys
 import time
-import random
 import threading
-import socket 
-import json
+import socket
 import pickle
-import numpy as np
 from PyQt4 import Qt, QtCore
 from PyQt4.QtGui import QWidget
-
-import sys
-sys.path.append('/home/cinf/PyExpLabSys/PyExpLabSys/drivers')
-sys.path.append('/home/cinf/PyExpLabSys/')
 from temperature_controller_gui import Ui_temp_control
 from PyExpLabSys.common.plotters import DataPlotter
+from PyExpLabSys.common.supported_versions import python2_only
+import temperature_controller_config as config
+python2_only(__file__)
+
 
 class TemperatureControllerComm(threading.Thread):
+    """ Communicates with temperature controller over network """
     def __init__(self):
         threading.Thread.__init__(self)
-        self.host = 'rasppi04'
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(0.5)
         self.running = True
         self.status = {}
         self.status['temperature'] = 0
@@ -30,17 +30,15 @@ class TemperatureControllerComm(threading.Thread):
         self.status['connected'] = False
         self.status['temp_connected'] = False
 
-    def read_param(self, param, host='rasppi47', port=9000):
+    def read_param(self, param):
         """ Read a parameter from the controller """
         data = param + '#raw'
         error = 1
         # TODO: Investigate the reason for these network errors
         while (error < 50) and (error > 0):
             time.sleep(0.1)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.settimeout(0.5)
-            sock.sendto(data, (host, port))
-            received = sock.recv(1024)
+            self.sock.sendto(data, (config.controller_hostname, config.controller_pull_port))
+            received = self.sock.recv(1024)
             try:
                 value = float(received[received.find(',') + 1:])
                 error = 0
@@ -54,13 +52,13 @@ class TemperatureControllerComm(threading.Thread):
     def run(self):
         while self.running is True:
             try:
-                self.status['temperature'] = self.read_param('T1', port=9001)
+                self.status['temperature'] = self.read_param('temperature')
                 self.status['temp_connected'] = True
             except socket.error:
                 self.status['temp_connected'] = True
             try:
                 self.status['dutycycle'] = self.read_param('dutycycle')
-                print self.status['dutycycle']
+                print(self.status['dutycycle'])
                 self.status['setpoint'] = self.read_param('setpoint')
                 self.status['connected'] = True
             except socket.error:
@@ -74,6 +72,8 @@ class SimplePlot(QWidget):
     """Simple example with a Qwt plot in a Qt GUI"""
     def __init__(self, temp_control_comp):
         super(SimplePlot, self).__init__()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(0.5)
 
         self.tcc = temp_control_comp
 
@@ -108,10 +108,10 @@ class SimplePlot(QWidget):
         # Connect signals
         QtCore.QObject.connect(self.gui.start_ramp_button,
                                QtCore.SIGNAL('clicked()'),
-                               self.on_start_ramp)        
+                               self.on_start_ramp)
         QtCore.QObject.connect(self.gui.stop_ramp_button,
                                QtCore.SIGNAL('clicked()'),
-                               self.on_stop_ramp)        
+                               self.on_stop_ramp)
         QtCore.QObject.connect(self.gui.start_button,
                                QtCore.SIGNAL('clicked()'),
                                self.on_start)
@@ -126,14 +126,13 @@ class SimplePlot(QWidget):
                                self.update_setpoint)
     def on_start(self):
         """Start button method"""
-        print 'start pressed'
+        print('start pressed')
         if not self.active:
             self.start = time.time()
             self.active = True
             # Reset plot
             for key in self.plotter.data.keys():
                 self.plotter.data[key] = []
-
             QtCore.QTimer.singleShot(0, self.plot_iteration)
 
     def update_setpoint(self):
@@ -145,13 +144,9 @@ class SimplePlot(QWidget):
             new_setpoint = str(self.tcc.status['setpoint'])
         self.gui.new_setpoint.setProperty("text", new_setpoint)
         data = 'raw_wn#setpoint:float:' + str(new_setpoint)
-        host = '10.54.7.47'
-        port = 8500
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(0.2)
-        sock.sendto(data, (host, port))
-        received = sock.recv(1024)
-        print received
+        self.sock.sendto(data, (config.controller_hostname, config.controller_push_port))
+        received = self.sock.recv(1024)
+        print(received)
 
 
     def on_start_ramp(self):
@@ -162,27 +157,20 @@ class SimplePlot(QWidget):
             self.ramp['temp'][i] = int(self.gui.temperature_ramp.item(i, 1).text())
             self.ramp['step'][i] = int(self.gui.temperature_ramp.item(i, 2).checkState()) == 2
         data = 'raw_wn#ramp:str:' +  pickle.dumps(self.ramp)
-        print data
-        host = '10.54.7.47'
-        port = 8500
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(0.2)
-        sock.sendto(data, (host, port))
-        received = sock.recv(1024)
+        print(data)
+        self.sock.sendto(data, (config.controller_hostname, config.controller_push_port))
+        received = self.sock.recv(1024)
+        print(received)
 
     def on_stop_ramp(self):
         """Start temperature ramp"""
         data = 'raw_wn#ramp:str:stop'
-        host = '10.54.7.47'
-        port = 8500
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(0.2)
-        sock.sendto(data, (host, port))
-        received = sock.recv(1024)
+        self.sock.sendto(data, (config.controller_hostname, config.controller_push_port))
+        self.sock.recv(1024)
 
     def on_stop(self):
         """Stop button method"""
-        print 'stop pressed'
+        print('stop pressed')
         self.active = False
 
     def plot_iteration(self):
@@ -202,7 +190,8 @@ class SimplePlot(QWidget):
             self.gui.setpoint.setProperty("text", '-')
         try:
             if self.tcc.status['temp_connected'] is True:
-                self.plotter.add_point('temperature', (elapsed, self.tcc.status['temperature']))
+                self.plotter.add_point('temperature',
+                                       (elapsed, self.tcc.status['temperature']))
             if self.tcc.status['connected'] is True:
                 self.plotter.add_point('setpoint', (elapsed, self.tcc.status['setpoint']))
                 self.plotter.add_point('dutycycle', (elapsed, self.tcc.status['dutycycle']))

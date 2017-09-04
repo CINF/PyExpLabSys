@@ -13,29 +13,30 @@ electronics. The qme-125 has many limitations compared to the qme-???
 and these limitations are not always properly expressed in the code
 or the output of the module
 """
-
-import serial
+from __future__ import print_function
 import time
 import logging
+import serial
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
 
-class qmg_422():
-    """ The actual driver class.
-    """ 
+class qmg_422(object):
+    """ The actual driver class.  """
     def __init__(self, port='/dev/ttyS0', speed=19200):
         """ Initialize the module
         """
-        self.serial = serial.Serial(port, speed, timeout=1.0)
+        self.serial = serial.Serial(port, speed, timeout=2.0)
         self.reverse_range = False
         self.type = '422'
         self.communication_mode(computer_control=True)
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer
-        
+
         Implements the low-level protocol for RS-232 communication with the
         instrument. High-level protocol can be implemented using this as a
         helper
@@ -53,16 +54,19 @@ class qmg_422():
 
             n = self.serial.inWaiting()
             if n > 0: #Skip characters that are currently waiting in line
-                debug_info = self.serial.read(n)
+                debug_info = self.serial.read(n).decode()
                 LOGGER.debug("Elements not read: " + str(n) + ": Contains: " + debug_info)
-            
+
             ret = " "
             error_counter = 0
             while not ret[0] == chr(6):
                 error_counter += 1
-                self.serial.write(command + '\r')
-                ret = self.serial.readline()
+                command_text = command + '\r'
+                LOGGER.debug('Command text: ' + command_text)
+                self.serial.write(command_text.encode('ascii'))
+                ret = self.serial.readline().decode()
                 LOGGER.debug("Debug: Error counter: " + str(error_counter))
+                LOGGER.debug("ret: " + str(ord(ret[0])))
                 LOGGER.debug("Debug! In waiting: " + str(n))
 
                 if error_counter == 3:
@@ -70,13 +74,13 @@ class qmg_422():
                     LOGGER.warning(error)
                 if error_counter == 10:
                     LOGGER.error("Communication error: " + str(error_counter))
-                if error_counter > 50:
+                if error_counter > 11:
                     LOGGER.error("Communication error! Quit program!")
                     quit()
 
             #We are now quite sure the instrument is ready to give back data
-            self.serial.write(chr(5))
-            ret = self.serial.readline()
+            self.serial.write(chr(5).encode('ascii'))
+            ret = self.serial.readline().decode()
 
             LOGGER.debug("Number in waiting after enq: " + str(n))
             LOGGER.debug("Return value after enq:" + ret)
@@ -89,14 +93,17 @@ class qmg_422():
             else:
                 LOGGER.info("Wrong line termination")
                 LOGGER.info("Ascii value of last char in ret: "
-                             + str(ord(ret[-1])))
+                            + str(ord(ret[-1])))
                 LOGGER.info('Value of string: ' + ret)
                 time.sleep(0.5)
                 self.serial.write(chr(5))
-                ret = self.serial.readline()
+                ret = ' '
+                while not ret[-1] == '\n':
+                    ret += self.serial.read(1)
+                #ret = self.serial.readline()
                 ret_string = ret.strip()
                 LOGGER.info("Ascii value of last char in ret: " +
-                             str(ord(ret[-1])))
+                            str(ord(ret[-1])))
                 LOGGER.info('Value of string: ' + ret)
                 LOGGER.info('Returning: ' + ret_string)
                 done = True
@@ -105,7 +112,7 @@ class qmg_422():
 
     def communication_mode(self, computer_control=False):
         """ Returns and sets the communication mode.
-        
+
         :param computer_control: Activates ASCII communication with the device
         :type computer_control: bool
         :return: The current communication mode
@@ -132,7 +139,7 @@ class qmg_422():
 
     def simulation(self):
         """ Chekcs wheter the instruments returns real or simulated data
-        
+
         :return: Message telling whether the device is in simulation mode
         :rtype: str
         """
@@ -244,29 +251,31 @@ class qmg_422():
                 ret_string = self.comm('SDT ,0')
         else:
             ret_string = self.comm('SDT')
-        
+
         if int(ret_string) > 0:
             detector = "SEM"
         else:
             detector = "Faraday Cup"
-        
         return detector
 
 
     def read_voltages(self):
         """ Read the qme-voltages """
-        print "V01: " + self.comm('VO1') #0..150,   1V steps
-        print "V02: " + self.comm('VO2') #0..125,   0.5V steps
-        print "V03: " + self.comm('VO3') #-30..30,  0.25V steps
-        print "V04: " + self.comm('VO4') #0..60,    0.25V steps
-        print "V05: " + self.comm('VO5') #0..450,   2V steps
-        print "V06: " + self.comm('VO6') #0..450,   2V steps
-        print "V07: " + self.comm('VO7') #0..250,   1V steps
-        print "V08: " + self.comm('VO8') #-125..125,1V steps
-        print "V09: " + self.comm('VO9') #0..60    ,0.25V steps
+        print("V01: " + self.comm('VO1')) #0..150,   1V steps
+        print("V02: " + self.comm('VO2')) #0..125,   0.5V steps
+        print("V03: " + self.comm('VO3')) #-30..30,  0.25V steps
+        print("V04: " + self.comm('VO4')) #0..60,    0.25V steps
+        print("V05: " + self.comm('VO5')) #0..450,   2V steps
+        print("V06: " + self.comm('VO6')) #0..450,   2V steps
+        print("V07: " + self.comm('VO7')) #0..250,   1V steps
+        print("V08: " + self.comm('VO8')) #-125..125,1V steps
+        print("V09: " + self.comm('VO9')) #0..60    ,0.25V steps
 
     def start_measurement(self):
         """ Start the measurement """
+        LOGGER.error('QMS Errors, ERR: ' + self.comm('ERR'))
+        LOGGER.error('QMS Warnings, EWN: ' + self.comm('EWN'))
+        LOGGER.error('QMS State, ESQ: ' + self.comm('ESQ'))
         self.comm('CRU ,2')
 
     def actual_range(self, amp_range):
@@ -286,21 +295,36 @@ class qmg_422():
     def get_single_sample(self):
         """ Read a single sample from the device """
         samples = 0
-        while samples == 0:
-            status = self.comm('MBH')
-            LOGGER.info(status)
-            status = status.split(',')
+        while (samples == 0):
             try:
+                status = self.comm('MBH')
+            except:
+                samples = samples - 1
+                status = 'Error'
+                LOGGER.error('Serial timeout, continuing measurement')
+            LOGGER.info('Status: ' + str(status))
+            try:
+                status = status.split(',')
                 samples = int(status[3])
             except:
                 LOGGER.warn('Could not read status, continuing measurement')
-            time.sleep(0.05)
-        try:
-            value = self.comm('MDB')
-        except:
-            LOGGER.error('Error in MDB command')
+                samples = samples - 1
+            if samples < -30:
+                usefull_value = False
+                value = -1
+                break
+        if samples > 0:
+            try:
+                value = self.comm('MDB')
+                usefull_value = True
+            except:
+                LOGGER.error('Error in MDB command')
+                value = -1
+                usefull_value = False
+        else:
             value = -1
-        return value
+            usefull_value = False
+        return value, usefull_value
 
     def get_multiple_samples(self, number):
         """ Read multiple samples from the device """
@@ -325,7 +349,7 @@ class qmg_422():
         if amp_range == 0:
             self.comm('AMO, 1')  #Auto range with lower limit
             # TODO: Lower limit should be read from config file
-            self.comm('ARL, -8') # Lower auto range level
+            self.comm('ARL, -11') # Lower auto range level
         else:
             self.comm('AMO, 0')  #Fix range
             self.comm('ARA, ' + str(self.actual_range(amp_range)))
@@ -341,12 +365,21 @@ class qmg_422():
 
     def measurement_running(self):
         """ Check if a measurement is running """
-        status = self.comm('MBH')
-        status = status.split(',')
-        running = int(status[0])
-        return_val = running == 0
+        error = 0
+        while error < 10:
+            status = self.comm('MBH')
+            status = status.split(',')
+            try:
+                running = int(status[0])
+                break
+            except ValueError:
+                error = error + 1
+        if error < 9:
+            return_val = running == 0
+        else:
+            return_val = False
         return return_val
-        
+
     def waiting_samples(self):
         """ Return number of waiting samples """
         header = self.comm('MBH')
@@ -373,7 +406,7 @@ class qmg_422():
             13: 10,
             14: 20,
             15: 60} # unit: [s/amu]
-        speed = 10
+        speed = 9
         try:
             total_time = scan_width * speed_list[speed]
         except:
@@ -382,7 +415,7 @@ class qmg_422():
         if amp_range == 0:
             self.comm('AMO, 1')  #Auto range with lower limit
             # TODO: Lower limit should be read from config file
-            self.comm('ARL, -8') # Lower auto range level
+            self.comm('ARL, -11') # Lower auto range level
         else:
             self.comm('AMO, 0')  #Fix range
             self.comm('ARA, ' + str(self.actual_range(amp_range)))
@@ -392,9 +425,9 @@ class qmg_422():
         self.comm('DSE ,0') #Use default SEM voltage
         self.comm('DTY ,1') #Use SEM for ion detection
         self.comm('SDT ,1') #Use SEM for ion detection
-        self.comm('MRE ,15') #Resolve peak
+        self.comm('MRE ,1') #Resolve peak
         self.comm('MMO, 0') #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST, 0') #Steps 0: 1: 2: 64/amu
+        self.comm('MST, 1') #Steps 0: 1: 2: 64/amu
         self.comm('MSD, ' + str(speed)) #Speed
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
@@ -410,16 +443,17 @@ class qmg_422():
 
 if __name__ == '__main__':
     qmg = qmg_422()
-    print qmg.communication_mode(computer_control=True)
-    print qmg.read_voltages()
-    print qmg.detector_status()
-    print qmg.comm('SMR')
-    print '---'
-    print 'DTY: ' + qmg.comm('DTY') # Signal source, 0: Faraday, 1: SEM
-    print 'DSE: ' + qmg.comm('SHV') # SEM Voltage
-    print 'ECU: ' + qmg.comm('ECU')
-    print 'SEM: ' + qmg.comm('SEM') # SEM Voltage
-    print 'SQA: ' + qmg.comm('SQA') # Type of analyzer, 0: 125, 1: 400, 4:200
-    print 'SMR: ' + qmg.comm('SMR') # Mass-range, this needs to go in a config-file
-    print 'SDT: ' + qmg.comm('SDT') # Detector type
-    print 'SIT: ' + qmg.comm('SIT') # Ion source
+    print(qmg.communication_mode(computer_control=True))
+    print(qmg.read_voltages())
+    print(qmg.detector_status())
+    print(qmg.comm('SMR'))
+    print('---')
+    print('DTY: ' + qmg.comm('DTY')) # Signal source, 0: Faraday, 1: SEM
+    print('DSE: ' + qmg.comm('SHV')) # SEM Voltage
+    print('ECU: ' + qmg.comm('ECU'))
+    print('SEM: ' + qmg.comm('SEM')) # SEM Voltage
+    print('SQA: ' + qmg.comm('SQA')) # Type of analyzer, 0: 125, 1: 400, 4:200
+    print('SMR: ' + qmg.comm('SMR')) # Mass-range, this needs to go in a config-file
+    print('SDT: ' + qmg.comm('SDT')) # Detector type
+    print('SIT: ' + qmg.comm('SIT')) # Ion source
+

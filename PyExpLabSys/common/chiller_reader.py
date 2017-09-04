@@ -10,7 +10,7 @@ class ChillerReader(threading.Thread):
     """ Reader class that will monitor a polyscience chiller """
     def __init__(self, serial_port):
         threading.Thread.__init__(self)
-        self.chiller = polyscience_4100.Polyscience_4100(serial_port)
+        self.chiller = polyscience_4100.Polyscience4100(serial_port)
         self.status = {}
         self.status['temp'] = -9999
         self.status['flow'] = -9999

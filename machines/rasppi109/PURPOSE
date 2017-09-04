@@ -1,0 +1,4 @@
+id: TOF
+purpose: Pressure Readout
+
+This raspberry pi is used to communicate with the Agilent XGS600 unit on the Time-Of-Flight chamber. The unit provides pressure from the ion and pirani gauge.

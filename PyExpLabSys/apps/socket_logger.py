@@ -73,8 +73,12 @@ def main():
         channel['logger'].start()
         codenames.append(channel['codename'])
 
+    try:
+        port = settings.port_number
+    except AttributeError:
+        port = 9000
     pullsocket = DateDataPullSocket(settings.user + '-socket_logger',
-                                    codenames, timeouts=5)
+                                    codenames, timeouts=5, port=port)
     pullsocket.start()
 
         

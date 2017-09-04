@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3"
+apt1="openssh-server emacs graphviz screen ntp python python3"
 
 # apt install packages line 2, python extensions
 #
@@ -18,7 +18,7 @@ apt1="openssh-server emacs graphviz screen ntp libmysqlclient-dev python python3
 apt2="python-pip python-mysqldb python3-pip"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
-declare -a apt3=("libpython2.7-dev" "libpython3-dev" "python-dev" "python3-dev")
+declare -a apt3=("libpython2.7-dev" "libpython3-dev" "python-dev" "python3-dev" "libmysqlclient-dev" "libmariadbclient-dev")
 
 # packages to be installe by pip
 pippackages="minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml pylint chainmap"
@@ -32,6 +32,13 @@ bashrc_addition='
 export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin
 export PYTHONPATH=$HOME/PyExpLabSys
 stty -ixon
+
+machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME
+if [ -d $machin_dir ]; then
+    echo "Entering machine dir: $machine_dir"
+    cd $machine_dir
+fi
+pistatus.py
 '
 
 # These lines will be added to ~/.bash_aliases
@@ -46,6 +53,14 @@ alias ll=\"ls -lh\"
 alias df=\"df -h\"
 alias emacs-nolint=\"emacs -q --load ~/PyExpLabSys/bootstrap/.emacs-simple\"
 alias python=\"/usr/bin/python3\"
+
+alias a=\"cd ~/PyExpLabSys/PyExpLabSys/apps\"
+alias c=\"cd ~/PyExpLabSys/PyExpLabSys/common\"
+alias d=\"cd ~/PyExpLabSys/PyExpLabSys/drivers\"
+alias m=\"if [ -d ~/PyExpLabSys/machines/$HOSTNAME ];then cd ~/PyExpLabSys/machines/\$HOSTNAME; else cd ~/PyExpLabSys/machines; fi\"
+alias p=\"cd ~/PyExpLabSys/PyExpLabSys\"
+alias b=\"cd ~/PyExpLabSys/bootstrap\"
+alias s=\"screen -x\"
 "
 
 # Usage string, edit if adding another section to the script
@@ -123,10 +138,26 @@ if [ $1 == "bash" ] || [ $1 == "all" ];then
 	    echo "$bashrc_addition" >> ~/.bashrc
 	    echobad "---> Replacing old PATH setting with new one"
 	fi
+
+	# the stty setting was added later, check whether it is there
+	# and otherwise add it
 	grep "stty" ~/.bashrc > /dev/null
 	if [ $? -ne 0 ];then
 	    echo "stty -ixon" >> ~/.bashrc
 	    echogood "---> .bashrc missed 'stty -ixon line', added it"
+	fi
+
+	# Change dir and pistatus was added later, check whether it is
+	# there and otherwise add it
+	grep "pistatus" ~/.bashrc > /dev/null
+	if [ $? -ne 0 ];then
+	    echo 'machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME' >> ~/.bashrc
+	    echo 'if [ -d $machin_dir ]; then' >> ~/.bashrc
+	    echo '    echo "Entering machine dir: $machine_dir"' >> ~/.bashrc
+	    echo '    cd $machine_dir' >> ~/.bashrc
+	    echo 'fi' >> ~/.bashrc
+	    echo 'pistatus.py' >> ~/.bashrc
+	    echogood "---> .bashrc missed change dir and pistatus, added it"
 	fi
     else
 	echoblue "---> Modifying .bashrc includes PATH and PYTHONPATH setup"
@@ -171,7 +202,7 @@ fi
 
 # Install packages
 if [ $1 == "install" ] || [ $1 == "all" ];then
-    echo 
+    echo
     echobold "===> INSTALLING PACKAGES"
     echoblue "---> Updating package archive information"
 
@@ -210,6 +241,9 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     $aptgetprefix autoremove
     echoblue "---> Clear apt cache"
     $aptgetprefix clean
+
+    echoblue "---> Enable ssh by creating /boot/ssh"
+    sudo touch /boot/ssh
     echogood "+++++> DONE"
 fi
 

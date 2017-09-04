@@ -29,18 +29,29 @@ Pi healt (from SystemStatus) TODO:
 
 from __future__ import print_function
 
+from time import time
+T0 = time()
 import sys
 import shutil
 import socket
+import argparse
+from threading import Thread
 from textwrap import wrap
 from functools import partial
 from subprocess import check_output
 from os.path import expanduser, join, isdir, isfile, abspath
-from os import getlogin, listdir, sep, chdir, getcwd, popen
+from os import getlogin, listdir, sep, chdir, getcwd, popen, environ
 
 if sys.version_info.major < 3:
     print("This script is Python 3 or above only")
     raise SystemExit(1)
+
+try:
+    if environ['TERM'] == 'screen':
+        print("In screen. Do not run pistatus.")
+        raise SystemExit(2)
+except KeyError:
+    pass
 
 # Terminal width
 COL = 80
@@ -55,8 +66,27 @@ else:
         pass
 
 WIDTH = COL - 4
+
+# Parse args for possible other HOSTNAME
+def get_hostname():
+    """Return the hostname to use"""
+    parser = argparse.ArgumentParser(description='Show raspberry pi status')
+    parser.add_argument('pi', nargs='?', default=None,
+                        help='')
+    args = parser.parse_args()
+    pi = args.pi
+    if pi is None:
+        return socket.gethostname()
+    else:
+        if pi.isdigit():
+            return 'rasppi' + pi
+        else:
+            return pi
+
 # Machine folder
-HOSTNAME = socket.gethostname()
+HOSTNAME = get_hostname()
+
+
 MACHINE_DIR = join(expanduser('~'), 'PyExpLabSys', 'machines', HOSTNAME)
 if not isdir(MACHINE_DIR):
     MACHINE_DIR = None
@@ -68,6 +98,8 @@ KEY_WIDTH = 16
 USERNAME = getlogin()
 SCREEN_FOLDER = join(abspath(sep), 'var', 'run', 'screen', 'S-' + USERNAME)
 
+# Dict used to collect data from thread
+THREAD_COLLECT = {}
 
 # Utility functions
 def color_(line, color):
@@ -84,9 +116,9 @@ YES = green('Yes')
 NO = red('NO')
 
 
-def hline():
+def hline(end='\n'):
     """Prints out a horizontal line"""
-    print("#" * COL)
+    print("#" * COL, end=end)
 
 
 def framed(line, align='<'):
@@ -117,6 +149,16 @@ def machine_status():
         except IOError:
             pass
 
+    # The purpose files have had two different formats, check for the new one
+    purpose_lines = purpose.split('\n')
+    # New format
+    if len(purpose_lines) > 1 and purpose_lines[0].startswith('id:') and purpose_lines[1].startswith('purpose:'):
+        # Strip the first two lines of id and shorthand purpose
+        purpose = ''.join(purpose_lines[2:]).strip()
+        if len(purpose) == 0:
+            purpose = purpose_lines[1].replace('purpose:', '').strip()
+            
+
     spaces = ' ' * (KEY_WIDTH - 7)
     purpose_key = 'purpose' + spaces + ': '
     purpose_lines = wrap(purpose, WIDTH, initial_indent=purpose_key)
@@ -129,6 +171,12 @@ def machine_status():
         value_pair('Has autostart', YES)
     else:
         value_pair('Has autostart', 'NO')
+
+
+def collect_running_programs():
+    processes = check_output('ps -eo command', shell=True).decode('utf-8')\
+        .split('\n')
+    THREAD_COLLECT['processes'] = processes
 
 
 def running_programs():
@@ -147,10 +195,8 @@ def running_programs():
     else:
         value_pair('Screens', 'None')
 
-    processes = check_output('ps -eo command', shell=True).decode('utf-8')\
-        .split('\n')
     python_processes = []
-    for process in processes:
+    for process in THREAD_COLLECT['processes']:
         if 'python' in process.split(' ')[0]:
             if any(skip in process for skip in ('pistatus', 'pylint')):
                 continue
@@ -164,6 +210,19 @@ def running_programs():
         value_pair('Python processes', 'None')
 
 
+def collect_last_commit():
+    last_commit = check_output(
+        'git log --date=iso -n 1 --pretty=format:"%ad"',
+        shell=True,
+    ).decode('utf-8')
+    THREAD_COLLECT['last_commit'] = last_commit
+
+
+def collect_git_status():
+    git_status = check_output('git status --porcelain', shell=True)
+    THREAD_COLLECT['git_status'] = git_status
+
+
 def git():
     """Display the git status"""
     framed(bold('git'))
@@ -175,15 +234,10 @@ def git():
     chdir(join(expanduser("~"), "PyExpLabSys"))
 
     # date of last commit
-    last_commit = check_output(
-        'git log --date=iso -n 1 --pretty=format:"%ad"',
-        shell=True,
-    ).decode('utf-8')
-    value_pair('Last commit', last_commit)
+    value_pair('Last commit', THREAD_COLLECT['last_commit'])
 
     # git clean
-    git_status = check_output('git status --porcelain', shell=True)
-    if len(git_status) == 0:
+    if len(THREAD_COLLECT['git_status']) == 0:
         value_pair('Git clean', YES)
     else:
         value_pair('Git clean', NO)
@@ -191,23 +245,59 @@ def git():
     # Change cwd back
     chdir(cwd)
 
+
+def tips():
+    """Display tips"""
+    framed(bold('tips'))
+    framed(bold('===='))
+    framed("To run this script use: pistatus.py")
+    framed("Open running screen with one key-letter " + bold("s"))
+    framed("Navigate PyExpLabSys folders with one-letter commands: ")
+    framed(" " + bold("a") + "=apps, " + bold("b") + "=bootstrap," +
+           " " + bold("c") + "=common, " + bold("d") + "=drivers, ")
+    framed(" " + bold("m") + "=this machine folder or machines, " +
+           bold("p") + "=~/PyExpLabSys/PyExpLabSys")
+
+
 def main():
     """main function"""
+    # On Raspberry pi it takes time to call command on the command
+    # line, so we put the three calls to the command line out into
+    # threads
+    threads = []
+    for function in collect_running_programs, collect_last_commit, collect_git_status:
+        thread = Thread(target=function)
+        thread.start()
+        threads.append(thread)
+
     # Header
     hline()
     framed(yellow('Raspberry Pi status ({})'.format(HOSTNAME)), align='^')
     hline()
 
+
     machine_status()
     framed('')
 
+    # Join the processes thread, since we need the processes output now
+    threads[0].join()
     running_programs()
     framed('')
 
+    # Join git threads
+    for thread in threads[1:]:
+        thread.join()
     git()
+    framed('')
 
-    # Footer
-    hline()
+    tips()
+
+    # Footer (include time to run)
+    timeline = " {:.2f}s #".format(time() - T0)
+    global COL
+    COL -= len(timeline)
+    hline(end='')
+    print(timeline, end='')
 
 
 main()

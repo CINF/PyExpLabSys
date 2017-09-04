@@ -1,3 +1,4 @@
+#pylint: disable-all
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'temperature_controller_gui.ui'

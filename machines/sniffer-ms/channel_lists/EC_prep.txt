@@ -1,0 +1,25 @@
+comment: EC_prep
+autorange: yes
+
+ms_channel: mass, 2, speed, 7, masslabel, M2, amp_range, 0
+ms_channel: mass, 4, speed, 6, masslabel, M4, amp_range, 0
+#ms_channel: mass, 14, speed, 7, masslabel, M14, amp_range, 0
+#ms_channel: mass, 15, speed, 7, masslabel, M15, amp_range, 0
+#ms_channel: mass, 16, speed, 7, masslabel, M16, amp_range, 0
+ms_channel: mass, 18, speed, 6, masslabel, M18, amp_range, 0
+#ms_channel: mass, 26, speed, 7, masslabel, M26, amp_range, 0
+#ms_channel: mass, 27, speed, 7, masslabel, M27, amp_range, 0
+ms_channel: mass, 28, speed, 7, masslabel, M28, amp_range, 0
+#ms_channel: mass, 29, speed, 7, masslabel, M29, amp_range, 0
+#ms_channel: mass, 30, speed, 7, masslabel, M30, amp_range, 0
+#ms_channel: mass, 31, speed, 7, masslabel, M31, amp_range, 0
+ms_channel: mass, 32, speed, 6, masslabel, M32, amp_range, 0
+ms_channel: mass, 40, speed, 6, masslabel, M40, amp_range, 0
+#ms_channel: mass, 43, speed, 7, masslabel, M43, amp_range, 0
+ms_channel: mass, 44, speed, 6, masslabel, M44, amp_range, 0
+#ms_channel: mass, 45, speed, 7, masslabel, M45, amp_range, 0
+#ms_channel: mass, 46, speed, 7, masslabel, M46, amp_range, 0
+
+meta_channel: label, QMS pressure, host, rasppi107, port, 9000, command, sniffer_qms_ion_gauge#raw
+meta_channel: label, Gas outlet pressure, host, rasppi24, port, 9000, command, M11210022A#raw
+meta_channel: label, Gas inlet pressure, host, rasppi06, port, 9000, command, sniffer_inlet_gas_pressure#raw

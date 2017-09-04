@@ -1,6 +1,28 @@
 # -*- coding: utf-8 -*-
 
-"""Steps for voltage_current_programs"""
+"""Steps for voltage_current_programs
+
+This file is part of the Voltage Current Program
+
+Copyright (C) 2012 Kenneth Nielsen and Robert Jensen
+
+The Voltage Current Ramp Program is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software
+Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+The Voltage Current Ramp Program is distributed in the hope
+that it will be useful, but WITHOUT ANY WARRANTY; without even
+the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License
+along with The CINF Data Presentation Website.  If not, see
+<http://www.gnu.org/licenses/>.
+
+"""
 
 from time import time
 from yaml import load

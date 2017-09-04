@@ -30,26 +30,36 @@ be fetched by emailing `Epimax support <http://www.epimax.com/contact/contact.ht
 
 """
 
-from __future__ import print_function, division, unicode_literals
-from struct import pack, unpack
+from __future__ import print_function, division
+import sys
+from struct import unpack
 from functools import partial
-from operator import itemgetter
-from collections import OrderedDict
-from pymodbus.client.sync import ModbusSerialClient as ModbusClient
-from pymodbus.payload import BinaryPayloadDecoder
 
-# At present this driver is Python 2 only, because minimalmodbus, which we usually use for
-# modbus communication, doesn't support function code 23, which is used by this
-# device. Pymodbus which we had to use instead, so far (Jan. 16) doesn't have mainline
-# support for Python 3.
-from PyExpLabSys.common.supported_versions import python2_only
-python2_only(__file__)
+# Note: At present this driver uses a modified version of minimalmodbus found here:
+#
+# https://github.com/CINF/minimalmodbus
+#
+# Which has initial support for functioncode 23 in read_string and read_float, which is
+# necessary for this driver. It will be attempted for this to be mainlined, but it may
+# take time.
+import minimalmodbus
+
+# This driver is Python 2 and 3, but you cannot use
+#
+# from __future__ import unicode_literals
+#
+# in the program running using it, since minimal modbus is missing a few corners in the
+# conversion to Python 2 and 3 support
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 
 ### Classes ###
 ###############
 
-class PVCCommon(ModbusClient):
+minimalmodbus.TIMEOUT = 1
+minimalmodbus.FLOAT_ENDIANNESS = '<'
+class PVCCommon(minimalmodbus.Instrument):
     """Common base for the PVCX, PVCi and PVCiDuo devices
 
     This common class must be sub-classed and the global_id and firmware_name class
@@ -78,50 +88,52 @@ class PVCCommon(ModbusClient):
             check_hardware_version (bool): Indicated whether a check should be performed
                 for correct hardware at __init__ time
         """
-        super(PVCCommon, self).__init__(method='rtu', port=port, timeout=0.6)
-        self.connect()
-        self.slave_address = slave_address
-        # _fields is a the list of all the parameters that are common for all three types of
+        super(PVCCommon, self).__init__(
+            port=port,
+            slaveaddress=slave_address,
+        )
+        # fields is a the list of all the parameters that are common for all three types of
         # devices. It is a dict where keys are adapted parameter names and the values are
-        # typles of (addres, type_convertion_function, unit)
+        # typles of (addres, type_or_type_convertion_function, unit)
         #
         # All values are assumed to be 4 bytes (2 registers) and convertion_function is the
         # function that converts those 4 bytes to the desired value.
         self.fields = {
             # Group 1
-            'global_id': (0x00, bytes_to_string, None),
+            'global_id': (0x00, 'string', None),
             'firmware_version': (0x02, bytes_to_firmware_version, None),
             # Group 2
-            'unit_name': (0x10, partial(bytes_to_string, valid_chars=(0x20, 0x7A)), None),
-            'user_id': (0x12, bytes_to_string, None),
+            'unit_name': (0x10, 'string', None),
+            'user_id': (0x12, 'string', None),
             # Group 5
             'slot_a_id': (0x42, bytes_to_slot_id, None),
             'slot_b_id': (0x44, bytes_to_slot_id, None),
+            'bakeout_flags': (0x48, bytes_to_bakeout_flags, None),
             # Group 9
             'trip_1_7_status': (0x80, partial(bytes_to_status, status_type='trip'), None),
             'digital_input_1_2_status': (0x82,
                                          partial(bytes_to_status, status_type='digital_input'),
                                          None),
             # Group 10
-            'ion_gauge_1_pressure': (0x9A, bytes_to_float, 'selected_unit'),
+            'ion_gauge_1_pressure': (0x9A, 'float', 'selected_unit'),
             # Group 14
-            'bake_out_temp_1': (0xD0, bytes_to_float, 'C'),
-            'bake_out_temp_2': (0xD2, bytes_to_float, 'C'),
-            'bake_out_temp_3': (0xD4, bytes_to_float, 'C'),
-            'bake_out_temp_4': (0xD6, bytes_to_float, 'C'),
-            'bake_out_temp_5': (0xD8, bytes_to_float, 'C'),
-            'bake_out_temp_6': (0xDA, bytes_to_float, 'C'),
-            'bake_out_temp_hysteresis': (0xDC, bytes_to_float, 'C'),
-            'ion_gauge_1_pressure_trip': (0xDE, bytes_to_float, 'selected_unit'),
+            'bake_out_temp_1': (0xD0, 'float', 'C'),
+            'bake_out_temp_2': (0xD2, 'float', 'C'),
+            'bake_out_temp_3': (0xD4, 'float', 'C'),
+            'bake_out_temp_4': (0xD6, 'float', 'C'),
+            'bake_out_temp_5': (0xD8, 'float', 'C'),
+            'bake_out_temp_6': (0xDA, 'float', 'C'),
+            'bake_out_temp_hysteresis': (0xDC, 'float', 'C'),
+            'ion_gauge_1_pressure_trip': (0xDE, 'float', 'selected_unit'),
             # Group 15
-            'bake_out_time_1': (0xE0, bytes_to_float, 'h'),
-            'bake_out_time_2': (0xE2, bytes_to_float, 'h'),
-            'bake_out_time_3': (0xE4, bytes_to_float, 'h'),
-            'bake_out_time_4': (0xE6, bytes_to_float, 'h'),
-            'bake_out_time_5': (0xE8, bytes_to_float, 'h'),
-            'bake_out_time_6': (0xEA, bytes_to_float, 'h'),
-            'bake_out_setpoint': (0xEC, bytes_to_float, 'C'),
-            'remaining_bake_out_time': (0xEE, bytes_to_float, 'h'),
+            'bake_out_time_1': (0xE0, 'float', 'h'),
+            'bake_out_time_2': (0xE2, 'float', 'h'),
+            'bake_out_time_3': (0xE4, 'float', 'h'),
+            'bake_out_time_4': (0xE6, 'float', 'h'),
+            'bake_out_time_5': (0xE8, 'float', 'h'),
+            'bake_out_time_6': (0xEA, 'float', 'h'),
+            'bake_out_setpoint': (0xEC, 'float', 'C'),
+            'remaining_bake_out_time': (0xEE, 'float', 'h'),
         }
 
         if check_hardware_version:
@@ -142,27 +154,9 @@ class PVCCommon(ModbusClient):
                 )
 
 
-
-    def _read_registers(self, register, count=2):
-        """Read and return `count` number of registers starting from `register`
-
-        Args:
-            register (int): The register to start reading from
-            count (int): The number of registers to read (default 4)
-
-        Returns:
-            bytes: The read bytes
-        """
-        request = self.readwrite_registers(
-            read_address=register, read_count=count,
-            write_address=0, write_registers=[],
-            unit=self.slave_address
-        )
-        # Check for errors
-        if request.function_code >= 0x80:
-            message = 'modbus communication error: {}'.format(request.function_code)
-            raise Exception(message)
-        return request.registers
+    def close(self):
+        """Close the serial connection"""
+        self.serial.close()
 
     def _read_bytes(self, register_start, count=4):
         """Read and return `count` number of bytes starting from `register_start`
@@ -174,15 +168,16 @@ class PVCCommon(ModbusClient):
         Returns:
             bytes: The read bytes
         """
-        request = self.readwrite_registers(
-            read_address=register_start, read_count=count//2,
-            write_address=0, write_registers=[],
-            unit=self.slave_address
+        raw_value = self.read_string(
+            registeraddress=register_start,
+            numberOfRegisters=count//2,
+            functioncode=23,
         )
-        # Check for errors
-        if request.function_code >= 0x80:
-            raise Exception(request.function_code)
-        return b''.join(pack('>H', register) for register in request.registers)
+        if sys.version_info.major >= 3:
+            value = raw_value.encode('latin1')
+        else:
+            value = raw_value
+        return value
 
     def get_field(self, field_name):
         """Return the value for the field named field_name
@@ -190,18 +185,26 @@ class PVCCommon(ModbusClient):
         Args:
             field_name (str): The name of the field to get. The names used are adapted
                 parameter names from the command list turned. See the keys in
-                :attr:`_fields` to see all possible values.
+                :attr:`fields` to see all possible values.
         Returns:
             object: An object with type corresponding to the value (int, float or str)
 
         Raises:
             KeyError: If the requested field_name is unknown
-            
-        """
-        address, convertion_function, _ = self.fields[field_name]
-        raw = self._read_bytes(address)
-        return convertion_function(raw)
 
+        """
+        address, type_or_convertion_function, _ = self.fields[field_name]
+        if type_or_convertion_function == 'string':
+            value = self.read_string(address, 2, 23)
+        elif type_or_convertion_function == 'float':
+            value = self.read_float(
+                registeraddress=address,
+                functioncode=23,
+            )
+        else:
+            raw = self._read_bytes(address)
+            value = type_or_convertion_function(raw)
+        return value
 
     def get_fields(self, fields='common'):
         """Return a dict with fields and values for a list of fields
@@ -219,8 +222,6 @@ class PVCCommon(ModbusClient):
         Returns:
             dict: Field name to value mapping
         """
-        # FIXME Update with an 'common' and 'all' fields value and make common default.
-
         # Update and check fields
         if fields == 'common':
             # Form a list of the keys whose address is between 0x80 and 0x9E
@@ -233,33 +234,7 @@ class PVCCommon(ModbusClient):
                     message = 'Field name {} is not valid'.format(field)
                     raise KeyError(message)
 
-        # Sort a sequence of keys and addresses by address
-        sorted_keys_and_addresses = [[key, self.fields[key][0]] for key in fields]
-        sorted_keys_and_addresses.sort(key=itemgetter(1))
-
-        read_at = None
-        data = {}
-        bytes_ = None
-        # Loop over the desired values
-        for key, address in sorted_keys_and_addresses:
-            convertion_function = self.fields[key][1]
-
-            # If we have no previously read data or if the data we need is not contained
-            # in the previously read data.
-            #
-            # NOTE: The addresses are for registers, which each contain 2 bytes. We read
-            # 64 bytes at a time stating at register address read_at and each values uses
-            # 4 bytes, which means that the largest address that is already read is:
-            #   read_at + 30
-            if read_at is None or address > read_at + 30:
-                bytes_ = self._read_bytes(address, count=64)
-                read_at = address
-                data[key] = convertion_function(bytes_[:4])
-            else:
-                # Calculate start of bytes for this value
-                start = (address - read_at) * 2
-                data[key] = convertion_function(bytes_[start: start + 4])
-
+        data = {field: self.get_field(field) for field in fields}
         return data
 
     def __getattr__(self, attrname):
@@ -270,7 +245,7 @@ class PVCCommon(ModbusClient):
             message = '\'{}\' object has no attribute {}'.format(self.__class__.__name__,
                                                                  attrname)
             raise AttributeError(message)
-        
+
 
 class PVCi(PVCCommon):
     """Driver for the PVCi device
@@ -286,7 +261,6 @@ class PVCi(PVCCommon):
 
     def __init__(self, *args, **kwargs):
         """For specification for __init__ arguments, see :meth:`PVCCommon.__init__`"""
-        do_not_check_hardware_version = kwargs.get('do_not_check_hardware_version')
 
         super(PVCi, self).__init__(*args, **kwargs)
         # Update the common field definitions with those specific to the PVCi
@@ -294,13 +268,13 @@ class PVCi(PVCCommon):
             'ion_gauge_1_status': (0x88,
                                    partial(ion_gauge_status, controller_type='pvci'),
                                    None),
-            'slot_a_value_1': (0x90, bytes_to_float, None),
-            'slot_a_value_2': (0x92, bytes_to_float, None),
-            'slot_b_value_1': (0x94, bytes_to_float, None),
-            'slot_b_value_2': (0x96, bytes_to_float, None),
+            'slot_a_value_1': (0x90, 'float', None),
+            'slot_a_value_2': (0x92, 'float', None),
+            'slot_b_value_1': (0x94, 'float', None),
+            'slot_b_value_2': (0x96, 'float', None),
         })
 
-    
+
 ### Convertion Functions ###
 ############################
 
@@ -309,10 +283,16 @@ def bytes_to_firmware_version(bytes_):
     # Reverse order
     bytes_ = bytes_[::-1]
     # The first two bytes identify the unit type (using UNIT_TYPE for conversion)
-    unit_code = tuple([ord(n) for n in bytes_[:2]])
+    if sys.version_info.major == 2:
+        bytes_as_ints = [ord(n) for n in bytes_]
+    else:
+        bytes_as_ints = bytes_
+
+    unit_code = tuple(bytes_as_ints[:2])
     unit_type = UNIT_TYPE[unit_code]
+
     # The last two are integer major and minor parts of the version
-    version = '{}.{}'.format(*[ord(n) for n in bytes_[2:]])
+    version = '{}.{}'.format(*bytes_as_ints[2:])
     return unit_type, version
 
 
@@ -336,10 +316,15 @@ def bytes_to_float(bytes_):
 
 def bytes_to_slot_id(bytes_):
     """Convert 4 bytes to the slot ID"""
-    
+
     id_byte = bytes_[::-1][3]
     raise_if_not_set(byte_to_bits(id_byte), 0, 'slot_id_a')
-    slot_id = SLOT_IDS[ord(id_byte) % 128]
+    try:
+        id_int = ord(id_byte)
+    except TypeError:
+        id_int = id_byte
+
+    slot_id = SLOT_IDS[id_int % 128]
     if slot_id == SLOT_IDS[5]:
         if ord(bytes_[::-1][1]) == 0:
             slot_id += ', log'
@@ -355,13 +340,12 @@ def bytes_to_status(bytes_, status_type):
     # The 4 bits for a state is contained i 4 bytes, gather them up into one list
     all_states = []
     for byte_ in bytes_:
-        pay = BinaryPayloadDecoder(byte_)
-        bits_ = pay.decode_bits()  # 8 booleans
+        bits_ = list(reversed(byte_to_bits(byte_)))
         all_states.extend([bits_[:4], bits_[4:]])
 
     # The 3 bit indicates whether status is used, sort out the rest
     all_states = [state for state in all_states if state[3]]
-    
+
     states = {}
     for state_num, state_bits in enumerate(all_states, start=1):  # Enumeration starts at 1
         # The first 3 bits has 3 different meanings: on, inhibit and override
@@ -380,9 +364,14 @@ def bytes_to_status(bytes_, status_type):
     return states
 
 
-def byte_to_bits(byte):
+def byte_to_bits(byte, ):
     """Convert a byte to a list of bits"""
-    return list(reversed(BinaryPayloadDecoder(byte).decode_bits()))
+    try:
+        byte_in = ord(byte)
+    except TypeError:
+        byte_in = byte
+    bits = [b == '1' for b in bin(byte_in)[2:].zfill(8)]
+    return bits
 
 
 def raise_if_not_set(bits, index, parameter):
@@ -421,7 +410,7 @@ def ion_gauge_status(bytes_, controller_type=None):
     for bit_number, value in zip([7, 6], ['rising', 'falling']):
         if bits[bit_number]:
             status['ion_gauge_trend'] = value
-        
+
     # Current ion gauge emission/degas setting
     if controller_type == 'pvci':
         byte = next(bytes_)
@@ -433,7 +422,11 @@ def ion_gauge_status(bytes_, controller_type=None):
                 status_dict['mode'] = value
 
         # The current/power is given by an integer formed by the last 4 bits
-        current_int = ord(byte) % 16
+        try:
+            byte_as_int = ord(byte)
+        except TypeError:
+            byte_as_int = byte
+        current_int = byte_as_int % 16
         status_dict['emission'] = PVCI_ION_GAUGE_STATUSSES[current_int]
         status['ion_gauge_emission_setting'] = status_dict
     else:
@@ -445,6 +438,32 @@ def ion_gauge_status(bytes_, controller_type=None):
     except StopIteration:
         return status
     raise ValueError('Too many bytes for gauge status')
+
+
+def bytes_to_bakeout_flags(bytes_):
+    """Returns the bakeout flags from bytes"""
+    bytes_ = reversed(bytes_)
+    status = {}
+
+    # Degas at end of bake
+    bits = byte_to_bits(next(bytes_))
+    status['degas_at_end_of_bake'] = bits[7]
+
+    # Middle two bytes not implemented
+    next(bytes_)
+    next(bytes_)
+
+    # Bakeout status
+    bits = byte_to_bits(next(bytes_))
+    status_flags = []
+    for bit_number, flag in BAKEOUT_FLAGS.items():
+        if bits[bit_number]:
+            status_flags.append(flag)
+    #if len(status_flags) == 0:
+    #    status_flags.append('off')
+    status['status_flags'] = status_flags
+
+    return status
 
 
 ### Constants ###
@@ -474,51 +493,65 @@ PVCI_ION_GAUGE_STATUSSES = {
     0xE: 'IGS_EM_30W',
 }
 
+
+BAKEOUT_FLAGS = {
+    7: 'bake-out started',
+    6: 'bake-out is inhibited by assigned digital inputs',
+    5: 'bake-out is inhibited by ion gauge pressure',
+    4: 'bake-out is suspended',
+    3: 'bake-out output is on',
+}
+
+
 UNIT_TYPE = {
-        (0x45, 0x58): 'PVCX',
-        (0x45, 0x44): 'PVCi',
-        (0x45, 0x32): 'PVCiDuo',
-    }
+    (0x45, 0x58): 'PVCX',
+    (0x45, 0x44): 'PVCi',
+    (0x45, 0x32): 'PVCiDuo',
+}
 
 SLOT_IDS = {
     0: 'empty',
     1: 'ion gauge (internally set)',
-    2: 'V module, VG pirani gauge head', 
-    3: 'K module, type K thermocouple', 
-    4: 'E module, M and Thyracont Pirani gauge head', 
-    5: 'U module, universal input range', 
+    2: 'V module, VG pirani gauge head',
+    3: 'K module, type K thermocouple',
+    4: 'E module, M and Thyracont Pirani gauge head',
+    5: 'U module, universal input range',
 }
 
 
 ### Quick test ###
 ##################
+def run_module():
+    """Tests basic functionality
 
-def test():
-    pvci = PVCi('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
+    Will init a PVCi on USB0 and out all info fields and gauge 1 pressure and bakeout info
+    continuously
 
-    print(pvci.get_fields('all'))
-    return
+    """
+    import logging
+    logging.basicConfig()
+    log = logging.getLogger()
+    log.setLevel(logging.DEBUG)
+    # '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0'
+    #pvci = PVCi('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
+    pvci = PVCi('/dev/ttyUSB0')
+    from pprint import pprint
 
-    #import json
-    #vals = pvci.get_fields()
-    #for key in sorted(vals.keys()):
-    #    print(key, "=>", vals[key])
-    #return
+    pprint(pvci.get_fields('all'))
 
     # Continuous
     try:
         while True:
             print(pvci.ion_gauge_1_status)
-            for n in range(20):
-                print('Pressure {:.2e}  Setpoint: {:.2f}  Actual temp: {:.2f}'.format(
-                    pvci.ion_gauge_1_pressure, pvci.bake_out_setpoint, pvci.slot_b_value_1)
+            for _ in range(20):
+                print(
+                    'Pressure {:.2e}  Setpoint: {:.2f}  Actual temp: {:.2f}'.format(
+                        pvci.ion_gauge_1_pressure, pvci.bake_out_setpoint, pvci.slot_b_value_1
+                    )
                 )
-
     except KeyboardInterrupt:
         print('closing')
-        pvci.close()
 
 
 if __name__ == "__main__":
-    test()
-        
+    run_module()

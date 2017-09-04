@@ -54,7 +54,7 @@ class SCPI(object):
         if self.interface == 'serial':
             self.comm_dev.write(command_text.encode('ascii'))
             if command.endswith('?') or (expect_return is True):
-                return_string = ''
+                return_string = ''.encode('ascii')
                 while True:
                     next_char = self.comm_dev.read(1)
                     #print(ord(next_char))

@@ -37,6 +37,7 @@ RPI_REVISIONS = {
     '000e': 'Model B Revision 2.0 Mounting holes',
     '000f': 'Model B Revision 2.0 Mounting holes',
     '0010': 'Model B+',
+    '900032': 'Model B+',
     '0011': 'Compute Module',
     '0012': 'Model A+',
     'a01041': 'Pi 2 Model B',

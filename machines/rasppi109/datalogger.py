@@ -54,7 +54,7 @@ def main():
     """ Main function """
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
-    ports = '/dev/ttyUSB0'
+    ports = '/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0'
     xgs_instance = xgs600.XGS600Driver(ports)
     print(xgs_instance.read_all_pressures())
 
@@ -68,7 +68,7 @@ def main():
     loggers[codenames[0]] = ValueLogger(pressure, comp_val=0.1,
                                         low_comp=1e-11, comp_type='log', channel=0)
     loggers[codenames[0]].start()
-    loggers[codenames[1]] = ValueLogger(pressure, comp_val=0.1, comp_type='log', channel=1)
+    loggers[codenames[1]] = ValueLogger(pressure, low_comp=1e-11, comp_val=0.1, comp_type='log', channel=1)
     loggers[codenames[1]].start()
     loggers[codenames[2]] = ValueLogger(pressure, comp_val=0.1, comp_type='log', channel=2)
     loggers[codenames[2]].start()
