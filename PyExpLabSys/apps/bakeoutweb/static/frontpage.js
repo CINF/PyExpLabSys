@@ -54,20 +54,7 @@ var KEYBOARD_MAP = {
   'd': ['input3', 'stepDown'],
   'f': ['input4', 'stepDown'],
   'g': ['input5', 'stepDown'],
-  'h': ['input6', 'stepDown'],
-  '1': ['input1', 'stepUp'],
-  '2': ['input2', 'stepUp'],
-  '3': ['input3', 'stepUp'],
-  '4': ['input4', 'stepUp'],
-  '5': ['input5', 'stepUp'],
-  '6': ['input6', 'stepUp'],
-  '!': ['input1', 'stepDown'],
-  '"': ['input2', 'stepDown'],
-  '#': ['input3', 'stepDown'],
-  '¤': ['input4', 'stepDown'],
-  '%': ['input5', 'stepDown'],
-  '&': ['input6', 'stepDown']
-
+  'h': ['input6', 'stepDown']
 }
 
 // event.type must be keypress
