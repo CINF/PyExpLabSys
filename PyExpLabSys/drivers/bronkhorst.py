@@ -3,6 +3,9 @@ from __future__ import print_function
 import serial
 import time
 import sys
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
 
 class Bronkhorst():
     """ Driver for Bronkhorst flow controllers """
