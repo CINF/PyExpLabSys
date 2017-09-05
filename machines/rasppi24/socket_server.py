@@ -9,7 +9,6 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import LiveSocket
 import credentials
-import credentials_sniffer
 
 class FlowControl(threading.Thread):
     """ Keep updated values of the current flow """
@@ -70,7 +69,16 @@ for i in range(0, 8):
     name[i] = ''
     while (error < 3) and (name[i]==''):
         # Pro forma-range will be update in a few lines
-        bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1) 
+        ioerror = 0
+        while ioerror < 100:
+            try:
+                bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
+                break
+            except IOError:
+                ioerror = ioerror + 1
+
+        if ioerror == 100:
+            print('Fatal error!')        
         name[i] = bronk.read_serial()
         name[i] = name[i].strip()
         error = error + 1
