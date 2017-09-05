@@ -1,5 +1,6 @@
 chainmap
 crc16
+pyyaml
 sphinx
 sphinxcontrib-napoleon
 pyserial
