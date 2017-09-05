@@ -1,3 +1,5 @@
+chainmap
+crc16
 sphinx
 sphinxcontrib-napoleon
 pyserial
