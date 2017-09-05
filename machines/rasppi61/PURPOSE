@@ -1,0 +1,4 @@
+id: Hall
+purpose: Logs the cooling water temperature
+
+Analog measurement of two NTC temperature measurements of the cooling water in 312
