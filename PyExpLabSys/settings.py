@@ -64,12 +64,17 @@ LOG.addHandler(logging.NullHandler())
 # Form path for defaults and user settings files
 THISDIR = path.dirname(path.abspath(__file__))
 DEFAULT_PATH = path.join(THISDIR, 'defaults.yaml')
+
 # User settings
-if sys.platform.lower().startswith('linux'):
-    USERSETTINGS_PATH = \
-        path.join(path.expanduser('~'), '.config', 'PyExpLabSys', 'user_settings.yaml')
-else:
-    USERSETTINGS_PATH = None
+if os.environ.get('READTHEDOCS') == 'True':
+    # Special case for read the docs
+    USERSETTINGS_PATH = path.join(THISDIR, '..', 'bootstrap', 'user_settings.yaml')
+else
+    if sys.platform.lower().startswith('linux'):
+        USERSETTINGS_PATH = \
+            path.join(path.expanduser('~'), '.config', 'PyExpLabSys', 'user_settings.yaml')
+    else:
+        USERSETTINGS_PATH = None
 
 
 def value_str(obj):
