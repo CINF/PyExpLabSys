@@ -64,7 +64,7 @@ class PressureReader(threading.Thread):
 
 def main():
     """ Main code """
-    mux_instance = agilent_34972A.Agilent34972ADriver('volvo-agilent-34972a')
+    mux_instance = agilent_34972A.Agilent34972ADriver(interface='lan', hostname='volvo-agilent-34972a')
     port = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
     xgs_instance = xgs600.XGS600Driver(port)
 

@@ -1,1 +1,4 @@
-Reads out the ion gauge pressure for microreactor (mr) setup
+id: microreactor
+purpose: Ion gauge pressure
+
+Reads out the ion gauge pressure for the microreactor setup. This is an old analog gauge, pressure is read by an analog measurement directly on the needle solenoid

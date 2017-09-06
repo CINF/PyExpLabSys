@@ -1,1 +1,4 @@
-Valve control for Microreactor
+id: microreactor
+purpose: Valve control
+
+Valve control for old microreactor setup

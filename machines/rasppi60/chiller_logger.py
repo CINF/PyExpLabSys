@@ -58,7 +58,7 @@ def main():
         loggers[new_codenames[i]].start()
 
     live_socket_name = 'XRD chiller'
-    live_socket = LiveSocket(live_socket_name, codenames)
+    live_socket = LiveSocket(live_socket_name, codenames + new_codenames)
     live_socket.start()
     LOG.info('Live socket init and started with name "%s"', live_socket_name)
 
