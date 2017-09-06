@@ -18,6 +18,7 @@ class FlowControl(threading.Thread):
         mfcs = {}
         print('!')
         for i in range(0, 8):
+            print(i)
             error = 0
             name[i] = ''
             while (error < 3) and (name[i] == ''):
@@ -29,16 +30,22 @@ class FlowControl(threading.Thread):
                         break
                     except IOError:
                         ioerror = ioerror + 1
-
                 if ioerror == 100:
                     print('Fatal error!')
                 name[i] = bronk.read_serial()
                 name[i] = name[i].strip()
                 error = error + 1
             if name[i] in devices:
-                mfcs[name[i]] = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i),
-                                                      ranges[name[i]])
-                mfcs[name[i]].set_control_mode() #Accept setpoint from rs232
+                ioerror = 0
+                if ioerror < 100:
+                    try:
+                        mfcs[name[i]] = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i),
+                                                              ranges[name[i]])
+                        mfcs[name[i]].set_control_mode() #Accept setpoint from rs232
+                    except IOError:
+                        ioerror = ioerror + 1
+                if ioerror == 100:
+                    print('Fatal error!')
                 print(name[i])
 
         self.mfcs = mfcs
