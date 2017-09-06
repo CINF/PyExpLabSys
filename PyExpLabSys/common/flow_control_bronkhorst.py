@@ -43,8 +43,7 @@ class FlowControl(threading.Thread):
 
         self.mfcs = mfcs
         self.pullsocket = DateDataPullSocket(name, devices,
-                                             timeouts=[3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                                             port=9000)
+                                             timeouts=3.0, port=9000)
         self.pullsocket.start()
 
         self.pushsocket = DataPushSocket(name, action='enqueue')
