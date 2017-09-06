@@ -11,7 +11,7 @@ python2_and_3(__file__)
 
 class OmegaBus(object):
     """ Driver for OmegaBus devices """
-    def __init__(self, device='/dev/ttyUSB1', model='D5251', baud=300):
+    def __init__(self, device='/dev/ttyUSB0', model='D5251', baud=300):
         self.ser = serial.Serial(device, baud)
         self.setup = {}
         self.setup['model'] = model
@@ -23,7 +23,7 @@ class OmegaBus(object):
         command = command + "\r"
         command = command.encode('ascii')
         self.ser.write(command)
-        time.sleep(2)
+        time.sleep(1)
         answer = self.ser.read(self.ser.inWaiting())
         answer = answer.decode()
         return answer
@@ -99,8 +99,8 @@ if __name__ == "__main__":
     OMEGA = OmegaBus(model='D5251')
     print(OMEGA.read_setup())
     print(OMEGA.read_value(1))
-    #print(OMEGA.read_value(2))
-    #print(OMEGA.read_value(3))
-    #print(OMEGA.read_value(4))
+    print(OMEGA.read_value(2))
+    print(OMEGA.read_value(3))
+    print(OMEGA.read_value(4))
     #print(OMEGA.read_min(1))
     #print(OMEGA.read_max(1))
