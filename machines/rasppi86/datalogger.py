@@ -21,7 +21,7 @@ class Reader(threading.Thread):
         self.quit = False
         self.ttl = 20
 
-    def value(self, channel):
+    def value(self):
         """ Read temperature and  pressure """
         self.ttl = self.ttl - 1
         if self.ttl < 0:
@@ -36,7 +36,7 @@ class Reader(threading.Thread):
             self.ttl = 50
             avg_length = 3
             raw_sum = 0
-            for i in range(0, avg_length):
+            for _ in range(0, avg_length):
                 raw = self.omegabus.read_value(1)
                 raw_sum += raw
             raw_avg = raw_sum / (1.0 * avg_length)
@@ -60,7 +60,7 @@ def main():
 
     loggers = {}
     loggers[codenames[0]] = ValueLogger(reader, comp_val=5, maximumtime=300,
-                                        comp_type='lin', channel=0)
+                                        comp_type='lin')
     loggers[codenames[0]].start()
 
 
