@@ -69,7 +69,7 @@ DEFAULT_PATH = path.join(THISDIR, 'defaults.yaml')
 if os.environ.get('READTHEDOCS') == 'True':
     # Special case for read the docs
     USERSETTINGS_PATH = path.join(THISDIR, '..', 'bootstrap', 'user_settings.yaml')
-else
+else:
     if sys.platform.lower().startswith('linux'):
         USERSETTINGS_PATH = \
             path.join(path.expanduser('~'), '.config', 'PyExpLabSys', 'user_settings.yaml')
