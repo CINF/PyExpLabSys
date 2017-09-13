@@ -31,7 +31,7 @@ class FlowControl(threading.Thread):
             qsize = self.pushsocket.queue.qsize()
             while qsize > 0:
                 element = self.pushsocket.queue.get()
-                mfc = element.keys()[0]
+                mfc = list(element.keys())[0]
                 print(element[mfc])
                 print('Queue: ' + str(qsize))
                 self.mks.set_flow(element[mfc], self.mfcs[mfc])
