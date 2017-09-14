@@ -8,6 +8,8 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.honeywell_6000 as honeywell_6000
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 import credentials
 
 class Reader(threading.Thread):
