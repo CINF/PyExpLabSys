@@ -1,4 +1,17 @@
-"""Module to log the number of pylint errors in PyExpLabSys"""
+"""Module to log the number of pylint errors in PyExpLabSys
+
+To reset statistics e.g. after new pylint version do the following:
+
+As hall user:
+#SET SQL_SAFE_UPDATES = 0;
+#delete from dateplots_hall where `type` = (select id from dateplots_descriptions where codename = "pylint_errors");
+#delete from dateplots_hall where `type` = (select id from dateplots_descriptions where codename = "lines_of_code");
+#delete from dateplots_hall where `type` = (select id from dateplots_descriptions where codename = "lines_of_py3_code");
+
+As pylint user:
+#truncate pylint;
+
+"""
 
 from __future__ import print_function
 import os
