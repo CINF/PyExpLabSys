@@ -13,8 +13,8 @@ class KeithleySMU(SCPI):
         if interface == 'serial':
             SCPI.__init__(self, interface=interface, device=device,
                           baudrate=baudrate, line_ending='\n')
-            self.comm_dev.timeout = 50
-            self.comm_dev.rtscts = True
+            self.comm_dev.timeout = 15
+            self.comm_dev.rtscts = False
 
         if interface == 'lan':
             SCPI.__init__(self, interface=interface, hostname=hostname)
@@ -70,6 +70,16 @@ class KeithleySMU(SCPI):
             logging.error('Voltage string: ' + str(voltage_string))
         return voltage
 
+    def set_source_function(self, function, channel=1):
+        scpi_string = ('smu' +  self.channel_names[channel] + '.source.func = ' +
+                       self.channel_names[channel] + '.OUTPUT_')
+        if function in ('i', 'I'):
+            self.scpi_comm(scpi_string + 'DC_AMPS')
+            print('Source function: Current')
+        if function in ('v', 'V'):
+            print('Source function: Voltage')    
+            self.scpi_comm(scpi_string + 'DC_VOLTS')
+
     def set_current_limit(self, current, channel=1):
         """ Set the desired current limit """
         self.scpi_comm('smu' + self.channel_names[channel] +
@@ -79,6 +89,16 @@ class KeithleySMU(SCPI):
         """ Set the desired voltage """
         self.scpi_comm('smu' + self.channel_names[channel] +
                        '.source.levelv = ' + str(voltage))
+
+    def set_voltage_limit(self, voltage, channel=1):
+        """ Set the desired voltate limit """
+        self.scpi_comm('smu' + self.channel_names[channel] +
+                       '.source.limitv = ' + str(voltage))
+
+    def set_current(self, current, channel=1):
+        """ Set the desired current """
+        self.scpi_comm('smu' + self.channel_names[channel] +
+                       '.source.leveli = ' + str(current))
 
     def iv_scan(self, v_from, v_to, steps, settle_time, channel=1):
         """ Perform iv_scan """
@@ -102,19 +122,33 @@ class KeithleySMU(SCPI):
 if __name__ == '__main__':
     PORT = '/dev/serial/by-id/'
     PORT += 'usb-1a86_USB2.0-Ser_-if00-port0'
-    SMU = KeithleySMU(interface='serial', device=PORT, baudrate=9600)
+    SMU = KeithleySMU(interface='serial', device=PORT, baudrate=19200)
+    print(SMU.comm_dev.inWaiting())
+    SMU.comm_dev.read(SMU.comm_dev.inWaiting())
+
     print(SMU.read_software_version())
 
     #print(SMU)
+    SMU.set_source_function('i')
     SMU.output_state(True)
-    SMU.set_voltage(0.04)
-    print(SMU.set_current_limit(1))
     time.sleep(1)
+    SMU.set_voltage(0.00)
+    time.sleep(1)
+    print(SMU.set_voltage_limit(1))
+    time.sleep(1)
+    SMU.set_current(0.0)
+    time.sleep(3)
+    print('Voltage: ' + str(SMU.read_voltage()))
+    print('Current: ' + str(SMU.read_current()))
     print('-')
-    print(SMU.read_software_version())
+    time.sleep(1)
+    SMU.output_state(False)
+
+    #print(SMU.read_software_version())
+    #print('-')
+    #print(SMU.read_current())
+    #print('-')
+    #print(SMU.read_voltage())
     print('-')
-    print(SMU.read_current())
-    print('-')
-    print(SMU.read_voltage())
-    print('-')
-    print(SMU.iv_scan(v_from=-1.1, v_to=0, steps=10, settle_time=0))
+    #print(SMU.iv_scan(v_from=-1.1, v_to=0, steps=10, settle_time=0))
+
