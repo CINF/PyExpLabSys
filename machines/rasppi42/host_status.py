@@ -93,6 +93,14 @@ def uptime(hostname, port, username='pi', password='cinf123'):
         return_value['model'] = model
         return_value['host_temperature'] = host_temperature
         return_value['python_version'] = python_version
+
+        try:
+            apt_up_time = system_status['last_apt_cache_change_unixtime']
+            apt_up = datetime.datetime.fromtimestamp(apt_up_time).strftime('%Y-%m-%d')
+        except UnboundLocalError:
+            apt_up = ''
+        return_value['apt_up'] = apt_up
+
         try:
             gittime = system_status['last_git_fetch_unixtime']
             git = datetime.datetime.fromtimestamp(gittime).strftime('%Y-%m-%d')
@@ -126,6 +134,13 @@ class CheckHost(threading.Thread):
     def run(self):
         while not self.hosts.empty():
             host = self.hosts.get_nowait()
+            try:
+                attr = json.loads(host[5])
+            except TypeError: # Happens if attr is empty
+                attr = {}
+                attr['git'] = ''
+                attr['model'] = ''
+                attr['python_version'] = ''
             host_is_up = host_status(host[1], host[2])
 
             if host_is_up:
@@ -137,10 +152,10 @@ class CheckHost(threading.Thread):
                 uptime_val = {}
                 uptime_val['up'] = ''
                 uptime_val['load'] = ''
-                uptime_val['git'] = ''
+                uptime_val['git'] = attr['git']
                 uptime_val['host_temperature'] = ''
-                uptime_val['model'] = ''
-                uptime_val['python_version'] = ''
+                uptime_val['model'] = attr['model']
+                uptime_val['python_version'] = attr['python_version']
 
             uptime_val['db_id'] = host[0]
             uptime_val['hostname'] = host[1]
@@ -150,7 +165,6 @@ class CheckHost(threading.Thread):
                 uptime_val['location'] = '<i>' + host[3] + '</i>'
                 uptime_val['purpose'] = '<i>' + host[4] + '</i>'
             self.results.put(uptime_val)
-            print('host: ' + host[1] + ': ' + str(uptime_val))
 
             self.hosts.task_done()
 
@@ -189,6 +203,7 @@ def main():
         if host['up_or_down']:
             query = ("update host_checker set attr = '" +
                      json.dumps(host) + "' where id = " + str(host['db_id']))
+            print(query)
             cursor.execute(query)
 
 if __name__ == "__main__":
