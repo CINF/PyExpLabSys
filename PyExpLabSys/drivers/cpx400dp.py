@@ -28,7 +28,7 @@ class CPX400DPDriver(SCPI):
         if interface == 'lan':
             SCPI.__init__(self, 'lan', tcp_port=tcp_port, hostname=hostname)
         if interface == 'serial':
-            SCPI.__init__(self, 'serial', device=device)
+            SCPI.__init__(self, 'serial', device=device, line_ending='\n')
         if not (output == 1 or output == 2):
             raise InterfaceOutOfBoundsError(output)
         else:
@@ -86,7 +86,7 @@ class CPX400DPDriver(SCPI):
             self.scpi_comm('CONFIG 3')
         status = self.read_configuration_mode()
         return status
-    
+
     def read_actual_voltage(self):
         """Reads the actual output voltage"""
         function_string = 'V' + self.output + 'O?'
@@ -135,9 +135,9 @@ class CPX400DPDriver(SCPI):
         function_string = 'INCV' + self.output
         return self.scpi_comm(function_string)
 
-    def output_status(self, on=False):
+    def output_status(self, output_on=False):
         """ Set the output status """
-        if on:
+        if output_on:
             enabled = str(1)
         else:
             enabled = str(0)
