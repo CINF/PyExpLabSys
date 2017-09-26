@@ -1,0 +1,13 @@
+<autostart>
+  <name>RASPPI30_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>130</startdelay>
+    <command>python3 /home/pi/PyExpLabSys/PyExpLabSys/apps/bakeout.py rasppi30</command>
+    <name>Bakeout App</name>
+  </session>
+  <session>
+    <startdelay>30</startdelay>
+    <command>bash /home/pi/PyExpLabSys/PyExpLabSys/apps/bakeoutweb/runbakeoutweb.bash rasppi30</command>
+    <name>Bakeout Web App</name>
+  </session>
+</autostart>
