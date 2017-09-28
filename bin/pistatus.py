@@ -31,6 +31,7 @@ from __future__ import print_function
 
 from time import time
 T0 = time()
+import os
 import sys
 import shutil
 import socket
@@ -86,8 +87,10 @@ def get_hostname():
 # Machine folder
 HOSTNAME = get_hostname()
 
+PYEXPLABSYS_DIR = join(expanduser("~"), "PyExpLabSys")
+PYEXPLABSYS_DIR_EXISTS = os.path.isdir(PYEXPLABSYS_DIR)
 
-MACHINE_DIR = join(expanduser('~'), 'PyExpLabSys', 'machines', HOSTNAME)
+MACHINE_DIR = join(PYEXPLABSYS_DIR, 'machines', HOSTNAME)
 if not isdir(MACHINE_DIR):
     MACHINE_DIR = None
 
@@ -211,16 +214,39 @@ def running_programs():
 
 
 def collect_last_commit():
+
+    # older gits did not have the -C options, to change current
+    # working directory internally, so we have to do it manually
+    cwd = getcwd()
+    if not PYEXPLABSYS_DIR_EXISTS:
+        THREAD_COLLECT['last_commit'] = red('No PyExpLabSys archive')
+        return
+
+    chdir(PYEXPLABSYS_DIR)
     last_commit = check_output(
         'git log --date=iso -n 1 --pretty=format:"%ad"',
         shell=True,
     ).decode('utf-8')
     THREAD_COLLECT['last_commit'] = last_commit
 
+    # Change cwd back
+    chdir(cwd)
+
 
 def collect_git_status():
+    # older gits did not have the -C options, to change current
+    # working directory internally, so we have to do it manually
+    cwd = getcwd()
+    if not PYEXPLABSYS_DIR_EXISTS:
+        THREAD_COLLECT['git_status'] = None
+        return
+
+    chdir(PYEXPLABSYS_DIR)
     git_status = check_output('git status --porcelain', shell=True)
     THREAD_COLLECT['git_status'] = git_status
+
+    # Change cwd back
+    chdir(cwd)
 
 
 def git():
@@ -228,22 +254,16 @@ def git():
     framed(bold('git'))
     framed(bold('==='))
 
-    # older gits did not have the -C options, to change current
-    # working directory internally, so we have to do it manually
-    cwd = getcwd()
-    chdir(join(expanduser("~"), "PyExpLabSys"))
-
     # date of last commit
     value_pair('Last commit', THREAD_COLLECT['last_commit'])
 
     # git clean
-    if len(THREAD_COLLECT['git_status']) == 0:
+    if THREAD_COLLECT['git_status'] is None:
+        value_pair('Git clean', red('No PyExpLabSys archive'))
+    elif len(THREAD_COLLECT['git_status']) == 0:
         value_pair('Git clean', YES)
     else:
         value_pair('Git clean', NO)
-
-    # Change cwd back
-    chdir(cwd)
 
 
 def tips():
