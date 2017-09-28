@@ -42,6 +42,10 @@ from functools import partial
 from subprocess import check_output
 from os.path import expanduser, join, isdir, isfile, abspath
 from os import getlogin, listdir, sep, chdir, getcwd, popen, environ
+try:
+    import getpass
+except ImportError:
+    pass
 
 if sys.version_info.major < 3:
     print("This script is Python 3 or above only")
@@ -98,7 +102,11 @@ if not isdir(MACHINE_DIR):
 KEY_WIDTH = 16
 
 # Username
-USERNAME = getlogin()
+try:
+    USERNAME = getlogin()
+except FileNotFoundError:
+    USERNAME = getpass.getuser()
+    
 SCREEN_FOLDER = join(abspath(sep), 'var', 'run', 'screen', 'S-' + USERNAME)
 
 # Dict used to collect data from thread
