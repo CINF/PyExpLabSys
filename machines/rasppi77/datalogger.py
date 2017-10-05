@@ -4,6 +4,7 @@ import threading
 import time
 import logging
 import numpy as np
+import socket
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
@@ -12,6 +13,31 @@ import PyExpLabSys.drivers.dataq_comm as dataq
 from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
 python2_and_3(__file__)
+
+class SocketReaderClass(threading.Thread):
+    """ Read the wanted socket """
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.current_value = None
+        self.quit = False
+
+    def value(self):
+        """ return current value """
+        return self.current_value
+
+    def run(self):
+        while not self.quit:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(1)
+            try:
+                sock.sendto(b'read_pressure', ('10.54.6.118', 9995))
+                received = sock.recv(1024)
+                received = received.decode('ascii')
+                self.current_value = float(received)
+            except (socket.timeout, ValueError) as e:
+                print(e) # LOG THIS
+            time.sleep(1)
+
 
 class Reader(threading.Thread):
     """ Pressure reader """
@@ -62,6 +88,9 @@ def main():
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
+    socket_reader = SocketReaderClass()
+    socket_reader.start()
+
     dataq_instance = dataq.DataQ('/dev/serial/by-id/usb-0683_1550-if00')
     dataq_instance.add_channel(1)
     dataq_instance.add_channel(2)
@@ -72,7 +101,7 @@ def main():
 
     time.sleep(2.5)
 
-    codenames = ['vhp_medium_pressure', 'vhp_high_pressure', 'vhp_pressure_bpr_backside']
+    codenames = ['vhp_medium_pressure', 'vhp_high_pressure', 'vhp_pressure_bpr_backside', 'vhp_low_pressure']
 
     loggers = {}
     loggers[codenames[0]] = ValueLogger(reader, comp_val=20, maximumtime=600,
@@ -84,6 +113,10 @@ def main():
     loggers[codenames[2]] = ValueLogger(reader, comp_val=20, maximumtime=600,
                                         comp_type='lin', channel=3)
     loggers[codenames[2]].start()
+
+    loggers[codenames[3]] = ValueLogger(socket_reader, comp_val=0.01, maximumtime=300,
+                                        comp_type='log')
+    loggers[codenames[3]].start()
 
     livesocket = LiveSocket('VHP Gas system pressure', codenames)
     livesocket.start()
