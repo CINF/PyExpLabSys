@@ -22,7 +22,7 @@ except IndexError:
 import settings # pylint: disable=F0401
 
 LOGGER = get_logger('Bakeout', level='info', file_log=True,
-                    file_name='bakeout_log.txt', terminal_log=False)
+                    file_name='bakeout_logger.txt', terminal_log=False)
 
 class CursesTui(threading.Thread):
     """ Text UI for bakeout program """
@@ -156,7 +156,7 @@ class Bakeout(threading.Thread):
 
         channels = ['1', '2', '3', '4', '5', '6']
         # Setup up extra status for the diode relay status
-        diode_channels = ['diode' + number for number in channels];
+        diode_channels = ['diode' + number for number in channels]
         self.diode_channel_last = {name: None for name in diode_channels}
 
         # Setup sockets
@@ -227,14 +227,14 @@ class Bakeout(threading.Thread):
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 LOGGER.debug('Element: ' + str(element))
-                channel =list(element.keys())[0]
+                channel = list(element.keys())[0]
                 value = element[channel]
                 self.modify_dutycycle(int(channel), value=value)
                 qsize = self.pushsocket.queue.qsize()
 
             self.watchdog.reset_ttl()
             for i in range(1, 7):
-                if (1.0*cycle/totalcycles) < self.dutycycles[i-1]:
+                if (1.0 * cycle/totalcycles) < self.dutycycles[i - 1]:
                     self.activate(i)
                 else:
                     self.deactivate(i)
@@ -250,8 +250,6 @@ class Bakeout(threading.Thread):
         for i in range(0, 7): # Ready to quit
             self.deactivate(i)
 
-
-
 if __name__ == '__main__':
     wp.wiringPiSetup()
 
@@ -265,4 +263,3 @@ if __name__ == '__main__':
     while not BAKER.quit:
         time.sleep(1)
     TUI.stop()
-
