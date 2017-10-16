@@ -42,6 +42,7 @@ RPI_REVISIONS = {
     '0012': 'Model A+',
     'a01041': 'Pi 2 Model B',
     'a21041': 'Pi 2 Model B',
+    'a02082': 'Pi 3 Model B',
 }
 # Temperature regular expression
 RPI_TEMP_RE = re.compile(r"temp=([0-9\.]*)'C")
