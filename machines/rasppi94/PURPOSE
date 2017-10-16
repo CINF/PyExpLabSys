@@ -1,0 +1,5 @@
+id: GC MS
+purpose: Chiller + temperature
+
+Reads the flow, temperature, pressure and setpoint of the chiller.
+Reads the temperature inside the outer shell of the apparatus.
