@@ -1,11 +1,10 @@
+#pylint: disable=too-many-branches
+
 """Script that logs Trello stats to the database"""
 
 from collections import defaultdict
-from pprint import pprint
-from pickle import load, dump
 import json
 
-from MySQLdb import connect
 import requests
 
 
@@ -45,8 +44,12 @@ def extract_email(card):
                 pass
     return None
 
-
+# pylint: disable=too-few-public-methods
 class Missing:
+    """Class that represents a checklist items that is missing with
+    several people
+
+    """
     def __init__(self):
         self.missing = 0
         self.total = 0
@@ -112,20 +115,31 @@ def main():
     max_length_name = max(len(name) for name in missing_items)
     for name in sorted(missing_items):
         missing = missing_items[name]
-        print(" * {{: <{}}} ({{: >2}} out of {{: >2}} complete, {{: >2}} missing)".format(max_length_name).format(
-            name, missing.total - missing.missing, missing.total, missing.missing
-        ))
+        print(" * {{: <{}}} ({{: >2}} out of {{: >2}} complete, "
+              "{{: >2}} missing)".format(max_length_name).format(
+                  name,
+                  missing.total - missing.missing,
+                  missing.total,
+                  missing.missing
+              )
+             )
 
     print('\n########## Details ###', sep='')
     print("The following are details about which people are missing for each of the items\n")
     for name in sorted(missing_items):
         missing = missing_items[name]
         print("###", name, "###")
-        print("{} out of {} are missing this part".format(missing.missing, missing.total))
+        print("{} out of {} are missing this part".format(
+            missing.missing,
+            missing.total
+        ))
         for person in missing.names:
             print(" *", person)
         print()
-        print("We have emails for {} out of the {} that is missing".format(len(missing.emails), missing.missing))
+        print("We have emails for {} out of the {} that is missing".format(
+            len(missing.emails),
+            missing.missing
+        ))
         print("Namelist for email:", ", ".join(missing.email_names))
         print("\nEmail list        :", "; ".join(missing.emails), sep='')
         print("\nEmail list        :", ", ".join(missing.emails), sep='')

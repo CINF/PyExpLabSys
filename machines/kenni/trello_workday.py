@@ -1,7 +1,9 @@
+
+# pylint: disable=import-error,no-else-return,too-many-locals,too-many-branches
+
 """log workday status to database and live sockets"""
 
 import sys
-import json
 from time import sleep
 import datetime
 import traceback
@@ -34,7 +36,7 @@ def organize_comments(actions):
 def time_line_to_float(line):
     """Return time as float from time line"""
     line = line.lower().replace('estimate', '').replace('spent', '').lstrip(': ')
-    hours, minutes = [c.strip(' mh') for c in line.split(':')]    
+    hours, minutes = [c.strip(' mh') for c in line.split(':')]
     return float(hours) + float(minutes) / 60
 
 
@@ -108,7 +110,7 @@ def get_board_status():
                     done=done
                 )
                 times[category] += duration
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 print('EXCEPTION DURING GET DURATION:', card['name'])
                 traceback.print_exc(file=sys.stdout)
 
@@ -130,7 +132,7 @@ def get_board_status():
                 scores[id_] += to_split / len(ids)
 
     # Translate highscore as function of full name
-    for id_, score in scores.copy().items():
+    for id_, _ in scores.copy().items():
         for member in board['members']:
             if id_ == member['id']:
                 name = member['fullName']
@@ -196,7 +198,8 @@ def main():
             if high_scores:
                 largest_name = max(len(name) for name, value in high_scores)
             for name, value in high_scores:
-                highscore_str += '\n{{: <{}}}: {{:.2f}}'.format(largest_name).format(name, value)
+                highscore_str += '\n{{: <{}}}: {{:.2f}}'.\
+                                 format(largest_name).format(name, value)
 
             # Total work 80 and 10 people
             total_work = 66.33

@@ -1,11 +1,8 @@
-
+#pylint: disable=too-many-locals
 
 """Script that logs Trello stats to the database"""
 
 from collections import Counter
-from pprint import pprint
-from pickle import load
-from json import dumps
 
 from MySQLdb import connect
 import requests
@@ -13,17 +10,17 @@ import requests
 import hall_credentials
 
 
-'490', 'trello_list_unsorted', 'Trello list Unsorted'
-'491', 'trello_list_down_the_queue', 'Trello list Stuff far down the queue'
-'492', 'trello_list_to_do_pyexplabsys', 'Trello list To Do PyExpLabSys'
-'493', 'trello_list_doing', 'Trello list Doing'
-'494', 'trello_list_to_do_cindata_cinfwiki', 'Trello list To Do Cinfdata and cinfwiki'
-'495', 'trello_list_TODAY', 'Trello list TODAY'
-'496', 'trello_list_on_hold', 'Trello list On Hold'
-'497', 'trello_list_to_do', 'Trello list To Do'
-'498', 'trello_user_kenneth', 'Trello user Kenneth Nielsen'
-'499', 'trello_user_robert', 'Trello user Robert Jensen'
-'500', 'trello_user_brian', 'Trello user Brian'
+#'490', 'trello_list_unsorted', 'Trello list Unsorted'
+#'491', 'trello_list_down_the_queue', 'Trello list Stuff far down the queue'
+#'492', 'trello_list_to_do_pyexplabsys', 'Trello list To Do PyExpLabSys'
+#'493', 'trello_list_doing', 'Trello list Doing'
+#'494', 'trello_list_to_do_cindata_cinfwiki', 'Trello list To Do Cinfdata and cinfwiki'
+#'495', 'trello_list_TODAY', 'Trello list TODAY'
+#'496', 'trello_list_on_hold', 'Trello list On Hold'
+#'497', 'trello_list_to_do', 'Trello list To Do'
+#'498', 'trello_user_kenneth', 'Trello user Kenneth Nielsen'
+#'499', 'trello_user_robert', 'Trello user Robert Jensen'
+#'500', 'trello_user_brian', 'Trello user Brian'
 
 
 
@@ -71,7 +68,6 @@ def extract_lists(data):
             continue
         lists[list_['id']] = list_['name']
     return lists
-    
 
 
 def main():
@@ -107,7 +103,6 @@ def main():
     )
     cursor = connection.cursor()
     query = 'INSERT INTO dateplots_hall (`type`,`value`) VALUES'
-    id_value = []
 
     # Log lists
     for list_id, count in list_count.items():
