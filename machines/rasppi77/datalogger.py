@@ -38,6 +38,32 @@ class SocketReaderClass(threading.Thread):
                 print(e) # LOG THIS
             time.sleep(1)
 
+class SocketReaderClassPC(threading.Thread):
+    """ Read the wanted socket """
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.current_value = None
+        self.quit = False
+
+    def value(self):
+        """ return current value """
+        return self.current_value
+
+    def run(self):
+        while not self.quit:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(1)
+            try:
+                sock.sendto(b'M11213502A#raw', ('10.54.7.24', 9000))
+                received = sock.recv(1024)
+                received = received.decode('ascii')
+                value = received[received.find(',')+1:]
+                self.current_value = float(value)
+            except (socket.timeout, ValueError) as e:
+                print(e) # LOG THIS
+            time.sleep(1)
+            print('PC Value: ' + str(value))
+
 
 class Reader(threading.Thread):
     """ Pressure reader """
@@ -91,6 +117,9 @@ def main():
     socket_reader = SocketReaderClass()
     socket_reader.start()
 
+    socket_reader_pc = SocketReaderClassPC()
+    socket_reader_pc.start()
+
     dataq_instance = dataq.DataQ('/dev/serial/by-id/usb-0683_1550-if00')
     dataq_instance.add_channel(1)
     dataq_instance.add_channel(2)
@@ -101,7 +130,7 @@ def main():
 
     time.sleep(2.5)
 
-    codenames = ['vhp_medium_pressure', 'vhp_high_pressure', 'vhp_pressure_bpr_backside', 'vhp_low_pressure']
+    codenames = ['vhp_medium_pressure', 'vhp_high_pressure', 'vhp_pressure_bpr_backside', 'vhp_low_pressure', 'vhp_pressure_controller']
 
     loggers = {}
     loggers[codenames[0]] = ValueLogger(reader, comp_val=20, maximumtime=600,
@@ -117,6 +146,9 @@ def main():
     loggers[codenames[3]] = ValueLogger(socket_reader, comp_val=0.01, maximumtime=300,
                                         comp_type='log')
     loggers[codenames[3]].start()
+    loggers[codenames[4]] = ValueLogger(socket_reader_pc, comp_val=1, maximumtime=300,
+                                        comp_type='lin')
+    loggers[codenames[4]].start()
 
     livesocket = LiveSocket('VHP Gas system pressure', codenames)
     livesocket.start()
