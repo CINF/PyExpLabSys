@@ -113,7 +113,6 @@ def uptime(hostname, port, username='pi', password='cinf123'):
         # If host has been determined to be down, we attempt to load from cache
         if return_value['up'] == 'Down':
             pass
-            #host_cache = pickle.load(open(CACHE_PATH + hostname + '.p', 'rb'))
             #return_value['git'] = host_cache['git']
             #return_value['model'] = host_cache['model']
             #return_value['python_version'] = host_cache['python_version']
@@ -161,6 +160,9 @@ class CheckHost(threading.Thread):
             uptime_val['hostname'] = host[1]
             uptime_val['up_or_down'] = host_is_up
             uptime_val['port'] = host[2]
+            if uptime_val['load'] == 'Down':
+                print(host[1], attr)
+                uptime_val['git'] = attr['git']
             if not 'location' in uptime_val:
                 uptime_val['location'] = '<i>' + host[3] + '</i>'
                 uptime_val['purpose'] = '<i>' + host[4] + '</i>'
@@ -200,11 +202,10 @@ def main():
 
     status_string = ""
     for host in sorted_results.values():
-        if host['up_or_down']:
-            query = ("update host_checker set attr = '" +
-                     json.dumps(host) + "' where id = " + str(host['db_id']))
-            print(query)
-            cursor.execute(query)
+        query = ("update host_checker set attr = '" +
+                 json.dumps(host) + "' where id = " + str(host['db_id']))
+        #print(query)
+        cursor.execute(query)
 
 if __name__ == "__main__":
     main()
