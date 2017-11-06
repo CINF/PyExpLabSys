@@ -70,7 +70,7 @@ class IonOpticsControl(threading.Thread):
     def __init__(self, port, name, lenses):
         threading.Thread.__init__(self)
         name = name + '_ion_optics'
-        self.pullsocket = DateDataPullSocket(name, lenses, timeouts=[3.0] * len(lenses))
+        self.pullsocket = DateDataPullSocket(name, lenses, timeouts=20.0)
         self.pullsocket.start()
         self.pushsocket = DataPushSocket(name, action='enqueue')
         self.pushsocket.start()
@@ -102,6 +102,8 @@ class IonOpticsControl(threading.Thread):
             
             actual_voltage = self.ion_optics.query_voltage(current_lens)
             self.actual_voltages[self.lenses[current_lens-1]] = actual_voltage
+            self.pullsocket.set_point_now(self.lenses[current_lens-1], actual_voltage)
+
             if current_lens == len(self.lenses):
                 current_lens = 1
             else:
