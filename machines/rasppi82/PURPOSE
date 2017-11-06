@@ -1,0 +1,5 @@
+id: b307-049
+purpose: Temperature + Humidity + H2 Pressure
+
+Reads temperature and humidity in b307-049.
+Readout of the baratron measuring the pressure in common H2 line
