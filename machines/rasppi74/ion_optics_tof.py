@@ -6,7 +6,7 @@ import time
 def main():
     """ Main function """
     # The ordering of the list will set the corresponding channel number
-    lenses = ['lens_a', 'lens_b', 'lens_c', 'lens_d', 'lens_e']
+    lenses = ['lens_a', 'lens_b', 'lens_c', 'lens_d', 'lens_e','','focus','extraction']
     port = '/dev/serial/by-id/usb-Stahl_Electronics_HV_Series_HV069-if00-port0'
     ioc = IonOpticsControl(port, 'TOF', lenses)
     ioc.start()
