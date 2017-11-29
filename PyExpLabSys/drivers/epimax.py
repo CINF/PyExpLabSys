@@ -348,16 +348,13 @@ def bytes_to_status(bytes_, status_type):
 
     states = {}
     for state_num, state_bits in enumerate(all_states, start=1):  # Enumeration starts at 1
-        # The first 3 bits has 3 different meanings: on, inhibit and override
-        # First make sure only one is set
+        # Translate the state bits, if none is set, default to off
         if sum(state_bits[:3]) > 1:
-            raise ValueError('Bad state: {}'.format(state_bits))
-
-        # Then translate, if none is set, default to off
-        for bit_num, bit_meaning in enumerate(['on', 'inhibit', 'override']):
-            if state_bits[bit_num]:
-                states[status_type + str(state_num)] = bit_meaning
-                break
+            all_state_strings = []
+            for bit_num, bit_meaning in enumerate(['on', 'inhibit', 'override']):
+                if state_bits[bit_num]:
+                    all_state_strings.append(bit_meaning)
+            states[status_type + str(state_num)] = ', '.join(all_state_strings)
         else:
             states[status_type + str(state_num)] = 'off'
 
