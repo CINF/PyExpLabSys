@@ -14,6 +14,13 @@ class DataQ(object):
     """ driver for the DataQ Instrument """
     def __init__(self, port):
         self.serial = serial.Serial(port)
+        self.serial.write('stop\r'.encode('ascii'))
+        time.sleep(1)
+        print(self.serial.inWaiting())
+        sample_rate = self.read_sample_rate().strip()
+        self.old_protocol = (len(sample_rate) == 0)
+
+        self.stop_measurement()
         self.set_float_mode() # This is currently the only implemented mode
         self.scan_list_counter = 0
         self.stop_measurement()
@@ -52,17 +59,26 @@ class DataQ(object):
         """ Returns firmware version """
         command = 'info 2'
         res = self.comm(command)[7:]
-        return res
+        return res.strip()
 
     def serial_number(self):
         """ Returns device serial number """
         command = 'info 6'
         res = self.comm(command)[7:]
-        return res
+        return res.strip()
+
+    def read_sample_rate(self):
+        """ Returns device serial number """
+        command = 'info 9'
+        res = self.comm(command)[7:]
+        return res.strip()
 
     def start_measurement(self):
         """ Start a measurement scan """
-        command = 'start'
+        if self.old_protocol:
+            command = 'start'
+        else:
+            command = 'start 0'
         res = self.comm(command)
         self.scanning = True
         return res
@@ -75,6 +91,7 @@ class DataQ(object):
         data_start = '   '
         while data_start != b'sc ':
             data_start = self.serial.read(3)
+            print(data_start)
         scan_data = b' '
         try: # Python 2
             ord(scan_data[-1])
@@ -103,7 +120,11 @@ class DataQ(object):
     def add_channel(self, channel):
         """ Adds a channel to scan slist.
         So far only analog channels are accepted """
-        command = 'slist ' + str(self.scan_list_counter) + ' x000' + str(channel - 1)
+        if self.old_protocol:
+            command = 'slist ' + str(self.scan_list_counter) + ' x000' + str(channel - 1)
+        else:
+            command = 'slist ' + str(self.scan_list_counter) + ' ' + str(channel - 1)
+        print(command)
         # TODO: This is a VERY rudementary treatment of the scan-list...
         self.scan_list_counter = self.scan_list_counter + 1
         self.scan_list.append(channel)
@@ -124,7 +145,10 @@ class DataQ(object):
 
     def reset_scan_list(self):
         """ Reseting the scan list """
-        command = 'slist 0 0xffff'
+        if self.old_protocol:
+            command = 'slist 0 0xffff'
+        else:
+            command = 'slist 0 0'
         self.scan_list_counter = 0
         self.scan_list = []
         res = self.comm(command)
@@ -157,15 +181,79 @@ class DataQ(object):
      """
 
 if __name__ == '__main__':
-    DATAQ = DataQ('/dev/ttyACM0')
+    DATAQ = DataQ('/dev/ttyUSB0')
+    """
+    #DATAQ = DataQ('/dev/ttyACM0')
+    DATAQ.stop_measurement()    
     print(DATAQ.device_name())
     print(DATAQ.firmware())
     print(DATAQ.serial_number())
+    DATAQ.set_ascii_mode()
+    print(DATAQ.read_sample_rate())
     DATAQ.add_channel(1)
     DATAQ.add_channel(2)
     DATAQ.add_channel(3)
     DATAQ.add_channel(4)
     print(DATAQ.start_measurement())
-    for _ in range(0, 100000):
+    for _ in range(0, 10):
         print(DATAQ.read_measurements())
     DATAQ.stop_measurement()
+    """
+    DATAQ.serial.write('info 0\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+
+
+    DATAQ.serial.write('slist 0 0\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+
+    DATAQ.serial.write('slist 1 1\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+
+    DATAQ.serial.write('info 0\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+
+    DATAQ.serial.write('srate 3000\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+
+    DATAQ.serial.write('ps 0\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+
+    DATAQ.serial.write('start 0\r'.encode('ascii'))
+    #time.sleep(0.1)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+    """
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+    """
+    DATAQ.serial.write('stop\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
+
+    DATAQ.serial.write('info 0\r'.encode('ascii'))
+    time.sleep(0.5)
+    print(DATAQ.serial.inWaiting())
+    print(DATAQ.serial.read(DATAQ.serial.inWaiting()))
