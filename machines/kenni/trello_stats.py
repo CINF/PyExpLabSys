@@ -7,6 +7,9 @@ from collections import Counter
 from MySQLdb import connect
 import requests
 
+from PyExpLabSys.common.supported_versions import python3_only
+python3_only(__file__)
+
 import hall_credentials
 
 
