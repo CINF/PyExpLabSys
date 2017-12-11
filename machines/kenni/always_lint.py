@@ -156,7 +156,7 @@ class CommitAnalyzer(object):
             while len(lint_cache) > 1900:
                 lint_cache.popitem(last=False)
             LOG.info('Lint cache length after reduction %s', len(lint_cache))
-    except:  # pylint: disable=bare-except
+    except FileNotFoundError:  # pylint: disable=bare-except
         lint_cache = OrderedDict()
         LOG.info('Initialize new cache')
 
