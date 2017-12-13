@@ -17,26 +17,26 @@ class L3G4200D(object):
         self.device_address = 0x68
         # Set output data rate to 200, bandwidth cut-off to 12.5Hz
         self.bus.write_byte_data(self.device_address, 0x20, 0x4F)
-        # Set full scale range, 0x00: 250dps, 0x30: 2000dps
+        # Set full scale range, 0x00: 250dps, 0x30: 2000dps, block updates until lsb and msb are read
         self.full_scale = 250 # This should go in a self-consistent table...
-        self.bus.write_byte_data(self.device_address, 0x23, 0x00)
+        self.bus.write_byte_data(self.device_address, 0x23, 0x80)
         time.sleep(0.5)
 
     def who_am_i(self):
         """ Device identification """
         id_byte = self.bus.read_byte_data(self.device_address, 0x0F)
         return id_byte
-        
-    
 
     def read_values(self):
         """ Read a value from the sensor """
-        new_data = self.bus.read_byte_data(self.device_address, 0x27)
-        print(bin(new_data))
-
+        #data = self.bus.read_i2c_block_data(self.device_address, 0x28, 2)
+        #byte1 = data[0]
+        #byte2 = data[1]
+        #print(byte1, byte2)
         byte1 = self.bus.read_byte_data(self.device_address, 0x28)
         byte2 = self.bus.read_byte_data(self.device_address, 0x29)
-
+        #print(byte1, byte2)
+        #print('---')
         x_value = byte2 * 256 + byte1
         if x_value > 32767:
             x_value = x_value - 65536
@@ -60,8 +60,8 @@ class L3G4200D(object):
         return(x_value, y_value, z_value)
 
 if __name__ == '__main__':
-    AIS = AIS328DQTR()
-    #print(bin(AIS.who_am_i()))
+    L3G = L3G4200D()
+    print(bin(L3G.who_am_i()))
     for i in range(0, 5):
         time.sleep(0.01)
-        print(AIS.read_values())
+        print(L3G.read_values())
