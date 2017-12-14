@@ -4,12 +4,21 @@ import datetime
 import telnetlib
 import socket
 import threading
-import Queue
 import time
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 import json
-import sys
-import os
 import MySQLdb
+from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
+
+LOGGER = get_logger('Host Checker', level='debug', file_log=True,
+                    file_name='host_checker.txt', terminal_log=True,
+                    email_on_warnings=False, email_on_errors=False,
+                    file_max_bytes=104857600, file_backup_count=5)
 
 def host_status(hostname, port):
     """ Report if a host i available on the network """
@@ -54,15 +63,14 @@ def uptime(hostname, port, username='pi', password='cinf123'):
         return_value['up'] = uptime_value
         return_value['load'] = load
 
-    ports = []
     if not port in [22, 3389]:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(0.5)
 
         try:
-            sock.sendto('status', (hostname, port))            
+            sock.sendto(b'status', (hostname, port))
             received = sock.recv(4096)
-            status = json.loads(received)
+            status = json.loads(received.decode())
             system_status = status['system_status']
             uptime_value = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
             load = str(system_status['load_average']['15m'])
@@ -78,7 +86,7 @@ def uptime(hostname, port, username='pi', password='cinf123'):
                 return_value['purpose'] = system_status['purpose']['purpose']
         except (KeyError, UnboundLocalError):
             pass
-            
+
         try:
             model = system_status['rpi_model']
             host_temperature = system_status['rpi_temperature']
@@ -110,16 +118,6 @@ def uptime(hostname, port, username='pi', password='cinf123'):
             git = ''
         return_value['git'] = git
 
-        # If host has been determined to be down, we attempt to load from cache
-        if return_value['up'] == 'Down':
-            pass
-            #return_value['git'] = host_cache['git']
-            #return_value['model'] = host_cache['model']
-            #return_value['python_version'] = host_cache['python_version']
-        else: # Update cache
-            pass
-            #pickle.dump(return_value, open(CACHE_PATH + hostname + '.p', 'wb'))
-
     return return_value
 
 class CheckHost(threading.Thread):
@@ -140,11 +138,17 @@ class CheckHost(threading.Thread):
                 attr['git'] = ''
                 attr['model'] = ''
                 attr['python_version'] = ''
+                attr['apt_up'] = ''
+                attr['location'] = host[3]
+                attr['purpose'] = host[4]
             host_is_up = host_status(host[1], host[2])
+
+            LOGGER.debug('host_is_up: ' + str(host_is_up))
 
             if host_is_up:
                 if host[1].find('rasppi') > -1:
                     uptime_val = uptime(host[1], host[2])
+                    LOGGER.debug('uptime_val: ' + str(uptime_val))
                 else:
                     uptime_val = uptime(host[1], host[2], username='cinf')
             else:
@@ -160,9 +164,13 @@ class CheckHost(threading.Thread):
             uptime_val['hostname'] = host[1]
             uptime_val['up_or_down'] = host_is_up
             uptime_val['port'] = host[2]
+
             if uptime_val['load'] == 'Down':
-                print(host[1], attr)
                 uptime_val['git'] = attr['git']
+                uptime_val['location'] = attr['location']
+                uptime_val['purpose'] = attr['purpose']
+                uptime_val['model'] = attr['model']
+                uptime_val['apt_up'] = attr['apt_up']
             if not 'location' in uptime_val:
                 uptime_val['location'] = '<i>' + host[3] + '</i>'
                 uptime_val['purpose'] = '<i>' + host[4] + '</i>'
@@ -172,21 +180,20 @@ class CheckHost(threading.Thread):
 
 def main():
     """ Main function """
-    t = time.time()
-    hosts = Queue.Queue()
+    hosts = queue.Queue()
 
     #TODO: The contact information should not be in this file!
     database = MySQLdb.connect(host='servcinf-sql', user='cinf_reader',
                                passwd='cinf_reader', db='cinfdata')
     cursor = database.cursor()
-    query = 'select id, host, port, location, purpose, attr from host_checker;'
+    query = 'select id, host, port, location, purpose, attr from host_checker order by host';
     cursor.execute(query)
     results = cursor.fetchall()
     for result in results:
         hosts.put(result)
 
-    results = Queue.Queue()
-    t = time.time()
+    results = queue.Queue()
+
     host_checkers = {}
     for i in range(0, 20):
         host_checkers[i] = CheckHost(hosts, results)
@@ -200,12 +207,13 @@ def main():
         result = results.get()
         sorted_results[i] = result
 
-    status_string = ""
     for host in sorted_results.values():
+        LOGGER.debug('Value of host: ' + str(host))
         query = ("update host_checker set attr = '" +
                  json.dumps(host) + "' where id = " + str(host['db_id']))
-        #print(query)
         cursor.execute(query)
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
+        time.sleep(30)
