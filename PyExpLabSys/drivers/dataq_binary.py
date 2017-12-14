@@ -153,7 +153,7 @@ class DataQBinary(object):
 
         # Stop any active acquisition and clear buffer
         self.stop()
-        #self.clear_buffer()
+        self.clear_buffer()
 
         # Initialize variables
         self.expect_echo = True
@@ -167,13 +167,13 @@ class DataQBinary(object):
         while self.serial.inWaiting() > 0:
             self.serial.read(self.serial.inWaiting())
 
-    def _comm(self, arg, dont_read_reply=False):
+    def _comm(self, arg, read_reply_policy='read'):
         """Execute command and return reply"""
         # Form command and send
         command = (arg + self.end_char)
         self.serial.write(command.encode())
         LOGGER.debug("cmd: %s", command)
-        if dont_read_reply:
+        if read_reply_policy == 'dont_read':
             return ''
 
         # Read until reply end string
@@ -182,6 +182,10 @@ class DataQBinary(object):
             sleep(self.read_wait_time)
             bytes_waiting = self.serial.inWaiting()
             bytes_read = self.serial.read(bytes_waiting)
+            # For the stop command, the reply might have a bit a data
+            # prefixed, so just don't interpret the reply
+            if read_reply_policy == 'dont_interpret':
+                return ''
             return_string += bytes_read.decode().rstrip('\x00')
         LOGGER.debug("reply: %s", return_string)
 
@@ -221,7 +225,7 @@ class DataQBinary(object):
     def start(self):
         """Start data acquisition"""
         self.expect_echo = False
-        self._comm('start 0', dont_read_reply=True)
+        self._comm('start 0', read_reply_policy='dont_read')
 
     def stop(self):
         """Stop data acquisition
@@ -229,7 +233,8 @@ class DataQBinary(object):
         This also implies clearing the buffer of any remaining data
         """
         self.expect_echo = True
-        self._comm('stop', dont_read_reply=True)
+        self._comm('stop', read_reply_policy='dont_interpret')
+        # This shouldn't be necessary
         self.clear_buffer()
 
     def scan_list(self, scan_list):
