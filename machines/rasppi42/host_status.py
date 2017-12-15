@@ -16,9 +16,9 @@ from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
 LOGGER = get_logger('Host Checker', level='debug', file_log=True,
-                    file_name='host_checker.txt', terminal_log=True,
+                    file_name='host_checker.log', terminal_log=True,
                     email_on_warnings=False, email_on_errors=False,
-                    file_max_bytes=104857600, file_backup_count=5)
+                    file_max_bytes=104857, file_backup_count=5)
 
 def host_status(hostname, port):
     """ Report if a host i available on the network """
@@ -72,7 +72,8 @@ def uptime(hostname, port, username='pi', password='cinf123'):
             received = sock.recv(4096)
             status = json.loads(received.decode())
             system_status = status['system_status']
-            uptime_value = str(int(system_status['uptime']['uptime_sec']) / (60*60*24))
+            uptime_value = str(int(int(system_status['uptime']['uptime_sec']) / (60*60*24)))
+            LOGGER.debug(uptime_value)
             load = str(system_status['load_average']['15m'])
             return_value['up'] = uptime_value
             return_value['load'] = load
@@ -166,11 +167,20 @@ class CheckHost(threading.Thread):
             uptime_val['port'] = host[2]
 
             if uptime_val['load'] == 'Down':
-                uptime_val['git'] = attr['git']
                 uptime_val['location'] = attr['location']
                 uptime_val['purpose'] = attr['purpose']
-                uptime_val['model'] = attr['model']
-                uptime_val['apt_up'] = attr['apt_up']
+                try:
+                    uptime_val['git'] = attr['git']
+                except KeyError:
+                    uptime_val['git'] = ''
+                try:
+                    uptime_val['model'] = attr['model']
+                except KeyError:
+                    uptime_val['model'] = ''
+                try:
+                    uptime_val['apt_up'] = attr['apt_up']
+                except KeyError:
+                    uptime_val['apt_up'] = ''
             if not 'location' in uptime_val:
                 uptime_val['location'] = '<i>' + host[3] + '</i>'
                 uptime_val['purpose'] = '<i>' + host[4] + '</i>'
@@ -186,34 +196,35 @@ def main():
     database = MySQLdb.connect(host='servcinf-sql', user='cinf_reader',
                                passwd='cinf_reader', db='cinfdata')
     cursor = database.cursor()
-    query = 'select id, host, port, location, purpose, attr from host_checker order by host';
+    database.autocommit(True)
+
+    query = 'select id, host, port, location, purpose, attr from host_checker';
     cursor.execute(query)
     results = cursor.fetchall()
+
     for result in results:
         hosts.put(result)
-
+    LOGGER.debug('Size of hosts-selct: ' + str(hosts.qsize()))
     results = queue.Queue()
 
     host_checkers = {}
-    for i in range(0, 20):
+    for i in range(0, 5): # number threads, high number will complete faster
         host_checkers[i] = CheckHost(hosts, results)
         host_checkers[i].start()
     hosts.join()
 
-    sorted_results = {}
-    i = 0
     while not results.empty():
-        i = i + 1
-        result = results.get()
-        sorted_results[i] = result
-
-    for host in sorted_results.values():
+        host = results.get()
         LOGGER.debug('Value of host: ' + str(host))
-        query = ("update host_checker set attr = '" +
+        query = ("update host_checker set time=now(), attr = '" +
                  json.dumps(host) + "' where id = " + str(host['db_id']))
+        LOGGER.debug(query)
         cursor.execute(query)
+    database.close()
 
 if __name__ == "__main__":
+    main()
     while True:
+        time.sleep(60)
         main()
-        time.sleep(30)
+ 
