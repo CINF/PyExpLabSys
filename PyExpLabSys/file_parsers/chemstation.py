@@ -1,9 +1,18 @@
 # pylint: disable=too-few-public-methods,no-member
-"""File parser for Chemstation files"""
+"""File parser for Chemstation files
+
+.. note:: This file parser went through a large re-write on ??? which
+   changed the data structures of the resulting objects. This means
+   that upon upgrading it *will* be necessary to update code. The
+   re-write was done to fix some serious errors from the first
+   version, like relying on the Report.TXT file for injections
+   summaries. These are now fetched from the more ordered CSV files.
+
+"""
 
 from __future__ import print_function, unicode_literals, division
-from collections import defaultdict
 
+from collections import defaultdict
 import codecs
 import os
 from itertools import islice
@@ -12,6 +21,8 @@ import time
 import struct
 from struct import unpack
 
+# The standard library csv module is no good for encoded CSV, which is
+# kind of annoying
 import unicodecsv as csv
 import numpy
 
@@ -20,24 +31,32 @@ from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
 
-# Regular expressions quick guide
-# () denotes a group that we want to capture
-# [] denotes a group of characters to match
-# * repeats the previous group if character
-TABLE_RE = (r'^ *([0-9]*) *([0-9\.e-]*)([A-Z ]*)([0-9\.e-]*) *([0-9\.e-]*) *([0-9\.e-]*) '
-            r'*([a-zA-Z0-9\?]*)$')
+class NoInjections(Exception):
+    """Exception raised when there are no injections in the sequence"""
 
 
 class Sequence(object):
-    """The Sequence class for the Chemstation data format"""
+    """The Sequence class for the Chemstation data format
+
+    Params:
+        injections (list): List of :class:`~Injection`'s in this sequence
+        sequence_dir_path (str): The path of this sequence directory
+        metadata (dict): Dict of metadata
+    """
 
     def __init__(self, sequence_dir_path):
+        """Instantiate object properties
+
+        Args:
+            sequence_dir_path (str): The path of the sequence
+        """
         self.injections = []
         self.sequence_dir_path = sequence_dir_path
         self.metadata = {}
         self._parse()
         if not self.injections:
-            raise ValueError('No injections in sequence: {}'.format(self.sequence_dir_path))
+            msg = 'No injections in sequence: {}'.format(self.sequence_dir_path)
+            raise NoInjections(msg)
         self._parse_metadata()
 
     def _parse_metadata(self):
@@ -64,39 +83,75 @@ class Sequence(object):
             self.injections.append(Injection(injection_fullpath))
 
     def __repr__(self):
-        """Change of list name"""
+        """Return Sequence object representation"""
         return "<Sequence object at {}>".format(self.sequence_dir_path)
 
-    def full_sequence_dataset(self):
-        """Generate molecule ('PeakName') specific dataset"""
-        data = defaultdict(list)
-        start_time = self.injections[0].metadata['unixtime']
+    def full_sequence_dataset(self, column_names=None):
+        """Generate peak name specific dataset
 
+        This will collect area values for named peaks as a function of time over the
+        different injections.
+
+        Args:
+            column_names (dict): A dict of the column names needed from the report lines.
+                The dict should hold the keys: 'peak_name', 'retention_time' and 'area'.
+                It defaults to: `column_names = {'peak_name': 'Compound Name',
+                'retention_time': 'Retention Timemin', 'area': 'Area'}`
+
+        Returns:
+            dict: Mapping of signal_and_peak names and the values
+
+        """
+        # Set the column names default values
+        if column_names is None:
+            column_names = {
+                'peak_name': 'Compound Name',
+                'retention_time': 'Retention Time / min',
+                'area': 'Area'
+            }
+
+        # Initialize the start time and data collection objects
+        data = defaultdict(list)
+        start_time = self.injections[0].metadata['injection_date_unixtime']
+
+        # Loop over injections and collect data
         for injection in self.injections:
-            elapsed_time = injection.metadata['unixtime'] - start_time
+            elapsed_time = injection.metadata['injection_date_unixtime'] - start_time
             # Unknowns is used to sum up unknown values for a detector
             unknowns = defaultdict(float)
 
-            for measurement in injection.measurements:
-                label = self._generate_label(data, measurement)
-                # If it is a unknown peak, add the area
-                if label.endswith('?'):
-                    unknowns[label] += measurement['Area']
-                else:
-                    data[label].append([elapsed_time, measurement['Area']])
+            # Loop over signal reports
+            for signal, report in injection.reports.items():
+                # Loop over report lines
+                for report_line in report:
+                    label = self._generate_label(data, signal, report_line, column_names)
+                    # If it is a unknown peak, add the area
+                    area = report_line[column_names['area']]
+                    if label.endswith('?'):
+                        unknowns[label] += area
+                    else:
+                        data[label].append([elapsed_time, area])
 
             # Add the summed unknown values for this injection
             for key, value in unknowns.items():
                 data[key].append([elapsed_time, value])
 
-        return data
+        return dict(data)  # Convert the defaultdict back to dict
 
     @staticmethod
-    def _generate_label(data, measurement):
-        """Generate a label"""
+    def _generate_label(data, signal, report_line, column_names):
+        """str: Return a label
+
+        Args:
+            data (dict): The data collected so far
+            signal (str): The name of the signal
+            report_line (dict): The current report line as a dict
+            column_names (dict): column_names dict, see :meth:`~full_sequence_dataset`
+        """
         # Base label e.g: "FID1 A  - CH4" or "TCD3 C  - ?"
-        label = '{detector}  - {PeakName}'.format(**measurement)
-        if measurement['PeakName'] == '?':
+        peak_name = report_line[column_names['peak_name']]
+        label = '{} - {}'.format(signal, peak_name)
+        if peak_name == '?':
             return label
 
         # Check whether we already have a label for this detector, molecule
@@ -109,18 +164,26 @@ class Sequence(object):
 
         # For an known peak that we do not alread know about, add the retention time to
         # the label
-        return '{} ({})'.format(label, measurement['RetTime'])
+        return '{} ({})'.format(label, report_line[column_names['retention_time']])
 
 
 class Injection(object):
     """The Injection class for the Chemstation data format
 
     Params:
-        measurements (list): List of measurement lines from the report
-        measurements_raw (list): List of raw measurement lines from the report
-        reports (dict): Signal/detector to list of report lines
+        injection_dirpath (str): The path of the directory of this injection
+        reports (defaultdict): Signal -> list_of_report_lines dict. Each report line
+            is dict of column headers to type converted column content. E.g:
+            `{u'Area': 22.81, u'Area   %': 0.24, u'Height': 12.66, u'Peak Number': 1,
+            u'Peak Type': u'BB', u'Peak Widthmin': 0.027, u'Retention Timemin': 5.81}`
+            The columns headers are also stored in :attr`~metadata` under the `columns`
+            key.
+        reports_raw (defaultdict): Same as :attr:`~reports` except the content is not
+            type converted.
         metadata (dict): Dict of metadata
-        report_filepath (str): The filepath of the report for the injection
+        raw_files (dict): Mapping of ch_file_name -> :class:`~CHFile` objects
+        report_txt (str or None): The content of the Report.TXT file from the
+            injection folder is any
     """
 
     # This is scary. I don't know how many standard formats exist, or
@@ -131,19 +194,36 @@ class Injection(object):
         '%d-%b-%y, %H:%M:%S',  # '13-Jan-15, 11:16:49'
     )
 
-    def __init__(self, injection_dirpath, load_raw_spectra=True):
+    def __init__(self, injection_dirpath, load_raw_spectra=True, read_report_txt=True):
+        """Instantiate Injection object
+
+        Args:
+            injection_dirpath (str): The path of the injection directory
+            load_raw_spectra (bool): Whether to load raw spectra or not
+            read_report_txt (bool): Whether to read and save the Report.TXT file
+        """
         self.injection_dirpath = injection_dirpath
         self.reports = defaultdict(list)
         self.reports_raw = defaultdict(list)
         self.metadata = {}
+        # Parse the Report00.CSV file
         self._parse_header()
+        # Parse the table CSV files
         self._parse_tables()
+        # Parse the raw files if requested
         self.raw_files = {}
         if load_raw_spectra:
             self._load_raw_spectra(injection_dirpath)
+        # Read and save the Report.TXT file is requested
+        self.report_txt = None
+        if read_report_txt:
+            report_path = os.path.join(self.injection_dirpath, 'Report.TXT')
+            if os.path.isfile(report_path):
+                with codecs.open(report_path, encoding='UTF16') as file_:
+                    self.report_txt = file_.read()
 
     def _parse_date(self, date_part):
-        """Parse a date string in one of the formats in self.datetime_formats"""
+        """timestruct: Parse a date string in one of the formats in self.datetime_formats"""
         for datetime_format in self.datetime_formats:
             try:
                 timestamp = time.strptime(date_part, datetime_format)
@@ -168,9 +248,9 @@ class Injection(object):
         return list(csv_reader)
 
     def _add_value_unit_to_metadata(self, name, value, unit):
-        """Add value or value + unit to metadata under name"""
-        if unit != "":
-            self.metadata[name] = value + unit
+        """Add value or value / unit to metadata under name"""
+        if unit.strip() != "":
+            self.metadata[name] = value + ' / ' + unit
         else:
             self.metadata[name] = value
 
@@ -194,7 +274,7 @@ class Injection(object):
                 row[1] = type_functions[name](value)
 
         # Parse first section of metadata
-        row_iter = iter(csv_rows)
+        row_iter = iter(csv_rows)  # Use an iterator to flexibly move through the 
         for row in row_iter:
             name, value, unit = row
             if name == 'number_of_signals':
@@ -238,6 +318,9 @@ class Injection(object):
         for name in ("injection_date", "results_created"):
             if name in self.metadata:
                 self.metadata[name + '_timestruct'] = self._parse_date(self.metadata[name])
+                self.metadata[name + '_unixtime'] = time.mktime(
+                    self.metadata[name + '_timestruct']
+                )
 
     def _parse_tables(self):
         """Parse the report tables from CSV files"""
@@ -280,6 +363,10 @@ class Injection(object):
             if os.path.splitext(file_)[1] == '.ch':
                 filepath = os.path.join(injection_dirpath, file_)
                 self.raw_files[file_] = CHFile(filepath)
+
+    def __repr__(self):
+        """Return object representation"""
+        return "<Injection object at {}>".format(self.injection_dirpath)
 
 
 # Constants used for binary file parsing
@@ -351,6 +438,11 @@ class CHFile(object):
     supported_versions = {179}
 
     def __init__(self, filepath):
+        """Instantiate object
+
+        Args:
+            filepath (str): The path of the data file
+        """
         self.filepath = filepath
         self.metadata = {}
         with open(self.filepath, 'rb') as file_:
@@ -363,7 +455,7 @@ class CHFile(object):
         length = unpack(UINT8, file_.read(1))[0]
         parsed = unpack(STRING.format(length), file_.read(length))
         version = int(parsed[0])
-        if not version in self.supported_versions:
+        if version not in self.supported_versions:
             raise ValueError('Unsupported file version {}'.format(version))
         self.metadata['magic_number_version'] = version
 
@@ -383,8 +475,6 @@ class CHFile(object):
     def _parse_header_status(self):
         """Print known and unknown parts of the header"""
         file_ = open(self.filepath, 'rb')
-
-        print('Header parsing status')
         # Map positions to fields for all the known fields
         knowns = {item[1]: item for item in self.fields}
         # A couple of places has a \x01 byte before a string, these we simply skip
