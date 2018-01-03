@@ -1,9 +1,9 @@
 import curses
 import curses.textpad
 import time
-from fug import FUGNTN140Driver
-#import PyExpLabSys.drivers.fug.FUGNTN140Driver as FUG                                           
-from PyExpLabSys.common.sockets import DateDataPullSocket                                        
+#from fug import FUGNTN140Driver
+from PyExpLabSys.drivers.fug import FUGNTN140Driver# as FUG
+from PyExpLabSys.common.sockets import DateDataPullSocket
 #from pull import DateDataPullClient
 from heat_ramp import PowerCalculatorClassOmicron
 #import numpy as np

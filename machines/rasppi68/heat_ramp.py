@@ -3,10 +3,10 @@ import time
 import threading
 #import PyExpLabSys.auxiliary.pid as PID
 import pid as PID
-from fug import FUGNTN140Driver as FUG
+#from fug import FUGNTN140Driver as FUG
 #import PyExpLabSys.drivers.fug.FUGNTN140Driver as FUG
-#from PyExpLabSys.common.socket_clients import DateDataPullClient
-from pull import DateDataPullClient
+from PyExpLabSys.common.socket_clients import DateDataPullClient
+#from pull import DateDataPullClient
 
 class PowerCalculatorClassOmicron(threading.Thread):
     """ Calculate the wanted amount of current.
