@@ -254,7 +254,7 @@ class ContinuousPlotter(object):
 
         # Initiate the backend
         self._plot = None
-        print right_log, left_log
+        print(right_log, left_log)
         # TODO
 
         # Initiate the data
