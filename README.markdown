@@ -12,7 +12,7 @@
 
 # Python for Experimental Labs System
 
-![](1https://media.readthedocs.org/static/projects/badges/passing.svg)
+![](https://media.readthedocs.org/static/projects/badges/passing.svg)
 
 ## About PyExpLabSys
 
