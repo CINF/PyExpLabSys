@@ -49,36 +49,38 @@ ERRORCODES = {
 class FUGNTN140Driver(object):
     """Driver for fug NTN 140 power supply
 
-        Methods:
-        -----------------------------------------------
-        Private:
-                __init__
-                _check_answer
-                _flush_answer
-                _get_answer
-                _write_register
-                _read_register
-        Public:
-                reset()
-                stop()
-                is_on()
-                output(state=True/False)
-                get_state()
-                identification_string()
+        **Methods**
 
-                set_voltage(value)
-                get_voltage()
-                monitor_voltage()
-                ramp_voltage(value, program=0)
-                ramp_voltage_running()
+        * **Private**
 
-                set_current(value)
-                get_current()
-                monitor_current()
-                ramp_current(value, program=0)
-                ramp_current_running()
+          * __init__
+          * _check_answer
+          * _flush_answer
+          * _get_answer
+          * _write_register
+          * _read_register
 
-        -----------------------------------------------
+        * **Public**
+
+          * reset()
+          * stop()
+          * is_on()
+          * output(state=True/False)
+          * get_state()
+          * identification_string()
+          * ---
+          * set_voltage(value)
+          * get_voltage()
+          * monitor_voltage()
+          * ramp_voltage(value, program=0)
+          * ramp_voltage_running()
+          * ---
+          * set_current(value)
+          * get_current()
+          * monitor_current()
+          * ramp_current(value, program=0)
+          * ramp_current_running()
+
     """
 
 
@@ -264,15 +266,25 @@ class FUGNTN140Driver(object):
         """Activates ramp function for voltage
         value : ramp value in volts/second (>S0R)
 
-        program : setvalue behaviour
-            0 - (default) no ramp function. Setpoint is implemented immediately
-            1 - >S0A follows the value in >S0 with the adjusted ramp rate upwards and downwards
-            2 - >S0A follows the value in >S0 with the adjusted ramp rate only upwards. When
-                programming downwards, >S0A follows >S0 immediately.
-            3 - >S0A follows the value in >S0 with a special ramp function only upwards. When
-                programming downwards, >S0A follows >S0 immediately. Ramp between 0..1 with
-                11.11E-3 per second. Above 1 : with >S0R
-            4 - Same as 2, but >S0 as well as >S0A are set to zero if >DON is 0 """
+        +---------+--------------------------------------------------------------------+
+        | program | setvalue behaviour                                                 |
+        +=========+====================================================================+
+        | 0       | (default) no ramp function. Setpoint is implemented immediately    |
+        +---------+--------------------------------------------------------------------+
+        | 1       | >S0A follows the value in >S0 with the adjusted ramp rate          |
+        |         | upwards and downwards                                              |
+        +---------+--------------------------------------------------------------------+
+        | 2       | >S0A follows the value in >S0 with the adjusted ramp rate only     |
+        |         | upwards. When programming downwards, >S0A follows >S0 immediately. |
+        +---------+--------------------------------------------------------------------+
+        | 3       | >S0A follows the value in >S0 with a special ramp function only    |
+        |         | upwards. When programming downwards, >S0A follows >S0 immediately. |
+        |         | Ramp between 0..1 with 11.11E-3 per second. Above 1 : with >S0R    |
+        +---------+--------------------------------------------------------------------+
+        | 4       | Same as 2, but >S0 as well as >S0A are set to zero if >DON is 0    |
+        +---------+--------------------------------------------------------------------+
+
+        """
 
         if program != -1:
             self._write_register('S0B', program)

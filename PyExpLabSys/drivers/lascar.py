@@ -20,8 +20,10 @@ from __future__ import division, print_function
 import struct
 try:
     import hid
-except ImportError, AttributeError:
+except (ImportError, AttributeError):
     print("Cannot import hid, can be install with pip")
+except SyntaxError:
+    print("This module makes use of hid, which is only available for Python2")
 
 
 class ElUsbRt(object):

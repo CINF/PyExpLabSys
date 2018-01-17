@@ -38,7 +38,7 @@ class NoInjections(Exception):
 class Sequence(object):
     """The Sequence class for the Chemstation data format
 
-    Params:
+    Parameters:
         injections (list): List of :class:`~Injection`'s in this sequence
         sequence_dir_path (str): The path of this sequence directory
         metadata (dict): Dict of metadata
@@ -170,20 +170,23 @@ class Sequence(object):
 class Injection(object):
     """The Injection class for the Chemstation data format
 
-    Params:
+    Parameters:
         injection_dirpath (str): The path of the directory of this injection
-        reports (defaultdict): Signal -> list_of_report_lines dict. Each report line
-            is dict of column headers to type converted column content. E.g:
-            `{u'Area': 22.81, u'Area   %': 0.24, u'Height': 12.66, u'Peak Number': 1,
-            u'Peak Type': u'BB', u'Peak Widthmin': 0.027, u'Retention Timemin': 5.81}`
-            The columns headers are also stored in :attr`~metadata` under the `columns`
-            key.
+        reports (defaultdict): Signal -> list_of_report_lines dict. Each report line is
+            dict of column headers to type converted column content. E.g::
+
+             {u'Area': 22.81, u'Area %': 0.24, u'Height': 12.66,
+              u'Peak Number': 1, u'Peak Type': u'BB', u'Peak Widthmin':
+              0.027, u'Retention Timemin': 5.81}
+
+            The columns headers are also stored in :attr`~metadata` under the `columns` key.
         reports_raw (defaultdict): Same as :attr:`~reports` except the content is not
             type converted.
         metadata (dict): Dict of metadata
         raw_files (dict): Mapping of ch_file_name -> :class:`~CHFile` objects
         report_txt (str or None): The content of the Report.TXT file from the
             injection folder is any
+
     """
 
     # This is scary. I don't know how many standard formats exist, or

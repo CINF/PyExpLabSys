@@ -62,7 +62,7 @@ class Mks_Pi_Pc():
         assert(len(hex_setpoint)==4)
         msb = chr(int(hex_setpoint[0:2], 16))
         lsb = chr(int(hex_setpoint[2:4], 16))
-        self.comm(int('69',16),01,int('a4',16), length=5, write=True, data=lsb+msb)
+        self.comm(int('69',16),1,int('a4',16), length=5, write=True, data=lsb+msb)
 
     def read_mac_id(self):
         macid = self.comm(3, 1, 1)
@@ -95,9 +95,9 @@ class Mks_Pi_Pc():
 if __name__ == '__main__':
     mks = Mks_Pi_Pc()
     #print mks.read_mac_id()
-    print "Setpoint: " + str(mks.read_setpoint())
-    print "Pressure: " + str(mks.read_pressure())
+    print("Setpoint: " + str(mks.read_setpoint()))
+    print("Pressure: " + str(mks.read_pressure()))
     mks.set_setpoint(500)
-    print "Setpoint: " + str(mks.read_setpoint())
+    print("Setpoint: " + str(mks.read_setpoint()))
 
-    print mks.query_full_range()
+    print(mks.query_full_range())

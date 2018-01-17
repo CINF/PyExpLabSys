@@ -1,8 +1,11 @@
 """Functions used to indicate and check for supported Python versions"""
 
 from __future__ import print_function
+import os
 import sys
 import warnings
+
+DOCRUN = os.environ.get('READTHEDOCS') == 'True' or 'sphinx' in sys.modules
 
 # We support 2.7 and above (which will never happen) or 3.3 and above
 PY2_MIN_VERSION = (2, 7)
@@ -38,7 +41,8 @@ def python2_only(filepath):
     """
     if PY2_CHECK:
         return
-    warnings.warn(WARNING2OR3.format(*PY2_MIN_VERSION, filepath=filepath))
+    if not DOCRUN:
+        warnings.warn(WARNING2OR3.format(*PY2_MIN_VERSION, filepath=filepath))
 
 
 def python3_only(filepath):
@@ -47,7 +51,8 @@ def python3_only(filepath):
     """
     if PY3_CHECK:
         return
-    warnings.warn(WARNING2OR3.format(*PY3_MIN_VERSION, filepath=filepath))
+    if not DOCRUN:
+        warnings.warn(WARNING2OR3.format(*PY3_MIN_VERSION, filepath=filepath))
 
 
 def python2_and_3(filepath):
@@ -56,7 +61,8 @@ def python2_and_3(filepath):
     """
     if PY2_OR_3_CHECK:
         return
-    warnings.warn(WARNING2AND3.format(*PY2_MIN_VERSION + PY3_MIN_VERSION, filepath=filepath))
+    if not DOCRUN:
+        warnings.warn(WARNING2AND3.format(*PY2_MIN_VERSION + PY3_MIN_VERSION, filepath=filepath))
 
 
 # Mark this file as being Python 2 and 3 compatible

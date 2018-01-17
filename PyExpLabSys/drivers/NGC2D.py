@@ -12,8 +12,8 @@ class NGC2D_comm():
             bytesize=serial.EIGHTBITS,
             xonxoff=False
             )
-	time.sleep(1)
-	
+        time.sleep(1)
+
     def comm(self,command):
         if command == "Poll":
             comm = "*P0"
@@ -24,7 +24,7 @@ class NGC2D_comm():
         elif command == "Status":
             comm = "*S0"
         else:
-            print "Unknown Command"
+            print("Unknown Command")
             return(None)  # Remember to test for None return value
 
         self.f.write(comm)
@@ -40,10 +40,10 @@ class NGC2D_comm():
         pressure = pressure_string.split("\r\n")[0][9:16]
         try:
             if pressure[0] == " ":
-                print "Pressure Gauge is Off"
+                print("Pressure Gauge is Off")
                 return(-1)
         except:
-            print pressure
+            print(pressure)
         #print pressure
         return(pressure)
 
@@ -62,4 +62,4 @@ class NGC2D_comm():
 
 if __name__ == '__main__':
     NG = NGC2D_comm('/dev/ttyUSB1')
-    print "Pressure: " + str(NG.ReadPressure())
+    print("Pressure: " + str(NG.ReadPressure()))
