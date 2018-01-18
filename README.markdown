@@ -12,7 +12,7 @@
 
 # Python for Experimental Labs System
 
-![](https://media.readthedocs.org/static/projects/badges/passing.svg)
+[![Documentation Status](https://readthedocs.org/projects/pyexplabsys/badge/?version=latest)](http://pyexplabsys.readthedocs.io/?badge=latest)
 
 ## About PyExpLabSys
 
