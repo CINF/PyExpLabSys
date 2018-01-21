@@ -293,4 +293,4 @@ def skip(app, what, name, obj, skip_, options):  # pylint: disable=unused-argume
 def setup(app):
     """Make custom setup"""
     app.connect("autodoc-skip-member", skip)
-    app.add_stylesheet('_static/theme_overrides.css')
+    app.add_stylesheet('theme_overrides.css')
