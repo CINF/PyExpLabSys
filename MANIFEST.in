@@ -1,1 +1,1 @@
-include LICENSE README.markdown
+include LICENSE README.rst requirements.txt
