@@ -75,16 +75,8 @@ def find_meta(meta):
     raise RuntimeError("Unable to find __{meta}__ string.".format(meta=meta))
 
 
-class A(object):
-    def __init__(*args, **kwargs):
-        from pprint import pprint
-        kwargs.pop('long_description')
-        pprint(kwargs)
-
-
 if __name__ == "__main__":
-    #setup(
-    A(
+    setup(
         name=NAME,
         description=find_meta("description"),
         license=find_meta("license"),
@@ -95,7 +87,7 @@ if __name__ == "__main__":
         maintainer=find_meta("author"),
         maintainer_email=find_meta("email"),
         keywords=KEYWORDS,
-        long_description=read("README.markdown"),
+        long_description=read("README.rst"),
         packages=PACKAGES,
         package_dir={"": "src"},
         zip_safe=False,
