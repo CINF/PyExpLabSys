@@ -8,15 +8,17 @@ from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.value_logger import ValueLogger
 import PyExpLabSys.drivers.mks_937b as mks_937b
+import PyExpLabSys.drivers.mks_925_pirani as mks_925
 from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
 python2_and_3(__file__)
 
 class Reader(threading.Thread):
     """ Pressure reader """
-    def __init__(self, mks_instance):
+    def __init__(self, mks_937_instance, main_rough):
         threading.Thread.__init__(self)
-        self.mks_937b = mks_instance
+        self.mks_937b = mks_937_instance
+        self.main_rough = main_rough
         self.pressure = {}
         self.pressure['main_pirani'] = None
         self.pressure['main_baratron'] = None
@@ -59,7 +61,7 @@ class Reader(threading.Thread):
             self.pressure['main_ion_gauge'] = self.mks_937b.read_pressure_gauge(1)
             self.pressure['load_lock'] = 0
             self.pressure['roughing_ll'] = 0
-            self.pressure['roughing_main'] = 0
+            self.pressure['roughing_main'] = self.main_rough.read_pressure()
 
 def main():
     """ Main function """
@@ -67,9 +69,12 @@ def main():
     logging.basicConfig(level=logging.ERROR)
 
     mks_937b_instance = mks_937b.Mks937b('/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0')
-    reader = Reader(mks_937b_instance)
+    mks_925_main_rough = mks_925.Mks925('/dev/serial/by-id/usb-FTDI_USB-RS232_Cable_FTV9X8KH-if00-port0')
+    reader = Reader(mks_937b_instance, mks_925_main_rough)
     reader.start()
 
+
+    
     time.sleep(10)
 
     codenames = ['uhv_sputterchamber_pressure_pirani', 'uhv_sputterchamber_baratron_pressure',
@@ -77,13 +82,13 @@ def main():
                  'uhv_sputterchamber_ll_rough_pressure', 'uhv_sputterchamber_rough_pressure']
 
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[0]] = ValueLogger(reader, comp_val=1.01, low_comp=1e-3, maximumtime=600,
                                         comp_type='log', channel=1)
     loggers[codenames[0]].start()
     loggers[codenames[1]] = ValueLogger(reader, comp_val=0.01, low_comp=1e-3, maximumtime=600,
                                         comp_type='lin', channel=2)
     loggers[codenames[1]].start()
-    loggers[codenames[2]] = ValueLogger(reader, comp_val=1.2, maximumtime=600, low_comp=1e-9,
+    loggers[codenames[2]] = ValueLogger(reader, comp_val=1.2, maximumtime=30, low_comp=1e-9,
                                         comp_type='log', channel=3)
     loggers[codenames[2]].start()
     loggers[codenames[3]] = ValueLogger(reader, comp_val=20, low_comp=1e-5, maximumtime=6000,
@@ -92,7 +97,7 @@ def main():
     loggers[codenames[4]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=600,
                                         comp_type='log', channel=5)
     loggers[codenames[4]].start()
-    loggers[codenames[5]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[5]] = ValueLogger(reader, comp_val=1.01, low_comp=1e-3, maximumtime=600,
                                         comp_type='log', channel=6)
     loggers[codenames[5]].start()
 
