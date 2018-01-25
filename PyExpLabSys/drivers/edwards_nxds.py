@@ -39,6 +39,13 @@ class edwards_nXDS(object):
         controller = int(temperatures[1])
         return {'pump':pump, 'controller':controller}
 
+    def read_serial_numbers(self):
+        """ Read Pump Serial numbers """
+        return_string = self.comm('?S835')
+        service = return_string.split(';')
+        serials = service[0].split(' ')
+        return {'Pump SNs':serials[0], 'drive-module SN':serials[1], 'PCA SN':serials[2], 'type':service[1].strip()}
+
     def read_run_hours(self):
         """ Return number of run hours """
         return_string = self.comm('?V810')
@@ -185,14 +192,15 @@ class edwards_nXDS(object):
         return return_string
 
 if __name__ == '__main__':
-    PUMP = edwards_nXDS('/dev/ttyUSB0')
+    PUMP = edwards_nXDS('/dev/ttyUSB3')
     print(PUMP.read_pump_type())
     print(PUMP.read_pump_temperature())
-    print(PUMP.read_run_hours())
-    print(PUMP.read_normal_speed_threshold())
-    print(PUMP.read_standby_speed())
-    print(PUMP.pump_controller_status())
-    print(PUMP.bearing_service())
-    print(PUMP.read_pump_status())
+    print(PUMP.read_serial_numbers())
+    #print(PUMP.read_run_hours())
+    #print(PUMP.read_normal_speed_threshold())
+    #print(PUMP.read_standby_speed())
+    #print(PUMP.pump_controller_status())
+    #print(PUMP.bearing_service())
+    #print(PUMP.read_pump_status())
     #print(PUMP.set_run_state(True))
     #print(PUMP.set_standby_mode(False))
