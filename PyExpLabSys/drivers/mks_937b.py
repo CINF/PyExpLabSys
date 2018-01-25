@@ -1,4 +1,4 @@
-""" Driver for MKS 925 micro pirani """
+""" Driver for MKS 937b gauge controller """
 from __future__ import print_function
 import time
 import logging
@@ -32,6 +32,10 @@ class Mks937b(object):
         pressure_string = self.comm('PR' + str(gauge_number) + '?')
         if pressure_string.find('LO') > -1:
             pressure_string = '0'
+        if pressure_string.find('>') > -1:
+            pressure_string = '-1'
+        if pressure_string.find('OFF') > -1:
+            pressure_string = '-1'
         pressure_value = float(pressure_string)
         return pressure_value
 
