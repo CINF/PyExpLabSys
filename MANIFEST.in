@@ -1,1 +1,2 @@
 include LICENSE README.rst requirements.txt
+recursive-include PyExpLabSys *.py
