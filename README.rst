@@ -24,11 +24,12 @@ This project contains various python code useful in experimental labs,
 such as equipment drivers, data logging and network data exchange
 components.
 
-The project is
-`documented <http://pyexplabsys.readthedocs.org/en/latest/>`__ with
-`Sphinx <http://sphinx-doc.org/>`__ on the `read the docs
-webpage <https://readthedocs.org/>`__, but the documentation is still in
-its early stages.
+The project is hosted on `Github
+<https://github.com/CINF/PyExpLabSys>`_ and `documented
+<http://pyexplabsys.readthedocs.org/en/latest/>`__ with `Sphinx
+<http://sphinx-doc.org/>`__ on the `read the docs webpage
+<https://readthedocs.org/>`__, with varying documentation
+levels.
 
 PyExpLabSys is an attempt to share the Python code produced at the
 SurfCat section at the Technical University of Denmark (DTU). As such,
@@ -41,8 +42,10 @@ Support
 Support is provided by the authors in their spare time, so we cannot
 always reply immediately, but we will try to help when we can.
 
-Support is provided via the #PyExpLabSys IRC channel on freenode and
-issues on Github.
+Support is provided via the #PyExpLabSys IRC channel on `freenode
+<https://freenode.net/>`_ (WebChat `here <>`__) and `issues
+<https://github.com/CINF/PyExpLabSys/issues>`_ on the projects
+`projects Github page <https://github.com/CINF/PyExpLabSys>`_.
 
 Data logging
 ------------
