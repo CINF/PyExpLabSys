@@ -3,7 +3,9 @@
 
 """Generates the module overview, including Python 2/3 status, for the docs"""
 
-from __future__ import unicode_literals, print_function
+import sys
+if sys.version_info.major < 3:
+    raise SystemExit("Use Python 3")
 import os
 import re
 import codecs
@@ -175,12 +177,17 @@ def write_statuses(statuses, start_lines, end_lines):
     for status in statuses:
         create_links(status)
 
+    # Create alphabetically sorted list of module names
+    statuses_dict = {status['module_name']: status for status in statuses}
+    module_names = sorted(list(statuses_dict.keys()), key=str.lower)
+
     with codecs.open(README_PATH, 'w', encoding='utf8') as file_:
         for line in start_lines:
             file_.write(line)
         file_.write('\n')
 
-        for status in statuses:
+        for module_name in module_names:
+            status = statuses_dict[module_name]
             if not status['module_path'].startswith('PyExpLabSys.drivers'):
                 continue
             template = (
