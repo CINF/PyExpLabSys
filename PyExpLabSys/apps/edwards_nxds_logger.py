@@ -31,6 +31,8 @@ class PumpReader(threading.Thread):
         self.values['controller_temperature'] = -1
         self.values['rotational_speed'] = -1
         self.values['run_hours'] = -1
+        self.values['controller_run_hours'] = -1
+        self.values['time_to_service'] = -1
         self.quit = False
 
     def value(self, channel):
@@ -43,17 +45,20 @@ class PumpReader(threading.Thread):
         time.sleep(1)
         while not self.quit:
             temperatures = self.pump.read_pump_temperature()
+            controller_status = self.pump.pump_controller_status()
             self.values['temperature'] = temperatures['pump']
             self.values['controller_temperature'] = temperatures['controller']
             self.values['rotational_speed'] = self.pump.read_pump_status()['rotational_speed']
             self.values['run_hours'] = self.pump.read_run_hours()
-
+            self.values['controller_run_hours'] = controller_status['controller_run_time']
+            self.values['time_to_service'] = controller_status['time_to_service']
 
 def main():
     """ Main function """
     pumpreaders = {}
     loggers = {}
-    channels = ['temperature', 'controller_temperature', 'run_hours', 'rotational_speed']
+    channels = ['temperature', 'controller_temperature', 'run_hours', 'rotational_speed',
+                'controller_run_hours', 'time_to_service']
     codenames = []
     for port, codename in settings.channels.items():
         pumpreaders[port] = PumpReader(port)
