@@ -82,22 +82,22 @@ def main():
                  'uhv_sputterchamber_ll_rough_pressure', 'uhv_sputterchamber_rough_pressure']
 
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(reader, comp_val=1.01, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[0]] = ValueLogger(reader, comp_val=0.01, low_comp=1e-3, maximumtime=600,
                                         comp_type='log', channel=1)
     loggers[codenames[0]].start()
-    loggers[codenames[1]] = ValueLogger(reader, comp_val=0.01, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[1]] = ValueLogger(reader, comp_val=0.001, low_comp=2e-4, maximumtime=600,
                                         comp_type='lin', channel=2)
     loggers[codenames[1]].start()
-    loggers[codenames[2]] = ValueLogger(reader, comp_val=1.2, maximumtime=30, low_comp=1e-9,
+    loggers[codenames[2]] = ValueLogger(reader, comp_val=0.01, maximumtime=600, low_comp=1e-9,
                                         comp_type='log', channel=3)
     loggers[codenames[2]].start()
     loggers[codenames[3]] = ValueLogger(reader, comp_val=20, low_comp=1e-5, maximumtime=6000,
                                         comp_type='lin', channel=4)
     loggers[codenames[3]].start()
-    loggers[codenames[4]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=600,
-                                        comp_type='log', channel=5)
+    loggers[codenames[4]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=1200,
+                                        comp_type='lin', channel=5)
     loggers[codenames[4]].start()
-    loggers[codenames[5]] = ValueLogger(reader, comp_val=1.01, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[5]] = ValueLogger(reader, comp_val=0.01, low_comp=1e-3, maximumtime=600,
                                         comp_type='log', channel=6)
     loggers[codenames[5]].start()
 
