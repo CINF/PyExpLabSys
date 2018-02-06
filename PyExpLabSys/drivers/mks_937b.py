@@ -36,6 +36,8 @@ class Mks937b(object):
             pressure_string = '-1'
         if pressure_string.find('OFF') > -1:
             pressure_string = '-1'
+        if pressure_string.find('WAIT') > -1:
+            pressure_string = '-1'
         pressure_value = float(pressure_string)
         return pressure_value
 
