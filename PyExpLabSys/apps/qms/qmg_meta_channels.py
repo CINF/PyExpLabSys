@@ -49,10 +49,12 @@ class udp_meta_channel(threading.Thread):
                                                    amp_range=-1, comment=self.comment,
                                                    metachannel=True)
         channel = {}
-        channel['id']   = sql_id
+        channel['id'] = sql_id
         channel['host'] = host
         channel['port'] = port
-        channel['cmd']  = udp_string
+        channel['cmd'] = udp_string
+        channel['label'] = masslabel
+        channel['value'] = -1
         self.channel_list.append(channel)
 
     def run(self):
@@ -63,14 +65,14 @@ class udp_meta_channel(threading.Thread):
                 port = channel['port']
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.settimeout(0.2)
-                LOGGER.debug('Meta command: ' + channel['cmd'])
+                LOGGER.debug('Meta command: %s', channel['cmd'])
                 try:
                     sock.sendto(channel['cmd'].encode('ascii'), (channel['host'], port))
                     received = sock.recv(1024)
                     received = received.strip().decode()
                 except socket.timeout:
                     received = ""
-                LOGGER.debug('Meta recieve: ' + received)
+                LOGGER.debug('Meta recieve: %s', received)
                 if channel['cmd'][-4:] == '#raw':
                     received = received[received.find(',')+1:]
                 sock.close()
@@ -79,17 +81,18 @@ class udp_meta_channel(threading.Thread):
                     LOGGER.error(str(value))
                     sqltime = str((time.time() - start_time) * 1000)
                 except ValueError:
-                    LOGGER.warn('Meta-channel, could not convert to float: ' + received)
+                    LOGGER.warning('Meta-channel, could not convert to float: %s', received)
                     value = None
                 except TypeError:
-                    LOGGER.warn('Type error from meta channel, most likely during shutdown')
+                    LOGGER.warning('Type error from meta channel, most likely during shutdown')
                     value = None
-                except Exception as e:
-                    LOGGER.error('Unknown error: ' + str(e))
+                except Exception as e: # pylint: disable=broad-except
+                    LOGGER.error('Unknown error: %s', e)
                     value = None
+                channel['value'] = value
 
-                if not value == None:
-                    query  = 'insert into xy_values_' + self.qms.chamber + ' '
+                if not value is None:
+                    query = 'insert into xy_values_' + self.qms.chamber + ' '
                     query += 'set measurement="'
                     query += str(channel['id']) + '", x="' + sqltime
                     query += '", y="' + str(value) + '"'
