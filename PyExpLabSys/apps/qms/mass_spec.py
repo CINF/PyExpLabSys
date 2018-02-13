@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 """ Mass spec program """
 from __future__ import print_function
 import os
@@ -19,16 +20,31 @@ from PyExpLabSys.common.utilities import activate_library_logging
 from PyExpLabSys.common.supported_versions import python2_and_3
 BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
-import settings # pylint: disable=F0401
+import settings # pylint: disable=wrong-import-position
 python2_and_3(__file__)
 
-LOGGER = get_logger('Mass Spec', level='info', file_log=True,
+LOGGER = get_logger('Mass Spec', level='warning', file_log=True,
                     file_name='qms.txt', terminal_log=False,
                     email_on_warnings=False, email_on_errors=False,
                     file_max_bytes=104857600, file_backup_count=5)
 
-activate_library_logging('PyExpLabSys.drivers.pfeiffer_qmg422', logger_to_inherit_from=LOGGER)
-activate_library_logging('PyExpLabSys.apps.qms.qms', logger_to_inherit_from=LOGGER)
+activate_library_logging('PyExpLabSys.drivers.pfeiffer_qmg422',
+                         logger_to_inherit_from=LOGGER)
+activate_library_logging('PyExpLabSys.apps.qms.qmg_status_output',
+                         logger_to_inherit_from=LOGGER)
+activate_library_logging('PyExpLabSys.apps.qms.qmg_meta_channels',
+                         logger_to_inherit_from=LOGGER)
+activate_library_logging('PyExpLabSys.apps.qms.qms',
+                         logger_to_inherit_from=LOGGER)
+
+try:
+    from local_channels import Local
+    LOCAL_READER = Local()
+    LOCAL_READER.daemon = True
+    LOCAL_READER.start()
+except ImportError:
+    pass
+
 
 class MassSpec(object):
     """ User interface to mass spec code """
@@ -80,9 +96,10 @@ class MassSpec(object):
         qms_channel_list = self.qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
                                                          sys.argv[1] + '/channel_lists/' +
                                                          channel_list + '.txt')
-        meta_udp = qmg_meta_channels.udp_meta_channel(self.qms, timestamp, qms_channel_list, 5)
+        meta_udp = qmg_meta_channels.udp_meta_channel(self.qms, timestamp, qms_channel_list, 2)
         meta_udp.daemon = True
         meta_udp.start()
+        self.printer.meta_channels = meta_udp
         self.qms.mass_time(qms_channel_list['ms'], timestamp)
 
     def mass_scan(self, start_mass=0, scan_width=100, comment='bg_scan', amp_range=0):
@@ -97,7 +114,9 @@ if __name__ == '__main__':
     #MS.leak_search()
 
     MS.mass_time_scan()
-    #MS.mass_scan(0, 50, 'Background scan', amp_range=0)
+
+    #MS.mass_scan(0, 50, 'He in CH4 line?', amp_range=0)
+
     #MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
     #MS.mass_scan(0, 50, 'Background scan -9', amp_range=-9)
     #MS.mass_scan(0, 50, 'Background scan -7', amp_range=-7)

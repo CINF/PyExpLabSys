@@ -50,7 +50,7 @@ class qmg_422(object):
         iterations = 0
         while not done:
             iterations += 1
-            LOGGER.debug("Command in progress: " + command)
+            LOGGER.debug("Command in progress: %s", command)
 
             n = self.serial.inWaiting()
             if n > 0: #Skip characters that are currently waiting in line
@@ -62,18 +62,17 @@ class qmg_422(object):
             while not ret[0] == chr(6):
                 error_counter += 1
                 command_text = command + '\r'
-                LOGGER.debug('Command text: ' + command_text)
+                LOGGER.debug("Command text: %s", command_text)
                 self.serial.write(command_text.encode('ascii'))
                 ret = self.serial.readline().decode()
-                LOGGER.debug("Debug: Error counter: " + str(error_counter))
+                LOGGER.debug("Debug: Error counter: %s")
                 LOGGER.debug("ret: " + str(ord(ret[0])))
                 LOGGER.debug("Debug! In waiting: " + str(n))
 
                 if error_counter == 3:
-                    error = "Communication error: " + str(error_counter)
-                    LOGGER.warning(error)
+                    LOGGER.warning("Communication error: %s", error_counter)
                 if error_counter == 10:
-                    LOGGER.error("Communication error: " + str(error_counter))
+                    LOGGER.error("Communication error: %s", error_counter)
                 if error_counter > 11:
                     LOGGER.error("Communication error! Quit program!")
                     quit()
@@ -83,7 +82,7 @@ class qmg_422(object):
             ret = self.serial.readline().decode()
 
             LOGGER.debug("Number in waiting after enq: " + str(n))
-            LOGGER.debug("Return value after enq:" + ret)
+            LOGGER.debug("Return value after enq: %s", ret)
             LOGGER.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
             if (iterations > 1) and (iterations < 1000):
                 LOGGER.info(iterations)
@@ -104,8 +103,8 @@ class qmg_422(object):
                 ret_string = ret.strip()
                 LOGGER.info("Ascii value of last char in ret: " +
                             str(ord(ret[-1])))
-                LOGGER.info('Value of string: ' + ret)
-                LOGGER.info('Returning: ' + ret_string)
+                LOGGER.info('Value of string: %s', ret)
+                LOGGER.info('Returning: %s', ret_string)
                 done = True
         return ret_string
 
@@ -135,7 +134,6 @@ class qmg_422(object):
         if ret_string == '4':
             comm_mode = 'LAN'
         return comm_mode
-
 
     def simulation(self):
         """ Chekcs wheter the instruments returns real or simulated data
@@ -406,7 +404,7 @@ class qmg_422(object):
             13: 10,
             14: 20,
             15: 60} # unit: [s/amu]
-        speed = 9
+        speed = 10
         try:
             total_time = scan_width * speed_list[speed]
         except:
@@ -456,4 +454,4 @@ if __name__ == '__main__':
     print('SMR: ' + qmg.comm('SMR')) # Mass-range, this needs to go in a config-file
     print('SDT: ' + qmg.comm('SDT')) # Detector type
     print('SIT: ' + qmg.comm('SIT')) # Ion source
-
+    print('AIN: ' + qmg.comm('AIN')) # Analog in

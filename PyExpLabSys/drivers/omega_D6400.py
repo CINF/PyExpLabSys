@@ -1,10 +1,14 @@
 """ Driver for Omega D6400 daq card """
 from __future__ import print_function
-import minimalmodbus
 import time
 import logging
+import minimalmodbus
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
+
+LOGGER = logging.getLogger(__name__)
+# Make the logger follow the logging setup from the caller
+LOGGER.addHandler(logging.NullHandler())
 
 class OmegaD6400(object):
     """ Driver for Omega D6400 daq card """
@@ -40,12 +44,12 @@ class OmegaD6400(object):
                     self.instrument.write_register(command, value)
                 error = False
             except ValueError:
-                logging.warn('D6400 driver: Value Error')
+                LOGGER.warning('D6400 driver: Value Error')
                 self.instrument.serial.read(self.instrument.serial.inWaiting())
                 time.sleep(0.1)
                 error = True
             except IOError:
-                logging.warn('D6400 driver: IOError')
+                LOGGER.warning('D6400 driver: IOError')
                 self.instrument.serial.read(self.instrument.serial.inWaiting())
                 error = True
                 time.sleep(0.1)
@@ -64,7 +68,7 @@ class OmegaD6400(object):
             value = (reply/scale) - 150
         return value
 
-    def read_address(self, new_address=None):
+    def read_address(self):
         """ Read the RS485 address of the device """
         old_address = self.comm(0)
         return old_address
@@ -118,7 +122,9 @@ class OmegaD6400(object):
         return self.comm(95 + channel)
 
 if __name__ == '__main__':
-    OMEGA = OmegaD6400(1, port='/dev/ttyUSB1')
-    OMEGA.update_range_and_function(1, action='tc', fullrange='K')
+    OMEGA = OmegaD6400(1, port='/dev/ttyUSB0')
+    OMEGA.update_range_and_function(1, action='voltage', fullrange='10')
+    OMEGA.update_range_and_function(2, action='voltage', fullrange='10')
     print('***')
     print(OMEGA.read_value(1))
+    print(OMEGA.read_value(2))
