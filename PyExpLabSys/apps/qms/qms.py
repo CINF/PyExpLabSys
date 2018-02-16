@@ -5,6 +5,7 @@ try:
 except ImportError:
     import queue
 import time
+import datetime
 import logging
 import MySQLdb
 from PyExpLabSys.common.supported_versions import python2_and_3
@@ -93,8 +94,8 @@ class QMS(object):
         query += 'insert into measurements_' + self.chamber
         query += ' set mass_label="'  + masslabel + '"'
         query += ', sem_voltage="' + sem_voltage + '", preamp_range="'
-        query += preamp_range + '", time="' + timestamp + '", type="'
-        query += str(measurement_type) + '"' + ', comment="' + comment + '"'
+        query += preamp_range + '", time="' + timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        query += '", type="' + str(measurement_type) + '"' + ', comment="' + comment + '"'
         query += ', timestep=' + str(timestep) + ', actual_mass=' + str(mass)
         LOGGER.info(query)
         cursor.execute(query)
@@ -206,9 +207,9 @@ class QMS(object):
         number_of_channels = len(ms_channel_list) - 1
         self.qmg.mass_time(number_of_channels)
 
-        start_time = time.time()
+        start_time = (time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1000000.0)
         ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=no_save)
-        self.current_timestamp = ids[0]
+        self.current_timestamp = timestamp
 
         while self.stop is False:
             LOGGER.info('start measurement run')
@@ -261,12 +262,13 @@ class QMS(object):
     def mass_scan(self, first_mass=0, scan_width=50,
                   comment='Mass-scan', amp_range=-7):
         """ Perform a mass scan """
-        start_time = time.time()
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.datetime.now()
+        start_time = (time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1000000.0)
+
         self.operating_mode = 'Mass-scan'
-        sql_id = self.create_mysql_measurement(0, timestamp, 'Mass Scan',
-                                               comment=comment, amp_range=amp_range,
-                                               measurement_type=4)
+        sql_id = self.create_mysql_measurement(0, timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                                               'Mass Scan', comment=comment,
+                                               amp_range=amp_range, measurement_type=4)
         self.message = 'ID number: ' + str(sql_id) + '. Scanning from '
         self.message += str(first_mass) + ' to '
         self.message += str(first_mass+scan_width) + 'amu'

@@ -34,7 +34,11 @@ class QmsStatusOutput(threading.Thread):
             self.screen.addstr(1, 1, self.qms.operating_mode)
 
             if self.qms.operating_mode == "Mass Time":
-                timestamp = "Timestamp: " + self.qms.current_timestamp
+                try:
+                    timestamp = ("Timestamp: " +
+                                 self.qms.current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+                except AttributeError:
+                    timestamp = 'Timestamp: None'
                 self.screen.addstr(3, 1, timestamp)
                 runtime = "Experiment runtime: {0:.1f}s".format(self.qms.measurement_runtime)
                 self.screen.addstr(4, 1, runtime)

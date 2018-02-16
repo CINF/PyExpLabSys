@@ -4,6 +4,7 @@ from __future__ import print_function
 import os
 import sys
 import time
+import datetime
 try:
     import Queue as queue
 except ImportError:
@@ -92,7 +93,7 @@ class MassSpec(object):
 
     def mass_time_scan(self, channel_list='channel_list'):
         """ Perform a mass-time scan """
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.datetime.now()
         qms_channel_list = self.qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
                                                          sys.argv[1] + '/channel_lists/' +
                                                          channel_list + '.txt')
