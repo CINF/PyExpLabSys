@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
 
-class qms_status_output(threading.Thread):
+class QmsStatusOutput(threading.Thread):
     """ Text UI for mass spec program """
     def __init__(self, qms_instance, sql_saver_instance=None, meta_channel_instance=None):
         threading.Thread.__init__(self)
@@ -21,9 +21,7 @@ class qms_status_output(threading.Thread):
             self.sql = sql_saver_instance
         else:
             self.sql = None
-
         self.meta_channels = meta_channel_instance
-
         self.screen = curses.initscr()
         curses.noecho()
         curses.cbreak()
@@ -55,10 +53,11 @@ class qms_status_output(threading.Thread):
                 if self.meta_channels is None:
                     self.screen.addstr(9, 30, 'No access to meta-channels')
                 else:
-                    for i in range(0, len(self.meta_channels.channel_list)):
-                        channel = self.meta_channels.channel_list[i]
-                        self.screen.addstr(9 + i, 30, channel['label'] +
-                                           ': ' + str(channel['value']) + '                ')
+                    for i in range(0, len(self.meta_channels.channels)):
+                        channel = self.meta_channels.channels[i]
+                        self.screen.addstr(9 + i, 30, channel.channel_data['label'] +
+                                           ': ' + str(channel.channel_data['value']) +
+                                           '                ')
 
             if self.qms.operating_mode == 'Mass-scan':
                 self.screen.addstr(2, 1, self.qms.message)

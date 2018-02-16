@@ -65,8 +65,8 @@ class MassSpec(object):
         self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
                           credentials=settings.username, livesocket=livesocket)
         self.qmg.reverse_range = settings.reverse_range
-        self.printer = qmg_status_output.qms_status_output(self.qms,
-                                                           sql_saver_instance=self.data_saver)
+        self.printer = qmg_status_output.QmsStatusOutput(self.qms,
+                                                         sql_saver_instance=self.data_saver)
         self.printer.start()
 
     def __del__(self):
@@ -96,7 +96,7 @@ class MassSpec(object):
         qms_channel_list = self.qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
                                                          sys.argv[1] + '/channel_lists/' +
                                                          channel_list + '.txt')
-        meta_udp = qmg_meta_channels.udp_meta_channel(self.qms, timestamp, qms_channel_list, 2)
+        meta_udp = qmg_meta_channels.MetaChannels(self.qms, timestamp, qms_channel_list)
         meta_udp.daemon = True
         meta_udp.start()
         self.printer.meta_channels = meta_udp

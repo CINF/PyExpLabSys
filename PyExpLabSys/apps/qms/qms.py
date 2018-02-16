@@ -153,8 +153,10 @@ class QMS(object):
                 host = params[params.index('host')+1]
                 port = int(params[params.index('port')+1])
                 label = params[params.index('label')+1]
+                repeat_interval = float(params[params.index('repeat_interval')+1])
                 command = params[params.index('command')+1]
                 channel_list['meta'][meta] = {'host':host, 'port':port,
+                                              'repeat_interval':repeat_interval,
                                               'label':label, 'command':command}
                 meta += 1
 
