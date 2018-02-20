@@ -135,6 +135,9 @@ class QMS(object):
             if key == 'autorange':
                 autorange = items[1].lower().strip() == 'yes'
 
+            if key == 'mass-scan-interval':
+                msi = float(items[1].strip())
+
             if key == 'ms_channel':
                 params = items[1].split(',')
                 for j in range(0, len(params)):
@@ -163,8 +166,8 @@ class QMS(object):
 
         #TODO: The channel list format should be changed so that the general
         #      parameters are in a third dictionary key
-        channel_list['ms'][0] = {'comment':comment, 'autorange':autorange}
-
+        channel_list['ms'][0] = {'comment':comment, 'autorange':autorange,
+                                 'mass-scan-interval':msi}
         return channel_list
 
 
@@ -211,7 +214,15 @@ class QMS(object):
         ids = self.create_ms_channellist(ms_channel_list, timestamp, no_save=no_save)
         self.current_timestamp = timestamp
 
+        last_mass_scan_time = time.time()
         while self.stop is False:
+            if time.time() - last_mass_scan_time > ms_channel_list[0]['mass-scan-interval']:
+                LOGGER.info('start mass scan')
+                last_mass_scan_time = time.time()
+                self.mass_scan(comment=ms_channel_list[0]['comment'], amp_range=-11,
+                               update_current_timestamp=False)
+                self.qmg.mass_time(number_of_channels)
+                self.operating_mode = "Mass Time"
             LOGGER.info('start measurement run')
             self.qmg.set_channel(1)
             scan_start_time = time.time()
@@ -259,20 +270,26 @@ class QMS(object):
             LOGGER.info('Scan time: ' + str(time.time() - scan_start_time))
         self.operating_mode = "Idling"
 
-    def mass_scan(self, first_mass=0, scan_width=50,
-                  comment='Mass-scan', amp_range=-7):
+
+    def mass_scan(self, first_mass=0, scan_width=50, comment='Mass-scan', amp_range=-7,
+                  update_current_timestamp=True):
         """ Perform a mass scan """
         timestamp = datetime.datetime.now()
-        start_time = (time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1000000.0)
+        if update_current_timestamp:
+            start_time = (time.mktime(timestamp.timetuple()) +
+                          timestamp.microsecond / 1000000.0)
+            self.current_timestamp = timestamp
+        else:
+            start_time = (time.mktime(self.current_timestamp.timetuple()) +
+                          timestamp.microsecond / 1000000.0)
 
         self.operating_mode = 'Mass-scan'
-        sql_id = self.create_mysql_measurement(0, timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        sql_id = self.create_mysql_measurement(0, timestamp,
                                                'Mass Scan', comment=comment,
                                                amp_range=amp_range, measurement_type=4)
         self.message = 'ID number: ' + str(sql_id) + '. Scanning from '
         self.message += str(first_mass) + ' to '
         self.message += str(first_mass+scan_width) + 'amu'
-        self.current_timestamp = timestamp
         self.qmg.mass_scan(first_mass, scan_width, amp_range)
 
         self.measurement_runtime = time.time()-start_time
@@ -308,6 +325,7 @@ class QMS(object):
                         new_query += ', y = ' + str((int(samples[i])/10000.0) *
                                                     (10**amp_range))
 
+                        LOGGER.debug(new_query)
                 self.sqlqueue.put((new_query, None))
         samples = self.qmg.get_multiple_samples(number_of_samples%100)
         for i in range(0, len(samples)):
@@ -321,8 +339,9 @@ class QMS(object):
                 else:
                     new_query += ', y = ' + str((int(samples[i])/10000.0) *
                                                 (10**amp_range))
-
+            LOGGER.debug(new_query)
             self.sqlqueue.put((new_query, None))
+
         self.current_action = 'Emptying Queue'
         while not self.sqlqueue.empty():
             self.measurement_runtime = time.time()-start_time
