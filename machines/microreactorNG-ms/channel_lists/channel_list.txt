@@ -1,7 +1,5 @@
 comment: Speed Test
 mass-scan-interval: 3600
-autorange: yes
-# Amp Range: 0: Autorange
 # Amp Range: Legal values: 12 - 5
 # Speed values, unit: [s/amu]: 0: 0.0005, 1: 0.001, 2: 0.002, 3: 0.005, 4: 0.010,
 # 5: 0.020, 6: 0.050, 7: 0.1, 8: 0.2, 9: 0.5, 10: 1, 11: 2, 12: 5, 13: 10, 14: 20, 15: 60

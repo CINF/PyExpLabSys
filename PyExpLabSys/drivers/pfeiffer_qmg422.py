@@ -65,14 +65,14 @@ class qmg_422(object):
                 LOGGER.debug("Command text: %s", command_text)
                 self.serial.write(command_text.encode('ascii'))
                 ret = self.serial.readline().decode()
-                LOGGER.debug("Debug: Error counter: %s")
-                LOGGER.debug("ret: " + str(ord(ret[0])))
-                LOGGER.debug("Debug! In waiting: " + str(n))
+                LOGGER.debug("Debug: Error counter: %d", error_counter)
+                LOGGER.debug("ret: %d", ord(ret[0]))
+                LOGGER.debug("In waiting: %d", n)
 
                 if error_counter == 3:
-                    LOGGER.warning("Communication error: %s", error_counter)
+                    LOGGER.warning("Communication error: %d", error_counter)
                 if error_counter == 10:
-                    LOGGER.error("Communication error: %s", error_counter)
+                    LOGGER.error("Communication error: %d", error_counter)
                 if error_counter > 11:
                     LOGGER.error("Communication error! Quit program!")
                     quit()
@@ -81,9 +81,9 @@ class qmg_422(object):
             self.serial.write(chr(5).encode('ascii'))
             ret = self.serial.readline().decode()
 
-            LOGGER.debug("Number in waiting after enq: " + str(n))
+            LOGGER.debug("Number in waiting after enq: %d", n)
             LOGGER.debug("Return value after enq: %s", ret)
-            LOGGER.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
+            LOGGER.debug("Ascii value of last char in ret: %d", ord(ret[-1]))
             if (iterations > 1) and (iterations < 1000):
                 LOGGER.info(iterations)
             if (ret[-1] == chr(10)) or (ret[-1] == chr(13)):
@@ -91,18 +91,16 @@ class qmg_422(object):
                 done = True
             else:
                 LOGGER.info("Wrong line termination")
-                LOGGER.info("Ascii value of last char in ret: "
-                            + str(ord(ret[-1])))
-                LOGGER.info('Value of string: ' + ret)
+                LOGGER.info("Ascii value of last char in ret: %s", ord(ret[-1]))
+                LOGGER.info('Value of string: %s', ret)
                 time.sleep(0.5)
                 self.serial.write(chr(5))
                 ret = ' '
-                while not ret[-1] == '\n':
+                while ret[-1] != '\n':
                     ret += self.serial.read(1)
                 #ret = self.serial.readline()
                 ret_string = ret.strip()
-                LOGGER.info("Ascii value of last char in ret: " +
-                            str(ord(ret[-1])))
+                LOGGER.info("Ascii value of last char in ret: %d", ord(ret[-1]))
                 LOGGER.info('Value of string: %s', ret)
                 LOGGER.info('Returning: %s', ret_string)
                 done = True
@@ -271,9 +269,9 @@ class qmg_422(object):
 
     def start_measurement(self):
         """ Start the measurement """
-        LOGGER.error('QMS Errors, ERR: ' + self.comm('ERR'))
-        LOGGER.error('QMS Warnings, EWN: ' + self.comm('EWN'))
-        LOGGER.error('QMS State, ESQ: ' + self.comm('ESQ'))
+        LOGGER.error('QMS Errors, ERR: %s', self.comm('ERR'))
+        LOGGER.error('QMS Warnings, EWN: %s', self.comm('EWN'))
+        LOGGER.error('QMS State, ESQ: %s', self.comm('ESQ'))
         self.comm('CRU ,2')
 
     def actual_range(self, amp_range):
@@ -293,19 +291,19 @@ class qmg_422(object):
     def get_single_sample(self):
         """ Read a single sample from the device """
         samples = 0
-        while (samples == 0):
+        while samples == 0:
             try:
                 status = self.comm('MBH')
             except:
                 samples = samples - 1
                 status = 'Error'
                 LOGGER.error('Serial timeout, continuing measurement')
-            LOGGER.info('Status: ' + str(status))
+            LOGGER.info('Status: %s', status)
             try:
                 status = status.split(',')
                 samples = int(status[3])
             except:
-                LOGGER.warn('Could not read status, continuing measurement')
+                LOGGER.warning('Could not read status, continuing measurement')
                 samples = samples - 1
             if samples < -30:
                 usefull_value = False
@@ -404,7 +402,7 @@ class qmg_422(object):
             13: 10,
             14: 20,
             15: 60} # unit: [s/amu]
-        speed = 10
+        speed = 9
         try:
             total_time = scan_width * speed_list[speed]
         except:
@@ -425,7 +423,7 @@ class qmg_422(object):
         self.comm('SDT ,1') #Use SEM for ion detection
         self.comm('MRE ,1') #Resolve peak
         self.comm('MMO, 0') #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST, 1') #Steps 0: 1: 2: 64/amu
+        self.comm('MST, 0') #Steps 0: 1: 2: 64/amu
         self.comm('MSD, ' + str(speed)) #Speed
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
