@@ -74,9 +74,14 @@ class UdpChannel(threading.Thread):
                 sock.sendto(self.channel_data['cmd'].encode('ascii'),
                             (self.channel_data['host'], self.channel_data['port']))
                 received = sock.recv(1024)
-                received = received.strip().decode()
             except socket.timeout:
+                received = b""
+                LOGGER.warning('Socket timeout: %s', self.channel_data['cmd'])
+            try:
+                received = received.strip().decode()
+            except UnicodeDecodeError:
                 received = ""
+                LOGGER.warning('Unicode Decode Error: %s', received)
             LOGGER.debug('Meta recieve: %s', received)
             if self.channel_data['cmd'][-4:] == '#raw':
                 received = received[received.find(',')+1:]

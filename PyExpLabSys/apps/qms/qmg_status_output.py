@@ -45,21 +45,25 @@ class QmsStatusOutput(threading.Thread):
                 qsize = "Queue length: {0:.0f} items".format(self.sql.queue.qsize())
                 self.screen.addstr(5, 1, qsize)
                 self.screen.clrtoeol()
+                self.screen.addstr(6, 1, 'Emission: {}'.format(self.qms.qmg.state['emission']))
+                self.screen.clrtoeol()
+                self.screen.addstr(6, 40, 'SEM status: {}'.format(self.qms.qmg.state['sem']))
+                self.screen.clrtoeol()
 
                 #self.screen.addstr(5,20, self.qms.channel_list[0]['comment'])
-                self.screen.addstr(7, 1, 'QMS-channels')
+                self.screen.addstr(9, 1, 'QMS-channels')
                 for i in range(1, len(self.qms.channel_list) + 1):
                     channel = self.qms.channel_list[i]
-                    self.screen.addstr(8+i, 1, channel['masslabel'] + ': ' +
+                    self.screen.addstr(10+i, 1, channel['masslabel'] + ': ' +
                                        channel['value'] + '                 ')
 
-                self.screen.addstr(7, 30, 'Meta-channels')
+                self.screen.addstr(9, 30, 'Meta-channels')
                 if self.meta_channels is None:
-                    self.screen.addstr(9, 30, 'No access to meta-channels')
+                    self.screen.addstr(11, 30, 'No access to meta-channels')
                 else:
                     for i in range(0, len(self.meta_channels.channels)):
                         channel = self.meta_channels.channels[i]
-                        self.screen.addstr(9 + i, 30, channel.channel_data['label'] +
+                        self.screen.addstr(11 + i, 30, channel.channel_data['label'] +
                                            ': ' + str(channel.channel_data['value']) +
                                            '                ')
 

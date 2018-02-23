@@ -31,8 +31,13 @@ class qmg_422(object):
         """
         self.serial = serial.Serial(port, speed, timeout=2.0)
         self.reverse_range = False
-        self.type = '422'
         self.communication_mode(computer_control=True)
+        self.type = '422'
+        if self.comm('SQA') == '1':
+            self.series = '400'
+        else:
+            self.series = '125'
+        self.state = {'emission': 'Unknown', 'sem': 'Unknown'}
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer
@@ -237,7 +242,6 @@ class qmg_422(object):
         filament_on = ret_string == '1'
         return emission_current, filament_on
 
-
     def detector_status(self, SEM=False, faraday_cup=False):
         """ Choose between SEM and Faraday cup measurements"""
         if SEM ^ faraday_cup:
@@ -254,7 +258,6 @@ class qmg_422(object):
             detector = "Faraday Cup"
         return detector
 
-
     def read_voltages(self):
         """ Read the qme-voltages """
         print("V01: " + self.comm('VO1')) #0..150,   1V steps
@@ -267,11 +270,42 @@ class qmg_422(object):
         print("V08: " + self.comm('VO8')) #-125..125,1V steps
         print("V09: " + self.comm('VO9')) #0..60    ,0.25V steps
 
+    def update_state(self):
+        """ Update the knowledge of the internal knowledge of the instrument """
+        raw_state = self.comm('ESQ')
+        LOGGER.error('QMS State, ESQ: %s', raw_state)
+        if self.series == '400':
+            raw_state = int(raw_state[:raw_state.find(',')])
+            raw_state = bin(raw_state)[2:].zfill(16)
+            state = {}
+            state['running'] = 'Not running' if raw_state[15] == '0' else 'Running'
+            state['mode'] = 'Mono' if raw_state[14] == '0' else 'Multi'
+            state['emission'] = 'Off' if raw_state[13] == '0' else 'On'
+            state['sem'] = 'Off' if raw_state[12] == '0' else 'On'
+            state['4'] = '0' if raw_state[11] == '0' else '1'
+            state['5'] = '0' if raw_state[10] == '0' else '1'
+            state['6'] = '0' if raw_state[9] == '0' else '1'
+            state['7'] = '0' if raw_state[8] == '0' else '1'
+            state['8'] = '0' if raw_state[7] == '0' else '1'
+            state['9'] = '0' if raw_state[6] == '0' else '1'
+            state['10'] = '0' if raw_state[5] == '0' else '1'
+            state['11'] = '0' if raw_state[4] == '0' else '1'
+            state['12'] = '0' if raw_state[3] == '0' else '1'
+            state['13'] = '0' if raw_state[2] == '0' else '1'
+            state['ringbuffer'] = 'Partly filled' if raw_state[1] == '0' else 'Empty'
+            state['ringbuffer'] = state['ringbuffer'] if raw_state[0] == '0' else 'Overflow'
+            self.state = state
+        else: # Here comes the 125 part, can only check for emission
+            pass
+        
     def start_measurement(self):
         """ Start the measurement """
+        start = time.time()
         LOGGER.error('QMS Errors, ERR: %s', self.comm('ERR'))
         LOGGER.error('QMS Warnings, EWN: %s', self.comm('EWN'))
-        LOGGER.error('QMS State, ESQ: %s', self.comm('ESQ'))
+        LOGGER.error('Start time: %f', time.time()-start)        
+        self.update_state()
+        LOGGER.error('Start time: %f', time.time()-start)
         self.comm('CRU ,2')
 
     def actual_range(self, amp_range):
@@ -453,3 +487,6 @@ if __name__ == '__main__':
     print('SDT: ' + qmg.comm('SDT')) # Detector type
     print('SIT: ' + qmg.comm('SIT')) # Ion source
     print('AIN: ' + qmg.comm('AIN')) # Analog in
+    print(qmg.state)
+    qmg.update_state()
+    print(qmg.state)
