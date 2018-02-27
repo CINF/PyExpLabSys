@@ -111,7 +111,7 @@ class VoltageCurrentProgram(Thread):  # pylint: disable=too-many-instance-attrib
         super(VoltageCurrentProgram, self).__init__()
 
         # Form channel_id e.g: EA1
-        self.channel_id = CLIENT_ID + args.power_supply + args.output
+        self.channel_id = args.power_supply + args.output
 
         ### Required by the stepped program runner
         # Accepted capabilities are: can_edit, can_play,
@@ -340,7 +340,7 @@ class VoltageCurrentProgram(Thread):  # pylint: disable=too-many-instance-attrib
         for codename in self.codenames:
             metadata = {
                 'time': sql_time, 'comment': self.config['comment'],
-                'label': codename[4:], 'type': 1,
+                'label': codename[3:], 'type': 1,
                 'power_supply_channel': self.channel_id,
             }
             self.data_set_saver.add_measurement(codename, metadata)
@@ -433,15 +433,13 @@ class VoltageCurrentProgram(Thread):  # pylint: disable=too-many-instance-attrib
 
             # Set/save it on the live_socket, database and in the GUI
             point = (self.status['elapsed_total'], value)
-            # FIXME live socket
-            #self.live_socket.set_point(codename, point)
+            self.live_socket.set_point(codename, point)
             self.data_set_saver.save_point(codename, point)
             self.status[codename] = value
 
     def stop_everything(self):
         """Stop power supply and live socket"""
-        # FIXME Live socket
-        #self.live_socket.stop()
+        self.live_socket.stop()
         self.data_set_saver.stop()
 
     def power_supply_on_off(self, state, current_limit=None):
