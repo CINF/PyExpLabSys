@@ -46,7 +46,7 @@ class FlowControl(threading.Thread):
         for device in devices:
             self.values[device] = None
 
-        self.pullsocket = DateDataPullSocket('sniffer_pc_control', devices,
+        self.pullsocket = DateDataPullSocket(name + '_analog_control', devices,
                                              timeouts=[3.0] * len(devices))
         self.pullsocket.start()
 
@@ -75,5 +75,6 @@ class FlowControl(threading.Thread):
             for mfc in self.mfcs:
                 flow = self.mfcs[mfc].read_flow()
                 self.values[mfc] = flow
+                print(flow)
                 self.pullsocket.set_point_now(mfc, flow)
                 self.livesocket.set_point_now(mfc, flow)
