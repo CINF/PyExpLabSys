@@ -1,10 +1,12 @@
 """ Read the voltages from the analog voltage supply for the TOF """
+from __future__ import print_function
 import socket
 import PyExpLabSys.drivers.agilent_34972A as multiplexer
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
 def read_network(command):
+    """ Read value from network """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(1)
     sock.sendto(command, ('127.0.0.1', 9000))
@@ -33,23 +35,7 @@ def read_voltages():
     return_values['lens_D'] = read_network(b'lens_d#raw')
     return_values['lens_E'] = read_network(b'lens_e#raw')
     return_values['deflection'] = values[7] * 500
-    """
-    voltages = ''
-    voltages += 'A2:' + str(a2) + ' '
-    voltages += 'Def:' + str(deflection) + ' '
-    voltages += 'Focus:' + str(focus) + ' '
-    voltages += 'Liner:' + str(liner) + ' '
-    voltages += 'MCP:' + str(mcp) + ' '
-    voltages += 'R1:' + str(r1) + ' '
-    voltages += 'R2:' + str(r2) + ' '
-    voltages += 'Lens_A:' + str(lens_A) + ' '
-    #voltages += 'Lens_B:' + str(lens_B) + ' '
-    #voltages += 'Lens_C:' + str(lens_C) + ' '
-    #voltages += 'Lens_D:' + str(lens_D) + ' '
-    #voltages += 'Lens_E:' + str(lens_E) + ' '
-    """
     return return_values
-
 
 if __name__ == '__main__':
     print(read_voltages())

@@ -1,8 +1,8 @@
 """ Read voltages from the Time-of-Flight and expose to network """
+from __future__ import print_function
 import SocketServer
 import threading
 import time
-
 import PyExpLabSys.drivers.agilent_34972A as multiplexer
 import read_tof_voltages
 
@@ -10,14 +10,14 @@ class SlowProcess(threading.Thread):
     """ Perfom a slow operation without blocking the network """
     def __init__(self):
         threading.Thread.__init__(self)
-        self.bias_string = ''
+        self.bias_values = {}
         self.update = False
         self.running = True
         self.recent_update = -1
 
     def update_bias_string(self):
         """ Call helper to update actual voltages """
-        self.bias_string = read_tof_voltages.read_voltages()
+        self.bias_values = read_tof_voltages.read_voltages()
 
     def run(self):
         while self.running:
@@ -30,8 +30,8 @@ class SlowProcess(threading.Thread):
                 self.recent_update = self.recent_update - 1
                 time.sleep(1)
             if self.recent_update < 0: # If not updated recently, do not trust store values
-                self.bias_string = ''
-        
+                self.bias_string = {}
+
 
 class MyUDPHandler(SocketServer.BaseRequestHandler):
     """ Handle request to read or update store bias values """
@@ -51,12 +51,18 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
             voltage = val
             string = "SOURCE:VOLT " + str(voltage/500.0) + ", (@204)"
             agilent.scpi_comm(string)
+            print(string)
             slow_handler.update = True
             data = 'ok'
 
         command = 'read_voltages'
         if recieved_data[0:len(command)] == command:
-            data = slow_handler.bias_string
+            print('read voltages')
+            data_values = slow_handler.bias_values
+            data = ''
+            for key in data_values.keys():
+                data += key + ':' + str(data_values[key]) + ' '
+            print(data)
 
         command = 'stop_tof_measurement'
         if recieved_data[0:len(command)] == command:
@@ -90,8 +96,8 @@ if __name__ == "__main__":
 
     bias = -1
     pec = False
-    agilent = multiplexer.Agilent34972ADriver(name='tof-agilent-34972a')
-    
+    agilent = multiplexer.Agilent34972ADriver(hostname='tof-agilent-34972a')
+
     slow_handler = SlowProcess()
     slow_handler.start()
 
