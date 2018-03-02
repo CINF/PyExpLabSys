@@ -46,7 +46,7 @@ from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
 # Constant(s)
-ACKNOWLEDGE = 6  # ACK code
+ACKNOWLEDGE = b'\x06'
 TEXT_PROPERTY_TO_COMMAND = {
     'bold': b'\xFF\xDE',
     'inverse': b'\xFF\xDC',
@@ -161,21 +161,24 @@ class PicasoCommon(object):
                                     timeout=3)
         # Flush buffer
         number_of_old_bytes = self.serial.inWaiting()
-        self.serial.read(number_of_old_bytes)
-
+        print(number_of_old_bytes, repr(self.serial.read(number_of_old_bytes)))
         self.debug = debug
 
     def close(self):
         """Close the serial communication"""
         self.serial.close()
 
-    def _send_command(self, command, reply_length=0, output_as_bytes=False):
+    def _send_command(self, command, reply_length=0, output_as_bytes=False,
+                      reply_is_string=False):
         """Send a command and return status and reply
 
         Args:
             command (bytes): The command to send e.g. b'\xFF\xCD' to clear the screen
-            reply_length (int): The length of the expected reply i.e. WITHOUT an acknowledge
+            reply_length (int): The length of the expected reply i.e. WITHOUT an
+                acknowledge.
             output_as_bytes (bool): Return bytes instead of int
+            reply_is_string (bool): Overrides the `reply_length` and read the reply
+                length from the reply itself. Applicaple only to variable length strings.
 
         Returns:
             bytes or int: If a return value is requested (with reply_length) a int will be
@@ -187,35 +190,46 @@ class PicasoCommon(object):
                 the requested length
         """
         self.serial.write(command)
-        reply_raw = self.serial.read(reply_length + 1)
 
-        # Check if the an ACK is returned
-        reply_as_bytes = bytes(reply_raw)
-        if reply_as_bytes[0] != ACKNOWLEDGE:
+        # First check if it succeded
+        acknowledge_as_byte = self.serial.read(1)
+        if acknowledge_as_byte != b'\x06':
             message = 'The command \'{0}\' failed'.format(command)
             raise PicasoException(message, exception_type='failed')
 
-        # Extract the reply
-        reply = None
+        # The read reply is any
+        if reply_is_string:
+            reply_length = 0
+            string_length_as_bytes = self.serial.read(2)
+            string_length = int.from_bytes(string_length_as_bytes, byteorder='big')
+            reply_raw = self.serial.read(string_length)
+        else:
+            if reply_length > 0:
+                reply_raw = self.serial.read(reply_length)
+            else:
+                reply_raw = b''
+
+        # Make sure there is nothing waiting
+        if self.debug:
+            in_waiting = self.serial.inWaiting()
+            if in_waiting != 0:
+                message = 'Wrong reply length. There are still {0} bytes '\
+                          'left waiting on the serial port'.format(in_waiting)
+                raise PicasoException(message, exception_type='bytes_still_waiting')
+                
+        # Return appropriate value
         if reply_length > 0:
-            if len(reply_raw) != reply_length + 1:
+            if len(reply_raw) != reply_length:
                 message = 'The reply length {0} bytes, did not match the '\
                           'requested reply length {1} bytes'.format(
                               len(reply_raw) - 1, reply_length)
-                raise PicasoException(message,
-                                      exception_type='unexpected_reply')
+                raise PicasoException(message, exception_type='unexpected_reply')
 
-            if self.debug:
-                in_waiting = self.serial.inWaiting()
-                if self.serial.inWaiting() != 0:
-                    message = 'Wrong reply length. There are still {0} bytes '\
-                              'left waiting on the serial port'.format(
-                                  in_waiting)
-
-            if output_as_bytes:
-                reply = reply_raw[1:]
-            else:
-                reply = int.from_bytes(reply_raw[1:], byteorder='big')
+        reply = None
+        if output_as_bytes or reply_is_string:
+            reply = reply_raw
+        else:
+            reply = int.from_bytes(reply_raw, byteorder='big')
         return reply
 
     @staticmethod
@@ -678,9 +692,8 @@ class PicasoCommon(object):
             PicasoException: If the command fails or if the reply does not have
                 the expected length
         """
-        reply = self._send_command(b'\x00\x1A', 12, output_as_bytes=True)
-        # The display model is prefixed with 0x00 0x0A which is stripped
-        return reply[2:].decode('ascii')
+        reply = self._send_command(b'\x00\x1A', reply_is_string=True)
+        return reply.decode('ascii')
 
     def get_spe_version(self):  # Sub-section .4
         """Get the version of the Serial Platform Environment
