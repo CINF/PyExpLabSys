@@ -35,7 +35,7 @@ class CursesTui(threading.Thread):
             try:
                 self.screen.addstr(9, 2, "Temeperature: {0:.1f}C  ".format(val))
             except (ValueError, TypeError):
-                self.screen.addstr(9, 2, "Temeperature: -         ".format(val))
+                self.screen.addstr(9, 2, "Temeperature: -         ")
             val = self.hc.dutycycle
             self.screen.addstr(10, 2, "Wanted dutycycle: {0:.5f} ".format(val))
             val = self.hc.pc.pid.setpoint
@@ -50,13 +50,13 @@ class CursesTui(threading.Thread):
             val = time.time() - self.start_time
             self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
 
-            n = self.screen.getch()
-            if n == ord('q'):
+            key_val = self.screen.getch()
+            if key_val == ord('q'):
                 self.hc.quit = True
                 self.quit = True
-            if n == ord('i'):
+            if key_val == ord('i'):
                 self.hc.pc.update_setpoint(self.hc.pc.setpoint + 1)
-            if n == ord('d'):
+            if key_val == ord('d'):
                 self.hc.pc.update_setpoint(self.hc.pc.setpoint - 1)
 
             self.screen.refresh()
@@ -98,7 +98,9 @@ class PowerCalculatorClass(threading.Thread):
         self.datasocket.set_point_now('setpoint', setpoint)
         return setpoint
 
-    def ramp_calculator(self, time):
+    def ramp_calculator(self, current_time):
+        """ Return the current valid setpoint calculated from the relevant ramp
+        Also includes a default ramp for testing"""
         if self.ramp is None:
             self.ramp = {}
             self.ramp['temp'] = {}
@@ -129,15 +131,15 @@ class PowerCalculatorClass(threading.Thread):
         self.ramp['time'][-1] = 0
         self.ramp['temp'][-1] = 0
         i = 0
-        while (time > 0) and (i < len(self.ramp['time'])):
-            time = time - self.ramp['time'][i]
+        while (current_time > 0) and (i < len(self.ramp['time'])):
+            current_time = current_time - self.ramp['time'][i]
             i = i + 1
         i = i - 1
-        time = time + self.ramp['time'][i]
+        current_time = current_time + self.ramp['time'][i]
         if self.ramp['step'][i] is True:
             return_value = self.ramp['temp'][i]
         else:
-            time_frac = time / self.ramp['time'][i]
+            time_frac = current_time / self.ramp['time'][i]
             return_value = self.ramp['temp'][i-1] + time_frac * (self.ramp['temp'][i] -
                                                                  self.ramp['temp'][i-1])
         return return_value
@@ -163,8 +165,8 @@ class PowerCalculatorClass(threading.Thread):
                 new_update = self.pushsocket.last[0]
             except (TypeError, KeyError): #  Setpoint has never been sent
                 setpoint = None
-            if ((setpoint is not None) and
-                (setpoint != self.setpoint) and (sp_updatetime < new_update)):
+            if ((setpoint is not None) and setpoint != self.setpoint) and \
+               (sp_updatetime < new_update):
                 self.update_setpoint(setpoint)
                 sp_updatetime = new_update
 
@@ -178,7 +180,9 @@ class PowerCalculatorClass(threading.Thread):
                 ramp_time = 0
             if (ramp is not None) and (ramp != 'stop'):
                 try: # Python 3
-                    ramp = pickle.loads(ramp.encode('ascii'), fix_imports=True)
+                    # pylint: disable=unexpected-keyword-arg
+                    ramp = pickle.loads(ramp.encode('ascii'),
+                                        fix_imports=True)
                 except TypeError: # Python 2
                     ramp = pickle.loads(ramp)
                 if new_update > ramp_updatetime:
@@ -212,7 +216,7 @@ class HeaterClass(threading.Thread):
             self.datasocket.set_point_now('dutycycle', self.dutycycle)
             self.datasocket.set_point_now('pid_p', self.pc.pid.proportional_contribution())
             self.datasocket.set_point_now('pid_i', self.pc.pid.integration_contribution())
-                        
+
             for i in range(0, self.beatsteps):
                 time.sleep(1.0 * self.beatperiod / self.beatsteps)
                 if i < self.beatsteps * self.dutycycle:
