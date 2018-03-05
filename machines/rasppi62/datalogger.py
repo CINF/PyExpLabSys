@@ -56,7 +56,7 @@ class Reader(threading.Thread):
         while not self.quit:
             self.ttl = 150
             values = np.zeros(6)
-            average_length = 50
+            average_length = 100
             for _ in range(0, average_length):
                 measurements = self.dataq.read_measurements()
                 values[0] += measurements[1]
@@ -66,33 +66,13 @@ class Reader(threading.Thread):
                 values[4] += measurements[5]
                 values[5] += measurements[6]
             values = values / average_length
-            self.pressure['main_pirani'] = 10**(values[0]-4)
+            self.pressure['main_pirani'] = 10**(values[0]-2)
             self.pressure['main_baratron'] = values[1] / 100
             self.pressure['main_ion_gauge'] = 10**(-1*values[2]-12)
             self.pressure['load_lock'] = 0
             self.pressure['roughing_ll'] = 1.11985865e-5*(3.11878295**values[4])
             self.pressure['roughing_main'] = 1.11985865e-5*(3.11878295**values[5])
-            time.sleep(0.2)
-            """ Fitting code for roughing pressure:
-            import matplotlib.pyplot as plt
-            import numpy as np
-            from scipy import optimize
-            fig = plt.figure()
-            axis = fig.add_subplot(1,1,1)
-            fitfunc = lambda p, x: p[0]*(p[1]**x)       # Target function
-            errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
-
-            X = np.array([1.9, 4.4, 5.7, 6.27, 7.39, 7.76, 8.08])
-            Y = np.array([1e-4,2.3e-3,7.7e-3,1.4e-2,5e-2,7.6e-2,1.1e-1])
-            p0 = [0.011,3] # Initial guess for the parameters
-            p1, success = optimize.leastsq(errfunc, p0[:], args=(X,Y),maxfev=1000)
-            x_fit =np.arange(1,9,0.1)
-            axis.set_yscale('log')
-            axis.plot(X, Y,'ro')
-            axis.plot(x_fit, fitfunc(p1, x_fit),'b-')
-            plt.show()
-            """
-
+            time.sleep(0.5)
 
 def main():
     """ Main function """
@@ -113,22 +93,22 @@ def main():
                  'sputterchamber_ll_rough_pressure', 'sputterchamber_rough_pressure']
 
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[0]] = ValueLogger(reader, comp_val=0.02, low_comp=1e-4, maximumtime=600,
                                         comp_type='log', channel=1)
     loggers[codenames[0]].start()
-    loggers[codenames[1]] = ValueLogger(reader, comp_val=0.01, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[1]] = ValueLogger(reader, comp_val=0.001, low_comp=1e-4, maximumtime=600,
                                         comp_type='lin', channel=2)
     loggers[codenames[1]].start()
-    loggers[codenames[2]] = ValueLogger(reader, comp_val=1.2, maximumtime=600, low_comp=1e-9,
+    loggers[codenames[2]] = ValueLogger(reader, comp_val=0.02, maximumtime=600, low_comp=1e-9,
                                         comp_type='log', channel=3)
     loggers[codenames[2]].start()
-    loggers[codenames[3]] = ValueLogger(reader, comp_val=20, low_comp=1e-5, maximumtime=6000,
-                                        comp_type='lin', channel=4)
+    loggers[codenames[3]] = ValueLogger(reader, comp_val=1, low_comp=1e-5, maximumtime=6000,
+                                        comp_type='log', channel=4)
     loggers[codenames[3]].start()
-    loggers[codenames[4]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[4]] = ValueLogger(reader, comp_val=0.15, low_comp=1e-3, maximumtime=600,
                                         comp_type='log', channel=5)
     loggers[codenames[4]].start()
-    loggers[codenames[5]] = ValueLogger(reader, comp_val=1.2, low_comp=1e-3, maximumtime=600,
+    loggers[codenames[5]] = ValueLogger(reader, comp_val=0.25, low_comp=1e-1, maximumtime=600,
                                         comp_type='log', channel=6)
     loggers[codenames[5]].start()
 
