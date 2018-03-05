@@ -1,18 +1,21 @@
 """ Driver for Bronkhorst flow controllers, including simple test case """
 from __future__ import print_function
-import serial
 import time
 import sys
+import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
 
-class Bronkhorst():
+class Bronkhorst(object):
     """ Driver for Bronkhorst flow controllers """
     def __init__(self, port, max_flow):
-        self.ser = serial.Serial(port, 38400, timeout=1)
+        self.ser = serial.Serial(port, 38400, timeout=2)
         self.max_setting = max_flow
-        time.sleep(0.1)
+        time.sleep(0.25)
+        ser = self.read_serial()
+        if len(ser) < 3:
+            raise Exception('MfcNotFound')
 
     def comm(self, command):
         """ Send commands to device and recieve reply """
@@ -121,7 +124,7 @@ class Bronkhorst():
         #response = response.decode('hex')
         return str(response)
 
-        
+
 if __name__ == '__main__':
     bh = Bronkhorst('/dev/ttyUSB3', 5)
     #print bh.set_setpoint(1.0)

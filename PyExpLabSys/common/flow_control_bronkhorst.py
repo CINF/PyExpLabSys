@@ -18,35 +18,42 @@ class FlowControl(threading.Thread):
         mfcs = {}
         print('!')
         for i in range(0, 8):
-            print(i)
+            print('----------------')
+            print('Cheking port number: {}'.format(i))
             error = 0
             name[i] = ''
             while (error < 3) and (name[i] == ''):
                 # Pro forma-range will be update in a few lines
                 ioerror = 0
-                while ioerror < 100:
+                while ioerror < 10:
+                    time.sleep(0.5)
+                    print(ioerror)
                     try:
                         bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
+                        print('MFC Found')
                         break
-                    except IOError:
+                    except:
                         ioerror = ioerror + 1
-                if ioerror == 100:
-                    print('Fatal error!')
+                if ioerror == 10:
+                    print('No MFC found on this port')
+                    break
+                print('Error count before identification: {}'.format(ioerror))
                 name[i] = bronk.read_serial()
+                print('MFC Name: {}'.format(name[i]))
                 name[i] = name[i].strip()
                 error = error + 1
             if name[i] in devices:
                 ioerror = 0
-                if ioerror < 100:
+                if ioerror < 10:
+                    print(ioerror)
                     try:
                         mfcs[name[i]] = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i),
                                                               ranges[name[i]])
                         mfcs[name[i]].set_control_mode() #Accept setpoint from rs232
                     except IOError:
                         ioerror = ioerror + 1
-                if ioerror == 100:
-                    print('Fatal error!')
-                print(name[i])
+                if ioerror == 10:
+                    print('Found MFC but could not set range')
 
         self.mfcs = mfcs
         self.pullsocket = DateDataPullSocket(name, devices,
@@ -72,7 +79,7 @@ class FlowControl(threading.Thread):
             while qsize > 0:
                 element = self.pushsocket.queue.get()
                 mfc = list(element.keys())[0]
-                self.mfcs[mfc].set_flow(element[mfc])
+                self.mfcs[mfc].set_flow(str(element[mfc]))
                 qsize = self.pushsocket.queue.qsize()
 
             for mfc in self.mfcs:
