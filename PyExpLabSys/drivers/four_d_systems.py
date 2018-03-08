@@ -38,12 +38,20 @@ from builtins import (  # pylint: disable=redefined-builtin, unused-import
     pow, round, super, filter, map, zip
 )
 
+from time import sleep
 from struct import pack
 from functools import partial
 import serial
 
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
+
+# TODO: Implement proper logging
 
 # Constant(s)
 ACKNOWLEDGE = b'\x06'
@@ -54,10 +62,11 @@ TEXT_PROPERTY_TO_COMMAND = {
     'opacity': b'\xFF\xDF',
     'underline': b'\xFF\xDB'
 }
-SCREEN_MODES = ['landscape', 'landscape reverse', 'portrait',
-                'portrait reverse']
-GRAPHICS_PARAMETERS = ['x_max', 'y_max', 'last_object_left', 'last_object_top',
-                       'last_object_right', 'last_object_bottom']
+SCREEN_MODES = ['landscape', 'landscape reverse', 'portrait', 'portrait reverse']
+GRAPHICS_PARAMETERS = [
+    'x_max', 'y_max', 'last_object_left', 'last_object_top', 'last_object_right',
+    'last_object_bottom',
+]
 TOUCH_STATES = ['enable', 'disable', 'default']
 TOUCH_STATUSSES = ['invalid/notouch', 'press', 'release', 'moving']
 LATIN_DICT = {
@@ -82,6 +91,28 @@ LATIN_DICT = {
     u"û": u"u", u"ü": u"u", u"ý": u"y", u"þ": u"p", u"ÿ": u"y",
     u"’": u"'", u"č": u"c", u"ž": u"z"
 }
+BAUD_RATES = {
+    110: 0,
+    300: 1,
+    600: 2,
+    1200: 3,
+    2400: 4,
+    4800: 5,
+    9600: 6,
+    14400: 7,
+    19200: 8,
+    31250: 9,
+    38400: 10,
+    56000: 11,
+    57600: 12,
+    115200: 13,
+    128000: 14,
+    256000: 15,
+    300000: 16,
+    375000: 17,
+    500000: 18,
+    600000: 19,
+}
 
 
 def to_ascii(string):
@@ -101,6 +132,10 @@ def to_ascii_utf8(string):
     return string.encode('utf-8')
 
 
+# Create to_word function as a partial
+to_word = partial(pack, '>H')  # pylint: disable=invalid-name
+
+
 def to_words(*args):
     """Convert integers or tuples of integers to 2 byte words
 
@@ -117,7 +152,7 @@ def to_words(*args):
     convert = []
     for arg in args:
         if isinstance(arg, list):
-            convert += args
+            convert += arg
         elif isinstance(arg, tuple):
             convert += list(arg)
         else:
@@ -125,7 +160,40 @@ def to_words(*args):
     return pack('>' + 'H' * len(convert), *convert)
 
 
-to_word = partial(pack, '>H')  # pylint: disable=invalid-name
+def to_gci(image, resize=None):
+    """Convert an imame to PICASO GCI format bytestring
+
+    Args:
+        image (str or PIL.Image): Path of image or PIL.Image object
+        resize (tuple): A 2 element tuple (x, y) for resizing
+    """
+    if Image is None:
+        message = 'The to_gci function requires PIL to be installed'
+        raise RuntimeError(message)
+
+    if not isinstance(image, Image.Image):
+        image = Image.open(image)  # Can be many different formats.
+
+    # Resize if requested
+    if resize:
+        image.resize(resize, Image.ANTIALIAS)
+
+    # Get pixels and convert
+    pixels = image.getdata()
+    x, y = image.size
+    # Get pixels as 1 byte color components (0-255), convert to 0.0-1.0 float color
+    # components and finally convert to Picaso's 16 bit color format
+    colors = [PicasoCommon._to_16_bit_rgb([x/255 for x in p]) for p in pixels]
+    # NOTE: There is an error in the spec I found online:
+    # https://forum.4dsystems.com.au/forum/forum-aa/faq-frequently-asked-questions/faq/
+    # 2290-graphics-composer-and-the-display-modules
+    # The color code is just one byte, followed by a zero byte
+    data = to_words(x, y) + b'\x10\x00' + to_words(colors)
+
+    # Pad data with zero bytes up to 512 bytes
+    remainder = 512 - len(data) % 512
+    data = data + b'\x00' * remainder
+    return data
 
 
 # pylint: disable=too-many-public-methods
@@ -149,19 +217,22 @@ class PicasoCommon(object):
 
         Args:
             serial_device (str): The serial device to open communication on
-            baud_rate (int): The baudrate for the communication
+            baud_rate (int): The baudrate for the communication. This should be the baud
+                rate the display is set for per default. The baud can be changed after
+                instantiation with the :meth:`set_baud_rate` method
             debug (bool): Enable a check of whether there are bytes left in
                 waiting after a reply has been fetched.
         """
-        self.serial = serial.Serial(port=serial_device,
-                                    baudrate=baudrate,
-                                    bytesize=serial.EIGHTBITS,
-                                    parity=serial.PARITY_NONE,
-                                    stopbits=serial.STOPBITS_ONE,
-                                    timeout=3)
+        self.serial = serial.Serial(
+            port=serial_device,
+            baudrate=baudrate,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            timeout=3,
+        )
         # Flush buffer
         number_of_old_bytes = self.serial.inWaiting()
-        print(number_of_old_bytes, repr(self.serial.read(number_of_old_bytes)))
         self.debug = debug
 
     def close(self):
@@ -189,12 +260,31 @@ class PicasoCommon(object):
             PicasoException: If the command fails or if the reply does not have
                 the requested length
         """
+        if self.debug:
+            print("Repr of command to send", repr(command))
         self.serial.write(command)
+
+        # Special case for baud rate change
+        command_as_bytes = bytes(command)
+        if command_as_bytes[0: 2] == b'\x00\x26':
+            baudrate_index = int.from_bytes(command_as_bytes[2:], byteorder='big')
+            baudrate = {v: k for k, v in BAUD_RATES.items()}[baudrate_index]
+            sleep(1)
+            self.serial.baudrate = baudrate
+            while True:
+                if self.serial.inWaiting() > 0:
+                    ack = self.serial.read(1)
+                    # For some reason, it doesn't seem to return ACK, but it has done it,
+                    # which is why we return after getting a byte back
+                    break
+                sleep(0.1)
+            return
 
         # First check if it succeded
         acknowledge_as_byte = self.serial.read(1)
         if acknowledge_as_byte != b'\x06':
-            message = 'The command \'{0}\' failed'.format(command)
+            message = 'The command \'{}\' failed with code: {}'.format(command,
+                                                                       acknowledge_as_byte)
             raise PicasoException(message, exception_type='failed')
 
         # The read reply is any
@@ -216,7 +306,7 @@ class PicasoCommon(object):
                 message = 'Wrong reply length. There are still {0} bytes '\
                           'left waiting on the serial port'.format(in_waiting)
                 raise PicasoException(message, exception_type='bytes_still_waiting')
-                
+
         # Return appropriate value
         if reply_length > 0:
             if len(reply_raw) != reply_length:
@@ -249,7 +339,6 @@ class PicasoCommon(object):
         if isinstance(color, str):
             # Convert e.g. '#ffffff' to [1.0, 1.0, 1.0]
             color = [int(color[n: n+2], base=16) / 255 for n in range(1, 6, 2)]
-        print(color)
 
         # '0001100011001001'
         #  |-r-||--g-||-b-|
@@ -618,6 +707,121 @@ class PicasoCommon(object):
         """
         command = b'\xFF\xA6' + to_word(GRAPHICS_PARAMETERS.index(parameter))
         return self._send_command(command, 2)
+
+    # MEDIE COMMANDS, section 5.3 in the manual
+    def media_init(self):  # Sub-section .1
+        """Initialize a uSD/SD/SDHC memory card for media operations
+
+        Returns:
+            bool: True is the memory card was present and successfully initialized and
+            False otherwise
+        """
+        return_value = self._send_command(b'\xFF\x89', 2)
+        return return_value == 1
+
+    def set_sector_address(self, high_word, low_word):
+        """Set the internal adress pointer for a sector
+
+        The two argumenst are the two upper and lower bytes of a 4 byte sector address
+        respectively. I.e. the total sector address will be formed as: `high_word * 65535
+        + low_word`
+
+        Args:
+            high_word (int): An integer between 0 and 65535. See above.
+            low_word (int): An integer between 0 and 65535. See above.
+        """
+        self._send_command(b'\xFF\x92' + to_words(high_word, low_word))
+
+    def read_sector(self):
+        """Read the block (512 bytes) at the sector address pointer
+
+        Raises:
+            PicasoException: If the sector read fails
+
+        The address pointer is set with :meth:`set_sector_address`. After the read, the
+        sector address pointer will be incremented by 1.
+
+        """
+        val = self._send_command(b'\x00\x16', reply_length=514, output_as_bytes=True)
+        success = to_word(val[:2])
+        if success != 1:
+            message = 'Sector read failed'
+            raise PicasoException(message, exception_type='sector_read_failed')
+        return val[2:]
+
+    def write_sector(self, block):
+        """Write a block (512 bytes) to the sector at the sector address pointer
+
+        .. note:: The size of block must be 512 bytes
+
+        .. note:: Rememer to call :meth:`flush` after writes to ensure that they are
+           written out to the SD-card
+
+        Returns:
+            bool: Write successful
+
+        The address pointer is set with :meth:`set_sector_address`. After the write, the
+        sector address pointer will be incremented by 1.
+        """
+        return_value = self._send_command(b'\x00\x17' + block, 2)
+        return return_value == 1
+
+    def write_sectors(self, blocks):
+        """Write multiple blocks to consequtive sectors starting at the sector adddress pointer
+
+        This is a convenience method around several calls to :meth:`write_sector`.
+
+        .. note:: The size of blocks must be a multiple of 512 bytes
+
+        .. note:: Rememer to call :meth:`flush` after writes to ensure that they are
+           written out to the SD-card
+
+        Args:
+            blocks (bytes): The data to write
+
+        Returns:
+            bool: Whether all writes were successful
+
+        """
+        successes = []
+        for position in range(0, len(blocks), 512):
+            block = blocks[position: position + 512]
+            successes.append(self.write_sector(block))
+        return all(successes)
+
+    def flush_media(self):
+        """Ensure that data written is actually written out to the SD card
+
+        Returns:
+            bool: Whether flush operation was successful
+        """
+        val = self._send_command(b'\xFF\x8A', 2)
+        return val != 0
+
+    def display_image(self, x, y):
+        """Display the image at the sector pointer or byte pointer at x, y coordinates
+
+        Args:
+            x (int): X-coordinate of the upper left corner
+            y (int): Y-coordinate of the upper left corner
+        """
+        self._send_command(b'\xFF\x8B' + to_words(x, y))
+
+    # SERIAL UART COMMUNICATIONS COMMANDS, section 5.4 in the manual
+    def set_baud_rate(self, baud_rate):
+        """Set the communication baud rate
+
+        .. note:: This change will affect only the current session
+
+        Args:
+            baud_rate (int): The baud rate to set. Valid values are keys in BAUD_RATES
+        """
+        try:
+            index = BAUD_RATES[baud_rate]
+        except KeyError:
+            message = "Invalid baud rate {} requested. Valid values are: {}"
+            raise ValueError(message.format(baud_rate, list(BAUD_RATES.keys())))
+        self._send_command(b'\x00\x26' + to_word(index))
 
     # TOUCH SCREEN COMMANDS, section 5.8 in the manual
     def touch_detect_region(self, upper_left, bottom_right):  # Sub-section .1
