@@ -23,7 +23,7 @@ KEYS_TO_CHARS.update({
 
 
 
-def detect_barcode_device():
+def detect_keypad_device():
     """Return the input device path of the Deltaco TB-298 Keypad
 
     Iterates over all devices in /dev/input/event?? and looks for one that has
@@ -136,7 +136,7 @@ class ThreadedKeypad(Thread):
 def module_demo():
     """Simple module demo"""
     # Get reader
-    device_path = detect_barcode_device()
+    device_path = detect_keypad_device()
     reader = ThreadedKeypad(device_path)
     reader.start()
     try:
