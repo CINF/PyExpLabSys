@@ -1,0 +1,4 @@
+id: microreactor
+purpose: Temperature controller
+
+Uses agilent 34310A + cpx400dp to control microreactor temperature
