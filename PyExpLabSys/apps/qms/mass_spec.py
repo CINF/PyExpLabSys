@@ -84,10 +84,11 @@ class MassSpec(object):
 
     def leak_search(self):
         """ Do a mass time scan on mass 4 """
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.datetime.now()
         channel_list = {}
         channel_list['ms'] = {}
-        channel_list['ms'][0] = {'comment': 'Leak Search', 'autorange':False}
+        channel_list['ms'][0] = {'comment': 'Leak Search', 'autorange':False,
+                                 'mass-scan-interval':999999999}
         channel_list['ms'][1] = {'masslabel': 'He', 'speed':10, 'mass':4, 'amp_range':9}
         self.qms.mass_time(channel_list['ms'], timestamp, no_save=True)
 
@@ -112,11 +113,11 @@ if __name__ == '__main__':
     MS = MassSpec()
     #MS.sem_and_filament(True, 1800)
     #time.sleep(10)
-    #MS.leak_search()
+    MS.leak_search()
 
-    MS.mass_time_scan()
+    #MS.mass_time_scan()
 
-    #MS.mass_scan(0, 50, 'He in CH4 line?', amp_range=0)
+    #MS.mass_scan(0, 50, 'After power line cleanup', amp_range=-11)
 
     #MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
     #MS.mass_scan(0, 50, 'Background scan -9', amp_range=-9)
