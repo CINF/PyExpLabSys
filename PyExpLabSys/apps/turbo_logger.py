@@ -3,14 +3,14 @@
 from __future__ import print_function
 import time
 import sys
+import PyExpLabSys.drivers.pfeiffer_turbo_pump as tp
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import LiveSocket
-import PyExpLabSys.drivers.pfeiffer_turbo_pump as tp
 from PyExpLabSys.common.utilities import get_logger
-sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
-import settings # pylint: disable=F0401
 from PyExpLabSys.common.supported_versions import python2_and_3
+sys.path.append('/home/pi/PyExpLabSys/machines/' + sys.argv[1])
+import settings # pylint: disable=wrong-import-position, import-error
 python2_and_3(__file__)
 
 LOGGER = get_logger('Turbo Pump', level='info', file_log=True,
