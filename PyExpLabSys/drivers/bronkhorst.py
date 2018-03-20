@@ -51,6 +51,7 @@ class Bronkhorst(object):
 
     def set_flow(self, setpoint):
         """ Set the desired setpoint, which could be a pressure """
+        setpoint = float(setpoint)
         if setpoint > 0:
             setpoint = (1.0 * setpoint / self.max_setting) * 32000
             setpoint = hex(int(setpoint))
