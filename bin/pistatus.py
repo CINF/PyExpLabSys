@@ -264,7 +264,7 @@ def collect_timezone_info():
     tests = {
         'Time zone': 'Europe/Copenhagen',
         'Network time on': 'yes',
-        'NTP synchronized': 'yes'
+        #'NTP synchronized': 'yes'
     }
     time_zone_lines = check_output(
         'export LC_ALL=C; timedatectl',
@@ -291,14 +291,14 @@ def time_zone():
         return
 
     framed('')
-    framed(bold('Time zone problems'))
-    framed(bold('=================='))
-    framed('A configuration issue was found with the time zone settings.')
-    framed('The problem was: ' + status['message'])
+    framed(red('Time zone problems'))
+    framed(red('=================='))
+    framed(red('A configuration issue was found with the time zone settings.'))
+    framed(red('The problem was: ' + status['message']))
     framed('')
-    framed('All output from timedatectl was:')
+    framed(red('All output from timedatectl was:'))
     for line in status['output']:
-        framed(line)
+        framed(red(line))
 
 
 def git():
