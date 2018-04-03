@@ -1,4 +1,6 @@
-""" Driver for Microchip Technology MCP3428 Analog Input device """
+""" Driver for Microchip Technology MCP3428 Analog Input device
+Calibrated to PR33-13 from ncd.io other products will use different
+voltage references."""
 # pylint: disable=no-self-use
 import time
 import io
@@ -35,7 +37,10 @@ class I2C:
 
 
 class MCP3428(object):
-    """ Class for reading voltage from MCP3428 """
+    """ Class for reading voltage from MCP3428
+    For some reason this chip works only partly with smbus, hence the
+    use of file based i2c.
+    """
 
     def __init__(self):
         self.device_address = 0x68
@@ -112,6 +117,8 @@ if __name__ == '__main__':
     print(MCP.read_sample(channel=3, gain=1, resolution=16))
 
     #Negeativ supply should be grounded, diferential behaviour somwhat unknown
+    #Calibrated to PR33-13 from ncd.io other products will use different
+    #voltage references.
     #Input, Measured value
     #0.0:   0.000701904296875
     #1.0:   0.0894775390625
