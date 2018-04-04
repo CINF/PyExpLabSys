@@ -31,9 +31,7 @@ Check settings (only print if wrong)
 """
 
 from __future__ import print_function
-
 from time import time
-T0 = time()
 import os
 import sys
 import shutil
@@ -45,6 +43,9 @@ from functools import partial
 from subprocess import check_output
 from os.path import expanduser, join, isdir, isfile, abspath
 from os import getlogin, listdir, sep, chdir, getcwd, popen, environ
+from PyExpLabSys.common.supported_versions import python2_and_3
+T0 = time()
+python2_and_3(__file__)
 try:
     import getpass
 except ImportError:
@@ -109,7 +110,7 @@ try:
     USERNAME = getlogin()
 except FileNotFoundError:
     USERNAME = getpass.getuser()
-    
+
 SCREEN_FOLDER = join(abspath(sep), 'var', 'run', 'screen', 'S-' + USERNAME)
 
 # Dict used to collect data from thread
@@ -171,7 +172,7 @@ def machine_status():
         purpose = ''.join(purpose_lines[2:]).strip()
         if len(purpose) == 0:
             purpose = purpose_lines[1].replace('purpose:', '').strip()
-            
+
 
     spaces = ' ' * (KEY_WIDTH - 7)
     purpose_key = 'purpose' + spaces + ': '
@@ -263,8 +264,7 @@ def collect_timezone_info():
     """Collect information about the timezone setting"""
     tests = {
         'Time zone': 'Europe/Copenhagen',
-        'Network time on': 'yes',
-        #'NTP synchronized': 'yes'
+        'NTP synchronized': 'yes'
     }
     time_zone_lines = check_output(
         'export LC_ALL=C; timedatectl',
