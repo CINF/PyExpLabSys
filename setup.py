@@ -13,11 +13,12 @@ import re
 
 from setuptools import setup, find_packages
 
+HERE = os.path.abspath(os.path.dirname(__file__))
 
 ###################################################################
 
 NAME = "PyExpLabSys"
-PACKAGES = find_packages(where="PyExpLabSys")
+PACKAGES = find_packages(where=HERE)
 META_PATH = os.path.join("PyExpLabSys", "__init__.py")
 KEYWORDS = ["equipment", "serial", "drivers", "file parsers", "sockets"]
 CLASSIFIERS = [
@@ -47,8 +48,6 @@ with open('requirements.txt') as file_:
 
 ###################################################################
 
-HERE = os.path.abspath(os.path.dirname(__file__))
-
 
 def read(*parts):
     """
@@ -75,16 +74,8 @@ def find_meta(meta):
     raise RuntimeError("Unable to find __{meta}__ string.".format(meta=meta))
 
 
-class A(object):
-    def __init__(*args, **kwargs):
-        from pprint import pprint
-        kwargs.pop('long_description')
-        pprint(kwargs)
-
-
 if __name__ == "__main__":
-    #setup(
-    A(
+    setup(
         name=NAME,
         description=find_meta("description"),
         license=find_meta("license"),
@@ -95,9 +86,8 @@ if __name__ == "__main__":
         maintainer=find_meta("author"),
         maintainer_email=find_meta("email"),
         keywords=KEYWORDS,
-        long_description=read("README.markdown"),
+        long_description=read("README.rst"),
         packages=PACKAGES,
-        package_dir={"": "src"},
         zip_safe=False,
         classifiers=CLASSIFIERS,
         install_requires=INSTALL_REQUIRES,

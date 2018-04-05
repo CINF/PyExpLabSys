@@ -6,6 +6,8 @@ import curses
 import PyExpLabSys.drivers.stahl_hv_400 as stahl_hv_400
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.supported_versions import python2_and_3
+python2_and_3(__file__)
 
 class CursesTui(threading.Thread):
     """ Text user interface for ion optics control """
@@ -96,10 +98,10 @@ class IonOpticsControl(threading.Thread):
             if self.status['temperature'] > 50:
                 for lens in self.lenses:
                     self.set_voltages[lens] = 0
-                    
+
             self.status['channel_status'] = self.ion_optics.check_channel_status()
             self.status['output_error'] = False in self.status['channel_status']
-            
+
             actual_voltage = self.ion_optics.query_voltage(current_lens)
             self.actual_voltages[self.lenses[current_lens-1]] = actual_voltage
             self.pullsocket.set_point_now(self.lenses[current_lens-1], actual_voltage)

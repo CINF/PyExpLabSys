@@ -58,7 +58,7 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
         'start': 'Start the stepped program',
         'stop': 'Stop the stepped program',
         'quit': ('Quit the stepped program. \n'
-                 'This will ask the core program to stop if it "can_stop", wait for it \n'
+                 'This will ask the core program to stop if\nit "can_stop", wait for it \n'
                  'to do so and quit the main GUI \n'),
         'help': 'Display this help',
         'edit': ('Edit the parameters for a single step. \n'
@@ -84,6 +84,13 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
         # We can always quit and help
         self.completions += ['quit', 'help']
         self.actions += ['quit', 'help']
+
+        # Add extra capabilities
+        if hasattr(self.core, 'extra_capabilities'):
+            for command_name, command_spec in self.core.extra_capabilities.items():
+                self.actions.append(command_name)
+                self.completions += command_spec['completions']
+                self.__class__.help_texts[command_name] = command_spec['help_text']
 
         # Add completion additions if available
         try:

@@ -1,0 +1,34 @@
+[
+    {
+        "sequence_start_timestruct_CONVERT": [
+            2015, 
+            1, 
+            13, 
+            11, 
+            16, 
+            49, 
+            1, 
+            13, 
+            -1
+        ], 
+        "sequence_start": "13-Jan-15, 11:16:49", 
+        "acq_method": "Sine14.M", 
+        "sample_name": "NI cat"
+    }, 
+    {
+        "sequence_start_timestruct_CONVERT": [
+            2016, 
+            10, 
+            6, 
+            10, 
+            47, 
+            26, 
+            3, 
+            280, 
+            -1
+        ], 
+        "sequence_start": "06-Oct-16, 10:47:26", 
+        "acq_method": "IREK_MEOH_2.M", 
+        "sample_name": "PtMgAl2O4"
+    }
+]

@@ -43,8 +43,8 @@ class RtdReader(threading.Thread):
         self.calib_temp = calib_temp
         time.sleep(0.2)
         self.calib_value = self.rtd_reader.read()
-        self.rtd_calc = rtd_calculator.RTD_Calculator(calib_temp,
-                                                      self.calib_value)
+        self.rtd_calc = rtd_calculator.RtdCalculator(calib_temp,
+                                                     self.calib_value)
         threading.Thread.__init__(self)
         self.temperature = None
         self.quit = False
@@ -91,7 +91,8 @@ class PowerCalculatorClass(threading.Thread):
         self.pullsocket.set_point_now('setpoint', setpoint)
         return setpoint
 
-    def ramp_calculator(self, time):
+    def ramp_calculator(self, ramp_time):
+        """ Calculate the current ramp setpoint """
         ramp = self.ramp
         ramp['temp'][len(ramp['time'])] = 0
         ramp['step'][len(ramp['time'])] = True
@@ -100,23 +101,23 @@ class PowerCalculatorClass(threading.Thread):
         ramp['temp'][-1] = 0
         i = 0
         #self.message = 'Klaf'
-        while (time > 0) and (i < len(ramp['time'])):
-            time = time - ramp['time'][i]
+        while (ramp_time > 0) and (i < len(ramp['time'])):
+            ramp_time = ramp_time - ramp['time'][i]
             i = i + 1
         i = i - 1
-        time = time + ramp['time'][i]
-        #self.message2 = 'Klaf'
+        ramp_time = ramp_time + ramp['time'][i]
+
         if ramp['step'][i] is True:
             return_value = ramp['temp'][i]
         else:
-            time_frac = time / ramp['time'][i]
+            time_frac = ramp_time / ramp['time'][i]
             return_value = ramp['temp'][i-1] + time_frac * (ramp['temp'][i] -
                                                             ramp['temp'][i-1])
         return return_value
 
 
     def run(self):
-        t = 0
+        current_time = 0
         sp_updatetime = 0
         ramp_updatetime = 0
         while not self.quit:
@@ -143,17 +144,17 @@ class PowerCalculatorClass(threading.Thread):
             except (TypeError, KeyError): #  Ramp has not yet been set
                 ramp = None
             if ramp == 'stop':
-                t = 0
+                current_time = 0
             if (ramp is not None) and (ramp != 'stop'):
                 ramp = pickle.loads(ramp)
                 if new_update > ramp_updatetime:
                     ramp_updatetime = new_update
                     self.ramp = ramp
-                    t = time.time()
+                    current_time = time.time()
                 else:
                     pass
-            if t > 0:
-                self.update_setpoint(ramp=t)
+            if current_time > 0:
+                self.update_setpoint(ramp=current_time)
             time.sleep(1)
 
 
@@ -189,7 +190,7 @@ def main():
     pullsocket = DateDataPullSocket(MICRO + '-reactor_temp_control', codenames,
                                     timeouts=[999999, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0])
     pullsocket.start()
-            
+
     pushsocket = DataPushSocket(MICRO + '-reactor push control', action='store_last')
     pushsocket.start()
 

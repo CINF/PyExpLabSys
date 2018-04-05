@@ -41,8 +41,8 @@ class RtdReader(threading.Thread):
         self.calib_temp = calib_temp
         time.sleep(0.2)
         self.calib_value = self.rtd_reader.read()
-        self.rtd_calc = rtd_calculator.RTD_Calculator(calib_temp,
-                                                      self.calib_value)
+        self.rtd_calc = rtd_calculator.RtdCalculator(calib_temp,
+                                                     self.calib_value)
         threading.Thread.__init__(self)
         self.temperature = None
         self.quit = False
@@ -78,9 +78,9 @@ class PowerCalculatorClass(threading.Thread):
         self.values['setpoint'] = -1
         self.values['temperature'] = None
         #RTD SETTINGS
-        #self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
+        self.pid = PID.PID(pid_p=0.5, pid_i=0.2, p_max=54)
         #TC SETTINGS
-        self.pid = PID.PID(pid_p=0.1, pid_i=0.01, p_max=54)
+        #self.pid = PID.PID(pid_p=0.1, pid_i=0.01, p_max=54)
         self.update_setpoint(self.values['setpoint'])
         self.quit = False
         self.ramp = None
@@ -194,7 +194,7 @@ def main():
         received = sock.recv(1024)
         received = received.decode('ascii')
         start_temp = float(received[received.find(',') + 1:])
-        agilent_hostname = 'microreactor-agilent-34410A'
+        agilent_hostname = '10.54.6.56'
         rtd_reader = RtdReader(agilent_hostname, start_temp)
     except socket.timeout:
         print('Could not find rasppi12')

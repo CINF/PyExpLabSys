@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI99_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>30</startdelay>
+    <command>python3 monitor_gas_levels.py</command>
+    <name>Gas Level Monitor</name>
+  </session>
+</autostart>

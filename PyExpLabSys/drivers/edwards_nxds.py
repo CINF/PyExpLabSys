@@ -9,8 +9,8 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
-class edwards_nXDS(object):
-    """ Driver for Standford Research Systems, Model SR630 """
+class EdwardsNxds(object):
+    """ Driver for the Edwards nXDS series of dry pumps """
 
     def __init__(self, port):
         self.ser = serial.Serial(port, 9600, timeout=2)
@@ -38,6 +38,14 @@ class edwards_nXDS(object):
         pump = int(temperatures[0])
         controller = int(temperatures[1])
         return {'pump':pump, 'controller':controller}
+
+    def read_serial_numbers(self):
+        """ Read Pump Serial numbers """
+        return_string = self.comm('?S835')
+        service = return_string.split(';')
+        serials = service[0].split(' ')
+        return {'Pump SNs':serials[0], 'drive-module SN':serials[1],
+                'PCA SN':serials[2], 'type':service[1].strip()}
 
     def read_run_hours(self):
         """ Return number of run hours """
@@ -159,7 +167,7 @@ class edwards_nXDS(object):
             faults.append('Overload time out')
         if fault_status[0] is True:
             faults.append('Acceleration time out')
-        return {'rotaional_speed': rotational_speed, 'messages': messages,
+        return {'rotational_speed': rotational_speed, 'messages': messages,
                 'warnings': warnings, 'faults': faults}
 
     def read_service_status(self):
@@ -185,14 +193,15 @@ class edwards_nXDS(object):
         return return_string
 
 if __name__ == '__main__':
-    PUMP = edwards_nXDS('/dev/ttyUSB0')
-    print(PUMP.read_pump_type())
+    PUMP = EdwardsNxds('/dev/ttyUSB3')
+    #print(PUMP.read_pump_type())
     print(PUMP.read_pump_temperature())
-    print(PUMP.read_run_hours())
-    print(PUMP.read_normal_speed_threshold())
-    print(PUMP.read_standby_speed())
-    print(PUMP.pump_controller_status())
-    print(PUMP.bearing_service())
-    print(PUMP.read_pump_status())
+    #print(PUMP.read_serial_numbers())
+    #print(PUMP.read_run_hours())
+    #print(PUMP.read_normal_speed_threshold())
+    #print(PUMP.read_standby_speed())
+    #print(PUMP.pump_controller_status())
+    #print(PUMP.bearing_service())
+    #print(PUMP.read_pump_status()['rotational_speed'])
     #print(PUMP.set_run_state(True))
     #print(PUMP.set_standby_mode(False))

@@ -14,7 +14,7 @@ class Agilent34410ADriver(SCPI):
     """ Driver for Agilent 34410A DMM """
     def __init__(self, interface='lan', hostname='', connection_string=''):
         if interface == 'lan': # the LAN interface
-            SCPI.__init__(self, interface=interface, hostname=hostname)
+            SCPI.__init__(self, interface=interface, hostname=hostname, line_ending='\n')
         if interface == 'file': # For distributions that mounts usbtmc as a file (eg. ubuntu)
             SCPI.__init__(self, interface=interface, device='/dev/usbtmc0')
         if interface == 'usbtmc': # For python-usbtmc (preferred over file)

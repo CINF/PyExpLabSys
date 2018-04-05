@@ -9,12 +9,14 @@ python2_and_3(__file__)
 class KeithleySMU(SCPI):
     """ Simple driver for Keithley SMU """
 
-    def __init__(self, interface, hostname='', device='', baudrate=19200):
+    def __init__(self, interface, hostname='', device='', baudrate=9600):
         if interface == 'serial':
             SCPI.__init__(self, interface=interface, device=device,
                           baudrate=baudrate, line_ending='\n')
-            self.comm_dev.timeout = 15
+            self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
+            self.comm_dev.xonxoff = False
+            print(self.comm_dev)
 
         if interface == 'lan':
             SCPI.__init__(self, interface=interface, hostname=hostname)
@@ -120,35 +122,36 @@ class KeithleySMU(SCPI):
         return (sourcevalues, readings)
 
 if __name__ == '__main__':
-    PORT = '/dev/serial/by-id/'
-    PORT += 'usb-1a86_USB2.0-Ser_-if00-port0'
-    SMU = KeithleySMU(interface='serial', device=PORT, baudrate=19200)
+    PORT = '/dev/ttyUSB0'
+    SMU = KeithleySMU(interface='serial', device=PORT, baudrate=4800)
     print(SMU.comm_dev.inWaiting())
     SMU.comm_dev.read(SMU.comm_dev.inWaiting())
 
+    print(SMU.read_current(2))
+    print(SMU.read_voltage(1))
     print(SMU.read_software_version())
 
     #print(SMU)
-    SMU.set_source_function('i')
-    SMU.output_state(True)
-    time.sleep(1)
-    SMU.set_voltage(0.00)
-    time.sleep(1)
-    print(SMU.set_voltage_limit(1))
-    time.sleep(1)
-    SMU.set_current(0.0)
-    time.sleep(3)
-    print('Voltage: ' + str(SMU.read_voltage()))
-    print('Current: ' + str(SMU.read_current()))
-    print('-')
-    time.sleep(1)
-    SMU.output_state(False)
+    #SMU.set_source_function('i')
+    #SMU.output_state(True)
+    #time.sleep(1)
+    #SMU.set_voltage(0.00)
+    #time.sleep(1)
+    #print(SMU.set_voltage_limit(1))
+    #time.sleep(1)
+    #SMU.set_current(0.0)
+    #time.sleep(3)
+    #print('Voltage: ' + str(SMU.read_voltage()))
+    #print('Current: ' + str(SMU.read_current()))
+    #print('-')
+    #time.sleep(1)
+    #SMU.output_state(False)
 
     #print(SMU.read_software_version())
     #print('-')
     #print(SMU.read_current())
     #print('-')
     #print(SMU.read_voltage())
-    print('-')
+    #print('-')
     #print(SMU.iv_scan(v_from=-1.1, v_to=0, steps=10, settle_time=0))
 

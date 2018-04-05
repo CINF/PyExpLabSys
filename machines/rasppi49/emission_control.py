@@ -3,15 +3,15 @@ import time
 import threading
 import PyExpLabSys.drivers.cpx400dp as CPX
 import PyExpLabSys.auxiliary.pid as pid
+import PyExpLabSys.drivers.agilent_34410A as a34410A
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
-import PyExpLabSys.drivers.agilent_34410A as agilent_34410A
-import emission_tui
 from PyExpLabSys.common.supported_versions import python2_and_3
+import emission_tui
 import credentials
 python2_and_3(__file__)
 
@@ -40,15 +40,16 @@ class EmissionControl(threading.Thread):
         self.filament['voltage'] = 0
         self.filament['current'] = 0
         self.filament['idle_voltage'] = 1.7
-        self.filament['device'].set_current_limit(3.2)
+        self.filament['device'].set_current_limit(4.0)
         self.filament['device'].output_status(True)
         self.bias = {}
         self.bias['device'] = CPX.CPX400DPDriver(2, interface='serial', device=port)
         self.bias['grid_voltage'] = 0
         self.bias['grid_current'] = 0
         self.bias['device'].output_status(True)
-        self.bias['current_reader'] = agilent_34410A.Agilent34410ADriver(interface='usbtmc',
-                                                                         connection_string='USB0::0x0957::0x0607::MY45000583::INSTR')
+        cns = 'USB0::0x0957::0x0607::MY45000583::INSTR'
+        self.bias['current_reader'] = a34410A.Agilent34410ADriver(interface='usbtmc',
+                                                                  connection_string=cns)
 
         self.bias['current_reader'].select_measurement_function('CURRENT')
         self.pid = pid.PID(0.01, 0.1, 0, 4)
@@ -107,10 +108,10 @@ class EmissionControl(threading.Thread):
             #time.sleep(0.1)
             start_time = time.time()
             qsize = self.pushsocket.queue.qsize()
-            LOGGER.debug('qsize: ' + str(qsize))
+            LOGGER.debug('qsize: %d', qsize)
             while qsize > 0:
                 element = self.pushsocket.queue.get()
-                LOGGER.debug('Element: ' + str(element))
+                LOGGER.debug('Element: %s', element)
                 param = list(element.keys())[0]
                 if param == 'setpoint':
                     value = element[param]
@@ -164,7 +165,7 @@ def main():
         time.sleep(1)
         value = logger.read_value()
         if logger.read_trigged():
-            LOGGER.debug('Logged value: ' + str(value))
+            LOGGER.debug('Logged value: %s', value)
             db_logger.save_point_now('tof_emission_value', value)
             logger.clear_trigged()
 

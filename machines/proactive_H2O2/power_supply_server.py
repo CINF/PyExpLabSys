@@ -5,7 +5,7 @@
 
 This file is part of the Voltage Current Program
 
-Copyright (C) 2012 Kenneth Nielsen and Robert Jensen
+Copyright (C) 2016-2017 Kenneth Nielsen and Robert Jensen
 
 The Voltage Current Ramp Program is free software: you can
 redistribute it and/or modify it under the terms of the GNU
@@ -76,8 +76,7 @@ class CPXServer(object):
 
         self.devices = devices
         self.cpxs = {}  # Plural of cpx??
-        # Mapping of global output channels to power supply local ones. I.e:
-        # {output_channel (str):(ps_number (int), ps_output_channel (str))}
+        # Mapping of power supply name to driver
         for power_supply_name, device in devices.items():
             LOG.debug('Connect %s, %s', power_supply_name, device)
             if not isinstance(power_supply_name, str):
@@ -100,7 +99,23 @@ class CPXServer(object):
 
         # Test connection
         for cpx_name, cpx in self.cpxs.items():
-            print(cpx.read_actual_voltage())
+            for _ in range(3):
+                try:
+                    print('Connect to CPS', cpx.read_actual_voltage())
+                    break
+                except TypeError:
+                    message = "Connection error, waiting 3 sec and try again"
+                    print(message)
+                    LOG.error(message)
+                    sleep(3)
+            else:
+                message = (
+                    'Unable to connect to power supplies\n'
+                    'Swich them off and on and wait 3min and try again'
+                )
+                LOG.critical(message)
+                raise RuntimeError(message)
+
             if cpx.read_actual_voltage() < -999:
                 error = 'Unable to connect to power supply "{}" with name "{}"'
                 raise RuntimeError(error.format(cpx, cpx_name))
@@ -201,11 +216,12 @@ def main():
     """Main function"""
     devices = {
         'A': '/dev/serial/by-id/usb-TTI_CPX400_Series_PSU_C2F95400-if00',
-        'B': '/dev/serial/by-id/usb-TTi_CPX_Series_PSU_452958-if00',
-        'C': '/dev/serial/by-id/usb-TTi_CPX_Series_PSU_467069-if00',
+        #'A': '/dev/serial/by-id/usb-TTi_CPX_Series_PSU_467069-if00',
+        #'B': '/dev/serial/by-id/usb-TTi_CPX_Series_PSU_477250-if00',
     }
     cpx_server = CPXServer(devices=devices)
     cpx_server.dps.start()
+    print("Server ready")
     try:
         while not STOP_SERVER:
             sleep(1)

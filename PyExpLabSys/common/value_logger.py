@@ -1,6 +1,7 @@
+""" Read a continuously updated values and decides whether it is time to log a new point """
+
 import threading
 import time
-import os
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
@@ -8,7 +9,7 @@ class ValueLogger(threading.Thread):
     """ Read a continuously updated values and decides
     whether it is time to log a new point """
     def __init__(self, value_reader, maximumtime=600, low_comp=None,
-                 comp_type = 'lin', comp_val = 1, channel = None):
+                 comp_type='lin', comp_val=1, channel=None):
         threading.Thread.__init__(self)
         self.daemon = True
         self.valuereader = value_reader

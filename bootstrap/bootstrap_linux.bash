@@ -9,7 +9,7 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp python python3"
+apt1="openssh-server emacs graphviz screen ntp python python3 i2c-tools"
 
 # apt install packages line 2, python extensions
 #

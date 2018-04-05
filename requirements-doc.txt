@@ -8,3 +8,4 @@ evdev
 minimalmodbus
 MySQL-python
 smbus-cffi
+unicodecsv

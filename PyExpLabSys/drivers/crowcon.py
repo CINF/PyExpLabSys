@@ -116,8 +116,10 @@ class Vortex(Instrument):
         """Read register from instrument (with retries)
 
         The argument definition is the same as for the minimalmodbus method, see the full
-        documentation `here <https://minimalmodbus.readthedocs.io/en/master/apiminimalmodbus
+        documentation for `read_register
+        <https://minimalmodbus.readthedocs.io/en/master/apiminimalmodbus
         .html#minimalmodbus.Instrument.read_register>`_ for details.
+
         """
         for retry in range(0, self.retries + 1):
             try:
@@ -134,8 +136,10 @@ class Vortex(Instrument):
         """Read string from instrument (with retries)
 
         The argument definition is the same as for the minimalmodbus method, see the full
-        documentation `here <https://minimalmodbus.readthedocs.io/en/master/apiminimalmodbus
+        documentation `read_string
+        <https://minimalmodbus.readthedocs.io/en/master/apiminimalmodbus
         .html#minimalmodbus.Instrument.read_string>`_ for details.
+
         """
         for retry in range(0, self.retries + 1):
             try:

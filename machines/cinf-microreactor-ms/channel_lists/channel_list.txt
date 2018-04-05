@@ -1,0 +1,38 @@
+comment: RTD-calibration 4.5 - again - again
+
+autorange: yes
+
+#ms_channel: mass, 2.19, speed, 9, masslabel, M2, amp_range, -7
+ms_channel: mass, 18, speed, 9, masslabel, M18, amp_range, -8
+#ms_channel: mass, 28, speed, 9, masslabel, M28, amp_range, -7
+#ms_channel: mass, 29, speed, 9, masslabel, M29, amp_range, -7
+#ms_channel: mass, 28, speed, 9, masslabel, M28, amp_range, -7
+#ms_channel: mass, 32, speed, 9, masslabel, M32, amp_range, -7
+#ms_channel: mass, 39, speed, 9, masslabel, M39, amp_range, -7
+#ms_channel: mass, 40, speed, 9, masslabel, M40, amp_range, -7
+#ms_channel: mass, 41, speed, 9, masslabel, M41, amp_range, -9
+#ms_channel: mass, 43, speed, 9, masslabel, M43, amp_range, -9
+#ms_channel: mass, 44, speed, 9, masslabel, M44, amp_range, -9
+#ms_channel: mass, 55, speed, 9, masslabel, M55, amp_range, -10
+#ms_channel: mass, 57, speed, 9, masslabel, M57, amp_range, -10
+#ms_channel: mass, 58, speed, 9, masslabel, M58, amp_range, -10
+
+
+#meta_channel: label, reactor pressure, host, rasppi24, port, 9000, command, M13201551A#raw
+#meta_channel: label, chamber pressure, host, rasppi07, port, 9000, command, mr_iongauge_pressure#raw
+meta_channel: label, RTD temperature, host, rasppi111, port, 9000, command, temperature#raw
+meta_channel: label, thermo couple, host, rasppi12, port, 9000, command, mr_sample_tc_temperature#raw
+meta_channel: label, Setpoint, host, rasppi111, port, 9000, command, setpoint#raw
+meta_channel: label, Actual Voltage 1, host, rasppi111, port, 9000, command, actual_voltage_1#raw
+meta_channel: label, Actual Voltage 2, host, rasppi111, port, 9000, command, actual_voltage_2#raw
+meta_channel: label, Actual Current 1, host, rasppi111, port, 9000, command, actual_current_1#raw
+meta_channel: label, Actual Current 2, host, rasppi111, port, 9000, command, actual_current_2#raw
+meta_channel: label, Power, host, rasppi111, port, 9000, command, power#raw
+meta_channel: label, thermo couple, host, rasppi12, port, 9000, command, mr_sample_tc_temperature#raw
+#meta_channel: label, flow 0, host, rasppi26, port, 9000, command, 1#raw
+#meta_channel: label, flow 1, host, rasppi24, port, 9000, command, M8203814B#raw
+#meta_channel: label, flow 2, host, rasppi24, port, 9000, command, M11200362F#raw
+#meta_channel: label, flow 3, host, rasppi37, port, 9000, command, 21984839#raw
+#meta_channel: label, flow 4, host, rasppi37, port, 9000, command, 21984838#raw
+#meta_channel: label, flow 5, host, rasppi24, port, 9000, command, M8203814A#raw
+

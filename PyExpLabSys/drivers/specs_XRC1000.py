@@ -130,7 +130,7 @@ class CursesTui(threading.Thread):
             time.sleep(1)
         time.sleep(5)
         self.stop()
-        print EXCEPTION
+        print(EXCEPTION)
 
     def stop(self):
         """ Cleanup the terminal """

@@ -31,8 +31,13 @@ class qmg_422(object):
         """
         self.serial = serial.Serial(port, speed, timeout=2.0)
         self.reverse_range = False
-        self.type = '422'
         self.communication_mode(computer_control=True)
+        self.type = '422'
+        if self.comm('SQA') == '1':
+            self.series = '400'
+        else:
+            self.series = '125'
+        self.state = {'emission': 'Unknown', 'sem': 'Unknown'}
 
     def comm(self, command):
         """ Communicates with Baltzers/Pferiffer Mass Spectrometer
@@ -50,7 +55,7 @@ class qmg_422(object):
         iterations = 0
         while not done:
             iterations += 1
-            LOGGER.debug("Command in progress: " + command)
+            LOGGER.debug("Command in progress: %s", command)
 
             n = self.serial.inWaiting()
             if n > 0: #Skip characters that are currently waiting in line
@@ -62,18 +67,17 @@ class qmg_422(object):
             while not ret[0] == chr(6):
                 error_counter += 1
                 command_text = command + '\r'
-                LOGGER.debug('Command text: ' + command_text)
+                LOGGER.debug("Command text: %s", command_text)
                 self.serial.write(command_text.encode('ascii'))
                 ret = self.serial.readline().decode()
-                LOGGER.debug("Debug: Error counter: " + str(error_counter))
-                LOGGER.debug("ret: " + str(ord(ret[0])))
-                LOGGER.debug("Debug! In waiting: " + str(n))
+                LOGGER.debug("Debug: Error counter: %d", error_counter)
+                LOGGER.debug("ret: %d", ord(ret[0]))
+                LOGGER.debug("In waiting: %d", n)
 
                 if error_counter == 3:
-                    error = "Communication error: " + str(error_counter)
-                    LOGGER.warning(error)
+                    LOGGER.warning("Communication error: %d", error_counter)
                 if error_counter == 10:
-                    LOGGER.error("Communication error: " + str(error_counter))
+                    LOGGER.error("Communication error: %d", error_counter)
                 if error_counter > 11:
                     LOGGER.error("Communication error! Quit program!")
                     quit()
@@ -82,9 +86,9 @@ class qmg_422(object):
             self.serial.write(chr(5).encode('ascii'))
             ret = self.serial.readline().decode()
 
-            LOGGER.debug("Number in waiting after enq: " + str(n))
-            LOGGER.debug("Return value after enq:" + ret)
-            LOGGER.debug("Ascii value of last char in ret: " + str(ord(ret[-1])))
+            LOGGER.debug("Number in waiting after enq: %d", n)
+            LOGGER.debug("Return value after enq: %s", ret)
+            LOGGER.debug("Ascii value of last char in ret: %d", ord(ret[-1]))
             if (iterations > 1) and (iterations < 1000):
                 LOGGER.info(iterations)
             if (ret[-1] == chr(10)) or (ret[-1] == chr(13)):
@@ -92,20 +96,18 @@ class qmg_422(object):
                 done = True
             else:
                 LOGGER.info("Wrong line termination")
-                LOGGER.info("Ascii value of last char in ret: "
-                            + str(ord(ret[-1])))
-                LOGGER.info('Value of string: ' + ret)
+                LOGGER.info("Ascii value of last char in ret: %s", ord(ret[-1]))
+                LOGGER.info('Value of string: %s', ret)
                 time.sleep(0.5)
                 self.serial.write(chr(5))
                 ret = ' '
-                while not ret[-1] == '\n':
+                while ret[-1] != '\n':
                     ret += self.serial.read(1)
                 #ret = self.serial.readline()
                 ret_string = ret.strip()
-                LOGGER.info("Ascii value of last char in ret: " +
-                            str(ord(ret[-1])))
-                LOGGER.info('Value of string: ' + ret)
-                LOGGER.info('Returning: ' + ret_string)
+                LOGGER.info("Ascii value of last char in ret: %d", ord(ret[-1]))
+                LOGGER.info('Value of string: %s', ret)
+                LOGGER.info('Returning: %s', ret_string)
                 done = True
         return ret_string
 
@@ -135,7 +137,6 @@ class qmg_422(object):
         if ret_string == '4':
             comm_mode = 'LAN'
         return comm_mode
-
 
     def simulation(self):
         """ Chekcs wheter the instruments returns real or simulated data
@@ -241,7 +242,6 @@ class qmg_422(object):
         filament_on = ret_string == '1'
         return emission_current, filament_on
 
-
     def detector_status(self, SEM=False, faraday_cup=False):
         """ Choose between SEM and Faraday cup measurements"""
         if SEM ^ faraday_cup:
@@ -258,7 +258,6 @@ class qmg_422(object):
             detector = "Faraday Cup"
         return detector
 
-
     def read_voltages(self):
         """ Read the qme-voltages """
         print("V01: " + self.comm('VO1')) #0..150,   1V steps
@@ -271,11 +270,42 @@ class qmg_422(object):
         print("V08: " + self.comm('VO8')) #-125..125,1V steps
         print("V09: " + self.comm('VO9')) #0..60    ,0.25V steps
 
+    def update_state(self):
+        """ Update the knowledge of the internal knowledge of the instrument """
+        raw_state = self.comm('ESQ')
+        LOGGER.error('QMS State, ESQ: %s', raw_state)
+        if self.series == '400':
+            raw_state = int(raw_state[:raw_state.find(',')])
+            raw_state = bin(raw_state)[2:].zfill(16)
+            state = {}
+            state['running'] = 'Not running' if raw_state[15] == '0' else 'Running'
+            state['mode'] = 'Mono' if raw_state[14] == '0' else 'Multi'
+            state['emission'] = 'Off' if raw_state[13] == '0' else 'On'
+            state['sem'] = 'Off' if raw_state[12] == '0' else 'On'
+            state['4'] = '0' if raw_state[11] == '0' else '1'
+            state['5'] = '0' if raw_state[10] == '0' else '1'
+            state['6'] = '0' if raw_state[9] == '0' else '1'
+            state['7'] = '0' if raw_state[8] == '0' else '1'
+            state['8'] = '0' if raw_state[7] == '0' else '1'
+            state['9'] = '0' if raw_state[6] == '0' else '1'
+            state['10'] = '0' if raw_state[5] == '0' else '1'
+            state['11'] = '0' if raw_state[4] == '0' else '1'
+            state['12'] = '0' if raw_state[3] == '0' else '1'
+            state['13'] = '0' if raw_state[2] == '0' else '1'
+            state['ringbuffer'] = 'Partly filled' if raw_state[1] == '0' else 'Empty'
+            state['ringbuffer'] = state['ringbuffer'] if raw_state[0] == '0' else 'Overflow'
+            self.state = state
+        else: # Here comes the 125 part, can only check for emission
+            pass
+        
     def start_measurement(self):
         """ Start the measurement """
-        LOGGER.error('QMS Errors, ERR: ' + self.comm('ERR'))
-        LOGGER.error('QMS Warnings, EWN: ' + self.comm('EWN'))
-        LOGGER.error('QMS State, ESQ: ' + self.comm('ESQ'))
+        start = time.time()
+        LOGGER.error('QMS Errors, ERR: %s', self.comm('ERR'))
+        LOGGER.error('QMS Warnings, EWN: %s', self.comm('EWN'))
+        LOGGER.error('Start time: %f', time.time()-start)        
+        self.update_state()
+        LOGGER.error('Start time: %f', time.time()-start)
         self.comm('CRU ,2')
 
     def actual_range(self, amp_range):
@@ -295,19 +325,19 @@ class qmg_422(object):
     def get_single_sample(self):
         """ Read a single sample from the device """
         samples = 0
-        while (samples == 0):
+        while samples == 0:
             try:
                 status = self.comm('MBH')
             except:
                 samples = samples - 1
                 status = 'Error'
                 LOGGER.error('Serial timeout, continuing measurement')
-            LOGGER.info('Status: ' + str(status))
+            LOGGER.info('Status: %s', status)
             try:
                 status = status.split(',')
                 samples = int(status[3])
             except:
-                LOGGER.warn('Could not read status, continuing measurement')
+                LOGGER.warning('Could not read status, continuing measurement')
                 samples = samples - 1
             if samples < -30:
                 usefull_value = False
@@ -427,7 +457,7 @@ class qmg_422(object):
         self.comm('SDT ,1') #Use SEM for ion detection
         self.comm('MRE ,1') #Resolve peak
         self.comm('MMO, 0') #Mass scan, to enable FIR filter, set value to 1
-        self.comm('MST, 1') #Steps 0: 1: 2: 64/amu
+        self.comm('MST, 0') #Steps 0: 1: 2: 64/amu
         self.comm('MSD, ' + str(speed)) #Speed
         self.comm('MFM, ' + str(first_mass)) #First mass
         self.comm('MWI, ' + str(scan_width)) #Scan width
@@ -456,4 +486,7 @@ if __name__ == '__main__':
     print('SMR: ' + qmg.comm('SMR')) # Mass-range, this needs to go in a config-file
     print('SDT: ' + qmg.comm('SDT')) # Detector type
     print('SIT: ' + qmg.comm('SIT')) # Ion source
-
+    print('AIN: ' + qmg.comm('AIN')) # Analog in
+    print(qmg.state)
+    qmg.update_state()
+    print(qmg.state)

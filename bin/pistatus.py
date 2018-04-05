@@ -25,12 +25,13 @@ Pi healt (from SystemStatus) TODO:
  * load
  * etc...
 
+Check settings (only print if wrong)
+ * Check the timezone an
+
 """
 
 from __future__ import print_function
-
 from time import time
-T0 = time()
 import os
 import sys
 import shutil
@@ -42,6 +43,9 @@ from functools import partial
 from subprocess import check_output
 from os.path import expanduser, join, isdir, isfile, abspath
 from os import getlogin, listdir, sep, chdir, getcwd, popen, environ
+from PyExpLabSys.common.supported_versions import python2_and_3
+T0 = time()
+python2_and_3(__file__)
 try:
     import getpass
 except ImportError:
@@ -106,7 +110,7 @@ try:
     USERNAME = getlogin()
 except FileNotFoundError:
     USERNAME = getpass.getuser()
-    
+
 SCREEN_FOLDER = join(abspath(sep), 'var', 'run', 'screen', 'S-' + USERNAME)
 
 # Dict used to collect data from thread
@@ -168,7 +172,7 @@ def machine_status():
         purpose = ''.join(purpose_lines[2:]).strip()
         if len(purpose) == 0:
             purpose = purpose_lines[1].replace('purpose:', '').strip()
-            
+
 
     spaces = ' ' * (KEY_WIDTH - 7)
     purpose_key = 'purpose' + spaces + ': '
@@ -256,6 +260,46 @@ def collect_git_status():
     # Change cwd back
     chdir(cwd)
 
+def collect_timezone_info():
+    """Collect information about the timezone setting"""
+    tests = {
+        'Time zone': 'Europe/Copenhagen',
+        'NTP synchronized': 'yes'
+    }
+    time_zone_lines = check_output(
+        'export LC_ALL=C; timedatectl',
+        shell=True,
+    ).strip().decode('utf-8').split('\n')
+    status = {'pass': True, 'message': '', 'output': time_zone_lines}
+    for key, value in tests.items():
+        for line in time_zone_lines:
+            if key in line:
+                if value not in line:
+                    status['pass'] = False
+                    status['message'] = key + ' is not: ' + value
+                break
+        else:
+            status['pass'] = False
+            status['message'] = 'The test key: {} wasn\'t found'.format(key)
+            break
+
+    THREAD_COLLECT['timezone'] = status
+
+def time_zone():
+    status = THREAD_COLLECT['timezone']
+    if status['pass']:
+        return
+
+    framed('')
+    framed(red('Time zone problems'))
+    framed(red('=================='))
+    framed(red('A configuration issue was found with the time zone settings.'))
+    framed(red('The problem was: ' + status['message']))
+    framed('')
+    framed(red('All output from timedatectl was:'))
+    for line in status['output']:
+        framed(red(line))
+
 
 def git():
     """Display the git status"""
@@ -293,7 +337,8 @@ def main():
     # line, so we put the three calls to the command line out into
     # threads
     threads = []
-    for function in collect_running_programs, collect_last_commit, collect_git_status:
+    for function in (collect_running_programs, collect_last_commit, collect_git_status,
+                     collect_timezone_info):
         thread = Thread(target=function)
         thread.start()
         threads.append(thread)
@@ -313,12 +358,15 @@ def main():
     framed('')
 
     # Join git threads
-    for thread in threads[1:]:
+    for thread in threads[1: 3]:
         thread.join()
     git()
     framed('')
 
     tips()
+
+    threads[3].join()
+    time_zone()
 
     # Footer (include time to run)
     timeline = " {:.2f}s #".format(time() - T0)

@@ -34,6 +34,6 @@ class IL800(object):
 if __name__ == '__main__':
     IL800_UNIT = IL800('/dev/ttyUSB1')
 
-    print IL800_UNIT.rate()
-    print IL800_UNIT.thickness()
-    print IL800_UNIT.frequency()
+    print(IL800_UNIT.rate())
+    print(IL800_UNIT.thickness())
+    print(IL800_UNIT.frequency())

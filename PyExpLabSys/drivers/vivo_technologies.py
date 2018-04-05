@@ -4,7 +4,10 @@ import glob
 import evdev
 import threading
 import time
-import Queue
+try:
+    import Queue
+except ImportError:
+    import queue as Queue
 
 
 def detect_barcode_device():
@@ -134,12 +137,12 @@ SCANCODES = {
 
 if __name__ == '__main__':
     dev_ = detect_barcode_device()
-    print dev_
+    print(dev_)
     tbs = ThreadedBarcodeReader(dev_)
     tbs.start()
     try:
         while True:
-            print 'Last barcode: {}'.format(tbs.last_barcode_in_queue)
+            print('Last barcode: {}'.format(tbs.last_barcode_in_queue))
             time.sleep(1)
     except KeyboardInterrupt:
         tbs.close()

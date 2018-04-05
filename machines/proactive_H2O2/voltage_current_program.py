@@ -94,48 +94,23 @@ def _send_command(output, power_supply, command, arg=None):
     return json.loads(received[4:])
 
 
-def count_processes(process_search_string, ignore=('cmd.exe', 'spyder')):
-    """Return the number of processes that contain process_search_string"""
-    # Hack found online to prevent Windows from opening a terminal
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    # Ask Windows about its processes
-    processes_bytes = subprocess.check_output(
-        'wmic process get processid,commandline',
-        startupinfo=startupinfo,
-    )
-    # Decode split into lines, lowercase and strip
-    processes = processes_bytes.decode('utf-8', errors='ignore').split('\r\r\n')
-    processes = [process.strip().lower() for process in processes]
-
-    # Find the processes that contain the search word and not any of the igore terms
-    processes_filtered = []
-    for process in processes:
-        if not process_search_string in process:
-            continue
-
-        # If any of the ignore terms are found, break and thereby never reach the append
-        # in the else clause
-        for ignore_term in ignore:
-            if ignore_term in process:
-                break
-        else:
-            processes_filtered.append(process)
-    return len(processes_filtered)
-
-
 class PowerSupplyComException(Exception):
     """Custom power supply exception"""
     pass
 
 
-class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
-    """My fancy program"""
+class VoltageCurrentProgram(Thread):  # pylint: disable=too-many-instance-attributes
+    """The Voltage Current Program
+
+    This program uses the generic stepped program runner as a GUI and
+    serves information to that
+
+    """
 
     def __init__(self, args):
-        super(MyProgram, self).__init__()
+        super(VoltageCurrentProgram, self).__init__()
 
-        # Form channel_id e.g: A1
+        # Form channel_id e.g: EA1
         self.channel_id = args.power_supply + args.output
 
         ### Required by the stepped program runner
@@ -177,6 +152,23 @@ class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
             {'codename': 'iteration_time',
              'title': 'Iteration time', 'formatter': '{:.2f}', 'unit': 's'},
         )
+        self.extra_capabilities = {
+            'psuchannel': {
+                'help_text': (
+                    'Used for simple PSU control when not on\n'
+                    'a ramp. Possibly usages are:\n'
+                    '    psuchannel voltage=1.23\n'
+                    'which will set the voltage and\n'
+                    '    psuchannel off\n'
+                    'which will set the output off'
+                ),
+                'completions': [
+                    'psuchannel',
+                    'psuchannel voltage=',
+                    'psuchannel off',
+                ]
+            }
+        }
         # Queue for GUI updates
         self.message_queue = Queue()
         # The GUI also looks in self.config, see below
@@ -206,9 +198,13 @@ class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
         self.stop = False
         self.ok_to_start = False
 
-        # Setup power supply
         # Create a partial function with the output substitued in
-        self.send_command = partial(_send_command, args.output, args.power_supply)
+        self.send_command = partial(
+            _send_command,
+            args.output,
+            args.power_supply,
+        )
+        # Setup power supply
         self.power_supply_on_off(True, self.config['maxcurrent_start'])
         # Power supply commands, must match order with self.codenames
         self.power_supply_commands = (
@@ -272,6 +268,30 @@ class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
 
             # Finally send the new steps to the GUI
             self.send_steps()
+        elif command == "psuchannel":
+            if self.ok_to_start and not self.stop:
+                message = "Using psuchannel during ramp not allowed"
+                self.say(message, message_type='error')
+                return
+            if args_str.startswith('voltage='):
+                voltage_str = args_str.replace('voltage=', '')
+                try:
+                    voltage = float(voltage_str)
+                except ValueError:
+                    message = 'Invalid voltage for psuchannel {}'.format(voltage_str)
+                    self.say(message, message_type='error')
+                    return
+                self.send_command('set_voltage', voltage)
+                self.say('PSU channel set to {}.\n'
+                         'NOTE: The GUI will not update to show\n'
+                         'this, only the actual PSU.'.format(voltage))
+            elif args_str == 'off':
+                self.power_supply_on_off(False)
+                self.say('PSU channel set to off')
+            else:
+                message = 'Invalid argument. psuchannel can do "voltage=" and "off"'
+                self.say(message, message_type='error')
+                return
 
     def send_status(self, update_dict=None):
         """Send the status to the GUI"""
@@ -294,8 +314,6 @@ class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
         # Wait for start
         while not self.ok_to_start:
             if self.stop:
-                self.send_status({'status_field': 'Stopping'})
-                self.power_supply_on_off(False)
                 self.send_status({'status_field': 'Stopped'})
                 return
             sleep(0.1)
@@ -421,32 +439,19 @@ class MyProgram(Thread):  # pylint: disable=too-many-instance-attributes
 
     def stop_everything(self):
         """Stop power supply and live socket"""
-        self.power_supply_on_off(False)
         self.live_socket.stop()
         self.data_set_saver.stop()
 
-    def power_supply_on_off(self, state, current_limit=0.0):
+    def power_supply_on_off(self, state, current_limit=None):
         """Set power supply on off"""
-        # Set voltage to 0
-        LOG.debug('Stopping everything. Set voltage to 0.0')
-        self.send_command('set_voltage', 0.0)
-        start = time()
-        # Anything < 1.0 Volt is OK
-        while self.send_command('read_actual_voltage') > 1.0:
-            if time() - start > 60:
-                LOG.error('Unable to set voltage to 0')
-                if state:
-                    raise RuntimeError('Unable to set voltage to 0')
-                else:
-                    self.say('Unable to set voltage to 0')
-                    break
-            sleep(1)
+        LOG.debug('Stop power supply')
 
         # Set current limit
-        self.send_command('set_current_limit', current_limit)
-        read_current_limit = self.send_command('read_current_limit')
-        if not isclose(read_current_limit, current_limit):
-            raise RuntimeError('Unable to set current limit')
+        if current_limit is not None:
+            self.send_command('set_current_limit', current_limit)
+            read_current_limit = self.send_command('read_current_limit')
+            if not isclose(read_current_limit, current_limit):
+                raise RuntimeError('Unable to set current limit')
 
         # Set state
         self.send_command('output_status', state)
@@ -490,7 +495,7 @@ def main():
             'If you know that it is not true, delete the lock file.')
         LOCK_FILE = None
         raise RuntimeError(message.format(psu_name))
-    # Lock to prevent multiple servers
+    # Lock to prevent multiple clients on same channel
     with open(LOCK_FILE, 'w') as file__:  # pylint: disable=unused-variable
         pass
 
@@ -500,7 +505,7 @@ def main():
     SOCK.settimeout(None)
 
     # Init program
-    my_program = MyProgram(args)
+    my_program = VoltageCurrentProgram(args)
     my_program.start()
 
     # Appearently, it is better to defined app at the module level for
