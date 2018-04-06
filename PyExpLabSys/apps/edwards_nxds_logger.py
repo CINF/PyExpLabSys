@@ -77,7 +77,7 @@ def main():
     #live_socket = LiveSocket('Pump Reader',  codenames)
     #live_socket.start()
 
-    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_uhv_sputterchamber',
+    db_logger = ContinuousDataSaver(continuous_data_table=settings.table,
                                     username=credentials.user,
                                     password=credentials.passwd,
                                     measurement_codenames=codenames) # Codename list created
