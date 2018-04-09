@@ -13,6 +13,8 @@ As pylint user:
 
 """
 
+# --disable=no-member
+
 from __future__ import print_function
 import os
 import sys
@@ -283,7 +285,8 @@ class CommitAnalyzer(object):
                 sys.stdout.flush()
             LOG.debug('No lint cache found for %s, actually run pylint', md5sum)
             # Collect lint statistics
-            args = ['/home/kenni/.local/bin/pylint', '--output-format=json', '--disable=F0401', '-r', 'n',
+            args = ['/home/kenni/.local/bin/pylint', '--output-format=json',
+                    '--disable=no-member,import-error', '-r', 'n',
                     '--rcfile={}'.format(PYLINTRC), filepath]
             process = subprocess.Popen(args, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
