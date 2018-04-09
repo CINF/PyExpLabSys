@@ -65,9 +65,14 @@ for daynumber, weekday in days:
 print("########################################")
 print("Table")
 last_week_day = None
+printed_line = False
 for daynumber, weekday in days:
     if last_week_day is None or weekday < last_week_day:
-        print("---------------------------")
+        if not printed_line:
+            print("---------------------------")
+            printed_line = True
+    else:
+        printed_line = False
     last_week_day = weekday
         
     if daynumber not in hours_worked:
@@ -79,9 +84,13 @@ for daynumber, weekday in days:
     ))
 print("########################################")
 print("Totals")
-print("{:.1f} hours per work days            ({} of those)".format(sum_ / number_of_workdays, number_of_workdays))
-print("{:.1f} hours per work days with hours ({} of those)".format(sum_ / number_of_workdays_with_hours, number_of_workdays_with_hours))
-
-balance = sum_ - number_of_workdays * 7.4
-print("Flex balance from this month {:.1f}".format(balance))
-
+print("{:.1f} hours per work days            ({} of those) Flex: {:+.1f}".format(
+    sum_ / number_of_workdays,
+    number_of_workdays,
+    sum_ - number_of_workdays * 7.4,
+))
+print("{:.1f} hours per work days with hours ({} of those) Flex: {:+.1f}".format(
+    sum_ / number_of_workdays_with_hours,
+    number_of_workdays_with_hours,
+    sum_ - number_of_workdays_with_hours * 7.4,
+))
