@@ -61,8 +61,6 @@ class MCP3428(object):
 
         command_byte = command_byte | 0x80 # start conversion
         self.bus.write([command_byte])
-        print(hex(command_byte))
-        print(bin(command_byte))
 
         while True:
             time.sleep(0.001)
@@ -72,7 +70,6 @@ class MCP3428(object):
         data = self.bus.read(3)
         raw_value = data[0] * 256 + data[1]
         voltage = (11.1745 * raw_value) / (2**(resolution - 1) * gain)
-        print(data)
         return voltage
 
     def gain(self, gain=1):
