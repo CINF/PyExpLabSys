@@ -1,9 +1,16 @@
-import serial
+
+""" Driver for MKS g-series flow controller """
+from __future__ import print_function
 import time
 import logging
+import serial
+from PyExpLabSys.common.supported_versions import python2_and_3
+LOGGER = logging.getLogger(__name__)
+LOGGER.addHandler(logging.NullHandler())
+python2_and_3(__file__)
 
-class Mks_G_Series():
-
+class MksGSeries():
+    """ Driver for G-series flow controllers from MKS """
     def __init__(self, port='/dev/ttyUSB0'):
         # TODO: Auto-check all possible baud-rates
         self.ser = serial.Serial(port, 9600)
@@ -20,27 +27,31 @@ class Mks_G_Series():
         return (hex(total)[-2:]).upper()
 
     def comm(self, command, addr):
+        """ Implements communication protocol """
         com_string = str(addr).zfill(3) + command + ';'
         checksum = self.checksum(com_string)
         com_string = '@@@@' + com_string + checksum
+        com_string = com_string.encode('ascii')
         self.ser.write(com_string)
         time.sleep(0.1)
         reply = self.ser.read(self.ser.inWaiting())
+        reply = reply.decode()
         if len(reply) == 0:
-            logging.warn('No such device')
+            LOGGER.warning('No such device')
         else:
             if reply[-2:] == self.checksum(reply[1:-2]):
                 reply = reply[6:-3] # Cut away master address and checksum
             else:
-                logging.error('Checksum error in reply')
+                LOGGER.error('Checksum error in reply')
                 reply = ''
             if reply[0:3] == 'ACK':
                 reply = reply[3:]
             else:
-                logging.warn('Error in command')
+                LOGGER.warning('Error in command')
         return reply
 
     def read_full_scale_range(self, addr):
+        """ Read back the current full scale range from the instrument """
         command = 'U?'
         unit = self.comm(command, addr)
         command = 'FS?'
@@ -48,16 +59,19 @@ class Mks_G_Series():
         return value + unit
 
     def read_device_address(self, address=254):
+        """ Read the device address """
         command = 'CA?'
         return self.comm(command, address)
 
     def set_device_address(self, old_addr, new_addr):
+        """ Set the device address """
         if (new_addr > 0) and (new_addr < 254):
             addr_string = str(new_addr).zfill(3)
             command = 'CA!' + addr_string
             self.comm(command, old_addr)
 
     def read_current_gas_type(self, addr):
+        """ Read the current default gas type """
         command = 'PG?'
         reply = self.comm(command, addr)
         return reply
@@ -68,7 +82,7 @@ class Mks_G_Series():
         return self.comm(command, addr)
 
     def read_setpoint(self, addr):
-        """ Read the flow setpoint """
+        """ Read current setpoint """
         command = 'SX?'
         value = float(self.comm(command, addr))
         return value
@@ -88,7 +102,7 @@ class Mks_G_Series():
         time.sleep(abs(t))
         self.comm(command2, addr)
         print('DONE PURGING')
-        
+
     def read_flow(self, addr=254):
         """ Read the flow """
         command = 'FX?'
@@ -108,6 +122,7 @@ class Mks_G_Series():
         return self.comm(command, addr)
 
 if __name__ == '__main__':
-    mks = Mks_G_Series()
-    #print mks.read_run_hours(254)
-    #print mks.set_device_address(254,005)
+    MKS = MksGSeries()
+    print(MKS.read_serial_number(1))
+    print(MKS.read_full_scale_range(1))
+#print(MKS.set_device_address(254,005))
