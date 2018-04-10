@@ -4,10 +4,13 @@ from __future__ import print_function
 import time
 import logging
 import serial
+import sys
+
 from PyExpLabSys.common.supported_versions import python2_and_3
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
+
 
 class MksGSeries():
     """ Driver for G-series flow controllers from MKS """
@@ -35,7 +38,10 @@ class MksGSeries():
         self.ser.write(com_string)
         time.sleep(0.1)
         reply = self.ser.read(self.ser.inWaiting())
-        reply = reply.decode()
+        try:  #some MFC communication gives UnicodeDecodeError 
+            reply = reply.decode()
+        except UnicodeDecodeError:
+            return 'could not decode reply'
         if len(reply) == 0:
             LOGGER.warning('No such device')
         else:
@@ -100,8 +106,9 @@ class MksGSeries():
         self.comm(command1, addr)
         print('PURGING')
         time.sleep(abs(t))
-        self.comm(command2, addr)
         print('DONE PURGING')
+        self.comm(command2, addr)
+        print('NORMAL MODE')
 
     def read_flow(self, addr=254):
         """ Read the flow """
