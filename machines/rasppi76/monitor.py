@@ -11,6 +11,7 @@ pressure controllers.
 """
 
 from queue import Queue, Empty
+from time import sleep
 
 from PyExpLabSys.drivers.microchip_tech_mcp3428 import MCP3428
 from PyExpLabSys.drivers.analogdevices_ad5667 import AD5667
@@ -55,9 +56,12 @@ class I2CComm(object):
                 continue
 
             # If we escaped the comm_flag test, we should set and enqueue current values
-            print("Asked to set DAC values", values_to_set)
-            self.ad5667.set_channel_A(values_to_set['A'])
-            self.ad5667.set_channel_B(values_to_set['B'])
+            if "no_voltages_to_set" not in values_to_set:
+                print("Asked to set DAC values", values_to_set)
+                sleep(0.01)
+                self.ad5667.set_channel_A(values_to_set['A'])
+                self.ad5667.set_channel_B(values_to_set['B'])
+                sleep(0.01)
             self.comm_return.put(dict(self.measurements))
 
     def run(self):
