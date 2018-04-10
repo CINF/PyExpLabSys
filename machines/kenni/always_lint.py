@@ -53,7 +53,7 @@ TERMINAL_LOGGER = logging.StreamHandler()
 if RUNNING_IN_CRON:
     TERMINAL_LOGGER.setLevel(logging.WARNING)
 else:
-    TERMINAL_LOGGER.setLevel(logging.INFO)
+    TERMINAL_LOGGER.setLevel(logging.DEBUG)
 TERMINAL_LOGGER.setFormatter(FORMATTER)
 LOG.addHandler(TERMINAL_LOGGER)
 LOG.addHandler(ROTATING_FILE_HANDLER)
@@ -286,7 +286,7 @@ class CommitAnalyzer(object):
             LOG.debug('No lint cache found for %s, actually run pylint', md5sum)
             # Collect lint statistics
             args = ['/home/kenni/.local/bin/pylint', '--output-format=json',
-                    '--disable=no-member,import-error', '-r', 'n',
+                    '--disable=no-member', '--disable=import-error', '-r', 'n',
                     '--rcfile={}'.format(PYLINTRC), filepath]
             process = subprocess.Popen(args, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
@@ -388,8 +388,8 @@ def main():
             commit_analyzer = CommitAnalyzer(commit, send_to_database=True)
             commit_analyzer.run_all()
         else:
-            LOG.info('Commit number %s out of %s from archive already analyzed',
-                     commit_number, number_of_commits_in_archive)
+            LOG.info('Commit number %s (%s) out of %s from archive already analyzed',
+                     commit_number, commit, number_of_commits_in_archive)
 
 
 if __name__ == '__main__':
