@@ -28,9 +28,13 @@ class FlowControl(threading.Thread):
                 mfc = element.keys()[0]
                 print(element[mfc])
                 print('Queue: ' + str(qsize))
-                self.mks.set_flow(element[mfc], self.mfcs[mfc])
+                value, addr = element[mfc], self.mfcs[mfc]
+                if value >= 0: #interpret it as a flow value
+                    self.mks.set_flow(value, addr)
+                elif value < 0: #interpret as a purge time
+                    self.mks.purge(value, addr)
                 qsize = self.pushsocket.queue.qsize()
-
+                
             for mfc in self.mfcs:
                 print('!!!')
                 flow =  self.mks.read_flow(self.mfcs[mfc])
