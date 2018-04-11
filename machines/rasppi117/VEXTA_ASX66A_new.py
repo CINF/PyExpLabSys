@@ -2,6 +2,10 @@ import sys
 import time
 import serial
 import threading
+
+from PyExpLabSys.common.supported_versions import python3_only
+python3_only(__file__)
+
 """Ideas and thoughts on the project:
 ----------------------------------
 1)  Raster programs should be initiated from the current starting point of the manipulator
@@ -100,7 +104,8 @@ class VEXTA(object):
     def _write(self, command):
         """WRITE ME"""
 
-        self.ser.write(command + self.ser.eol)
+        byte_command = command + self.ser.eol
+        self.ser.write(byte_command.encode())
 
     def read_all(self):
         """WRITE ME"""
@@ -122,18 +127,16 @@ class VEXTA(object):
             raise TypeError(message)
         #print('Writing command: ' + repr(command))
         self._write(command)
-        #print('Wait a second..')
-        #import time
-        #time.sleep(1)
-        #print('Read: ' + repr(self.ser.read(self.ser.inWaiting())))
-        #out = self.
-        #if True:
-        #    return
+
+        # Get response
         response = self.read_all()
-        error = [x.rstrip('\r\n') for x in response if 'error' in x.lower()]
+        error = [x.decode().rstrip('\r\n').lstrip() for x in response if 'error' in x.decode().lower()]
         if output == 'raw':
-            return response
-        response = [x.rstrip('\r\n') for x in response if '=' in x]
+            new_response = []
+            for line in response:
+                new_response.append(line.decode())
+            return new_response
+        response = [x.decode().rstrip('\r\n') for x in response if '=' in x.decode()]
         if len(error) == 0:
             for line in response:
                 if debug:
@@ -159,6 +162,7 @@ class VEXTA(object):
         new_x, error = self.verify_x(x, mode='abs')
         if not error:
             self.query('ma ' + str(new_x))
+            self.move_error = False
             return True
         else:
             self.move_error = True
@@ -174,6 +178,7 @@ class VEXTA(object):
         new_x, error = self.verify_x(x, mode='inc')
         if not error:
             self.query('ma ' + str(new_x))
+            self.move_error = False
             return True
         else:
             self.move_error = True
@@ -221,7 +226,7 @@ class VEXTA(object):
 
     def is_running(self):
         """Query device whether a motion is still running"""
-        return self.query('sigmove', output=bool)
+        return self.query('sigmove', output=bool, debug=False)
 
     def wait_for_motion(self, numpad=None):
         """Pause until end of motion"""
@@ -267,6 +272,10 @@ class VEXTA(object):
         elif mode == 'abs':
             x_new = x
 
+        # Round to third digit to ensure compatibility with precision of motor
+        x_new = round(x_new, 3)
+
+        # Return if within defined limits
         if x_now < self.minpos or x_now > self.maxpos:
             error = True
             print('Outside defined limits! Current position: {} [{},{}]'.format(x_now, self.minpos, self.maxpos))
@@ -375,15 +384,16 @@ class ZY_raster_pattern(threading.Thread):
                       'Y': Y}
 
         # Attributes
-        self.start = {'Z': Z.get_position(),
+        self.pos = {'Z': Z.get_position(),
                       'Y': Y.get_position()}
         self.vr = {'Z': Z.get_running_velocity(),
                    'Y': Y.get_running_velocity()}
-        self.stop = False
+        self.running = False
         self.status = ''
 
     def run(self):
         # Move to OFFSET
+        self.running = True
         self.status = 'Positioning'
         for (axis, dist) in self.data['offset']:
             dist = dist*self.data['step_size']
@@ -392,12 +402,10 @@ class ZY_raster_pattern(threading.Thread):
             if not complete or not status:
                 print('Raster program broken off or failed during positioning!')
                 self.status = 'ERR: Failed during positioning'
-                self.motor['Z'].escape()
-                self.motor['Y'].escape()
-                status = self.motor['Z'].move(self.start['Z'])
-                self.motor['Z'].wait_for_motion()
-                status = self.motor['Y'].move(self.start['Y'])
-                self.motor['Y'].wait_for_motion()
+                for axis in ['Z', 'Y']:
+                    self.motor[axis].escape()
+                    status = self.motor[axis].move(self.pos[axis])
+                    self.motor[axis].wait_for_motion()
                 return
 
         # Set speed
@@ -407,38 +415,34 @@ class ZY_raster_pattern(threading.Thread):
         # Loop
         print('Begin rastering')
         self.status = 'Rastering'
-        print(self.pattern)
-        input('Hit enter to start..')
-        while not self.stop and not Z.move_error and not Y.move_error:
+        print(self.pattern) # remove when checked
+        size_of_pattern = len(self.pattern)
+        while self.running and not self.motor['Z'].move_error and not self.motor['Y'].move_error:
+            counter = 0
             for (axis, dist) in self.pattern:
+                counter += 1
+                print('** Step {} of {} **'.format(counter, size_of_pattern))
                 dist = dist*self.data['step_size']
                 print(axis, dist)
                 status = self.motor[axis].increment(dist)
                 complete = self.motor[axis].wait_for_motion()
-                if not status or not complete:
-                    motion_is_running = False
+                if not status or not complete or not self.running:
                     print('Raster program broken off during rastering!')
-                    #Z.escape()
-                    #Y.escape()
-                    status = Z.move(z_start)
-                    Z.wait_for_motion()
-                    status = Y.move(y_start)
-                    Y.wait_for_motion()
-                    print('Back to origin. Returning..')
+                    self.status = 'ERR: Rastering ended.'  
                     break
-        else:
-            Z.set_running_velocity(z_speed_start)
-            Y.set_running_velocity(y_speed_start)
+        for axis in ['Z', 'Y']:
+            status = self.motor[axis].move(self.pos[axis])
+            complete = self.motor[axis].wait_for_motion()
+            print('Should be back to origin.')
+            self.motor[axis].set_running_velocity(self.vr[axis])
             # Errors encountered
             print('Error messages:')
-            for i in Z.error_msg:
-                print(i)
-            for i in Y.error_msg:
+            for i in self.motor[axis].error_msg:
                 print(i)
 
     def stop(self):
         """Stop raster function """
-        self.stop = True
+        self.running = False
 
 if __name__ == '__main__':
     print(sys.version)
