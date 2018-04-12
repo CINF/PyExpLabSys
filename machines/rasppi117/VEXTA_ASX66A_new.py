@@ -6,18 +6,6 @@ import threading
 from PyExpLabSys.common.supported_versions import python3_only
 python3_only(__file__)
 
-"""Ideas and thoughts on the project:
-----------------------------------
-1)  Raster programs should be initiated from the current starting point of the manipulator
-    I.e. at start of program, read and set start position of device and add algorithm values
-    to that. In this way, always operate the device in absolute values. This is stupid - this
-    is exactly what the incremental motion does. Consider basing the algorithm on incremental
-    motion instead.
-2)  Device should be calibrated by its absolute motion to correspond with mm position of
-    manipulators so commands can be sent
-3)  Calibrate the two devices so the time spent on moving 1 mm is the same for both
-
-"""
 
 __VERSION__ = 'April 11, 2018'
 # New:
@@ -406,6 +394,7 @@ class ZY_raster_pattern(threading.Thread):
                     self.motor[axis].escape()
                     status = self.motor[axis].move(self.pos[axis])
                     self.motor[axis].wait_for_motion()
+                self.status = 'Done'
                 return
 
         # Set speed
@@ -439,6 +428,7 @@ class ZY_raster_pattern(threading.Thread):
             print('Error messages:')
             for i in self.motor[axis].error_msg:
                 print(i)
+        self.status = 'Done'
 
     def stop(self):
         """Stop raster function """
