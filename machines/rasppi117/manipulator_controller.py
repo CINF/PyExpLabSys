@@ -14,7 +14,8 @@ from VEXTA_ASX66A import ZY_raster_pattern, connect_Z_Y
 # Test specific
 #from PIL import Image
 
-__VERSION__ = '1.1'
+__VERSION__ = '0.9'
+__AUTHOR__ = 'Jakob Ejler'
 
 
 class TUI(object):
@@ -333,29 +334,15 @@ class TUI(object):
                 print('Motor chosen: ' + self.motor)
                 step = float(inc.split(' ')[0])
                 print('to be stepped: {}'.format(step))
-                
-                # If a motor is stepped, handle wait time and look for escape
-                running = True
-                while running:
-                    try:
-                        key = numpad.key_pressed_queue.get(timeout=0.01)
-                    except Empty:
-                        pass
-                    if key == 'KEY_NUML':
-                        # escape motion and update position
-                        motor.escape()
-                        running = False
-                        time.sleep(0.1)
-                    else:
-                        # Check for end of motion and update position
-                        if motor.is_running():
-                            self.pos[self.motor] = motor.get_position()
-                            self.write_box1(motion=True)
-                        else:
-                            running = False
-                else:
-                    self.pos[self.motor] = motor.get_position()
-                    self.write_box1()
+                if self.motor == 'Y':
+                    orig_Y = string
+                    motor = Y
+                elif self.motor == 'Z':
+                    orig_Z = string
+                    motor = Z
+                motor.increment(step)
+                # display motion
+                self.display_motion(motor)
 
             # Toggle between motors
             elif key == 'KEY_KPSLASH':
@@ -420,6 +407,23 @@ class TUI(object):
                 self.picaso.put_string(inc[positions[cursor]+1:])
                 update_string = False
 
+    def display_motion(self, motor)
+        """Wait for motion to end while displaying motion and detecting a break """
+        
+        while motor.is_running():
+            try:
+                key = numpad.key_pressed_queue.get(timeout=0.01)
+            except Empty:
+                self.position[self.motor] = motor.get_position()
+                self.write_box1(motion=True)
+
+            if key == 'KEY_NUMLOCK':
+                motor.escape()
+        else:
+            self.position[self.motor] = motor.get_position()
+            self.write_box1(motion=False)
+                
+    
     def format_absolute_string(self, string):
         """Convenience function for 'absolute_mode' to format the shown string """
         
@@ -480,7 +484,7 @@ class TUI(object):
         self.draw_box(self.box2, action=['clear'])
         (x, y) = self.box2['origin']
         self.picaso.move_origin(x, y)
-        self.picaso.put_string('Incremental mode')
+        self.picaso.put_string('Absolute mode')
 
         self.picaso.move_origin(x+5*self.char_height, y + 3*self.char_height)
         self.picaso.text_factor(2)
@@ -493,110 +497,112 @@ class TUI(object):
         self.picaso.put_string(string[positions[cursor]])
         self.picaso.text_attribute('inverse', status=False)
         self.picaso.put_string(string[positions[cursor]+1:])
-                
+
+        # Respond to key press
         while True:
             try:
                 key = numpad.key_pressed_queue.get(timeout=0.01)
-                
-                # Continue if NUMLOCK is deactivated
-                if not led_state_keypad(numpad):
-                    continue
-
-                # See menu
-                elif key == 'KEY_KPASTERISK' or key == 'KEY_BACKSPACE':
-                    self.picaso.text_factor(1)
-                    self.locator = 0
-                    self.sublocator = 0
-                    self.main_screen()
-                    return
-
-                # Accept string
-                elif key == ENTER:
-                    print('Motor chosen: ' + self.motor)
-                    step = float(string.split(' ')[0])
-                    if self.motor == 'Y':
-                        orig_Y = string
-                    elif self.motor == 'Z':
-                        orig_Z = string
-                    print('to be moved to: {}'.format(step))
-
-                # Toggle between motors
-                elif key == 'KEY_KPSLASH':
-                    if self.motor == 'Y':
-                        self.motor = 'Z'
-                        string = orig_Z
-                    elif self.motor == 'Z':
-                        self.motor = 'Y'
-                        string = orig_Y
-                    values = self.update_absolute_values_from_string(string)
-                    self.picaso.move_origin(x+5*self.char_height, y + 3*self.char_height)
-                    self.picaso.text_factor(2)
-                    self.picaso.put_string('Motor: ' + self.motor)
-                    self.picaso.text_factor(1)
-                    update_string = True
-                    
-
-                    
-                # Move cursor back and forth
-                elif key == 'KEY_KP4':
-                    if cursor > 0:
-                        cursor -= 1
-                        update_string = True
-                elif key == 'KEY_KP6':
-                    if cursor < left + right - 1:
-                        cursor += 1
-                        update_string = True
-
-                # Change value according to position of cursor
-                elif key == 'KEY_KP2':
-                    if values[cursor] > 0:
-                        values[cursor] -= 1
-                        update_string = True
-                    elif values[cursor] == 0:
-                        values[cursor] = 9
-                        update_string = True
-                    string = self.update_absolute_string_from_values(values)
-                elif key == 'KEY_KP8':
-                    if values[cursor] < 9:
-                        values[cursor] += 1
-                        update_string = True
-                    elif values[cursor] == 9:
-                        values[cursor] = 0
-                        update_string = True
-                    string = self.update_absolute_string_from_values(values)
-
-                # Type new destination manually
-                elif key == 'KEY_KPPLUS' or key == 'KEY_KPMINUS':
-                    self.picaso.text_factor(1)
-                    string = self.format_absolute_string(str(float(self.get_input('Type destination:'))))
-                    values = self.update_absolute_values_from_string(string)
-                    update_string = True
-
-                # Reset with 'zero'
-                elif key == 'KEY_KP0':
-                    if self.motor == 'Y':
-                        string = orig_Y
-                    elif self.motor == 'Z':
-                        string = orig_Z
-                    values = self.update_absolute_values_from_string(string)
-                    update_string = True
-                    
-                if update_string:
-                    # Assemble string and print it anew
-                    self.picaso.text_factor(2)
-                    self.picaso.move_origin(x+4*self.char_height, y + int(6.5*self.char_height))
-                    self.picaso.put_string(string[:positions[cursor]])
-                    self.picaso.text_attribute('inverse', status=True)
-                    self.picaso.put_string(string[positions[cursor]])
-                    self.picaso.text_attribute('inverse', status=False)
-                    self.picaso.put_string(string[positions[cursor]+1:])
-                    self.picaso.text_factor(1)
-                    update_string = False
-
-                print(string)
-                        
             except Empty:
-                pass
+                continue
+                
+            # Continue if NUMLOCK is deactivated
+            if not led_state_keypad(numpad):
+                continue
+
+            # See menu
+            elif key == 'KEY_KPASTERISK' or key == 'KEY_BACKSPACE':
+                self.picaso.text_factor(1)
+                self.locator = 0
+                self.sublocator = 0
+                self.main_screen()
+                return
+
+            # Accept string
+            elif key == ENTER:
+                print('Motor chosen: ' + self.motor)
+                step = float(string.split(' ')[0])
+                if self.motor == 'Y':
+                    orig_Y = string
+                    motor = Y
+                elif self.motor == 'Z':
+                    orig_Z = string
+                    motor = Z
+                motor.move(step)
+                # display motion
+                self.display_motion(motor)
+
+            # Toggle between motors
+            elif key == 'KEY_KPSLASH':
+                if self.motor == 'Y':
+                    self.motor = 'Z'
+                    string = orig_Z
+                elif self.motor == 'Z':
+                    self.motor = 'Y'
+                    string = orig_Y
+                values = self.update_absolute_values_from_string(string)
+                self.picaso.move_origin(x+5*self.char_height, y + 3*self.char_height)
+                self.picaso.text_factor(2)
+                self.picaso.put_string('Motor: ' + self.motor)
+                self.picaso.text_factor(1)
+                update_string = True
+
+            # Move cursor back and forth
+            elif key == 'KEY_KP4':
+                if cursor > 0:
+                    cursor -= 1
+                    update_string = True
+            elif key == 'KEY_KP6':
+                if cursor < left + right - 1:
+                    cursor += 1
+                    update_string = True
+
+            # Change value according to position of cursor
+            elif key == 'KEY_KP2':
+                if values[cursor] > 0:
+                    values[cursor] -= 1
+                    update_string = True
+                elif values[cursor] == 0:
+                    values[cursor] = 9
+                    update_string = True
+                string = self.update_absolute_string_from_values(values)
+            elif key == 'KEY_KP8':
+                if values[cursor] < 9:
+                    values[cursor] += 1
+                    update_string = True
+                elif values[cursor] == 9:
+                    values[cursor] = 0
+                    update_string = True
+                string = self.update_absolute_string_from_values(values)
+
+            # Type new destination manually
+            elif key == 'KEY_KPPLUS' or key == 'KEY_KPMINUS':
+                self.picaso.text_factor(1)
+                string = self.format_absolute_string(str(float(self.get_input('Type destination:'))))
+                values = self.update_absolute_values_from_string(string)
+                update_string = True
+
+            # Reset with 'zero'
+            elif key == 'KEY_KP0':
+                if self.motor == 'Y':
+                    string = orig_Y
+                elif self.motor == 'Z':
+                    string = orig_Z
+                values = self.update_absolute_values_from_string(string)
+                update_string = True
+                    
+            if update_string:
+                # Assemble string and print it anew
+                self.picaso.text_factor(2)
+                self.picaso.move_origin(x+4*self.char_height, y + int(6.5*self.char_height))
+                self.picaso.put_string(string[:positions[cursor]])
+                self.picaso.text_attribute('inverse', status=True)
+                self.picaso.put_string(string[positions[cursor]])
+                self.picaso.text_attribute('inverse', status=False)
+                self.picaso.put_string(string[positions[cursor]+1:])
+                self.picaso.text_factor(1)
+                update_string = False
+
+            print(string)
 
 
         
@@ -614,19 +620,47 @@ class TUI(object):
         self.picaso.put_string('Z speed: {} mm/s\n'.format(Z.get_running_velocity))
         self.picaso.put_string('Y speed: {} mm/s\n'.format(Y.get_running_velocity))
 
-        # DECIDE ON WHETHER BOTH MOTORS SHOULD BE SET TO THE SAME SPEED
-        # OR THEY SHOULD BE SET INDIVIDUALLY
-        try:
-            speed = float(self.get_input('Type new speed (mm/s)'))
-        except ValueError:
-            print('Illegal input. Returning from function.')
-            return
-        response = Z.set_running_velocity(speed)
-        print(response)
-        response = Z.set_running_velocity(speed)
-        print(response)
-        print('Speed set to {} mm/s'.format(speed))
-        
+        # Respond to key press
+        while True:
+            try:
+                key = numpad.key_pressed_queue.get(timeout=0.01)
+            except Empty:
+                continue
+
+            # Continue if NUMLOCK is deactivated
+            if not led_state_keypad(numpad):
+                continue
+
+            # See menu
+            elif key == 'KEY_KPASTERISK' or key == 'KEY_BACKSPACE':
+                display.locator = 0
+                display.sublocator = 0
+                display.main_screen()
+                return
+
+            # If ENTER: Get speed input
+            elif key == ENTER:
+                try:
+                    speed = float(self.get_input('Type new speed (mm/s)'))
+                except ValueError:
+                    print('Illegal input. Returning from function.')
+                    return
+
+                # Set new speed
+                response = Z.set_running_velocity(speed)
+                print(response)
+                response = Z.set_running_velocity(speed)
+                print(response)
+                print('Speed set to {} mm/s'.format(speed))
+
+                # Show new speed
+                self.draw_box(self.box2, action=['clear'])
+                self.picaso.put_string('Change speed\n\n')
+
+                # Display current velocities
+                self.picaso.put_string('Z speed: {} mm/s\n'.format(Z.get_running_velocity))
+                self.picaso.put_string('Y speed: {} mm/s\n'.format(Y.get_running_velocity))
+
 
 
     def raster_programs(self):
@@ -655,42 +689,72 @@ class TUI(object):
         while True:
             try:
                 key = numpad.key_pressed_queue.get(timeout=0.01)
-
-                # Continue if NUMLOCK is deactivated
-                if not led_state_keypad(numpad):
-                    continue
-
-                # See menu
-                elif key == 'KEY_KPASTERISK' or key == 'KEY_BACKSPACE':
-                    display.locator = 0
-                    display.sublocator = 0
-                    display.main_screen()
-                    return
-
-                # Pattern selected with ENTER
-                elif key == ENTER:
-                    print('File chosen: "{}"'.format(self.patterns[counter]))
-                    # Start rastering...
-                    ZY_raster_pattern(self.patterns[counter], Z, Y)
-                    # Indicate running condition and allow for break
-
-                # Move down in list
-                elif key == 'KEY_KP2':
-                    if counter < self.num_patterns - 1:
-                        last_counter = counter
-                        counter += 1
-                        self.update_raster_list(counter, last_counter)
-                
-                # Move up in list
-                elif key == 'KEY_KP8':
-                    if counter > 0:
-                        last_counter = counter
-                        counter -= 1
-                        self.update_raster_list(counter, last_counter)
-                        
-                
             except Empty:
-                pass
+                continue
+            
+            # Continue if NUMLOCK is deactivated
+            if not led_state_keypad(numpad):
+                continue
+
+            # See menu
+            elif key == 'KEY_KPASTERISK' or key == 'KEY_BACKSPACE':
+                display.locator = 0
+                display.sublocator = 0
+                display.main_screen()
+                return
+
+            # Pattern selected with ENTER
+            elif key == ENTER:
+                print('File chosen: "{}"'.format(self.patterns[counter]))
+                # Start rastering...
+                raster = ZY_raster_pattern(self.patterns[counter], Z=Z, Y=Y)
+                raster.start()
+                t0 = time.time()
+                last_time = t0
+                last_raster = raster.status
+                motion_indicator = ''
+                # Indicate running condition and allow for break
+                while True:
+                    try:
+                        key = numpad.key_pressed_queue.get(timeout=0.1)
+                    except Empty:
+                        if time.time() - last_time > 5:
+                            last_time = time.time()
+                            if last_raster != raster.status:
+                                last_raster = raster.status
+                                motion_indicator = ''
+                            else:
+                                motion_indicator += '.'
+                                if len(motion_indicator) > 3:
+                                    motion_indicator = ''
+                            self.draw_box(self.box2, action=['clear'])
+                            self.picaso.put_string(raster.status + motion_indicator)
+                        continue
+
+                    # Break if NUMLOCK
+                    if key == 'KEY_NUMLOCK':
+                        raster.stop()
+                        while raster.status != 'Done':
+                            self.draw_box(self.box2, action=['clear'])
+                            self.picaso.put_string(raster.status)
+                            time.sleep(0.5)
+                            empty_queue(numpad)
+                        break
+
+            # Move down in list
+            elif key == 'KEY_KP2':
+                if counter < self.num_patterns - 1:
+                    last_counter = counter
+                    counter += 1
+                    self.update_raster_list(counter, last_counter)
+                
+            # Move up in list
+            elif key == 'KEY_KP8':
+                if counter > 0:
+                    last_counter = counter
+                    counter -= 1
+                    self.update_raster_list(counter, last_counter)
+                        
 
 
     def update_raster_list(self, counter, last_counter):
@@ -755,6 +819,15 @@ def led_state_keypad(numpad):
         # Return false otherwise
         else:
             return False
+
+def empty_queue(numpad):
+    """Empty 'numpad' queue element """
+    
+    while True:
+        try:
+            key = numpad.key_pressed_queue.get(timeout=0.1)
+        except Empty:
+            return
 
 
 if __name__ == '__main__':
