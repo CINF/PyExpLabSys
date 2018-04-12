@@ -22,7 +22,7 @@ def main():
     ranges['M11200362G'] = 1 # Flow6
 
     flow_control = FlowControl(devices=devices, ranges=ranges,
-                               name='microreactorNG_mfc_control')
+                               socket_name='microreactorNG_mfc_control')
     flow_control.start()
 
     logger = ValueLogger(flow_control, comp_val=1, comp_type='log', low_comp=0.0001)

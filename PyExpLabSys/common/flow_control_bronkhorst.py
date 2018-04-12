@@ -11,7 +11,7 @@ python2_and_3(__file__)
 
 class FlowControl(threading.Thread):
     """ Keep updated values of the current flow """
-    def __init__(self, ranges, devices, name):
+    def __init__(self, ranges, devices, socket_name):
         threading.Thread.__init__(self)
         self.devices = devices
         name = {}
@@ -32,7 +32,7 @@ class FlowControl(threading.Thread):
                         bronk = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i), 1)
                         print('MFC Found')
                         break
-                    except:
+                    except:  # pylint: disable=bare-except
                         ioerror = ioerror + 1
                 if ioerror == 10:
                     print('No MFC found on this port')
@@ -56,13 +56,13 @@ class FlowControl(threading.Thread):
                     print('Found MFC but could not set range')
 
         self.mfcs = mfcs
-        self.pullsocket = DateDataPullSocket(name, devices,
+        self.pullsocket = DateDataPullSocket(socket_name, devices,
                                              timeouts=3.0, port=9000)
         self.pullsocket.start()
 
-        self.pushsocket = DataPushSocket(name, action='enqueue')
+        self.pushsocket = DataPushSocket(socket_name, action='enqueue')
         self.pushsocket.start()
-        self.livesocket = LiveSocket(name, devices)
+        self.livesocket = LiveSocket(socket_name, devices)
         self.livesocket.start()
         self.running = True
         self.reactor_pressure = float('NaN')
