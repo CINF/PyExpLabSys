@@ -14,7 +14,7 @@ from VEXTA_ASX66A import ZY_raster_pattern, connect_Z_Y
 # Test specific
 #from PIL import Image
 
-__VERSION__ = '0.9'
+__VERSION__ = '1.0'
 __AUTHOR__ = 'Jakob Ejler'
 
 
@@ -49,7 +49,7 @@ class TUI(object):
         self.picaso.put_string('PREP chamber manipulator, v{}'.format(__VERSION__))
         self.picaso.text_attribute('italic', status=False)
 
-        # Define Box 1
+        # Define Box 1 (for position display of motors)
         self.box1 = {
                 'origin': (2, 2 + self.char_height + 6),
                 'width': 39,
@@ -66,7 +66,7 @@ class TUI(object):
         self.draw_box(self.box1, action=['draw', 'clear'])
         self.write_box1(update_values_only=False)
 
-        # Define Box 2
+        # Define Box 2 (for display of menus and information)
         self.box2 = {
                 'origin': (
                     2,
@@ -77,7 +77,7 @@ class TUI(object):
                 }
         self.draw_box(self.box2, action=['draw', 'clear'])
 
-        # Define Box 3
+        # Define Box 3 (small narrow display of buttons and keys)
         self.box3 = {
                 'origin': (
                     self.box2['origin'][0] + self.box2['width']*self.char_width + self.gap*4,
@@ -89,7 +89,7 @@ class TUI(object):
         self.draw_box(self.box3, action=['draw', 'clear'])
         self.write_box3()
 
-        # Define Box 4
+        # Define Box 4 (small wide display for retrieval of user inputs or info display)
         self.box4 = {
                 'origin': (
                     2,
@@ -102,6 +102,7 @@ class TUI(object):
         self.main_screen()
 
     def draw_box(self, box, action=['clear']):
+        
         (x1, y1) = box['origin']
         x2, y2 = x1 + box['width']*self.char_width, y1 + box['lines']*self.char_height
         for act in action:
@@ -113,6 +114,7 @@ class TUI(object):
     def write_box1(self, motion=False, update_values_only=True):
 
         # Clear BOX1 and write strings
+        self.picaso.text_factor(1)
         if not update_values_only:
             self.draw_box(self.box1, action=['clear'])
             (x, y) = self.box1['origin']
@@ -133,9 +135,9 @@ class TUI(object):
         strings = {'Y': '', 'Z': ''}
         for i in ['Y', 'Z']:
             if i == self.motor:
-                strings[i] = self.position[i] + ' ' + self.motion_marker
+                strings[i] = str(self.position[i]) + ' ' + self.motion_marker
             else:
-                strings[i] = self.position[i]
+                strings[i] = str(self.position[i])
         self.picaso.put_string(strings['Z'] + '\n')
         self.picaso.put_string(strings['Y'])
 
@@ -274,12 +276,13 @@ class TUI(object):
 
         # Define needed variables
         sign = '+'
-        values = [0, 1, 0, 0]
+        values = [0, 1, 0, 0, 0]
         unit = 'mm'
         positions = {0: 1, # counter, index
                      1: 2,
                      2: 4,
-                     3: 5}
+                     3: 5,
+                     4: 6}
         cursor = 1
         update_string = False
 
@@ -335,10 +338,10 @@ class TUI(object):
                 step = float(inc.split(' ')[0])
                 print('to be stepped: {}'.format(step))
                 if self.motor == 'Y':
-                    orig_Y = string
+                    orig_Y = inc
                     motor = Y
                 elif self.motor == 'Z':
-                    orig_Z = string
+                    orig_Z = inc
                     motor = Z
                 motor.increment(step)
                 # display motion
@@ -355,6 +358,7 @@ class TUI(object):
                 self.picaso.move_origin(x+5*self.char_height, y + 3*self.char_height)
                 self.picaso.text_factor(2)
                 self.picaso.put_string('Motor: ' + self.motor)
+                self.picaso.text_factor(1)
                 
             # Move cursor back and forth
             elif key == 'KEY_KP4':
@@ -399,26 +403,28 @@ class TUI(object):
                 inc += '.'
                 for i in values[2:]: inc += str(i)
                 inc += ' ' + unit
+                self.picaso.text_factor(2)
                 self.picaso.move_origin(x+4*self.char_height, y + int(6.5*self.char_height))
                 self.picaso.put_string(inc[:positions[cursor]])
                 self.picaso.text_attribute('inverse', status=True)
                 self.picaso.put_string(inc[positions[cursor]])
                 self.picaso.text_attribute('inverse', status=False)
                 self.picaso.put_string(inc[positions[cursor]+1:])
+                self.picaso.text_factor(1)
                 update_string = False
 
-    def display_motion(self, motor)
+    def display_motion(self, motor):
         """Wait for motion to end while displaying motion and detecting a break """
         
         while motor.is_running():
             try:
                 key = numpad.key_pressed_queue.get(timeout=0.01)
+                if key == 'KEY_NUMLOCK':
+                    motor.escape()
             except Empty:
                 self.position[self.motor] = motor.get_position()
                 self.write_box1(motion=True)
-
-            if key == 'KEY_NUMLOCK':
-                motor.escape()
+                
         else:
             self.position[self.motor] = motor.get_position()
             self.write_box1(motion=False)
@@ -468,8 +474,12 @@ class TUI(object):
         
         # Define needed variables
         left, right = 3, 3
-        string = self.format_absolute_string(str(float(self.get_input('Type start value:')))) # MOTOR.GET_POSITION()
-        orig_Y, orig_Z = string, string
+        orig_Y = self.format_absolute_string(str(Y.get_position()))
+        orig_Z = self.format_absolute_string(str(Z.get_position()))
+        if self.motor == 'Z':
+            string = orig_Z
+        elif self.motor == 'Y':
+            string = orig_Y
         positions = {}
         for i in range(left):
             positions[i] = i
@@ -617,8 +627,8 @@ class TUI(object):
         self.picaso.put_string('Change speed\n\n')
 
         # Display current velocities
-        self.picaso.put_string('Z speed: {} mm/s\n'.format(Z.get_running_velocity))
-        self.picaso.put_string('Y speed: {} mm/s\n'.format(Y.get_running_velocity))
+        self.picaso.put_string('Z speed: {} mm/s\n'.format(Z.get_running_velocity()))
+        self.picaso.put_string('Y speed: {} mm/s\n'.format(Y.get_running_velocity()))
 
         # Respond to key press
         while True:
@@ -641,25 +651,35 @@ class TUI(object):
             # If ENTER: Get speed input
             elif key == ENTER:
                 try:
-                    speed = float(self.get_input('Type new speed (mm/s)'))
+                    Z_speed = float(self.get_input('Type new speed for *Z* (mm/s)'))
+                    time.sleep(0.5)
+                except ValueError:
+                    print('Illegal input. Returning from function.')
+                    return
+
+                try:
+                    Y_speed = float(self.get_input('Type new speed for *Y* (mm/s)'))
+                    time.sleep(0.5)
                 except ValueError:
                     print('Illegal input. Returning from function.')
                     return
 
                 # Set new speed
-                response = Z.set_running_velocity(speed)
+                response = Z.set_running_velocity(Z_speed)
                 print(response)
-                response = Z.set_running_velocity(speed)
+                response = Y.set_running_velocity(Y_speed)
                 print(response)
-                print('Speed set to {} mm/s'.format(speed))
+                print('Speed set to ({},{}) mm/s'.format(Z_speed, Y_speed))
 
                 # Show new speed
                 self.draw_box(self.box2, action=['clear'])
+                (x, y) = self.box2['origin']
+                self.picaso.move_origin(x, y)
                 self.picaso.put_string('Change speed\n\n')
 
                 # Display current velocities
-                self.picaso.put_string('Z speed: {} mm/s\n'.format(Z.get_running_velocity))
-                self.picaso.put_string('Y speed: {} mm/s\n'.format(Y.get_running_velocity))
+                self.picaso.put_string('Z speed: {} mm/s\n'.format(Z.get_running_velocity()))
+                self.picaso.put_string('Y speed: {} mm/s\n'.format(Y.get_running_velocity()))
 
 
 
@@ -705,7 +725,18 @@ class TUI(object):
 
             # Pattern selected with ENTER
             elif key == ENTER:
+                # Print chosen pattern file in BOX4
                 print('File chosen: "{}"'.format(self.patterns[counter]))
+                self.draw_box(self.box4, action=['clear'])
+                (x, y) = self.box4['origin']
+                self.picaso.move_origin(x, y)
+                self.picaso.put_string('File chosen: "{}"'.format(self.patterns[counter]))
+
+                # Clear BOX2
+                self.draw_box(self.box2, action=['clear'])
+                (x, y) = self.box2['origin']
+                self.picaso.move_origin(x, y)
+                
                 # Start rastering...
                 raster = ZY_raster_pattern(self.patterns[counter], Z=Z, Y=Y)
                 raster.start()
@@ -714,7 +745,7 @@ class TUI(object):
                 last_raster = raster.status
                 motion_indicator = ''
                 # Indicate running condition and allow for break
-                while True:
+                while raster.status != 'Done':
                     try:
                         key = numpad.key_pressed_queue.get(timeout=0.1)
                     except Empty:
@@ -728,6 +759,8 @@ class TUI(object):
                                 if len(motion_indicator) > 3:
                                     motion_indicator = ''
                             self.draw_box(self.box2, action=['clear'])
+                            (x, y) = self.box2['origin']
+                            self.picaso.move_origin(x, y)
                             self.picaso.put_string(raster.status + motion_indicator)
                         continue
 
@@ -736,10 +769,12 @@ class TUI(object):
                         raster.stop()
                         while raster.status != 'Done':
                             self.draw_box(self.box2, action=['clear'])
+                            (x, y) = self.box2['origin']
+                            self.picaso.move_origin(x, y)
                             self.picaso.put_string(raster.status)
                             time.sleep(0.5)
                             empty_queue(numpad)
-                        break
+                        return
 
             # Move down in list
             elif key == 'KEY_KP2':
@@ -836,7 +871,7 @@ if __name__ == '__main__':
     Z, Y = connect_Z_Y()
 
     # Load display
-    device = '/dev/ttyUSB0'
+    device = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A502BCBS-if00-port0'
     picaso = PicasouLCD28PTU(serial_device=device, baudrate=9600)
     spe_version = picaso.get_spe_version()
     picaso.screen_mode('landscape')
@@ -908,19 +943,19 @@ if __name__ == '__main__':
                         user_string = float(display.get_input('Set position Z:'))
                         if user_string < Z.maxpos and user_string > Z.minpos:
                             Z.set_position(user_string)
-                            display.pos['Z'] = Z.get_position()
+                            display.position['Z'] = Z.get_position()
                             display.write_box1()
                         else:
-                            display.picaso.put_string('Out of range!')
+                            display.picaso.put_string(' Out of range!')
                             continue
                         time.sleep(1)
-                        user_string = display.get_input('Set position Y:')
+                        user_string = float(display.get_input('Set position Y:'))
                         if user_string < Y.maxpos and user_string > Y.minpos:
                             Y.set_position(user_string)
-                            display.pos['Y'] = Y.get_position()
+                            display.position['Y'] = Y.get_position()
                             display.write_box1()
                         else:
-                            display.picaso.put_string('Out of range!')
+                            display.picaso.put_string(' Out of range!')
                             continue
                         time.sleep(1)
                     # Draw pikachu - simply because you can and have nothing better to do...
