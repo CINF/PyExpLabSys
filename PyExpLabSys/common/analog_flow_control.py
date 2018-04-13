@@ -21,7 +21,7 @@ class AnalogMFC(object):
         """ Read the flow (or pressure) value """
         value = 0
         for _ in range(0, 10): # Average to minimiza noise
-            value += self.daq.read_adc_voltage(1)
+            value += self.daq.read_adc_voltage(1, 1)
         value = value / 10
         #print('Value: ' + str(value))
         flow = value * self.fullrange / self.voltagespan
@@ -60,7 +60,7 @@ class FlowControl(threading.Thread):
     def value(self, device):
         """ Return the current value of a device """
         return self.values[device]
-        
+
     def run(self):
         while self.running:
             time.sleep(0.1)
