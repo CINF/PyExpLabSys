@@ -169,8 +169,19 @@ class TUI(object):
         # Locators
         self.picaso.put_string('\n {}\n {}\n {}'.format(self.locator, self.sublocator, self.last_key))
 
+    def write_box4(self, string):
+        """Print string in BOX4 
+        Input:
+        string (str): string to be printed in box"""
+        self.draw_box(self.box4, action=['clear'])
+        (x, y) = self.box4['origin']
+        self.picaso.move_origin(x, y)
+        self.picaso.put_string(string)
+
     def get_input(self, msg='>'):
-        """Request an input from user in BOX4 with the message prompt 'msg' """
+        """Request an input from user in BOX4 with the message prompt 'msg'
+        Input:
+        msg (str): Prompt to be printed. User input will be printed on the next line"""
         
         string = ''
         (x, y) = self.box4['origin']
@@ -218,7 +229,7 @@ class TUI(object):
                 self.picaso.put_string(msg)
                 self.picaso.put_string(string)
 
-            elif key == KEY_TOGGLE:
+            elif key == 'KEY_KPSLASH':
                 # Do nothing
                 pass
 
@@ -242,10 +253,25 @@ class TUI(object):
 
     def main_screen(self):
 
-        # Do nothing - black "zero" screen
+        # Clear BOX4
+        self.write_box4('')
+        
+        # Do nothing - info screen
         if self.locator == -1:
             self.write_box3()
             self.draw_box(self.box2, action=['clear'])
+            (x, y) = self.box2['origin']
+            self.picaso.move_origin(x, y)
+            # Display helpful info
+            self.picaso.put_string('Controls for the PREP manipulator\n\n')
+            self.picaso.put_string('* : menu\n')
+            self.picaso.put_string('/ : special functions or toggle\n')
+            self.picaso.put_string('    between motors\n')
+            self.picaso.put_string('<- : delete input character or\n')
+            self.picaso.put_string('    go back one screen\n')
+            self.picaso.put_string('NUMLOCK : Keypad locked if LED off\n')
+            self.picaso.put_string('    or escapes motor motion.\n')
+            self.picaso.put_string('Remember to give position to motors!')
         # Main screen menu
         elif self.locator == 0:
             self.write_box3()
@@ -270,7 +296,6 @@ class TUI(object):
         elif self.locator == 1 and self.sublocator == 9:
             self.raster_programs()
 
-
     def incremental_mode(self):
         """Move a motor a step from its current position """ 
 
@@ -292,7 +317,6 @@ class TUI(object):
         inc += '.'
         for i in values[2:]: inc += str(i)
         inc += ' ' + unit
-            
         
         self.draw_box(self.box2, action=['clear'])
         (x, y) = self.box2['origin']
@@ -302,7 +326,6 @@ class TUI(object):
         self.picaso.move_origin(x+5*self.char_height, y + 3*self.char_height)
         self.picaso.text_factor(2)
         self.picaso.put_string('Motor: ' + self.motor)
-
 
         self.picaso.move_origin(x+4*self.char_height, y + int(6.5*self.char_height))
         self.picaso.put_string(inc[:positions[cursor]])
@@ -587,7 +610,11 @@ class TUI(object):
             # Type new destination manually
             elif key == 'KEY_KPPLUS' or key == 'KEY_KPMINUS':
                 self.picaso.text_factor(1)
-                string = self.format_absolute_string(str(float(self.get_input('Type destination:'))))
+                try:
+                    string = self.format_absolute_string(str(float(self.get_input('Type destination:'))))
+                except ValueError:
+                    self.write_box4('Invalid input')
+                    continue
                 values = self.update_absolute_values_from_string(string)
                 update_string = True
 
@@ -891,9 +918,6 @@ if __name__ == '__main__':
 
     # Dictionaries
     KEY_SUBMENU = ['1', '2', '3', '9']
-    KEY_TOGGLE = 'KEY_KPSLASH'
-    KEY_ESC = '\x1b'
-    numpad.KEY_ESC = KEY_ESC
     ENTER = 'KEY_KPENTER'
     MINUS = 'KEY_KPMINUS'
     PLUS = 'KEY_KPPLUS'
@@ -902,6 +926,7 @@ if __name__ == '__main__':
     
     # Main loop
     while True:
+        t0 = time.time()
         try:
             key = numpad.key_pressed_queue.get(timeout=0.01)
             display.last_key = ' '
@@ -932,7 +957,7 @@ if __name__ == '__main__':
                     display.main_screen()
 
             # Type special shortcuts
-            elif key == KEY_TOGGLE:
+            elif key == 'KEY_KPSLASH':
                 display.toggled['tog'] = True
                 display.write_box3()
                 user_string = display.get_input('Type a guess...')
@@ -940,24 +965,20 @@ if __name__ == '__main__':
                 if display.locator == -1:
                     # Set electrical positions
                     if user_string == '123':
-                        user_string = float(display.get_input('Set position Z:'))
-                        if user_string < Z.maxpos and user_string > Z.minpos:
-                            Z.set_position(user_string)
-                            display.position['Z'] = Z.get_position()
-                            display.write_box1()
-                        else:
-                            display.picaso.put_string(' Out of range!')
-                            continue
-                        time.sleep(1)
-                        user_string = float(display.get_input('Set position Y:'))
-                        if user_string < Y.maxpos and user_string > Y.minpos:
-                            Y.set_position(user_string)
-                            display.position['Y'] = Y.get_position()
-                            display.write_box1()
-                        else:
-                            display.picaso.put_string(' Out of range!')
-                            continue
-                        time.sleep(1)
+                        for i in ['Z', 'Y']:
+                            if i == 'Z':
+                                motor = Z
+                            elif i == 'Y':
+                                motor = Y
+                            user_string = float(display.get_input('Set position {}:'.format(i)))
+                            if user_string < motor.maxpos and user_string > motor.minpos:
+                                motor.set_position(user_string)
+                                display.position[i] = motor.get_position()
+                                display.write_box1()
+                            else:
+                                display.picaso.put_string(' Out of range!')
+                                time.sleep(1)
+                                break
                     # Draw pikachu - simply because you can and have nothing better to do...
                     elif user_string == '9999':
                         continue
@@ -968,10 +989,23 @@ if __name__ == '__main__':
             # Update indicators
             display.write_box3()
             print(display.locator, display.sublocator)
-                    
+
         except Empty:
-            pass
+            continue
         except KeyboardInterrupt:
             numpad.stop()
+            Z.stop()
+            Y.stop()
+            picaso.close()
             break
-    numpad.stop()
+        except:
+            numpad.stop()
+            Z.stop()
+            Y.stop()
+            picaso.close()
+            raise
+
+
+
+        
+    print('Exited normally')
