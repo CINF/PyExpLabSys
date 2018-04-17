@@ -370,6 +370,7 @@ class ZY_raster_pattern(threading.Thread):
         from simulate_pattern import load_pattern
         self.pattern_name = pattern_name
         self.pattern, self.data = load_pattern(pattern_name)
+        
         if not Z or not Y:
             raise ValueError('Z or Y not provided')
         self.motor = {'Z': Z,
@@ -384,6 +385,12 @@ class ZY_raster_pattern(threading.Thread):
         self.status = ''
 
     def run(self):
+        # Only start if pattern is complete
+        if self.data['error']:
+            print('Exited because of error check')
+            self.status = 'Done'
+            return False
+        
         # Move to OFFSET
         self.running = True
         self.status = 'Positioning'
