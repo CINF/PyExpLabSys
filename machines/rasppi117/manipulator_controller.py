@@ -9,7 +9,8 @@ from PyExpLabSys.drivers.four_d_systems import PicasouLCD28PTU, to_ascii_utf8
 from PyExpLabSys.drivers.deltaco_TB_298 import detect_keypad_device, ThreadedKeypad, KEYS_TO_CHARS
 from VEXTA_ASX66A import ZY_raster_pattern, connect_Z_Y
 
-# make sure to make it python3__only
+from PyExpLabSys.common.supported_versions import python3_only
+python3_only(__file__)
 
 # Test specific
 #from PIL import Image
@@ -112,6 +113,10 @@ class TUI(object):
                 self.picaso.draw_filled_rectangle((x1, y1), (x2, y2), (0,0,0))
 
     def write_box1(self, motion=False, update_values_only=True):
+        """Update BOX1
+        motion (bool): if True - add dots after selected motor to indicate motion in progress.
+        update_values_only (bool): if True - only update position values (do not erase and draw text)
+        """
 
         # Clear BOX1 and write strings
         self.picaso.text_factor(1)
@@ -142,6 +147,8 @@ class TUI(object):
         self.picaso.put_string(strings['Y'])
 
     def write_box3(self):
+        """Update BOX3 """
+        
         (x, y) = self.box3['origin']
         self.draw_box(self.box3, action=['clear'])
         self.picaso.move_origin(x, y)
@@ -252,6 +259,8 @@ class TUI(object):
                 return ''
 
     def main_screen(self):
+        """Display main screen determined by set of attributes.
+        """
 
         # Clear BOX4
         self.write_box4('')
@@ -263,15 +272,15 @@ class TUI(object):
             (x, y) = self.box2['origin']
             self.picaso.move_origin(x, y)
             # Display helpful info
-            self.picaso.put_string('Controls for the PREP manipulator\n\n')
+            self.picaso.put_string('Controls for the PREP manipulator\n')
             self.picaso.put_string('* : menu\n')
             self.picaso.put_string('/ : special functions or toggle\n')
             self.picaso.put_string('    between motors\n')
             self.picaso.put_string('<- : delete input character or\n')
             self.picaso.put_string('    go back one screen\n')
             self.picaso.put_string('NUMLOCK : Keypad locked if LED off\n')
-            self.picaso.put_string('    or escapes motor motion.\n')
-            self.picaso.put_string('Remember to give position to motors!')
+            self.picaso.put_string('    or escapes motor motion.\n\n')
+            self.picaso.put_string('Remember to give position to motors')
         # Main screen menu
         elif self.locator == 0:
             self.write_box3()
@@ -297,7 +306,15 @@ class TUI(object):
             self.raster_programs()
 
     def incremental_mode(self):
-        """Move a motor a step from its current position """ 
+        """Move a motor a step from its current position 
+        SLASH: toggle between motor Z and Y.
+        4 / 6: move cursor left/right to change order of magnitude (precision).
+        2 / 8: change value down/up at selected precision.
+        MINUS / PLUS: Set direction of value.
+        ENTER: Make selected motor step the selected value.
+        ASTERISK or BACKSPACE: Return to menu.
+        NUMLOCK: breaks motion or locks keypad.
+        """ 
 
         # Define needed variables
         sign = '+'
@@ -493,7 +510,15 @@ class TUI(object):
 
 
     def absolute_mode(self):
-        """Move a single motor to a given absolute value """
+        """Move a single motor to a given absolute value 
+        SLASH: toggle between motor Z and Y.
+        4 / 6: move cursor left/right to change order of magnitude (precision).
+        2 / 8: change value down/up at selected precision.
+        MINUS / PLUS: query user for new value in bottom display.
+        ENTER: Make selected motor move to the selected value.
+        ASTERISK or BACKSPACE: Return to menu.
+        NUMLOCK: breaks motion or locks keypad.
+        """
         
         # Define needed variables
         left, right = 3, 3
@@ -644,7 +669,12 @@ class TUI(object):
 
         
     def change_speed(self):
-        """Change the speed of both motors (mm/s) """
+        """Change the speed of both motors (mm/s) 
+        ASTERISK or BACKSPACE: Return to menu.
+        ENTER: Activate a query for new values. Enter new speed values for
+        first Z motor and then Y motor as queried in bottom section.
+        Enter an empty string or with unfloatable characters to abort.
+        """
 
         # Clear box
         self.write_box3()
@@ -711,8 +741,14 @@ class TUI(object):
 
 
     def raster_programs(self):
-        """Choose a raster program from a list of raster pattern files """
+        """Choose a raster program from a list of raster pattern files
+        Navigate list of files with '2' or '8'.
+        Choose with 'ENTER'.
+        Interrupt raster pattern with 'NUMLOCK'
+        Go back to menu with 'ASTERISK' or 'BACKSPACE'
+        """
 
+        # Get available patterns from present working directory
         self.patterns = [x for x in os.listdir() if x.endswith('.pattern')]
         self.num_patterns = len(self.patterns)
 
@@ -720,7 +756,8 @@ class TUI(object):
         self.draw_box(self.box2, action=['clear'])
         (x, y) = self.box2['origin']
         self.picaso.move_origin(x, y)
-        
+
+        # Check if patterns exist, else return
         if self.num_patterns == 0:
             self.picaso.put_string('\n\n   No ".pattern" files detected in folder!')
             time.sleep(2)
@@ -729,8 +766,8 @@ class TUI(object):
             self.main_screen()
             return
 
-        last_counter = -1
-        counter = 0
+        last_counter = -1 # LAST_COUNTER to quickly update the new selection
+        counter = 0 # COUNTER to navigate between files
         self.update_raster_list(counter, last_counter)
         
         while True:
@@ -752,6 +789,7 @@ class TUI(object):
 
             # Pattern selected with ENTER
             elif key == ENTER:
+                
                 # Print chosen pattern file in BOX4
                 print('File chosen: "{}"'.format(self.patterns[counter]))
                 self.draw_box(self.box4, action=['clear'])
@@ -767,16 +805,22 @@ class TUI(object):
                 # Start rastering...
                 raster = ZY_raster_pattern(self.patterns[counter], Z=Z, Y=Y)
                 raster.start()
+                time.sleep(2)
+
+                # Variables to track status and indicate motion of motors
                 t0 = time.time()
                 last_time = t0
                 last_raster = raster.status
                 motion_indicator = ''
+                
                 # Indicate running condition and allow for break
                 while raster.status != 'Done':
                     try:
                         key = numpad.key_pressed_queue.get(timeout=0.1)
+
+                    # Update motion indicator every few seconds
                     except Empty:
-                        if time.time() - last_time > 5:
+                        if time.time() - last_time > 2:
                             last_time = time.time()
                             if last_raster != raster.status:
                                 last_raster = raster.status
@@ -798,10 +842,16 @@ class TUI(object):
                             self.draw_box(self.box2, action=['clear'])
                             (x, y) = self.box2['origin']
                             self.picaso.move_origin(x, y)
-                            self.picaso.put_string(raster.status)
+                            self.picaso.put_string(raster.status + '\nReturning to center...')
                             time.sleep(0.5)
                             empty_queue(numpad)
-                        return
+                        break
+
+                # Indicate raster program is done
+                self.draw_box(self.box2, action=['clear'])
+                (x, y) = self.box2['origin']
+                self.picaso.move_origin(x, y)
+                self.picaso.put_string('Done!')
 
             # Move down in list
             elif key == 'KEY_KP2':
@@ -825,8 +875,9 @@ class TUI(object):
         # Clear box and update origin
         (x, y) = self.box2['origin']
         self.picaso.move_origin(x, y)
-        
-        max_length = 7
+
+        # Divide list into pages (sections)
+        max_length = 7 # number of files listed per page
         sections = int(self.num_patterns/max_length) - 1
         rest = self.num_patterns%max_length
         if rest:
@@ -839,8 +890,6 @@ class TUI(object):
             self.picaso.put_string('Raster programs:  ')
             self.picaso.put_string('Page {} of {}\n\n'.format(section+1, sections+1))
 
-        print(counter, last_counter, section, sections, rest)
-        
         # Limit number of files printed
         if section < sections:
             plus = max_length
@@ -872,7 +921,9 @@ class TUI(object):
             self.picaso.text_attribute('inverse', status=False)
 
 def led_state_keypad(numpad):
-    """Get LED state of keypad's NUMLOCK """
+    """Get LED state of keypad's NUMLOCK
+    Used to lock the keypad if NUMLOCK is off.
+    """
 
     for (name, value) in numpad.device.leds(verbose=True):
         # Return true if LED is ON
@@ -883,7 +934,9 @@ def led_state_keypad(numpad):
             return False
 
 def empty_queue(numpad):
-    """Empty 'numpad' queue element """
+    """Empty 'numpad' queue element
+    In case a time.sleep() is used, a queue may inadvertently pile up.
+    """
     
     while True:
         try:
@@ -898,6 +951,7 @@ if __name__ == '__main__':
     Z, Y = connect_Z_Y()
 
     # Load display
+    time.sleep(3)
     device = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A502BCBS-if00-port0'
     picaso = PicasouLCD28PTU(serial_device=device, baudrate=9600)
     spe_version = picaso.get_spe_version()
