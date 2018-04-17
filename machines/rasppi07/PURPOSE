@@ -1,4 +1,4 @@
 id: microreactor
-purpose: Ion gauge pressure
+purpose: Analog readout of ion gauge
 
-Reads out the ion gauge pressure for the microreactor setup. This is an old analog gauge, pressure is read by an analog measurement directly on the needle solenoid
+Readout of an old analog ion gauge using a direct measurement of the dial current.
