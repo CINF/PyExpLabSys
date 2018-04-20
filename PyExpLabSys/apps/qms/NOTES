@@ -1,0 +1,24 @@
+The code is split into 2. In this folder is tha app and there also 2
+drivers:
+ * pfeiffer_qmg_420
+ * pfeiffer_qmg_422
+
+mass_spec is main interface. Usually run by aditing run component in __main__ block. Consider making CLI interface. Type of qmg is setting. Is has methods for SEM and filament, mass scan, mass time and leak search.
+
+qms.py is the mass spectrometer. All *status_methods are get AND set. Data is passed into the SqlSaver queue as SQL queries. There are here methods for parsing channel list and running mass scan and mass time.
+
+qmg_meta_channels: Gets the meta channel part of the channel list and creates a UDP channel (threaded) for each meta channel. Support for local channels is implemented by putting a local_channels.py file in machine folder with a Local class. Only example for now is in microreactorNG-ms machine folder.
+
+REMEMBER that this mass spec configuration comes with 2 different qmg (electronics in rack) boxes and two different qme (electronic on mass spec) boxes, which gives a total for 4 different combincations, of which we have 3
+
+	    qmg-420	qmg-422
+qme-125        v	   v
+qme-400??      x	   v
+
+There is also a qmg-421, with only few? changes from 422. We have been unable to get the manual for it.
+
+
+The drivers in principle implements an interface, but it is not inforced. Mass time is run by setting channels list and settings asking mass time to only run it once, whereafter the driver is asked if there is a sample ready, which is assumed to be associated with the next channel in the list.
+
+NOTE: At present mass scan integration time is not exposed as settings and is only available by editing driver code.
+
