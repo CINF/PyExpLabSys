@@ -1,0 +1,4 @@
+id: hostchecker-volvo
+purpose: Updates hostchecker table in MySQL server
+
+This raspberry pi periodically (every minute) asks all machines for status and updates the hostchecker table in the MySQL server
