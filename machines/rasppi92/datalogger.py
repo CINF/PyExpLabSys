@@ -48,7 +48,7 @@ class Reader(threading.Thread):
             measurement_time = time.time() - t_start
             print(measurement_time)
             print('Measurement frequency: ' + str(avg_length / measurement_time))
-            rms_value = np.sqrt(np.mean(np.square(values)))
+            rms_value = np.sqrt(np.mean(np.square(values))) # pylint: disable=no-member
             self.rms_vibration = rms_value
 
 def main():
@@ -61,7 +61,7 @@ def main():
     l3g4200d_reader.start()
 
     ais328dq_instance = ais328dq.AIS328DQTR()
-    ais328dq_reader = Reader(ais328dq_instance) 
+    ais328dq_reader = Reader(ais328dq_instance)
     ais328dq_reader.start()
 
     time.sleep(2.5)
