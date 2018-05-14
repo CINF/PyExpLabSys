@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI82_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>30</startdelay>
+    <command>python3 datalogger.py</command>
+    <name>H2 pressure monitor</name>
+  </session>
+</autostart>
