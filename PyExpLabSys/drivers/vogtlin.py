@@ -101,7 +101,9 @@ class RedFlowMeter(object):
         """
         # Ensure waittime
         waittime = 0.004 / 9600 * self.serial_com_kwargs['BAUDRATE']
-        sleep(waittime - (time() - self._last_call))
+        time_to_sleep = waittime - (time() - self._last_call)
+        if time_to_sleep > 0:
+            sleep(time_to_sleep)
 
         # Extract command_spec
         try:
@@ -131,7 +133,7 @@ class RedFlowMeter(object):
         """Return the current flow (alias for read_value('flow')"""
         return self.read_value('flow')
 
-    def read_temperatre(self):
+    def read_temperature(self):
         """Return the current temperature"""
         return self.read_value('temperature')
 
