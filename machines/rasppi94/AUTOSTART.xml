@@ -1,0 +1,13 @@
+<autostart>
+  <name>RASPPI94_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>20</startdelay>
+    <command>python datalogger.py</command>
+    <name>Internal temperature logger</name>
+  </session>
+  <session>
+    <startdelay>20</startdelay>
+    <command>python chiller_logger.py</command>
+    <name>Chiller logger</name>
+  </session>
+</autostart>
