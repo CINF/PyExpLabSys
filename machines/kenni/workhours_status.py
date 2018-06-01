@@ -13,29 +13,61 @@ if sys.version_info.major < 3:
     print("NO! Use Python 3")
     sys.exit(1)
 
+difference = 0
+if len(sys.argv) > 1:
+    try:
+        difference = int(sys.argv[1])
+    except ValueError:
+        print("Argument must be negative integer. IGNORED.")
+
 cal = calendar.Calendar()
 
 now = datetime.now()
+year = now.year
+month = now.month
+end_day_to_list = now.day
+if difference != 0:
+    end_day_to_list = calendar.monthrange(year, month)[1] + 1
+    if now.month == 1:
+        year -= 1
+        month = 12
+    else:
+        month -= 1
+    print("#############################")
+    print("# Showing stats for {}-{:0>2} #".format(year, month))
+    print("#############################")
+
+
 
 # NOTE in Python 0 is monday
 days = []
-for daynumber in range(1, now.day):
-    day = datetime(now.year, now.month, daynumber, 12)
+for daynumber in range(1, end_day_to_list):
+    day = datetime(year, month, daynumber, 12)
     days.append((daynumber, day.weekday()))
-#print(days)
 
 conn = sqlite3.connect('/home/kenni/.local/share/hamster-applet/hamster.db')
 c = conn.cursor()
 
-query = (
-    "select "
-    "    date(start_time), "
-    "    cast(strftime(\"%d\", start_time) as int), "
-    "    (JulianDay(end_time) - JulianDay(start_time)) * 24 "
-    "from facts "
-    "where date(start_time) >= date('now','start of month') AND "
-    "date(start_time) < date('now')"
-)
+if difference == 0:
+    query = (
+        "select "
+        "    date(start_time), "
+        "    cast(strftime(\"%d\", start_time) as int), "
+        "    (JulianDay(end_time) - JulianDay(start_time)) * 24 "
+        "from facts "
+        "where date(start_time) >= date('now','start of month') AND "
+        "date(start_time) < date('now')"
+    )
+else:
+    query = (
+        "select "
+        "    date(start_time), "
+        "    cast(strftime(\"%d\", start_time) as int), "
+        "    (JulianDay(end_time) - JulianDay(start_time)) * 24 "
+        "from facts "
+        "    where strftime('%Y', start_time) == '{0}' and "
+        "    strftime('%m', start_time) == '{1:0>2}'"
+    ).format(year, month)
 
 # 0 is sunday
 c.execute(query)
@@ -43,6 +75,7 @@ hours_worked = defaultdict(float)
 for line in c.fetchall():
     datestring, daynumber, hours = line
     hours_worked[daynumber] += hours
+
 
 # Do the rest of the math
 sum_ = sum(hours_worked.values())
@@ -61,6 +94,10 @@ for daynumber, weekday in days:
             )
         else:
             number_of_workdays_with_hours += 1
+
+if number_of_workdays + number_of_workdays_with_hours == 0:
+    print("No days yet in this month to do statistics on")
+    sys.exit(0)
 
 print("########################################")
 print("Table")
