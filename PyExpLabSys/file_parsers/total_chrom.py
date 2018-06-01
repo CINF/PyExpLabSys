@@ -3,7 +3,7 @@
 """Experimental parser for total_chrom files from Perkin-Elmer GC's"""
 
 
-#from pprint import pprint
+from pprint import pprint
 from struct import unpack, calcsize
 
 from numpy import fromfile
@@ -187,8 +187,9 @@ def parse_simple_types(specification, file_):
             #        unix_time
             #    ).strftime('%Y-%m-%d %H:%M:%S')
             #)
-            #timestamp = unpack('>bbhbbbb', file_.read(8))
-            #print(timestamp)
+            timestamp = unpack('>bbhbbbb', file_.read(8))
+            #timestamp = unpack('>hBBBBBB', file_.read(8))
+            #print("TIMESTAMP", timestamp)
             #file_.read(11)
 
             # Just save unix time for now
@@ -255,3 +256,6 @@ def module_demo():
                 '=-2_NoRamp.raw')
     raw_file = Raw(filepath)
     print(raw_file)
+
+if __name__ == '__main__':
+    module_demo()
