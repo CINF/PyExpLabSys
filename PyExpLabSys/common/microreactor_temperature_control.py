@@ -60,7 +60,7 @@ class CursesTui(threading.Thread):
             self.screen.addstr(17, 40, "Total Power1: {0:.3f}W        ".format(
                 power1 + power2))
 
-            self.screen.addstr(19, 2, "press [q] to quit")
+            self.screen.addstr(19, 2, "Keys: (i)ncrement, (d)ecrement and (q)uit")
 
             
             key_val = self.screen.getch()
