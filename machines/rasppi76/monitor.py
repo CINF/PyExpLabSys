@@ -11,10 +11,10 @@ pressure controllers.
 """
 
 from queue import Queue, Empty
-from time import sleep
+from time import sleep, time
 
 from PyExpLabSys.drivers.microchip_tech_mcp3428 import MCP3428
-from PyExpLabSys.drivers.analogdevices_ad5667 import AD5667
+#from PyExpLabSys.drivers.analogdevices_ad5667 import AD5667
 from PyExpLabSys.common.sockets import DataPushSocket
 
 from PyExpLabSys.common.supported_versions import python3_only
@@ -27,7 +27,7 @@ class I2CComm(object):
     def __init__(self):
         self.measurements = {}
         self.mcp3428 = MCP3428()
-        self.ad5667 = AD5667()
+        #self.ad5667 = AD5667()
         self.dps = DataPushSocket(
             'large_CO2_mea_push_socket',
             action='callback_direct',
@@ -45,10 +45,15 @@ class I2CComm(object):
 
     def measure(self):
         """Main measure loop (busy)"""
+        last_print = 0
         while True:
             for channel in range(1, 5):
                 self.measurements[channel] = self.mcp3428.read_sample(channel)
-            print("Measured:", self.measurements)
+
+            now = time()
+            if (now - last_print) > 10:
+                print(now, "Measured:", self.measurements)
+                last_print = now
 
             try:
                 values_to_set = self.comm_flag.get(block=False)
@@ -59,8 +64,8 @@ class I2CComm(object):
             if "no_voltages_to_set" not in values_to_set:
                 print("Asked to set DAC values", values_to_set)
                 sleep(0.01)
-                self.ad5667.set_channel_A(values_to_set['A'])
-                self.ad5667.set_channel_B(values_to_set['B'])
+                #self.ad5667.set_channel_A(values_to_set['A'])
+                #self.ad5667.set_channel_B(values_to_set['B'])
                 sleep(0.01)
             self.comm_return.put(dict(self.measurements))
 
@@ -76,9 +81,20 @@ class I2CComm(object):
         from the ADC
 
         """
+        print("Received comm request")
+        # Make sure there are no results hanging in the result queue
+        while True:
+            try:
+                self.comm_return.get(block=False)
+            except Empty:
+                break
+
+        print("Set comm flag")
         self.comm_flag.put(data)
+
         # Wait until we get values back
         result = self.comm_return.get()
+        print("Got result, return")
         return result
 
 
