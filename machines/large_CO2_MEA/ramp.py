@@ -18,6 +18,10 @@ POWER_SUPPLY_COM_PORT = "COM6"
 RASPPI_HOST = 'rasppi76'
 RASSPI_PORT = 8500
 
+# Specifiy the cathode area for the current density
+area = 4.00
+# Specify the gas flow 
+setpoint_gas_flow = 10.0
 
 
 # Specify measurement type
@@ -30,6 +34,7 @@ metadata = {
     'cathode_catalyst_description': "Ag membrane size: 4.34cm2",  #  "This is what it is made of: 4cm2"
     'anode_catalyst_description': "IrO2 from sustainiom",
 }
+
 
 
 RAMP = [
