@@ -4,7 +4,7 @@
 common_sql_reader_user: 'cinf_reader'
 common_sql_reader_password: 'cinf_reader'
 # The host can be hostname or IP-address
-common_liveserver_host: 'cinf-wsserver'
+common_liveserver_host: 'cinf-wsserver.fysik.dtu.dk'
 common_liveserver_port: 9767
 
 # PyExpLabSys.common.utilities settings

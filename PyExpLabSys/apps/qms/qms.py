@@ -73,8 +73,12 @@ class QMS(object):
         information from the arguments as well as what can be
         auto-generated.
         """
-        cnxn = MySQLdb.connect(host="servcinf-sql", user=self.credentials,
-                               passwd=self.credentials, db="cinfdata")
+        cnxn = MySQLdb.connect(
+            host="servcinf-sql.fysik.dtu.dk",
+            user=self.credentials,
+            passwd=self.credentials,
+            db="cinfdata",
+        )
 
         cursor = cnxn.cursor()
 

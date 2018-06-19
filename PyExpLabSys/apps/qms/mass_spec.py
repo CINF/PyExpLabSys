@@ -71,7 +71,7 @@ class MassSpec(object):
         self.printer.start()
 
     def __del__(self):
-        self.printer.stop()
+        pass  #self.printer.stop()
 
     def sem_and_filament(self, turn_on=False, voltage=1800):
         """ Turn on and off the mas spec """
@@ -111,12 +111,13 @@ class MassSpec(object):
 
 if __name__ == '__main__':
     MS = MassSpec()
-    #MS.sem_and_filament(True, 1800)
-    #time.sleep(10)
-    MS.leak_search()
+    MS.sem_and_filament(True, 1800)
+    time.sleep(10)
+    #MS.leak_search()
 
-    #MS.mass_time_scan()
+    MS.mass_time_scan()
 
+   # MS.mass_scan(0, 50, 'flow6', amp_range=-11)
     #MS.mass_scan(0, 50, 'After power line cleanup', amp_range=-11)
 
     #MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
