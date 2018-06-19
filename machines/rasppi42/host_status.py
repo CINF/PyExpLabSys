@@ -193,8 +193,12 @@ def main():
     hosts = queue.Queue()
 
     #TODO: The contact information should not be in this file!
-    database = MySQLdb.connect(host='servcinf-sql', user='cinf_reader',
-                               passwd='cinf_reader', db='cinfdata')
+    database = MySQLdb.connect(
+        host='servcinf-sql.fysik.dtu.dk',
+        user='cinf_reader',
+        passwd='cinf_reader',
+        db='cinfdata',
+    )
     cursor = database.cursor()
     database.autocommit(True)
 
