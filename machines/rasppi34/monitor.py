@@ -53,7 +53,7 @@ class GasAlarmMonitor(object):
 
         # Init database connection
         self.db_connection = MySQLdb.connect(
-            host='servcinf-sql', user=credentials.USERNAME,
+            host='servcinf-sql.fysik.dtu.dk', user=credentials.USERNAME,
             passwd=credentials.PASSWORD, db='cinfdata')
         self.db_cursor = self.db_connection.cursor()
 
