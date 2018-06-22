@@ -38,7 +38,14 @@ class Reader(threading.Thread):
     def run(self):
         while not self.quit:
             self.ttl = 50
-            self.humidity, self.temperature = self.honeywell.read_values()
+            for n in range(10):
+                try:
+                    self.humidity, self.temperature = self.honeywell.read_values()
+                    break
+                except OSError:
+                    time.sleep(5)
+            else:
+                raise RuntimeError("Ran out of retries")
 
 def main():
     """ Main function """
