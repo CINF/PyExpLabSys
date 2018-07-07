@@ -409,7 +409,8 @@ if __name__ == '__main__':
     pullsocket.start()
     
     # Initalize power supply
-    fug = FUGNTN140Driver(port='/dev/ttyUSB1', device_reset=True)
+    device = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
+    fug = FUGNTN140Driver(port=device, device_reset=True, V_max=12.5, I_max=8)
     fug.output(True)
 
     # Initalize power calculator (PID)
