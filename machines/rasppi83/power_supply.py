@@ -6,6 +6,7 @@ from PyExpLabSys.drivers.fug import FUGNTN140Driver# as FUG
 from PyExpLabSys.common.sockets import DateDataPullSocket
 #from pull import DateDataPullClient
 from heat_ramp import PowerCalculatorClassOmicron
+import fit_ramp
 #import numpy as np
 
 import threading
@@ -74,15 +75,15 @@ class CursesTui(threading.Thread):
         curses.noecho()
         curses.halfdelay(self.settings['halfdelay'])
         self.quit = False
-        self.menu = {1: 'Set voltage', 2: 'Set current', 3: 'Run ramp', 4: 'Reset', 5: 'Ramp settings', 0: 'Quit (Q)'}
+        self.menu = {1: 'Set voltage', 2: 'Set current', 3: 'Run ramp', 4: 'Reset', 5: 'Ramp settings', 6: 'Fitted ramp', 0: 'Quit (Q)'}
         self.cursor = 0
-        self.lst = [1, 2, 3, 4, 5, 0]
+        self.lst = [1, 2, 3, 4, 5, 6, 0]
         self.update_display()
         self.update_menu()
         self.update_values()
         self.update_socket()
 
-    def run_ramp(self):
+    def run_ramp(self, fit=False):
         """Ramp function (PID controlled heating)"""
         
         self.values['status'] = 'Ramp running...'
@@ -110,8 +111,24 @@ class CursesTui(threading.Thread):
         self.ramp['start current'] = self.values['current_mon']
         
         # PID controlled heating ramp
+        t0 = time.time()
         while True:
-            setpoint = self.calc.values['pid'] + self.ramp['start current']
+
+            # Use PID setpoint
+            if fit is False:
+                setpoint = self.calc.values['pid'] + self.ramp['start current']
+
+            # Use fitted setpoint
+            else:
+                t_now = time.time() - t0
+                if t_now < fit_ramp.t_change:
+                    param = fit_ramp.param1
+                else:
+                    param = fit_ramp.param2
+                setpoint = fit_ramp.poly_current(t_now, param)
+                if t_now > fit_ramp.t_end: # Make loop break on next if
+                    setpoint = self.ramp['stop current'] + 1
+                
             # Break if current would be set too high
             if (setpoint >= self.ramp['stop current']):
                 self.values['status'] = 'Halt: Max current reached'
@@ -183,7 +200,7 @@ class CursesTui(threading.Thread):
 
 
     def stop(self):
-        # Stop curses
+        # Return terminal to before curses changes
         self.quit = True
         self.screen.keypad(0)
         curses.nocbreak()
@@ -238,7 +255,9 @@ class CursesTui(threading.Thread):
         return float(string)
 
     def function(self, num=4):
-        """Shortcut to different menus. Default is \"Reset\""""
+        """Shortcut to different menus. Default is \"Reset\"
+To add elements to menu, add functionality here, and add the menu element in
+__init__ under 'self.menu' and 'self.lst'"""
         if num == 1:
             # Set voltage
             cmd = self.get_input(1,2)
@@ -275,6 +294,9 @@ class CursesTui(threading.Thread):
         elif num == 5:
             # Edit ramp options
             self.edit_parameters()
+        elif num == 6:
+            # Run ramp with fitted parameters
+            self.run_ramp(fit=True)
         elif num == 0:
             # Close program
             self.values['status'] = 'Shutting down...'
@@ -376,6 +398,8 @@ information accordingly """
                     self.function(4)
                 elif c == ord('5'):
                     self.function(5)
+                elif c == ord('6'):
+                    self.function(6)
                 elif c == ord('0') or c == ord('Q'): # Stop
                     self.function(0)
                 else:
