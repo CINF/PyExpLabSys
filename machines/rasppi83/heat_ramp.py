@@ -36,7 +36,7 @@ class PowerCalculatorClassOmicron(threading.Thread):
 
     def get_temperature(self):
         """Updates the temperature (Kelvin)"""
-        self.values['temperature'] = self.comms['temperature'].get_field('omicron_tpd_temperature')[1]
+        self.values['temperature'] = self.comms['temperature'].get_field('omicron_tpd_sample_temperature')[1]
         return self.values['temperature']
 
 
