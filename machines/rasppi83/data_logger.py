@@ -39,6 +39,7 @@ class TcReader(threading.Thread):
         self.db_logger = db_logger
         self.codename = codename
         print('Module ready')
+        self.output = output
 
     def value(self):
         """ Return current value of reader """
@@ -72,7 +73,7 @@ class TcReader(threading.Thread):
                         if self.logger.check(self.codename, self.temperature):
                             self.db_logger.save_point_now(self.codename, self.temperature)
                             print(self.codename + ': ' + str(self.temperature))
-                    if output:
+                    if self.output:
                         print(self.temperature, time.time()-t0, time.time()-lasttime)
                         lasttime = time.time()
                 except:
@@ -80,7 +81,7 @@ class TcReader(threading.Thread):
                     print('Error value: {}'.format(error))
                     if error > 9:
                         self.stop()
-                        raise ValueError
+                        raise
         except KeyboardInterrupt:
             print('Force quit activated')
             self.stop()
