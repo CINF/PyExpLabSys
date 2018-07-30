@@ -153,7 +153,7 @@ class LoggingCriteriumChecker(object):
         except KeyError:
             raise KeyError('Codename \'{}\' is unknown'.format(codename))
 
-        # Pull out last value and update it with current
+        # Pull out last value and update it with current  # FIXME STUPID
         last = self.last_values.get(codename)
         self.last_values[codename] = value
 
