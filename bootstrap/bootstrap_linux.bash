@@ -9,13 +9,13 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp python python3 i2c-tools"
+apt1="openssh-server emacs graphviz screen ntp python python3 i2c-tools vim-nox"
 
 # apt install packages line 2, python extensions
 #
 # NOTE: This line used to contain colorama, but it is a dependency of
 # pip, so it will be installed anyway
-apt2="python-pip python-mysqldb python3-pip"
+apt2="python-pip python-mysqldb python3-pip python-numpy python3-numpy"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
 declare -a apt3=("libpython2.7-dev" "libpython3-dev" "python-dev" "python3-dev" "libmysqlclient-dev" "libmariadbclient-dev")
