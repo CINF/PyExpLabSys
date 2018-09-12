@@ -650,6 +650,13 @@ class PicasoCommon(object):
         command = b'\xFF\xC4' + to_words(top_left, bottom_right, self._to_16_bit_rgb(color))
         self._send_command(command)
 
+    # Sub-section .14
+    def put_pixel(self, x, y, color):
+        """Set a pixel
+        """
+        command = b'\xFF\xC1' + to_words(x, y, self._to_16_bit_rgb(color))
+        self._send_command(command)
+
     def move_origin(self, x, y):
         """Move the origin to a point, forming the basis for the next graphics
         or text command
