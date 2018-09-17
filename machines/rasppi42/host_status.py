@@ -228,7 +228,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+    minutes_failed = 0
     while True:
         time.sleep(60)
-        main()
- 
+        try:
+            main()
+        except MySQLdb.OperationalError:
+            minutes_failed += 1
+            # We allow up to 15 min downtime, before finally giving up
+            if minutes_failed > 15:
+                raise
+        else:
+            minutes_failed = 0
