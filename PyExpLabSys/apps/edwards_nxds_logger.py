@@ -104,11 +104,12 @@ def main():
                     loggers[port + channel].clear_trigged()
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        break
-    except ValueError as exception:
-        # May be caused by pumps going away
-        time.sleep(300)
-        print("Got '{}'. Wait 5 min and restart.".format(exception))
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt:
+            break
+        except ValueError as exception:
+            # May be caused by pumps going away
+            time.sleep(300)
+            print("Got '{}'. Wait 5 min and restart.".format(exception))
