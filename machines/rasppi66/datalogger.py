@@ -44,11 +44,13 @@ class Reader(threading.Thread):
         while not self.quit:
             pressures = []
             self.ttl = 50
-            for _ in range(0, 100):
+            t = time.time()
+            for _ in range(0, 50):
                 pressure = self.omron.read_pressure()
                 pressures.append(pressure)
             self.pressure = sum(pressures) / len(pressures)
             self.humidity, self.temperature = self.honeywell.read_values()
+            print(time.time() - t)
 
 
 def main():
@@ -61,12 +63,12 @@ def main():
     reader = Reader(omron_instance, hih_instance)
     reader.start()
 
-    time.sleep(2.5)
+    time.sleep(5)
 
     codenames = ['hall_ventilation_pressure', 'hall_temperature', 'hall_humidity']
 
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(reader, comp_val=1.5, maximumtime=600,
+    loggers[codenames[0]] = ValueLogger(reader, comp_val=1.0, maximumtime=300,
                                         comp_type='lin', channel=0)
     loggers[codenames[0]].start()
     loggers[codenames[1]] = ValueLogger(reader, comp_val=0.2, maximumtime=600,
