@@ -103,4 +103,12 @@ def main():
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except OSError as exception:
+            print("Got '{}'. Wait 10 min and restart.".format(exception))
+            time.sleep(600)
+        except KeyboardInterrupt:
+            print("Quitting")
+            break
