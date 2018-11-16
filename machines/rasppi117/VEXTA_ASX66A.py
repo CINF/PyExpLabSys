@@ -31,26 +31,15 @@ class VEXTA(object):
             maxpos=325.,
             minpos=25.,
             user_unit='mm',
-            dist_per_rev=1
+            dist_per_rev=1,
+            eol='\r\n',
         ):
         """Initialize object variables
 
         """
-        # Retrieve system information
-        import platform
-        system = platform.system()
-        if system == 'Linux':
-            print('Linux environment')
-            eol = '\r\n'
-        elif system == 'Windows':
-            print('Windows environment')
-            eol = '\n'
-        elif system == 'Darwin':
-            raise OSError('Mac not supported presently')
-        print('End of line used: ' + repr(eol))
-
 
         # Open a serial connection to port
+        self.eot = b'>' # End-of-transmission character
         timeout_counter = 0
         while timeout_counter < 10:
             timeout_counter += 1
@@ -60,7 +49,7 @@ class VEXTA(object):
                 parity=parity,
                 stopbits=stopbits,
                 bytesize=bytesize,
-                timeout=0.1,
+                timeout=0.025,
             )
             time.sleep(1)
             try:
@@ -95,12 +84,41 @@ class VEXTA(object):
         byte_command = command + self.ser.eol
         self.ser.write(byte_command.encode())
 
+    def _flush(self):
+        """Flush input buffer"""
+        print(self.ser.read(self.ser.inWaiting()))
+        return
+
     def read_all(self):
         """WRITE ME"""
 
         return self.ser.readlines()
 
-    def query(self, command, output=None, debug=True):
+    def read(self, twait=0.010):
+        """Read output from device"""
+        output = b''
+        timeout = 1.0
+        time.sleep(0.020)
+        t0 = time.time()
+        while True:
+            print(self.ser.inWaiting())
+            if time.time()-t0 > timeout:
+                print('Timeout')
+                print(output.decode('ascii'))
+                break
+            elif self.ser.inWaiting() > 0:
+                string = self.ser.read(self.ser.inWaiting())
+                #print()
+                #print(string.decode('ascii'))
+                #print()
+                output += string
+                if self.eot in string:
+                    return output
+            else:
+                time.sleep(twait)
+            
+
+    def query(self, command, output=None, debug=False, reader=0):
         """Query a command.
         Will currently also set values if given after the command. Differing from the write function,
         query however also displays the result.
@@ -110,19 +128,29 @@ class VEXTA(object):
         output (type): None (default), str, bool, float, int
         """
 
+        t0 = time.time()
         if not output in [str, bool, float, int, None, 'raw']:
             message = '\'output\' must be one of following: str, bool, float, int, None (default)'
+            print(time.time() - t0)
             raise TypeError(message)
         #print('Writing command: ' + repr(command))
         self._write(command)
 
         # Get response
-        response = self.read_all()
+        #if output is None:
+        #    return
+        if reader == 0:
+            response = self.read_all()
+        elif reader == 1:
+            response = self.read()
+        else:
+            self._flush()
         error = [x.decode().rstrip('\r\n').lstrip() for x in response if 'error' in x.decode().lower()]
         if output == 'raw':
             new_response = []
             for line in response:
                 new_response.append(line.decode())
+            print('Raw COMM time: {}'.format(time.time() - t0))
             return new_response
         response = [x.decode().rstrip('\r\n') for x in response if '=' in x.decode()]
         if len(error) == 0:
@@ -130,8 +158,10 @@ class VEXTA(object):
                 if debug:
                     print(line)
             if output == bool:
+                print(time.time() - t0)
                 return output(int(get_str_output(line)))
             elif output:
+                print(time.time() - t0)
                 return output(get_str_output(line))
         else:
             for line in error:
@@ -223,22 +253,12 @@ class VEXTA(object):
             while not self.abort:
                 if self.is_running():
                     pass
-                    #if numpad:
-                    #    try:
-                    #        key = numpad.key.pop(0)
-                    #        if key == numpad.KEY_ESC:
-                    #            self.abort = True
-                    #    except IndexError:
-                    #        pass
-                    #else:
-                    #    pass
                 else:
                     print('Finished moving!')
                     self.get_position()
                     return True
             else:
                 self.escape()
-                time.sleep(0.1)
                 self.get_position()
                 return False
         except KeyboardInterrupt:
@@ -249,7 +269,9 @@ class VEXTA(object):
 
     def verify_x(self, x, mode='inc'):
         """Check an x input versus the limits and return corrected value"""
-
+        # 225 ms +- 5 ms
+        
+        t0 = time.time()
         # Get current position
         x_now = self.query('pc', output=float)
         error = False
@@ -267,6 +289,7 @@ class VEXTA(object):
         if x_now < self.minpos or x_now > self.maxpos:
             error = True
             print('Outside defined limits! Current position: {} [{},{}]'.format(x_now, self.minpos, self.maxpos))
+            print('Time lapse for verify_x: {} s'.format(time.time()-t0))
             return x_new, error
 
         # Check limits
@@ -283,8 +306,10 @@ class VEXTA(object):
                 print('Too large step!\nPos now: {}\nPos after: {}\nLimit: [{},{}]'.format(x_now, x_now + x, self.minpos, self.maxpos))
 
         # Return
+        print('Time lapse for verify_x: {} s'.format(time.time()-t0))
         return x_new, error
-        
+
+       
 
 def connect_Z_Y(mdriver=VEXTA):
     """Connect both motors"""
@@ -293,11 +318,7 @@ def connect_Z_Y(mdriver=VEXTA):
     from serial.serialutil import SerialException
 
     system = platform.system()
-    if system == 'Linux':
-        #list_of_ports = ['/dev/ttyUSB{}'.format(i) for i in range(10)]
-        print('Linux environment')
-    elif system == 'Windows':
-        print('Windows environment')
+    
 
     # Get a list of available USB ports
     list_of_ports = serial.tools.list_ports.comports()
@@ -353,7 +374,7 @@ def connect_Z_Y(mdriver=VEXTA):
         Z.minpos = 25
         Z.maxpos = 325
     if Y:
-        Y.minpos = 46.5
+        Y.minpos = 42.5
         Y.maxpos = 65
     return Z, Y
 
@@ -383,6 +404,13 @@ class ZY_raster_pattern(threading.Thread):
                    'Y': Y.get_running_velocity()}
         self.running = False
         self.status = ''
+        self.logname = 'raster.log'
+        f = open(self.logname, 'w')
+        f.write('Log for rastering created {}\r\n'.format(time.asctime()))
+        f.write('Raster file: {}\r\n'.format(pattern_name))
+        f.write(str(self.data) + '\r\n')
+        f.write(str(self.pattern) + '\r\n')
+        f.close()
 
     def run(self):
         # Only start if pattern is complete
@@ -415,22 +443,33 @@ class ZY_raster_pattern(threading.Thread):
         # Loop
         print('Begin rastering')
         self.status = 'Rastering'
-        print(self.pattern) # remove when checked
+        #print(self.pattern) # remove when checked
         size_of_pattern = len(self.pattern)
+        f = open(self.logname, 'a')
+        f.write('Size of pattern: {}\r\n<---->\r\n'.format(size_of_pattern))
+        f.write('Counter,t_start,t1,t2,t3,t_end\r\n')
+        t0 = time.time()
         while self.running and not self.motor['Z'].move_error and not self.motor['Y'].move_error:
             counter = 0
             for (axis, dist) in self.pattern:
+                tstart = time.time() - t0
                 counter += 1
                 print('** Step {} of {} **'.format(counter, size_of_pattern))
                 dist = dist*self.data['step_size']
                 print(axis, dist)
+                t1 = time.time() - t0
                 status = self.motor[axis].increment(dist)
+                t2 = time.time() - t0
                 complete = self.motor[axis].wait_for_motion()
+                t3 = time.time() - t0
                 if not status or not complete or not self.running:
                     print('Raster program broken off during rastering!')
                     self.status = 'ERR: Rastering ended.'  
                     break
+                tend = time.time() - t0
+                f.write('{},{},{},{},{},{}\r\n'.format(counter, tstart, t1, t2, t3, tend))
         for axis in ['Z', 'Y']:
+            f.write('Returning to center,{}\r\n'.format(time.time()-t0))
             status = self.motor[axis].move(self.pos[axis])
             complete = self.motor[axis].wait_for_motion()
             print('Should be back to origin.')
@@ -439,11 +478,45 @@ class ZY_raster_pattern(threading.Thread):
             print('Error messages:')
             for i in self.motor[axis].error_msg:
                 print(i)
+        f.close()
         self.status = 'Done'
 
     def stop(self):
         """Stop raster function """
         self.running = False
+
+import numpy as np
+def timeit(cmd, num, *args, **kwargs):
+    """Time a command"""
+
+    times = np.zeros(num)
+    for i in range(num):
+        t0 = time.time()
+        a=cmd(*args, **kwargs)
+        times[i] = time.time()-t0
+        #print('Lapsed time: {}'.format(np.avg))
+    return times
+
+def test_comm(cmd, t, num=20):
+    t0 = time.time()
+    Z._write(cmd)
+    nbytes = Z.ser.inWaiting()
+    for i in range(num):
+        time.sleep(t)
+        if Z.ser.inWaiting() > nbytes:
+            nbytes = Z.ser.inWaiting()
+            print(i, time.time()-t0, nbytes)
+    print('Total time: {} ({} bytes)'.format(time.time()-t0, Z.ser.inWaiting()))
+
+def fun(cmd, *args, **kwargs):
+    Z._write(cmd)
+    a=Z.read(*args, **kwargs)
+    return a
+
+def fun1(cmd, *args, **kwargs):
+    a=Z.query(cmd, *args, **kwargs)
+    return a
+
 
 if __name__ == '__main__':
     print(sys.version)
