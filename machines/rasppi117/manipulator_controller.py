@@ -206,7 +206,7 @@ class TUI(object):
             self.picaso.move_origin(x, y)
             
             # Continue if NUMLOCK is deactivated
-            if not led_state_keypad(numpad):
+            if not numpad.led_on:#led_state_keypad(numpad):
                 continue
 
             if key == ENTER:
@@ -361,7 +361,7 @@ class TUI(object):
                 continue
             
             # Continue if NUMLOCK is deactivated
-            if not led_state_keypad(numpad):
+            if not numpad.led_on:#led_state_keypad(numpad):
                 continue
 
             # See menu
@@ -564,7 +564,7 @@ class TUI(object):
                 continue
                 
             # Continue if NUMLOCK is deactivated
-            if not led_state_keypad(numpad):
+            if not numpad.led_on:#led_state_keypad(numpad):
                 continue
 
             # See menu
@@ -695,7 +695,7 @@ class TUI(object):
                 continue
 
             # Continue if NUMLOCK is deactivated
-            if not led_state_keypad(numpad):
+            if not numpad.led_on:#led_state_keypad(numpad):
                 continue
 
             # See menu
@@ -777,7 +777,7 @@ class TUI(object):
                 continue
             
             # Continue if NUMLOCK is deactivated
-            if not led_state_keypad(numpad):
+            if not numpad.led_on:#led_state_keypad(numpad):
                 continue
 
             # See menu
@@ -924,14 +924,12 @@ def led_state_keypad(numpad):
     """Get LED state of keypad's NUMLOCK
     Used to lock the keypad if NUMLOCK is off.
     """
-
     for (name, value) in numpad.device.leds(verbose=True):
         # Return true if LED is ON
         if name == 'LED_NUML':
             return True
-        # Return false otherwise
-        else:
-            return False
+    # Return false otherwise
+    return False
 
 def empty_queue(numpad):
     """Empty 'numpad' queue element
@@ -979,14 +977,15 @@ if __name__ == '__main__':
 
     
     # Main loop
+    t0 = time.time()
     while True:
-        t0 = time.time()
+        
         try:
             key = numpad.key_pressed_queue.get(timeout=0.01)
             display.last_key = ' '
 
             # Continue if NUMLOCK is deactivated
-            if not led_state_keypad(numpad):
+            if not numpad.led_on:#led_state_keypad(numpad):
                 continue
 
             # See menu
@@ -1035,7 +1034,7 @@ if __name__ == '__main__':
                                 break
                     # Draw pikachu - simply because you can and have nothing better to do...
                     elif user_string == '9999':
-                        continue
+                        continue # because we can't quite yet..
                         (x, y) = display.box2['origin']
                         feed_pikachu(picaso, origin=(x+30, y+20))
                 display.toggled['tog'] = False
