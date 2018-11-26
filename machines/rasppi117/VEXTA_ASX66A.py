@@ -63,6 +63,9 @@ class VEXTA(object):
             sys.exit()
 
         # User constants
+        if self.ser.isOpen():
+            print('Serial connection open')
+            #time.sleep(0.5)
         self.position = -9999
         self.query('pc {}'.format(self.position))
         self.maxpos = maxpos
@@ -94,23 +97,19 @@ class VEXTA(object):
 
         return self.ser.readlines()
 
-    def read(self, twait=0.010):
+    def read(self, twait=0.003):
         """Read output from device"""
         output = b''
-        timeout = 1.0
-        time.sleep(0.020)
+        timeout = 0.50
+        time.sleep(0.015)
         t0 = time.time()
         while True:
-            print(self.ser.inWaiting())
+            #print(self.ser.inWaiting())
             if time.time()-t0 > timeout:
                 print('Timeout')
-                print(output.decode('ascii'))
-                break
+                return output
             elif self.ser.inWaiting() > 0:
                 string = self.ser.read(self.ser.inWaiting())
-                #print()
-                #print(string.decode('ascii'))
-                #print()
                 output += string
                 if self.eot in string:
                     return output
@@ -118,7 +117,7 @@ class VEXTA(object):
                 time.sleep(twait)
             
 
-    def query(self, command, output=None, debug=False, reader=0):
+    def query(self, command, output=None, debug=False, reader=1):
         """Query a command.
         Will currently also set values if given after the command. Differing from the write function,
         query however also displays the result.
@@ -128,10 +127,10 @@ class VEXTA(object):
         output (type): None (default), str, bool, float, int
         """
 
-        t0 = time.time()
+        #t0 = time.time()
         if not output in [str, bool, float, int, None, 'raw']:
             message = '\'output\' must be one of following: str, bool, float, int, None (default)'
-            print(time.time() - t0)
+            #print(time.time() - t0)
             raise TypeError(message)
         #print('Writing command: ' + repr(command))
         self._write(command)
@@ -140,29 +139,32 @@ class VEXTA(object):
         #if output is None:
         #    return
         if reader == 0:
-            response = self.read_all()
+            response = b''.join(self.read_all())
+            print(response, type(response))
         elif reader == 1:
             response = self.read()
-        else:
-            self._flush()
-        error = [x.decode().rstrip('\r\n').lstrip() for x in response if 'error' in x.decode().lower()]
+            #return response
+        #else:
+        #    self._flush()
+        #    return
+        response = response.decode('ascii')
+        error = [x.strip() for x in response.split('\r\n') if 'error' in x.lower()]
         if output == 'raw':
-            new_response = []
-            for line in response:
-                new_response.append(line.decode())
-            print('Raw COMM time: {}'.format(time.time() - t0))
-            return new_response
-        response = [x.decode().rstrip('\r\n') for x in response if '=' in x.decode()]
+            #new_response = []
+            #for line in response:
+            #    new_response.append(line.decode())
+            #print('Raw COMM time: {}'.format(time.time() - t0))
+            return response
+        response = [x.strip() for x in response.split('\r\n') if '=' in x]
         if len(error) == 0:
-            for line in response:
-                if debug:
-                    print(line)
+            if debug:
+                print(response, error, output)
             if output == bool:
-                print(time.time() - t0)
-                return output(int(get_str_output(line)))
+                #print('Query BOOL time: {} s'.format(time.time() - t0))
+                return [output(int(get_str_output(line))) for line in response]
             elif output:
-                print(time.time() - t0)
-                return output(get_str_output(line))
+                #print('Query OUTPUT time: {} s'.format(time.time() - t0))
+                return [output(get_str_output(line)) for line in response]
         else:
             for line in error:
                 print(line)
@@ -208,15 +210,15 @@ class VEXTA(object):
 
         x = self.query('pc', output=float)
         if position:
-            self.position = x
-        return x
+            self.position = x[0]
+        return x[0]
 
     def set_position(self, x):
         self.query('pc {}'.format(x))
         self.position = x
 
     def get_running_velocity(self):
-        return self.query('vr', output=float)
+        return self.query('vr', output=float)[0]
 
     def set_running_velocity(self, vr):
         return self.query('vr {}'.format(vr))
@@ -224,7 +226,8 @@ class VEXTA(object):
     def get_distance_per_revolution(self):
         """Read DPR in order to distinguish between motor Z and Y """
         response = self.query('dpr', output='raw')
-        part_response = response[1].rstrip('\r\n').split('=')[1]
+        part_response = [line.strip() for line in response.split('\r\n') if '=' in line]
+        part_response = part_response[0].split('=')[1]
         dpr_now, rest_string = part_response.split('(')
         dpr_set, unit = rest_string.split(') ')
         if dpr_now != dpr_set:
@@ -234,8 +237,8 @@ class VEXTA(object):
     def escape(self):
         """<ESC> command. Abort current motion/sequence."""
 
-        self._write(chr(27))
-
+        self.query(chr(27))
+        
     def run_motion(self, x):
         """FIX ME... Meant as a sequence as motions"""
         self.increment(x)
@@ -244,7 +247,7 @@ class VEXTA(object):
 
     def is_running(self):
         """Query device whether a motion is still running"""
-        return self.query('sigmove', output=bool, debug=False)
+        return self.query('sigmove', output=bool, debug=False)[0]
 
     def wait_for_motion(self, numpad=None):
         """Pause until end of motion"""
@@ -255,16 +258,16 @@ class VEXTA(object):
                     pass
                 else:
                     print('Finished moving!')
-                    self.get_position()
+                    #self.get_position()
                     return True
             else:
                 self.escape()
-                self.get_position()
+                #self.get_position()
                 return False
         except KeyboardInterrupt:
             self.escape()
             time.sleep(0.1)
-            self.get_position()
+            #self.get_position()
             return False
 
     def verify_x(self, x, mode='inc'):
@@ -273,7 +276,7 @@ class VEXTA(object):
         
         t0 = time.time()
         # Get current position
-        x_now = self.query('pc', output=float)
+        x_now = self.query('pc', output=float)[0]
         error = False
 
         # Correct value to absolute number
@@ -328,6 +331,7 @@ def connect_Z_Y(mdriver=VEXTA):
     # Go through list to connect motor Z
     for port in list_of_ports:
         try:
+            print(port.device)
             Z = mdriver(port=port.device)
             dpr, unit = Z.get_distance_per_revolution()
 
@@ -346,9 +350,12 @@ def connect_Z_Y(mdriver=VEXTA):
                 counter += 1
                 continue
         except SerialException:
+            print('SerialException', counter)
             pass
         except IndexError:
+            print('IndexError')
             Z.ser.close()
+            #raise
         counter += 1
     else:
         Z = None
@@ -381,7 +388,7 @@ def connect_Z_Y(mdriver=VEXTA):
 class ZY_raster_pattern(threading.Thread):
     """Function to load and execute raster patterns"""
 
-    def __init__(self, pattern_name, Z=None, Y=None):
+    def __init__(self, pattern_name, Z=None, Y=None, log_raster=False):
         #
         # Initialize Thread
         #super(ZY_raster_pattern,self).__init__()
@@ -404,13 +411,15 @@ class ZY_raster_pattern(threading.Thread):
                    'Y': Y.get_running_velocity()}
         self.running = False
         self.status = ''
-        self.logname = 'raster.log'
-        f = open(self.logname, 'w')
-        f.write('Log for rastering created {}\r\n'.format(time.asctime()))
-        f.write('Raster file: {}\r\n'.format(pattern_name))
-        f.write(str(self.data) + '\r\n')
-        f.write(str(self.pattern) + '\r\n')
-        f.close()
+        self.log_raster = log_raster
+        if self.log_raster:
+            self.logname = 'raster.log'
+            f = open(self.logname, 'w')
+            f.write('Log for rastering created {}\r\n'.format(time.asctime()))
+            f.write('Raster file: {}\r\n'.format(pattern_name))
+            f.write(str(self.data) + '\r\n')
+            f.write(str(self.pattern) + '\r\n')
+            f.close()
 
     def run(self):
         # Only start if pattern is complete
@@ -445,9 +454,10 @@ class ZY_raster_pattern(threading.Thread):
         self.status = 'Rastering'
         #print(self.pattern) # remove when checked
         size_of_pattern = len(self.pattern)
-        f = open(self.logname, 'a')
-        f.write('Size of pattern: {}\r\n<---->\r\n'.format(size_of_pattern))
-        f.write('Counter,t_start,t1,t2,t3,t_end\r\n')
+        if self.log_raster:
+            f = open(self.logname, 'a')
+            f.write('Size of pattern: {}\r\n<---->\r\n'.format(size_of_pattern))
+            f.write('Counter,t_start,t1,t2,t3,t_end\r\n')
         t0 = time.time()
         while self.running and not self.motor['Z'].move_error and not self.motor['Y'].move_error:
             counter = 0
@@ -467,9 +477,11 @@ class ZY_raster_pattern(threading.Thread):
                     self.status = 'ERR: Rastering ended.'  
                     break
                 tend = time.time() - t0
-                f.write('{},{},{},{},{},{}\r\n'.format(counter, tstart, t1, t2, t3, tend))
+                if self.log_raster:
+                    f.write('{},{},{},{},{},{}\r\n'.format(counter, tstart, t1, t2, t3, tend))
         for axis in ['Z', 'Y']:
-            f.write('Returning to center,{}\r\n'.format(time.time()-t0))
+            if self.log_raster:
+                f.write('Returning to center,{}\r\n'.format(time.time()-t0))
             status = self.motor[axis].move(self.pos[axis])
             complete = self.motor[axis].wait_for_motion()
             print('Should be back to origin.')
@@ -478,23 +490,24 @@ class ZY_raster_pattern(threading.Thread):
             print('Error messages:')
             for i in self.motor[axis].error_msg:
                 print(i)
-        f.close()
+        if self.log_raster:
+            f.close()
         self.status = 'Done'
 
     def stop(self):
         """Stop raster function """
         self.running = False
 
-import numpy as np
+#import numpy as np
 def timeit(cmd, num, *args, **kwargs):
     """Time a command"""
 
-    times = np.zeros(num)
+    times = [0]*num
     for i in range(num):
         t0 = time.time()
         a=cmd(*args, **kwargs)
         times[i] = time.time()-t0
-        #print('Lapsed time: {}'.format(np.avg))
+    print('Lapsed time: {}'.format(sum(times)/len(times)))
     return times
 
 def test_comm(cmd, t, num=20):
@@ -526,13 +539,11 @@ if __name__ == '__main__':
         print('Connection succesful!')
         reply = Z.query('dpr', output='raw')
         print('*** Z_dpr ***\n')
-        for i in reply:
-            print(i)
+        print(reply)
         print('-'*5)
         reply = Y.query('dpr', output='raw')
         print('*** Y_dpr ***\n')
-        for i in reply:
-            print(i)
+        print(reply)
         print('-'*5)
     else:
         print('At least one motor connection not detected..')
