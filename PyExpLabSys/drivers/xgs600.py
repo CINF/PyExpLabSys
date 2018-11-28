@@ -5,21 +5,38 @@ import time
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
+
+
 class XGS600Driver():
     """ Driver for XGS600 gauge controller """
-    def __init__(self, port='/dev/ttyUSB1'):
+    def __init__(self, port='/dev/ttyUSB1', timeout=2.0):
         self.serial = serial.Serial(port)
+        self.timeout = timeout
 
-    def xgs_comm(self, command):
+    def xgs_comm(self, command, expect_reply=True):
         """ Implements basic communication """
+        # Write command
         self.serial.read(self.serial.inWaiting()) # Clear waiting characters
-        comm = "#00" + command + "\r"
+        comm = "#00" + command + "\r" # #00 is RS232 communication and #aa is RS485
         self.serial.write(comm.encode('ascii'))
+
+        # Read reply if requested
+        t0 = time.time()
         time.sleep(0.25)
-        number_of_bytes = self.serial.inWaiting()
-        complete_string = self.serial.read(number_of_bytes).decode()
-        complete_string = complete_string.replace('>', '').replace('\r', '')
-        return complete_string
+        if expect_reply:
+            gathered_reply = ''
+            number_of_bytes = self.serial.inWaiting()
+            gathered_reply += self.serial.read(number_of_bytes).decode()
+            while not gathered_reply.endswith('\r'):
+                print("Waiting for rest of reply, reply so far is: ", repr(gathered_reply))
+                number_of_bytes = self.serial.inWaiting()
+                gathered_reply += self.serial.read(number_of_bytes).decode()
+
+                if time.time() - t0 > self.timeout:
+                    raise TimeoutError
+                time.sleep(0.25)
+
+            return gathered_reply.replace('>', '').replace('\r', '')
 
     def read_all_pressures(self):
         """ Read pressure from all sensors """
@@ -33,7 +50,7 @@ class XGS600Driver():
                 pressures = []
                 for press in temp_pressure:
                     if press == 'OPEN':
-                        pressures.append(-1)
+                        pressures.append('OPEN')
                     else:
                         try:
                             pressures.append((float)(press))
@@ -62,7 +79,7 @@ class XGS600Driver():
         return gauges
 
     def read_pressure(self, gauge_id):
-        """ Read the pressure from a specific gauge """
+        """ Read the pressure from a specific gauge gauge_id is represented as Uxxxxx and xxxxx is the userlabel """
         pressure = self.xgs_comm('02' + gauge_id)
         try:
             val = float(pressure)
@@ -72,7 +89,7 @@ class XGS600Driver():
 
     def filament_lit(self, gauge_id):
         """ Report if the filament of a given gauge is lid """
-        filament = self.xgs_comm('34' + gauge_id) 
+        filament = self.xgs_comm('34' + gauge_id)
         return int(filament)
 
     def emission_status(self, gauge_id):
@@ -83,7 +100,7 @@ class XGS600Driver():
 
     def set_smission_off(self, gauge_id):
         """ Turn off emission from a given gauge """
-        self.xgs_comm('30' + gauge_id)
+        self.xgs_comm('30' + gauge_id, expect_reply=False)
         time.sleep(0.1)
         return self.emission_status(gauge_id)
 
@@ -93,7 +110,7 @@ class XGS600Driver():
             command = '31'
         if filament == 2:
             command = '33'
-        self.xgs_comm(command + gauge_id)
+        self.xgs_comm(command + gauge_id, expect_reply=False)
         return self.emission_status(gauge_id)
 
     def read_software_version(self):
@@ -112,6 +129,90 @@ class XGS600Driver():
         if unit == "02":
             unit = "Pascal"
         return(unit)
+
+### Alexander Krabbe tries to code "Whats out" ###
+    def read_setpoint_state(self):
+        """ Read all setpoint states as a hex value.
+
+        Example 0005 corrosponds to state [T,F,T,F,F,F,F,F],
+        and 0002 corrosponds to [F,T,F,F,F,F,F,F]
+        """
+        setpoint_state_string = self.xgs_comm("03")
+        setpoint_state = setpoint_state_string.replace(' ','')
+        hex_to_bi = format(int(setpoint_state, base=16), '0>8b')  # format hex value to binari with 8bit
+        bi_to_bool_list = [char == '1' for char in hex_to_bi]  # make binary number to boolean array
+        states = list(reversed(bi_to_bool_list))  # Reverse boolean array to read states of valves left to right
+
+        return states
+
+    def read_setpoint(self,channel):
+        """ Read the Setpoint OFF/ON/AUTO for channel h in [1-8] """
+        setpoint_string = self.xgs_comm("5F"+str(channel))
+        setpoint = setpoint_string.replace(' ','')
+        if str(setpoint) == "0":
+            status = 'OFF'
+        elif str(setpoint) == "3":
+            status = 'AUTO'
+        elif str(setpoint) == "1":
+            status = 'ON'
+        else:
+            status = None
+        return status
+
+    def set_setpoint(self, channel, state):
+        """" Set Setpoint OFF/ON/AUTO
+        where h is setpoint number 1-8
+        x is state 0 = OFF, 1 = ON and 3 = AUTO, based on pressure.
+        Example: #005E83 sets setpoint #8 to Auto
+        """
+
+        if state == 0 or state == 1 or state == 3:
+            x = state
+        elif state == '0' or state == '1' or state == '3':
+            x = int(state)
+        elif state.lower() == 'auto':
+            x = 3
+        elif state.lower() == 'off':
+            x = 0
+        elif state.lower() == 'on':
+            x = 1
+        else:
+            return 'only (0,1,3) / ("OFF", "ON", "AUTO") is accepted'
+        self.xgs_comm("5E"+str(channel)+str(x), expect_reply=False)
+
+    def set_setpoint_on(self, h, c, n, press):
+        """ hcnx.xxxE-xx, where h is setpoint 1-8, c is sensorcode, T for CNV and I for ion gauge, n is sensor count, press is   """
+
+        self.xgs_comm("6"+str(h)+str(c)+str(n)+str(press), expect_reply=False)
+        print('On_string: ',"6"+str(h)+str(c)+str(n)+str(press))
+
+    def set_setpoint_off(self,h,c,n,press):
+        """ hcnx.xxxE-xx, where h is setpoint 1-8, c is sensorcode, T for CNV and I for ion gauge, n is sensor count, press is   """
+
+        self.xgs_comm("7"+str(h)+str(c)+str(n)+str(press), expect_reply=False)
+        print('Off_string: ',"7"+str(h)+str(c)+str(n)+str(press))
+
+
+    def read_all_user_label(self):
+        ''' Read all user defined labels for gauge id Command Entry T for TC/CNV, I for ion gauge (HFIG or IMG) n Sensor Count Counting TCs or ion gauges from left to right from the front panel view.'''
+
+        user_labels = {}
+        for i in range(1,9):
+            T_string = self.xgs_comm("T"+str(i))
+            I_string = self.xgs_comm("I"+str(i))
+            T = T_string.replace(' ','')
+            I = I_string.replace(' ','')
+            if T != "?FF":
+                user_labels['T'+str(i)] = T
+            else:
+                pass
+            if I != "?FF":
+                user_labels['I'+str(i)] = I
+            else:
+                pass
+
+        return user_labels
+
 
 
 if __name__ == '__main__':
