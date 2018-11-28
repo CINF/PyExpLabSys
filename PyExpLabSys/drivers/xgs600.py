@@ -130,7 +130,7 @@ class XGS600Driver():
             unit = "Pascal"
         return(unit)
 
-### Alexander Krabbe tries to code "Whats out" ###
+### Alexander Krabbe tries to code ###
     def read_setpoint_state(self):
         """ Read all setpoint states as a hex value.
 
