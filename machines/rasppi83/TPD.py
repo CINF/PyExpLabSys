@@ -186,13 +186,13 @@ Resembles a lot"""
 
 def get_doseage(data, times):
     """ Integrate doses """
-    
+
     # Initialize variables and ranges
     ranges = []
     for deltat in times:
         ranges.append(get_range(data[:,0], deltat))
     doses = np.zeros(len(ranges))
-    
+
     # Loop to subtract background and integrate doseages
     i = 0
     for r in ranges:
@@ -219,7 +219,7 @@ def tick_function(T):
 
 def add_scale_Kelvin(ax, axis='x'):
     """ Convert a Celcius axis to Kelvin and coplot on opposite axis """
-    
+
     if axis not in ['x', 'y']:
         raise ValueError('Choose \'x\' or \'y\' as AXIS')
     if axis == 'x':
@@ -302,7 +302,6 @@ def generate_standard_plots(exp, coverage=None, doses=None, selection=[]):
         ax[i][4].set_xlabel('Time (s)')
         ax[i][4].set_ylabel('Temp$_{meas}$ - Temp$_{avg}$')
 
-        
         # Plot power supply data
         fig_id = 'Filament data {}'.format(i)
         fig[fig_id] = plt.figure(fig_id)
@@ -347,7 +346,7 @@ def generate_standard_plots(exp, coverage=None, doses=None, selection=[]):
             for X in GUIDE_LINES:
                 axis.axvline(x=X, linestyle='-.', color='k', alpha=0.3)
             axis.set_xlim(XLIM)
-    
+
     # Plot main result
     fig_id = 'Result'
     fig[fig_id] = plt.figure(fig_id)
@@ -375,6 +374,64 @@ def generate_standard_plots(exp, coverage=None, doses=None, selection=[]):
 
     # Show plots
     plt.show()
+
+def peak2energy(Edes, Tpeak, beta=2, nu=1e13, ret='optimum'):
+    """Convert a TPD peak temperature 'Tpeak' to a desorption energy 'Edes'
+    Following equation (7.14) for first-order desorption in 'Concepts of
+    Modern Catalysis and Kinetics', Chorkendorff, Niemantsverdriet, 2nd edition.
+
+    Inputs:
+        Edes (float): desorption energy [kJ/mol]
+        Tpeak (float): peak temperature [K]
+        beta (float, 2): heat rate [K/s]
+        nu (float, 1e13): pre-exponential factor [1/s]
+        ret (string, 'graph'): return type of function. Options are 'graph' or 'number'.
+                'graph': returns a plot to determine Edes
+                'number': returns difference between input and output (absolute)
+                'optimum': returns optimal desorption energy
+
+    Output:
+        if ret='optimum': return best fit (float)
+        if ret='graph': open a matplotlib plot (figure)
+        if ret='number': return the absolute difference between input and output
+    """
+
+    kB = 1.38e-23 # Boltzmann constant
+    NA = 6.022e23 # Avogadros number
+    def rec_fun(E):
+        """Equation (7.14)"""
+        return kB*Tpeak * np.log( kB*Tpeak**2*nu/E/1000*NA/beta ) /1000*NA
+
+    if ret == 'number':
+        # Return deviation by guess
+        return abs(rec_fun(Edes)-Edes)
+
+    elif ret == 'optimum':
+        # Use scipy.optimize to find Edes
+        from scipy.optimize import minimize
+        _ret = minimize(peak2energy, [Edes], args=(Tpeak, beta, nu, 'number'), bounds=[(1, 100)])
+        print(_ret)
+        return _ret.x[0]
+
+    elif ret == 'graph':
+        # Solve equation graphically
+        interval = [Edes-20, Edes+21]
+        if interval[0] <= 0:
+            interval[0] = 0.1
+        if interval[1] >= 200:
+            interval[1] = 200
+        x = np.arange(*interval)
+        y = rec_fun(x)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(x, y, label='Edes(Edes)')
+        ax.plot(x, x, label='Edes')
+        ax.set_xlabel('Edes')
+        plt.legend()
+        return fig, ax
+
+    return 'RET option not chosen correctly'
+
 
 if __name__ == '__main__':
     data = TPD_data('2018-10-19 10:10:08', caching=False)
