@@ -423,9 +423,16 @@ if [ $1 == "abelec" ];then
 	echogood "Updated git repository"
     fi
 
+    if [ -d ~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/ ]; then
+	echogood "~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/ found, adding to PYHONPATH"
+	bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
+    else
+	echogood "~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/ NOT found, adding ~/ABElectronics_Python_Libraries/ to PYHONPATH"
+	bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/"
+    fi
+
     echo ${PYTHONPATH}
-    bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
-    grep SigmaPi ~/.bashrc > /dev/null
+    grep ABElectronics ~/.bashrc > /dev/null
     if [ $? -eq 0 ];then
 	echobad "---> PATH already setup in .bashrc. NO MODIFICATION IS MADE"
     else
@@ -445,8 +452,11 @@ if [ $1 == "abelec" ];then
     sudo usermod -a -G spi pi
     sudo usermod -a -G i2c pi
 
+    echobad "ON NEWER RASPBERRY PI'S REMEMBER TO ENABLE SPI WITH raspi-config"
+
     echogood "+++++> DONE"
 fi
+
 
 if [ $1 == "dash" ];then
     # TODO: Improve script to allow multiple executions
