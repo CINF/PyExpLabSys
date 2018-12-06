@@ -43,6 +43,7 @@ class FlowControl(threading.Thread):
     """ Keep updated values of the current flow or pressure """
     def __init__(self, mfcs, name):
         threading.Thread.__init__(self)
+        self.daemon = True
         self.mfcs = mfcs
         print(mfcs)
         devices = list(self.mfcs.keys())
