@@ -5,7 +5,11 @@ import time
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import LiveSocket
-from ABE_ADCDACPi import ADCDACPi
+try:
+    from ABE_ADCDACPi import ADCDACPi
+except ImportError:
+    # Newer versions of ABElectronics Python code import from this location
+    from ADCDACPi import ADCDACPi
 
 class AnalogMFC(object):
     """ Driver for controling an analog MFC (or PC) with
