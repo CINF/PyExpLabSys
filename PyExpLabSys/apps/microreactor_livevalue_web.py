@@ -44,8 +44,8 @@ def communicate_sock(network_adress, com, port=9000):
         received = sock.recv(1024)
         received = received.decode('ascii')
         value = float(received[received.find(', ')+1:])
-    except ValueError:
-        value = None
+    except:
+        value = -500.0
 
     return value
 
@@ -84,7 +84,7 @@ def all_values_update():
         containment_pressure, flow1, flow2, flow3, flow4, flow5, flow6,
         ]
 
-    for i in enumerate(NAMES):
+    for i,elem in enumerate(NAMES):
         ALL_DATA[NAMES[i]]['x'].append(time)
         ALL_DATA[NAMES[i]]['y'].append(values[i])
         if len(ALL_DATA[NAMES[i]]['x']) > MAX_LENGTH:
@@ -157,7 +157,7 @@ r'''
 APP.layout = html.Div(style={'backgroundColor': COLOURS['paper_bgcolor']}, children=[
         dcc.Interval(
             id='interval-component', #id for update INTERVAL
-            INTERVAL=INTERVAL*1000, #time in ms between execution
+            interval=INTERVAL*1000, #time in ms between execution
             n_intervals=0#number of times
             ),
 
@@ -209,13 +209,13 @@ def update_values(n):
     """Function to call update all values"""
     all_values_update()
 
-    return n
+
 
 @APP.callback(
         Output(component_id='plot_press', component_property='figure'),
         [Input(component_id='intermediate-values', component_property='children')]
         )
-def update_press_graph(input1):
+def update_press_graph(n):
     """Function to update pressure graph"""
 
     lst = ALL_DATA['containment_pressure']['y']+\
@@ -262,7 +262,7 @@ def update_press_graph(input1):
         Output(component_id='plot_temp', component_property='figure'),
         [Input(component_id='intermediate-values', component_property='children')]
         )
-def update_temp_graph(input1):
+def update_temp_graph(n):
     """Function to updtae temperature plots"""
     if len([i for i in (ALL_DATA['thermocouple_temp']['y']+ALL_DATA['rtd_temp']['y']) if i is not None]) == 0:
         ymin = 0
@@ -301,7 +301,7 @@ def update_temp_graph(input1):
         Output(component_id='plot_flow', component_property='figure'),
         [Input(component_id='intermediate-values', component_property='children')]
         )
-def update_flow_graph(input1):
+def update_flow_graph(n):
     """Function to update flows plot"""
 
     lst = ALL_DATA['flow1']['y']+ALL_DATA['flow2']['y']+ALL_DATA['flow3']['y']+ALL_DATA['flow4']['y']+ALL_DATA['flow5']['y']+ALL_DATA['flow6']['y']
@@ -361,7 +361,7 @@ def update_flow_graph(input1):
         Output(component_id='plot_not_used', component_property='figure'),
         [Input(component_id='intermediate-values', component_property='children')]
         )
-def update_not_in_use_graph(input1):
+def update_not_in_use_graph(n):
     """Function to update Mainchamber plot"""
 
     lst = ALL_DATA['chamber_pressure']['y']
