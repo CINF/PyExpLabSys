@@ -34,7 +34,7 @@ for name in NAMES:
     ALL_DATA[name] = {'x':[], 'y':[]}
 
 def communicate_sock(network_adress, com, port=9000):
-    ''' This is the socekt communications function '''
+    """This is the socekt communications function"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(1)
 
@@ -50,7 +50,7 @@ def communicate_sock(network_adress, com, port=9000):
     return value
 
 def all_values_update():
-    ''' Function to call update all values '''
+    """Function to call update all values"""
     time = datetime.now()
     thermocouple_temp = communicate_sock('rasppi12', 'microreactorng_temp_sample#raw')
     rtd_temp = communicate_sock('rasppi05', 'temperature#raw')
@@ -121,7 +121,7 @@ APP.css.append_css({'external_url': 'https://cdn.rawgit.com/plotly/dash-app-styl
 
 
                      ############# Layout of application ####################
-r'''
+r"""
 .  ------------------------------------------------------------------------------------  .
 |                                         TITLE                                          |
 | . _________________________________________________________ .  . __________________ .  |
@@ -152,7 +152,7 @@ r'''
 | |                 | |                  | |                  |  |      |______|      |  |
 | , _______________ , , ________________ , , ________________ ,  , __________________ ,  |
 .  ------------------------------------------------------------------------------------  .
-'''
+"""
 
 APP.layout = html.Div(style={'backgroundColor': COLOURS['paper_bgcolor']}, children=[
         dcc.Interval(
