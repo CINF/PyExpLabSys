@@ -43,9 +43,9 @@ def communicate_sock(network_adress, com, port=9000):
         sock.sendto(command, (network_adress, port))
         received = sock.recv(1024)
         received = received.decode('ascii')
-        value = float(received[received.find(', ')+1:])
-    except:
-        value = -500.0
+        value = float(received[received.find(',')+1:])
+    except ValueError:
+        value = None
 
     return value
 
