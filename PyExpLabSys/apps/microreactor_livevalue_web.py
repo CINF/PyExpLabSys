@@ -7,9 +7,9 @@ import dash
 from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
-#import plotly
 import plotly.graph_objs as go
-
+from PyExpLabSys.common.supported_versions import python3_only
+python3_only(__file__)
 
 ###### Python functions needed and global variables ##########3
 
