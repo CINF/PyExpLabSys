@@ -15,11 +15,13 @@ class XGS600Driver():
     def xgs_comm(self, command, expect_reply=True):
         """ Implements basic communication """
         # Write command
-        self.serial.read(self.serial.inWaiting()) # Clear waiting characters
-        comm = "#00" + command + "\r" # #00 is RS232 communication and #aa is RS485
+        self.serial.read(self.serial.inWaiting())  # Clear waiting characters
+        comm = "#00" + command + "\r"  # #00 is RS232 communication and #aa is RS485
         self.serial.write(comm.encode('ascii'))
 
         # Read reply if requested
+        # Expected reply is always '>'+reply+'\r'
+        # A reply can either be hex value or string or list of strings
         t_start_reply = time.time()
         time.sleep(0.25)
         if expect_reply:
@@ -130,7 +132,6 @@ class XGS600Driver():
             unit = "Pascal"
         return unit
 
-### Alexander Krabbe tries to code ###
     def read_setpoint_state(self):
         """ Read all setpoint states as a hex value.
 
