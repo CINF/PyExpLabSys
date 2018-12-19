@@ -56,10 +56,10 @@ class XGS600Control(threading.Thread):
             port=9000,
                 )
         self.pullsocket.start()
-        
+
         self.pushsocket = DataPushSocket(socket_name, action='enqueue')
         self.pushsocket.start()
-        
+
         self.livesocket = LiveSocket(socket_name, names)
         self.livesocket.start()
         if db_saver is not None:
@@ -69,7 +69,9 @@ class XGS600Control(threading.Thread):
         self.queue = self.pushsocket.queue
 
     def value(self):
-        """ Return current value of reader """
+        """Return two lists
+           1. list of floats which is pressures from top down on xgs600 unit
+           2. list of string representing the state of each valve connnected"""
         return self.pressures, self.setpointstates
 
     def run(self):
