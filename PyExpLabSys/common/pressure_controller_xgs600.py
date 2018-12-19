@@ -12,13 +12,13 @@ from PyExpLabSys.common.sockets import LiveSocket
 class XGS600Control(threading.Thread):
     """Read all pressures and control states of
         setpoints (ON/OFF/AUTO) in xgs600"""
-    def __init__(self, port, socket_name, codenames, devices, valve_properties, db_saver=None):
+    def __init__(self, port, socket_name, codenames, user_labels, valve_properties, db_saver=None):
         """
         Args:
             port (int): directory to port of USB to RS232 communication
             socket_name (str): name on net for pushsocket
             codenames (list of str): names for retrieving all pressures and states of valves
-            devices (list of str): userlabel
+            user_labels (list of str): userlabel on each device connected to xgs600
             valve_properties (dict): A dictionarie of valve with a list of properties to
                                      each valve in the form of
                                 {valve_name: [channel, device, setpoint_on, setpoint_off], }
@@ -33,10 +33,13 @@ class XGS600Control(threading.Thread):
         self.xgs600 = xgs600(port=port)
         time.sleep(0.2)
         threading.Thread.__init__(self)
+        #setting the initial setup specific values
         self.codenames = codenames
-        self.devices = devices
+        self.devices = user_labels
         self.valve_properties = valve_properties
         self.valve_names = list(self.valve_properties.keys())
+
+        #setting the initial program specific values
         self.pressures = None
         self.setpointstates = None
         self.quit = False
@@ -44,6 +47,8 @@ class XGS600Control(threading.Thread):
         self.updated = [0]*len(self.valve_names)
         names = self.codenames + self.devices
         print(names)
+
+        #starting push-, pull-, and live- sockets
         self.pullsocket = DateDataPullSocket(
             socket_name,
             names,
@@ -51,9 +56,10 @@ class XGS600Control(threading.Thread):
             port=9000,
                 )
         self.pullsocket.start()
-
+        
         self.pushsocket = DataPushSocket(socket_name, action='enqueue')
         self.pushsocket.start()
+        
         self.livesocket = LiveSocket(socket_name, names)
         self.livesocket.start()
         if db_saver is not None:
