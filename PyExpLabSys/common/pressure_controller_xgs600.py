@@ -74,6 +74,61 @@ class XGS600Control(threading.Thread):
            2. list of string representing the state of each valve connnected"""
         return self.pressures, self.setpointstates
 
+    def update_new_setpoint(self):
+        """Update latest values of pressures and setpointstates on pull and live sockets"""
+        try:
+            for i in range(0, len(self.devices)):
+                self.pullsocket.set_point_now(self.devices[i], self.pressures[i])
+                self.livesocket.set_point_now(self.devices[i], self.pressures[i])
+        except IndexError:
+            pass
+        self.pullsocket.set_point_now(self.codenames[0], self.pressures)
+        self.pullsocket.set_point_now(self.codenames[1], self.setpointstates)
+
+        self.livesocket.set_point_now(self.codenames[0], self.pressures)
+        self.livesocket.set_point_now(self.codenames[1], self.setpointstates)
+        print('press:', self.pressures)
+        print('state:', self.setpointstates)
+
+
+    def database_saver(self):
+        """
+        check weather it is time to update database logging.
+        This happens at timeout(5min standard) or setpointstate and valve state is incorrect
+        """
+        for valve in self.valve_names:
+            channel = self.valve_properties[valve][0]
+            try:
+                valve_state = self.setpointstates[channel-1]
+                valve_setpoint = self.xgs600.read_setpoint(channel)
+            except TimeoutError:
+                print('Oops, could not read setpoint of channel, valve_state,\
+                        valve_setpoint: ', channel, valve_state, valve_setpoint)
+
+            if valve_setpoint is not 'OFF' and valve_state == False:
+                print('Holy Crap it is closed and should be open')
+                print('Channel, Valve_state, Valve_setpoint',\
+                        channel, valve_state, valve_setpoint)
+                if self.updated[channel-1] == 0:
+                    print('Saved to Database', channel, valve_state, valve_setpoint)
+                    self.db_saver.save_point_now('microreactorng_valve_'+valve, -1)
+                    self.updated[channel-1] = 1
+                else:
+                    print('Not saved to database, due to earlier being saved',\
+                            channel, valve_state, valve_setpoint)
+                    if time.time() - self.update_time[channel-1] > 300:
+                        self.update_time[channel-1] = time.time()
+                        self.updated[channel-1] = 0
+            else:
+                if time.time() - self.update_time[channel-1] > 300:
+                    self.db_saver.save_point_now('microreactorng_valve_'+valve, -1)
+                    self.update_time[channel-1] = time.time()
+                    self.updated[channel-1] = 0
+                    print('Saved to Database', channel, valve_state, valve_setpoint)
+
+                self.updated[channel-1] = 0
+                print(channel, valve_state, valve_setpoint)
+
     def run(self):
         while not self.quit:
             while True:
@@ -102,49 +157,6 @@ class XGS600Control(threading.Thread):
             self.setpointstates = self.xgs600.read_setpoint_state()
             time.sleep(0.1)
 
-            try:
-                for i in range(0, len(self.devices)):
-                    self.pullsocket.set_point_now(self.devices[i], self.pressures[i])
-                    self.livesocket.set_point_now(self.devices[i], self.pressures[i])
-            except IndexError:
-                pass
-            self.pullsocket.set_point_now(self.codenames[0], self.pressures)
-            self.pullsocket.set_point_now(self.codenames[1], self.setpointstates)
+            self.update_new_setpoint()
 
-            self.livesocket.set_point_now(self.codenames[0], self.pressures)
-            self.livesocket.set_point_now(self.codenames[1], self.setpointstates)
-            print('press:', self.pressures)
-            print('state:', self.setpointstates)
-
-            for valve in self.valve_names:
-                channel = self.valve_properties[valve][0]
-                try:
-                    valve_state = self.setpointstates[channel-1]
-                    valve_setpoint = self.xgs600.read_setpoint(channel)
-                except TimeoutError:
-                    print('Oops, could not read setpoint of channel, valve_state,\
-                            valve_setpoint: ', channel, valve_state, valve_setpoint)
-
-                if valve_setpoint is not 'OFF' and valve_state == False:
-                    print('Holy Crap it is closed and should be open')
-                    print('Channel, Valve_state, Valve_setpoint',\
-                            channel, valve_state, valve_setpoint)
-                    if self.updated[channel-1] == 0:
-                        print('Saved to Database', channel, valve_state, valve_setpoint)
-                        self.db_saver.save_point_now('microreactorng_valve_'+valve, -1)
-                        self.updated[channel-1] = 1
-                    else:
-                        print('Not saved to database, due to earlier being saved',\
-                                channel, valve_state, valve_setpoint)
-                        if time.time() - self.update_time[channel-1] > 300:
-                            self.update_time[channel-1] = time.time()
-                            self.updated[channel-1] = 0
-                else:
-                    if time.time() - self.update_time[channel-1] > 300:
-                        self.db_saver.save_point_now('microreactorng_valve_'+valve, -1)
-                        self.update_time[channel-1] = time.time()
-                        self.updated[channel-1] = 0
-                        print('Saved to Database', channel, valve_state, valve_setpoint)
-
-                    self.updated[channel-1] = 0
-                    print(channel, valve_state, valve_setpoint)
+            self.database_saver()
