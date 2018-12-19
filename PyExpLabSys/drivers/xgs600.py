@@ -185,7 +185,8 @@ class XGS600Driver():
         """hcnx.xxxE-xx, where h is setpoint 1-8, c is sensorcode, T for CNV and
         I for ion gauge, n is sensor count, press is pressure represented with x.xxxE-xx
         c could be U and and then n would be the user label"""
-
+        if sensor_code == 'user_label':
+            sensor_code = 'U'
         self.xgs_comm("6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure),
                       expect_reply=False)
         print('On_string: ', "6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure))
