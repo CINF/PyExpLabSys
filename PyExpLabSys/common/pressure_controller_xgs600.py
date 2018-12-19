@@ -147,8 +147,20 @@ class XGS600Control(threading.Thread):
                     self.xgs600.set_setpoint(channel, state)
 
                 else:
-                    self.xgs600.set_setpoint_on(channel, 'U', user_label, setpoint_on)
-                    self.xgs600.set_setpoint_off(channel, 'U', user_label, setpoint_off)
+                    self.xgs600.set_setpoint_on(
+                        channel,
+                        sensor_code='user_label',
+                        sensor_count=user_label,
+                        pressure_on=setpoint_on,
+                            )
+
+                    self.xgs600.set_setpoint_off(
+                        channel,
+                        sensor_code='user_label',
+                        sensor_count=user_label,
+                        pressure_off=setpoint_off,
+                            )
+                    
                     self.xgs600.set_setpoint(channel, state)
 
             #Read values of pressures and states of setpoint
