@@ -29,9 +29,8 @@ NAMES = [
 INTERVAL = 5
 HOURS = 18
 MAX_LENGTH = int(HOURS*3600/INTERVAL)
-ALL_DATA = {}
-for name in NAMES:
-    ALL_DATA[name] = {'x':[], 'y':[]}
+
+ALL_DATA = {name: {'x': [], 'y': []} for name in NAMES}
 
 def communicate_sock(network_adress, com, port=9000):
     """This is the socekt communications function"""
