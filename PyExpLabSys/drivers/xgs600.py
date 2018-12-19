@@ -6,7 +6,6 @@ from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
 
-
 class XGS600Driver():
     """ Driver for XGS600 gauge controller """
     def __init__(self, port='/dev/ttyUSB1', timeout=2.0):
@@ -166,7 +165,6 @@ class XGS600Driver():
         x is state 0 = OFF, 1 = ON and 3 = AUTO, based on pressure.
         Example: #005E83 sets setpoint #8 to Auto
         """
-
         if state in [0, 1, 3]:
             state_reply = state
         elif state in ['0', '1', '3']:
@@ -181,25 +179,25 @@ class XGS600Driver():
             return 'only (0,1,3) / ("OFF", "ON", "AUTO") is accepted'
         self.xgs_comm("5E"+str(channel)+str(state_reply), expect_reply=False)
 
-    def set_setpoint_on(self, setpoint, sensor_code, sensor_count, pressure):
+    def set_setpoint_on(self, setpoint, sensor_code, sensor_count, pressure_on):
         """hcnx.xxxE-xx, where h is setpoint 1-8, c is sensorcode, T for CNV and
         I for ion gauge, n is sensor count, press is pressure represented with x.xxxE-xx
         c could be U and and then n would be the user label"""
         if sensor_code == 'user_label':
             sensor_code = 'U'
-        self.xgs_comm("6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure),
+        self.xgs_comm("6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure_on),
                       expect_reply=False)
-        print('On_string: ', "6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure))
+        print('On_string: ', "6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure_on))
 
-    def set_setpoint_off(self, setpoint, sensor_code, sensor_count, pressure):
+    def set_setpoint_off(self, setpoint, sensor_code, sensor_count, pressure_off):
         """hcnx.xxxE-xx, where h is setpoint 1-8, c is sensorcode, T for CNV and
         I for ion gauge, n is sensor count, press is pressure represented as x.xxxE-xx"""
-
-        self.xgs_comm("7"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure),
+        if sensor_code == 'user_label':
+            sensor_code = 'U'
+        self.xgs_comm("7"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure_off),
                       expect_reply=False)
         print('Off_string: ',
-              "7"+str(sensor_code)+str(sensor_count)+str(sensor_count)+str(pressure))
-
+              "7"+str(sensor_code)+str(sensor_count)+str(sensor_count)+str(pressure_off))
 
     def read_all_user_label(self):
         """Read all user defined labels for gauge id Command Entry T for TC/CNV,
