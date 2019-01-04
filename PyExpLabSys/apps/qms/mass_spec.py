@@ -15,7 +15,7 @@ import PyExpLabSys.drivers.pfeiffer_qmg422 as qmg422
 import PyExpLabSys.apps.qms.qms as ms
 import PyExpLabSys.apps.qms.qmg_status_output as qmg_status_output
 import PyExpLabSys.apps.qms.qmg_meta_channels as qmg_meta_channels
-from PyExpLabSys.common.sockets import LiveSocket
+from PyExpLabSys.common.sockets import LiveSocket, DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.utilities import activate_library_logging
 from PyExpLabSys.common.supported_versions import python2_and_3
@@ -63,8 +63,12 @@ class MassSpec(object):
         livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'])
         livesocket.start()
 
+        pullsocket = DateDataPullSocket(settings.name + '-mass-spec', ['qms-value'])
+        pullsocket.start()
+
         self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
-                          credentials=settings.username, livesocket=livesocket)
+                          credentials=settings.username, livesocket=livesocket,
+                          pullsocket=pullsocket)
         self.qmg.reverse_range = settings.reverse_range
         self.printer = qmg_status_output.QmsStatusOutput(self.qms,
                                                          sql_saver_instance=self.data_saver)
