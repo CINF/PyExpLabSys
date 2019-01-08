@@ -239,6 +239,7 @@ class QMS(object):
             for channel in range(1, number_of_channels + 1):
                 self.measurement_runtime = time.time()-start_time
                 value, usefull = self.qmg.get_single_sample()
+                LOGGER.debug('Value: {}\nUsefull: {}'.format(value, usefull))
                 if usefull is False:
                     save_values = False
                 #self.channel_list[channel]['value'] = value
@@ -258,9 +259,9 @@ class QMS(object):
                                                       (time.time() - start_time) * 1000,
                                                       value)
                 self.channel_list[channel]['value'] = str(value)
-                if self.livesocket is not None:
+                if self.livesocket is not None and usefull:
                     self.livesocket.set_point_now('qms-value', value)
-                if self.pullsocket is not None:
+                if self.pullsocket is not None and usefull:
                     self.pullsocket.set_point_now('qms-value', value)
                 if no_save is False and save_values is True:
                     self.sqlqueue.put((query, None))
