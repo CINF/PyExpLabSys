@@ -60,8 +60,11 @@ class MassSpec(object):
             print(settings.port)
             self.qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
 
-        livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'])
-        livesocket.start()
+        try:
+            livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'])
+            livesocket.start()
+        except:
+            livesocket = None
 
         pullsocket = DateDataPullSocket(settings.name + '-mass-spec', ['qms-value'])
         pullsocket.start()
@@ -74,8 +77,8 @@ class MassSpec(object):
                                                          sql_saver_instance=self.data_saver)
         self.printer.start()
 
-    def __del__(self):
-        pass  #self.printer.stop()
+    #def __del__(self):
+    #    pass  #self.printer.stop()
 
     def sem_and_filament(self, turn_on=False, voltage=1800):
         """ Turn on and off the mas spec """
@@ -113,17 +116,31 @@ class MassSpec(object):
         self.qms.mass_scan(start_mass, scan_width, comment, amp_range)
         time.sleep(1)
 
+    def sleep(self, duration):
+        """ Sleep for a while and print output """
+        msg = 'Sleeping for {} seconds..'
+        for i in range(duration, 0, -1):
+            self.qms.current_action = msg.format(i)
+            time.sleep(1)
+        self.qms.current_action = 'Idling'
+
 if __name__ == '__main__':
-    MS = MassSpec()
-    MS.sem_and_filament(True, 1800)
-    time.sleep(10)
-    #MS.leak_search()
+    try:
+        MS = MassSpec()
+        MS.sem_and_filament(True, 1800)
+        MS.sleep(10)
+        MS.leak_search()
 
-    MS.mass_time_scan()
+        #MS.mass_time_scan()
 
-   # MS.mass_scan(0, 50, 'flow6', amp_range=-11)
-    #MS.mass_scan(0, 50, 'After power line cleanup', amp_range=-11)
+        #MS.mass_scan(0, 50, 'flow6', amp_range=-11)
+        #MS.mass_scan(0, 50, 'After power line cleanup', amp_range=-11)
 
-    #MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
-    #MS.mass_scan(0, 50, 'Background scan -9', amp_range=-9)
-    #MS.mass_scan(0, 50, 'Background scan -7', amp_range=-7)
+        #MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
+        #MS.mass_scan(0, 50, 'Background scan -9', amp_range=-9)
+        #MS.mass_scan(0, 50, 'Background scan -7', amp_range=-7)
+    except:
+        MS.printer.stop()
+        raise
+    finally:
+        MS.printer.stop()
