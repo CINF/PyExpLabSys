@@ -29,9 +29,8 @@ NAMES = [
 INTERVAL = 5
 HOURS = 18
 MAX_LENGTH = int(HOURS*3600/INTERVAL)
-ALL_DATA = {}
-for name in NAMES:
-    ALL_DATA[name] = {'x':[], 'y':[]}
+
+ALL_DATA = {name: {'x': [], 'y': []} for name in NAMES}
 
 def communicate_sock(network_adress, com, port=9000):
     """This is the socekt communications function"""
@@ -41,8 +40,9 @@ def communicate_sock(network_adress, com, port=9000):
     try:
         command = com.encode()
         sock.sendto(command, (network_adress, port))
-        received = sock.recv(1024)
-        received = received.decode('ascii')
+        received_bytes = sock.recv(1024)#
+        received = received_bytes.decode('ascii')
+        #expected string recived: 'time_since_epoch,value'
         value = float(received[received.find(',')+1:])
     except ValueError:
         value = -500.0#None
@@ -52,18 +52,24 @@ def communicate_sock(network_adress, com, port=9000):
 def all_values_update():
     """Function to call update all values"""
     time = datetime.now()
+    
+    #Temperature values from thermocouple and RTD
     thermocouple_temp = communicate_sock('rasppi12', 'microreactorng_temp_sample#raw')
     rtd_temp = communicate_sock('rasppi05', 'temperature#raw')
-    if rtd_temp is not None and len(str(rtd_temp)) > 5:
+    if isinstance(rtd_temp, float):
         rtd_temp = round(rtd_temp, 1)
+    
+    #Pressure values from NextGeneration setup
     chamber_pressure = communicate_sock('microreactorng', 'read_pressure#labview', port=7654)
     reactor_pressure = communicate_sock('rasppi16', 'M11200362H#raw')
     if reactor_pressure == 0:
         reactor_pressure = 1e-4
-    if reactor_pressure is not None and len(str(reactor_pressure)) > 5:
+    if isinstance(reactor_pressure, float):
         reactor_pressure = round(reactor_pressure, 3)
     buffer_pressure = communicate_sock('rasppi36', 'microreactorng_pressure_buffer#raw')
     containment_pressure = communicate_sock('microreactorng', 'read_containment#labview', port=7654)
+
+    #Flow values from NextGeneration setup
     flow1 = communicate_sock('rasppi16', 'M11200362C#raw')
     flow2 = communicate_sock('rasppi16', 'M11200362A#raw')
     flow3 = communicate_sock('rasppi16', 'M11200362E#raw')
@@ -75,16 +81,12 @@ def all_values_update():
         if i is not None and len(str(i)) > 3:
             i = round(i, 2)
 
-#    NAMES = [
-#            'thermocouple_temp', 'rtd_temp', 'chamber_pressure', 'reactor_pressure', 'buffer_pressure',
-#            'containment_pressure', 'flow1', 'flow2', 'flow3', 'flow4', 'flow5', 'flow6',
-#            ]
     values = [
         thermocouple_temp, rtd_temp, chamber_pressure, reactor_pressure, buffer_pressure,
         containment_pressure, flow1, flow2, flow3, flow4, flow5, flow6,
         ]
 
-    for i,elem in enumerate(NAMES):
+    for i, elem in enumerate(NAMES):
         ALL_DATA[NAMES[i]]['x'].append(time)
         ALL_DATA[NAMES[i]]['y'].append(values[i])
         if len(ALL_DATA[NAMES[i]]['x']) > MAX_LENGTH:
@@ -95,21 +97,21 @@ def all_values_update():
 
 ### Colours for dash app and plots ####
 COLOURS = {
-    'background':'#607D8B', # '#191A1A',
-    'text1': '#BDBDBD', # '#af5f5f',
-    'text': '#5e7366', #'#BDBDBD', #
-    'main_chamber_pressure':'#AFB42B', #009000',
-    'thermocouple_temp':'#FF9800', #87afd7',
-    'rtd_temp':'#795548', #735e6b',
-    'containment_pressure':'#F44336', #c080d0',
-    'buffer_pressure':'#0097A7', #404040',
-    'reactor_pressure':'#3F51B5', #84a3e3',
-    'flow1': '#FBC02D', #af5f5f',
-    'flow2': '#9C27B0', #512DA8', #5e7366',
-    'flow3':'#1976D2', #009000',
-    'flow4':'#a52a2a', #87afd7',
-    'flow5':'#388E3C', #735e6b',
-    'flow6':'#616161', #c080d0',
+    'background':'#607D8B',
+    'text1': '#BDBDBD',
+    'text': '#5e7366',
+    'main_chamber_pressure':'#AFB42B',
+    'thermocouple_temp':'#FF9800',
+    'rtd_temp':'#795548',
+    'containment_pressure':'#F44336',
+    'buffer_pressure':'#0097A7',
+    'reactor_pressure':'#3F51B5',
+    'flow1': '#FBC02D',
+    'flow2': '#9C27B0',
+    'flow3':'#1976D2',
+    'flow4':'#a52a2a',
+    'flow5':'#388E3C',
+    'flow6':'#616161',
     'paper_bgcolor':'#020202',
     'plot_bgcolor':'#191A1A',
     }
@@ -204,11 +206,9 @@ APP.layout = html.Div(style={'backgroundColor': COLOURS['paper_bgcolor']}, child
 @APP.callback(
         Output(component_id='intermediate-values', component_property='children'),
         [Input('interval-component', 'n_intervals')])
-
 def update_values(n):
     """Function to call update all values"""
     all_values_update()
-
 
 
 @APP.callback(
@@ -217,7 +217,6 @@ def update_values(n):
         )
 def update_press_graph(n):
     """Function to update pressure graph"""
-
     lst = ALL_DATA['containment_pressure']['y']+\
           ALL_DATA['reactor_pressure']['y']+\
           ALL_DATA['buffer_pressure']['y']+\

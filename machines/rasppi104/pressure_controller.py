@@ -7,15 +7,12 @@ import PyExpLabSys.common.utilities
 #from PyExpLabSys.common.utilities import get_logger
 #from PyExpLabSys.common.utilities import activate_library_logging
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
-from PyExpLabSys.common.supported_versions import python2_and_3
+from PyExpLabSys.common.supported_versions import python3_only
 PyExpLabSys.common.utilities.ERROR_EMAIL = 'alexkbb@fysik.dtu.dk'
-python2_and_3(__file__)
+python3_only(__file__)
 
 
-try:
-    MICRO = chr(0x03BC) # Python 3
-except ValueError:
-    MICRO = unichr(0x03BC) # Python 2
+MICRO = chr(0x03BC) # Python 3
 
 #### UPDATE  PRESSURE CONTROL LOGGING ####
 
@@ -37,7 +34,7 @@ def main():
         'T2': [2, 'IGMC', '1.000E-11', '1.000E-05'],
         'T3': [3, 'NGBUF', '1.333E-04', '1.000E+00'],
         }
-    devices = ['IGMC', 'CNV1', 'CNV2', 'CNV3', 'NGBUF', 'OLDBF', 'MAIN']
+    user_labels = ['IGMC', 'CNV1', 'CNV2', 'CNV3', 'NGBUF', 'OLDBF', 'MAIN']
     db_saver = ContinuousDataSaver(
         continuous_data_table='dateplots_microreactorNG',
         username=credentials.username,
@@ -50,7 +47,7 @@ def main():
     pressure_control = XGS600Control(port=port,
                                      socket_name=socket_name,
                                      codenames=codenames,
-                                     devices=devices,
+                                     user_labels=user_labels,
                                      valve_properties=setpoint_channel_userlabel_on_off,
                                      db_saver=db_saver,
                                      )
