@@ -45,7 +45,7 @@ def communicate_sock(network_adress, com, port=9000):
         received = received.decode('ascii')
         value = float(received[received.find(',')+1:])
     except ValueError:
-        value = None
+        value = -500.0#None
 
     return value
 
@@ -130,7 +130,7 @@ r"""
 | |  | \  / | __ _ _ _ __   | |  __ _ __ __ _ _ __ | |__      |  |         | |        |  |
 | |  | |\/| |/ _` | | '_ \  | | |_ | '__/ _` | '_ \| '_ \     |  |         | |        |  |
 | |  | |  | | (_| | | | | | | |__| | | | (_| | |_) | | | |    |  |         | |        |  |
-| |  |_|  |_|\__, _|_|_| |_|  \_____|_|  \__, _| .__/|_| |_|    |  |         |/\        |  |
+| |  |_|  |_|\__,_|_|_| |_|  \_____|_|  \__,_| .__/|_| |_|    |  |         |/\        |  |
 | |                                          | |              |  |         /  \       |  |
 | |                                          |_|              |  |        / /\ \      |  |
 | , _________________________________________________________ ,  |       / ____ \     |  |
@@ -312,7 +312,7 @@ def update_flow_graph(n):
     else:
         ymin = 0
         ymax = max(i for i in lst if i is not None) * 1.001
-        if ymax < 5:
+        if ymax < 5.5:
             ymax = 6
         else:
             ymax = 10
@@ -501,8 +501,6 @@ def update_table(n):
             html.Td(format(flow6['y'][-1], '0.2'))],
                  style=bgstyle)])
     return out
-
-
 
 
 if __name__ == '__main__':
