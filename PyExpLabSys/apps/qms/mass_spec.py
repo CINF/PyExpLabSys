@@ -77,9 +77,6 @@ class MassSpec(object):
                                                          sql_saver_instance=self.data_saver)
         self.printer.start()
 
-    #def __del__(self):
-    #    pass  #self.printer.stop()
-
     def sem_and_filament(self, turn_on=False, voltage=1800):
         """ Turn on and off the mas spec """
         if turn_on is True:
@@ -89,14 +86,14 @@ class MassSpec(object):
             self.qmg.sem_status(voltage=1800, turn_off=True)
             self.qmg.emission_status(current=0.1, turn_off=True)
 
-    def leak_search(self):
+    def leak_search(self, speed=10):
         """ Do a mass time scan on mass 4 """
         timestamp = datetime.datetime.now()
         channel_list = {}
         channel_list['ms'] = {}
         channel_list['ms'][0] = {'comment': 'Leak Search', 'autorange':False,
                                  'mass-scan-interval':999999999}
-        channel_list['ms'][1] = {'masslabel': 'He', 'speed':10, 'mass':4, 'amp_range':9}
+        channel_list['ms'][1] = {'masslabel': 'He', 'speed':speed, 'mass':4, 'amp_range':9}
         self.qms.mass_time(channel_list['ms'], timestamp, no_save=True)
 
     def mass_time_scan(self, channel_list='channel_list'):
@@ -120,16 +117,19 @@ class MassSpec(object):
         """ Sleep for a while and print output """
         msg = 'Sleeping for {} seconds..'
         for i in range(duration, 0, -1):
-            self.qms.current_action = msg.format(i)
+            self.qms.operating_mode = msg.format(i)
             time.sleep(1)
-        self.qms.current_action = 'Idling'
+        self.qms.operating_mode = 'Idling'
 
 if __name__ == '__main__':
     try:
+        # Initialize QMS
         MS = MassSpec()
         MS.sem_and_filament(True, 1800)
         MS.sleep(10)
-        MS.leak_search()
+
+        # Choose and start measurement(s)
+        MS.leak_search(speed=8)
 
         #MS.mass_time_scan()
 

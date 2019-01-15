@@ -239,7 +239,7 @@ class QMS(object):
             for channel in range(1, number_of_channels + 1):
                 self.measurement_runtime = time.time()-start_time
                 value, usefull = self.qmg.get_single_sample()
-                LOGGER.debug('Value: {}\nUsefull: {}'.format(value, usefull))
+                LOGGER.debug('Value: {}\tUsefull: {}'.format(value, usefull))
                 if usefull is False:
                     save_values = False
                 #self.channel_list[channel]['value'] = value
