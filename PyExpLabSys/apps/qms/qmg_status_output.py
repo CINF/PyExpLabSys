@@ -32,6 +32,7 @@ class QmsStatusOutput(threading.Thread):
     def run(self):
         while True:
             self.screen.addstr(1, 1, self.qms.operating_mode)
+            self.screen.clrtoeol()
 
             if self.qms.operating_mode == "Mass Time":
                 try:
@@ -93,7 +94,7 @@ class QmsStatusOutput(threading.Thread):
                 self.qms.stop = True
 
             self.screen.refresh()
-            time.sleep(1)
+            time.sleep(0.25)
 
     def stop(self):
         """ Stop and cleanup """

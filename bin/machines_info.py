@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=undefined-loop-variable
 
 """A machine information command"""
 
@@ -6,6 +7,9 @@ import os
 from os.path import expanduser, join, isdir, exists
 from collections import Counter, defaultdict
 import argparse
+
+from PyExpLabSys.common.supported_versions import python3_only
+python3_only(__file__)
 
 POSSIBLE_MACHINE_LOCATIONS = (
     join(expanduser('~'), 'PyExpLabSys', 'machines'),
@@ -36,9 +40,10 @@ def gather_statisics():
             else:
                 missing[file_].append(machine_name)
     return stats, missing
-            
+
 
 def parse_args():
+    """Return the parsed command line arguments"""
     description = ('Print statistics about features in the machines folders.')
     parser = argparse.ArgumentParser(description=description)
     command_help = ('The command to execute. Possible commands are: "help", '
@@ -49,21 +54,21 @@ def parse_args():
     return args
 
 
-def summary(stats, missing):
+def summary(stats, _):
     """Print out summary"""
     print("In total         :", stats['total'])
     print("Has AUTOSTART.xml:", stats['AUTOSTART.xml'])
     print("Has purpose      :", stats['PURPOSE'])
 
 
-def purpose(stats, missing):
+def purpose(_, missing):
     """Print out the machines that are missing purpose"""
     print("The following machines has no PURPOSE file:")
     for machine_name in missing['PURPOSE']:
         print(machine_name)
 
 
-def autostart(stats, missing):
+def autostart(_, missing):
     """Print out the machines that are missing autostart"""
     print("The following machines has no AUTOSTART.xml file:")
     for machine_name in missing['AUTOSTART.xml']:
@@ -71,6 +76,7 @@ def autostart(stats, missing):
 
 
 def main():
+    """Main function"""
     args = parse_args()
     function = globals().get(args.command, None)
     if function is None:

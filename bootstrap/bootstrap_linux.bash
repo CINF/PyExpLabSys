@@ -87,6 +87,7 @@ all         All of the above
 doc         Install extra packages needed for writing docs (NOT part of all)
 wiringpi    Install wiring pi and python-wiringpi
 abelec      Setup device to use daq-modules from AB Electronics (NOT part of all)
+dash        Install packages for dash
 qt          Setup GUI environment: Qt and Qwt (for plots)
 "
 ##################
@@ -422,9 +423,16 @@ if [ $1 == "abelec" ];then
 	echogood "Updated git repository"
     fi
 
+    if [ -d ~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/ ]; then
+	echogood "~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/ found, adding to PYHONPATH"
+	bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
+    else
+	echogood "~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/ NOT found, adding ~/ABElectronics_Python_Libraries/ to PYHONPATH"
+	bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/"
+    fi
+
     echo ${PYTHONPATH}
-    bashrc_addition="export PYTHONPATH=\${PYTHONPATH}:~/ABElectronics_Python_Libraries/ABElectronics_DeltaSigmaPi/"
-    grep SigmaPi ~/.bashrc > /dev/null
+    grep ABElectronics ~/.bashrc > /dev/null
     if [ $? -eq 0 ];then
 	echobad "---> PATH already setup in .bashrc. NO MODIFICATION IS MADE"
     else
@@ -444,6 +452,19 @@ if [ $1 == "abelec" ];then
     sudo usermod -a -G spi pi
     sudo usermod -a -G i2c pi
 
+    echobad "ON NEWER RASPBERRY PI'S REMEMBER TO ENABLE SPI WITH raspi-config"
+
+    echogood "+++++> DONE"
+fi
+
+
+if [ $1 == "dash" ];then
+    # TODO: Improve script to allow multiple executions
+    echobold "===> INSTALLING EXTRA PACKAGES FOR DASH"
+    pip3 install dash==0.28.5  # The core dash backend
+    pip3 install dash-html-components==0.13.2  # HTML components
+    pip3 install dash-core-components==0.35.1  # Supercharged components
+    echo
     echogood "+++++> DONE"
 fi
 

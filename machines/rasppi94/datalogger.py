@@ -3,7 +3,6 @@ from __future__ import print_function
 import threading
 import time
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
-#from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.value_logger import ValueLogger
@@ -17,7 +16,7 @@ python2_and_3(__file__)
 LOGGER = get_logger('GC MS temperature logger', level='WARN', file_log=True,
                     file_name='temp_control.log', terminal_log=False, email_on_warnings=False)
 
-LOGGER.warn('Program started')
+LOGGER.warning('Program started')
 
 
 class Reader(threading.Thread):
@@ -45,8 +44,11 @@ class Reader(threading.Thread):
 
     def run(self):
         while not self.quit:
-            self.ttl = 50
-            self.humidity, self.temperature = self.honeywell.read_values()
+            try:
+                self.humidity, self.temperature = self.honeywell.read_values()
+                self.ttl = 50
+            except OSError:
+                pass
 
 def main():
     """ Main function """
@@ -59,13 +61,12 @@ def main():
     codenames = ['gc_ms_inner_temperature', 'gc_ms_inner_humidity']
 
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=1)
+    loggers[codenames[0]] = ValueLogger(reader, comp_val=0.1, maximumtime=10,
+                                        comp_type='lin', channel=1)
     loggers[codenames[0]].start()
-    loggers[codenames[1]] = ValueLogger(reader, comp_val=1, comp_type='lin', channel=2)
+    loggers[codenames[1]] = ValueLogger(reader, comp_val=1, maximumtime=10,
+                                        comp_type='lin', channel=2)
     loggers[codenames[1]].start()
-
-    #livesocket = LiveSocket('Large Office 312 Air Logger', codenames)
-    #livesocket.start()
 
     socket = DateDataPullSocket('gc_ms_temperature_humidity', codenames,
                                 timeouts=[1.0] * len(loggers))
@@ -81,7 +82,6 @@ def main():
         time.sleep(1)
         for name in codenames:
             value = loggers[name].read_value()
-            #livesocket.set_point_now(name, value)
             socket.set_point_now(name, value)
             if loggers[name].read_trigged():
                 print(value)

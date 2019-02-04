@@ -53,7 +53,7 @@ class GasAlarmMonitor(object):
 
         # Init database connection
         self.db_connection = MySQLdb.connect(
-            host='servcinf-sql', user=credentials.USERNAME,
+            host='servcinf-sql.fysik.dtu.dk', user=credentials.USERNAME,
             passwd=credentials.PASSWORD, db='cinfdata')
         self.db_cursor = self.db_connection.cursor()
 
@@ -276,15 +276,24 @@ class GasAlarmMonitor(object):
 
 if __name__ == '__main__':
     # pylint: disable=C0103
-    gas_alarm_monitor = GasAlarmMonitor()
-    try:
-        gas_alarm_monitor.main()
-    except KeyboardInterrupt:
-        gas_alarm_monitor.close()
-    except Exception as exception:
-        LOGGER.exception(exception)
-        gas_alarm_monitor.close()
-        raise exception
+    while True:
+        try:
+            gas_alarm_monitor = GasAlarmMonitor()
+            gas_alarm_monitor.main()
+        except KeyboardInterrupt:
+            gas_alarm_monitor.close()
+            break
+        except IOError as exception:
+            print("No com with instrument. Sleep 900s and try again.")
+            LOGGER.exception(exception)
+            time.sleep(900)
+            # Reset the monitor
+            gas_alarm_monitor = GasAlarmMonitor()
+            continue
+        except Exception as exception:
+            LOGGER.exception(exception)
+            gas_alarm_monitor.close()
+            raise exception
 
     time.sleep(2)
     LOGGER.info('Program has stopped')

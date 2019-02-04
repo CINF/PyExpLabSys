@@ -1,0 +1,4 @@
+id: rasppi76
+purpose: Pressure control/readout and voltage readout for large CO2 MEA setup
+
+This raspberry pi is responsible for setting pressure controllers and reading back their status and for reading the voltage over the MEA.

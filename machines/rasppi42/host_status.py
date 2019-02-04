@@ -193,8 +193,12 @@ def main():
     hosts = queue.Queue()
 
     #TODO: The contact information should not be in this file!
-    database = MySQLdb.connect(host='servcinf-sql', user='cinf_reader',
-                               passwd='cinf_reader', db='cinfdata')
+    database = MySQLdb.connect(
+        host='servcinf-sql.fysik.dtu.dk',
+        user='cinf_reader',
+        passwd='cinf_reader',
+        db='cinfdata',
+    )
     cursor = database.cursor()
     database.autocommit(True)
 
@@ -223,8 +227,16 @@ def main():
     database.close()
 
 if __name__ == "__main__":
-    main()
+    minutes_failed = 0
     while True:
+        try:
+            main()
+        except MySQLdb.OperationalError as exception:  # OperationalError
+            print("Got '{}'. Try again in 60 sec".format(exception))
+            minutes_failed += 1
+            # We allow up to 15 min downtime, before finally giving up
+            if minutes_failed > 15:
+                raise
+        else:
+            minutes_failed = 0
         time.sleep(60)
-        main()
- 

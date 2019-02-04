@@ -1,4 +1,18 @@
-""" Logger of cooling water temperature """
+# -*- coding: utf-8 -*-
+""" Logs fume hood wind speed
+
+Be aware that absolute calibration migh not be amasingly
+good due to differences between each sensor and because of
+temperature dependence of the measurement. For this reason
+both the analog value as well as the calculated wind speed
+is logged, to allow the possibility of a later correction
+if a better calibration is performed.
+
+The fitting function was dertmined in a DTU student project:
+'Test and calibration of simple hot-wire anemometer for better
+lab safety' in January 2017
+by Kristine Børsting (s153299) and Bianca Laura Hansen (s163993)
+"""
 from __future__ import print_function
 import threading
 import time
@@ -18,8 +32,8 @@ except IndexError:
     print('You need to give the name of the raspberry pi as an argument')
     print('This will ensure that the correct settings file will be used')
     exit()
-import credentials # pylint: disable=F0401
-import settings # pylint: disable=F0401
+import credentials # pylint: disable=import-error, wrong-import-position
+import settings # pylint: disable=import-error, wrong-import-position
 
 class WindReader(threading.Thread):
     """ Read Cooling water pressure """
@@ -47,11 +61,12 @@ class WindReader(threading.Thread):
                     voltage += self.adc.read_voltage(int(channel))
                 raw = voltage / self.average_length
                 self.windspeeds[channel + '_raw'] = raw
-                A = 0.591
-                B = 1.78
-                C = 2.25
+                coeff_a = 0.591
+                coeff_b = 1.78
+                coeff_c = 2.25
                 try:
-                    self.windspeeds[channel] = -1 * (1/C) * math.log(1- (raw-B) / A)
+                    self.windspeeds[channel] = (-1 * (1/coeff_c) *
+                                                math.log(1- (raw - coeff_b) / coeff_a))
                 except ValueError:
                     pass
 
@@ -67,9 +82,11 @@ def main():
 
     loggers = {}
     for channel, codename in settings.channels.items():
-        loggers[codename + '_raw'] = ValueLogger(windreader, comp_val=1.05, channel=channel + '_raw', maximumtime=30)
+        loggers[codename + '_raw'] = ValueLogger(windreader, comp_val=1.05,
+                                                 channel=channel + '_raw', maximumtime=30)
         loggers[codename + '_raw'].start()
-        loggers[codename] = ValueLogger(windreader, comp_val=1.005, channel=channel, maximumtime=30)
+        loggers[codename] = ValueLogger(windreader, comp_val=1.005,
+                                        channel=channel, maximumtime=30)
         loggers[codename].start()
 
     codenames = []
@@ -80,10 +97,10 @@ def main():
     socket = DateDataPullSocket('Fumehood Wind Speed', codenames, timeouts=2.0)
     socket.start()
 
-    live_socket = LiveSocket('Fumehood Wind Speed',  codenames)
+    live_socket = LiveSocket('Fumehood Wind Speed', codenames)
     live_socket.start()
 
-    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_dummy',
+    db_logger = ContinuousDataSaver(continuous_data_table=settings.dateplot_table,
                                     username=credentials.user,
                                     password=credentials.passwd,
                                     measurement_codenames=codenames)

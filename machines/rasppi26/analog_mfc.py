@@ -10,10 +10,10 @@ def main():
     mfcs = {}
     mfcs['1'] = mfc
 
-    try:
-        micro = chr(0x03BC) # Python 3
-    except ValueError:
-        micro = unichr(0x03BC) # Python 2
+    try: # Python 3
+        micro = chr(0x03BC)
+    except ValueError: # Python 2
+        micro = unichr(0x03BC) # pylint: disable=undefined-variable
 
     flow_control = FlowControl(mfcs, micro + '-reactor')
     flow_control.start()

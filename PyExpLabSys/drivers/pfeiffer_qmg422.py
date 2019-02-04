@@ -274,36 +274,37 @@ class qmg_422(object):
         """ Update the knowledge of the internal knowledge of the instrument """
         raw_state = self.comm('ESQ')
         LOGGER.error('QMS State, ESQ: %s', raw_state)
-        if self.series == '400':
-            raw_state = int(raw_state[:raw_state.find(',')])
-            raw_state = bin(raw_state)[2:].zfill(16)
-            state = {}
-            state['running'] = 'Not running' if raw_state[15] == '0' else 'Running'
-            state['mode'] = 'Mono' if raw_state[14] == '0' else 'Multi'
-            state['emission'] = 'Off' if raw_state[13] == '0' else 'On'
-            state['sem'] = 'Off' if raw_state[12] == '0' else 'On'
-            state['4'] = '0' if raw_state[11] == '0' else '1'
-            state['5'] = '0' if raw_state[10] == '0' else '1'
-            state['6'] = '0' if raw_state[9] == '0' else '1'
-            state['7'] = '0' if raw_state[8] == '0' else '1'
-            state['8'] = '0' if raw_state[7] == '0' else '1'
-            state['9'] = '0' if raw_state[6] == '0' else '1'
-            state['10'] = '0' if raw_state[5] == '0' else '1'
-            state['11'] = '0' if raw_state[4] == '0' else '1'
-            state['12'] = '0' if raw_state[3] == '0' else '1'
-            state['13'] = '0' if raw_state[2] == '0' else '1'
-            state['ringbuffer'] = 'Partly filled' if raw_state[1] == '0' else 'Empty'
-            state['ringbuffer'] = state['ringbuffer'] if raw_state[0] == '0' else 'Overflow'
-            self.state = state
-        else: # Here comes the 125 part, can only check for emission
-            pass
-        
+        state = {}
+        if self.series == '125':
+            state['emission_state'] = raw_state.split(',')[1]
+        else: # Emission state is 125 specific
+            state['emission_state'] = 'Unknown'
+        raw_state = int(raw_state[:raw_state.find(',')])
+        raw_state = bin(raw_state)[2:].zfill(16)
+        state['running'] = 'Not running' if raw_state[15] == '0' else 'Running'
+        state['mode'] = 'Mono' if raw_state[14] == '0' else 'Multi'
+        state['emission'] = 'Off' if raw_state[13] == '0' else 'On'
+        state['sem'] = 'Off' if raw_state[12] == '0' else 'On'
+        state['4'] = '0' if raw_state[11] == '0' else '1'
+        state['5'] = '0' if raw_state[10] == '0' else '1'
+        state['6'] = '0' if raw_state[9] == '0' else '1'
+        state['7'] = '0' if raw_state[8] == '0' else '1'
+        state['8'] = '0' if raw_state[7] == '0' else '1'
+        state['9'] = '0' if raw_state[6] == '0' else '1'
+        state['10'] = '0' if raw_state[5] == '0' else '1'
+        state['11'] = '0' if raw_state[4] == '0' else '1'
+        state['12'] = '0' if raw_state[3] == '0' else '1'
+        state['13'] = '0' if raw_state[2] == '0' else '1'
+        state['ringbuffer'] = 'Partly filled' if raw_state[1] == '0' else 'Empty'
+        state['ringbuffer'] = state['ringbuffer'] if raw_state[0] == '0' else 'Overflow'
+        self.state = state
+
     def start_measurement(self):
         """ Start the measurement """
         start = time.time()
         LOGGER.error('QMS Errors, ERR: %s', self.comm('ERR'))
         LOGGER.error('QMS Warnings, EWN: %s', self.comm('EWN'))
-        LOGGER.error('Start time: %f', time.time()-start)        
+        LOGGER.error('Start time: %f', time.time()-start)
         self.update_state()
         LOGGER.error('Start time: %f', time.time()-start)
         self.comm('CRU ,2')
@@ -335,11 +336,19 @@ class qmg_422(object):
             LOGGER.info('Status: %s', status)
             try:
                 status = status.split(',')
+                # Sometimes an error occurs in this response (most often "526,0" instead of
+                # "1,1,9,1,0". The correct response seems to lie unread in the machine
+                # Solved now by just resending the command 'MBH'.
+                if len(status) != 5: # try again
+                    LOGGER.warning('Could not read status properly - trying again')
+                    LOGGER.warning(status)
+                    continue
                 samples = int(status[3])
             except:
                 LOGGER.warning('Could not read status, continuing measurement')
+                LOGGER.warning(status)
                 samples = samples - 1
-            if samples < -30:
+            if samples < -30: # This will only be invoked if status.split(',')[3] returns -30 ?
                 usefull_value = False
                 value = -1
                 break
@@ -417,7 +426,7 @@ class qmg_422(object):
         number_of_samples = int(header[3])
         return number_of_samples
 
-    def mass_scan(self, first_mass, scan_width, amp_range=0):
+    def mass_scan(self, first_mass, scan_width, amp_range=0, speed=9):
         """ Setup the mass spec for a mass scan """
         speed_list = {
             0: 0.0005,
@@ -436,7 +445,6 @@ class qmg_422(object):
             13: 10,
             14: 20,
             15: 60} # unit: [s/amu]
-        speed = 9
         try:
             total_time = scan_width * speed_list[speed]
         except:
@@ -472,7 +480,7 @@ class qmg_422(object):
         self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
 
 if __name__ == '__main__':
-    qmg = qmg_422()
+    qmg = qmg_422(port='/dev/ttyUSB0')
     print(qmg.communication_mode(computer_control=True))
     print(qmg.read_voltages())
     print(qmg.detector_status())

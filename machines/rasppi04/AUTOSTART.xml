@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI04_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>60</startdelay>
+    <command>python datalogger.py</command>
+    <name>Volvo Pressure</name>
+  </session>
+</autostart>

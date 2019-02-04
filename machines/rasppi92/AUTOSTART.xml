@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI92_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>30</startdelay>
+    <command>python3 datalogger.py</command>
+    <name>307 Vibration logger</name>
+  </session>
+</autostart>

@@ -2,12 +2,11 @@
 Self contained module to run a Pfeiffer turbo pump including fall-back
 text gui and data logging.
 """
-
-import serial
 import time
 import curses
 import threading
 import logging
+import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
@@ -154,10 +153,8 @@ class TurboReader(threading.Thread):
             for i in range(0, self.mal):
                 time.sleep(0.5)
                 for param in self.log:
-                    p = self.log[param]
-                    p['mean'][i] = self.turbo.status[param]
-                    mean = sum(p['mean']) / float(len(p['mean']))
-
+                    log = self.log[param]
+                    log['mean'][i] = self.turbo.status[param]
 
 class TurboLogger(threading.Thread):
     """ Read a specific value and determine whether it should be logged """
@@ -179,11 +176,12 @@ class TurboLogger(threading.Thread):
     def run(self):
         while not self.quit:
             time.sleep(2.5)
-            p = self.turboreader.log[self.parameter]
-            mean = sum(p['mean']) / float(len(p['mean']))
+            log = self.turboreader.log[self.parameter]
+            mean = sum(log['mean']) / float(len(log['mean']))
             self.value = mean
             time_trigged = (time.time() - self.last_recorded_time) > self.maximumtime
-            val_trigged = not (self.last_recorded_value * 0.9 < self.value < self.last_recorded_value * 1.1)
+            val_trigged = not (self.last_recorded_value * 0.9 < self.value <
+                               self.last_recorded_value * 1.1)
             if (time_trigged or val_trigged):
                 self.trigged = True
                 self.last_recorded_time = time.time()
@@ -256,10 +254,8 @@ class TurboDriver(threading.Thread):
         except ValueError:
             logging.warn('Value error, unreadable reply')
             reply = -1
-        if crc: # TODO: This is always true! Implement real crc check
-            return reply
-        else:
-            return 'Error!'
+        # TODO: Implement real crc check
+        return reply
 
     def crc_calc(self, command):
         """ Helper function to calculate crc for commands
@@ -364,10 +360,7 @@ class TurboDriver(threading.Thread):
         """
         command = '307'
         reply = self.comm(command, True)
-        if int(reply) == 1:
-            return True
-        else:
-            return False
+        return int(reply) == 1
 
     def turn_pump_on(self, off=False):
         """ Spin the pump up or down
@@ -376,7 +369,6 @@ class TurboDriver(threading.Thread):
         :return: Always returns True
         :rtype: Boolean
         """
-
         if not off:
             command = '1001006111111'
         else:

@@ -3,10 +3,14 @@
 """Produce Python 3 porting status"""
 
 from __future__ import print_function, division
+import errno
 import codecs
 import argparse
 from operator import itemgetter
 from os import path, walk, stat
+
+from PyExpLabSys.common.supported_versions import python3_only
+python3_only(__file__)
 
 THISDIR = path.dirname(path.realpath(__file__))
 BASEPATH = path.dirname(THISDIR)
@@ -39,10 +43,10 @@ def collect_all_python_filepaths(skip_machines):
             if path.splitext(filepath)[1].lower() != '.py':
                 continue
 
-            # Skip if is path
+            # Skip if is filepath is a link
             if path.islink(filepath):
                 continue
-            
+
             # If the path does not exist (broken link) continue
             try:
                 stat(filepath)
@@ -85,6 +89,7 @@ def analyze_files(files):
 
 
 def parse_args():
+    """Return the parsed command line arguments"""
     parser = argparse.ArgumentParser(description='Display python 3 status')
     parser.add_argument('--skip_machines', '-s', action='store_true', default=False,
                         help='Skip machines. Also in totals.')

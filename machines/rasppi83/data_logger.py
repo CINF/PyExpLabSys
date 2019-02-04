@@ -15,7 +15,8 @@ python2_and_3(__file__)
 class TcReader(threading.Thread):
     """ Communicates with the Omega ?? """
     
-    def __init__(self, port, datasocket, logger, db_logger):
+    def __init__(self, port, datasocket, crit_logger=None, db_logger=None, codename='', output=False):
+        super().__init__()
         print('Initializing connection')
         self.comm = minimalmodbus.Instrument(port, 1)
         self.comm.serial.baudrate = 9600
@@ -31,12 +32,14 @@ class TcReader(threading.Thread):
         if error > 9:
             exit('Error in communication with TC reader')
         print('Connection established')
-        threading.Thread.__init__(self)
+        #threading.Thread.__init__(self)
         self.quit = False
         self.datasocket = datasocket
-        self.logger = logger
+        self.logger = crit_logger
         self.db_logger = db_logger
+        self.codename = codename
         print('Module ready')
+        self.output = output
 
     def value(self):
         """ Return current value of reader """
@@ -46,8 +49,9 @@ class TcReader(threading.Thread):
     def stop(self):
         """ Close thread properly """
         self.quit = True
-        self.datasocket.stop()
-        self.db_logger.stop()
+        #self.datasocket.stop()
+        if self.db_logger is not None:
+            self.db_logger.stop()
         
     def run(self):
         time.sleep(5)
@@ -64,54 +68,76 @@ class TcReader(threading.Thread):
                     if error > 0:
                         error = 0
                     # Save points to sockets
-                    self.datasocket.set_point_now(CODENAME, self.temperature)
-                    if self.logger.check(CODENAME, self.temperature):
-                        self.db_logger.save_point_now(CODENAME, self.temperature)
-                        print(CODENAME + ': ' + str(self.temperature))
-                    print(self.temperature, time.time()-t0, time.time()-lasttime)
-                    lasttime = time.time()
+                    self.datasocket.set_point_now(self.codename, self.temperature)
+                    if self.logger is not None and self.db_logger is not None:
+                        if self.logger.check(self.codename, self.temperature):
+                            self.db_logger.save_point_now(self.codename, self.temperature)
+                            print(self.codename + ': ' + str(self.temperature))
+                    if self.output:
+                        print(self.temperature, time.time()-t0, time.time()-lasttime)
+                        lasttime = time.time()
                 except:
                     error += 1
                     print('Error value: {}'.format(error))
                     if error > 9:
                         self.stop()
-                        raise ValueError
+                        raise
         except KeyboardInterrupt:
             print('Force quit activated')
             self.stop()
 
-CODENAME = 'omicron_tpd_temperature'
+CODENAMES = {'Sample': 'omicron_tpd_sample_temperature',
+             'Base': 'omicron_tpd_temperature',
+             }
                 
 def main():
     """ Main function """
     logging.basicConfig(filename="logger.txt", level=logging.ERROR)
     logging.basicConfig(level=logging.ERROR)
 
-    #port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY5BU0H-if00-port0'
-    port = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3GX3T-if00-port0'
+    ports = dict()
+    ports['Sample'] = '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY5BU0H-if00-port0'
+    ports['Base'] =   '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3GX3T-if00-port0'
 
     # Set up criterium logger
     logger = LoggingCriteriumChecker(
-        codenames=[CODENAME],
+        codenames=[CODENAMES['Base']],
         types=['lin'],
         criteria=[0.2],
         time_outs=[300],
         )
 
     # Set up pullsocket
-    datasocket = DateDataPullSocket('mgw_temp', [CODENAME], timeouts=4, port=9000)
+    datasocket = DateDataPullSocket('mgw_temp', list(CODENAMES.values()), timeouts=4, port=9000)
     datasocket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_omicron',
                                     username=credentials.user,
                                     password=credentials.passwd,
-                                    measurement_codenames=[CODENAME])
+                                    measurement_codenames=[CODENAMES['Base']])
     db_logger.start()
 
 
-    measurement = TcReader(port, datasocket, logger, db_logger)
+    measurement = TcReader(ports['Base'], datasocket, crit_logger=logger, db_logger=db_logger, codename=CODENAMES['Base'])
     measurement.start()
 
-                
+    sample_logger = TcReader(ports['Sample'], datasocket, codename=CODENAMES['Sample'])
+    sample_logger.start()
+
+    time.sleep(5)
+    string = 'Base: {: >6.4} C, Sample: {: >6.4} C'
+    while True:
+        try:
+            time.sleep(1)
+            print(string.format(measurement.temperature, sample_logger.temperature))
+        except KeyboardInterrupt:
+            measurement.stop()
+            sample_logger.stop()
+            time.sleep(2)
+            print('\nTcReaders stopped')
+            datasocket.stop()
+            print('Pullsocket stopped\nExiting.')
+            break
+            
 if __name__ == '__main__':
     main()

@@ -64,12 +64,12 @@ class PressureReader(threading.Thread):
 
 def main():
     """ Main code """
-    mux_instance = agilent_34972A.Agilent34972ADriver(interface='lan', hostname='volvo-agilent-34972a')
+    #mux_instance = agilent_34972A.Agilent34972ADriver(interface='lan', hostname='volvo-agilent-34972a')
     port = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
     xgs_instance = xgs600.XGS600Driver(port)
 
-    analog_measurement = MuxReader(mux_instance)
-    analog_measurement.start()
+    #analog_measurement = MuxReader(mux_instance)
+    #analog_measurement.start()
 
     pressure = PressureReader(xgs_instance)
     print('-')
@@ -77,14 +77,15 @@ def main():
 
     time.sleep(2.5)
 
-    codenames = ['volvo_pressure', 'volvo_temperature']
+    #codenames = ['volvo_pressure', 'volvo_temperature']
+    codenames = ['volvo_pressure']
     loggers = {}
-    loggers[codenames[0]] = ValueLogger(pressure, comp_val=0.1, comp_type='log')
+    loggers[codenames[0]] = ValueLogger(pressure, comp_val=0.1, comp_type='log', low_comp=1e-9)
     loggers[codenames[0]].start()
-    loggers[codenames[1]] = ValueLogger(analog_measurement, comp_val=0.5, comp_type='lin')
-    loggers[codenames[1]].start()
+    #loggers[codenames[1]] = ValueLogger(analog_measurement, comp_val=0.5, comp_type='lin')
+    #loggers[codenames[1]].start()
 
-    socket = DateDataPullSocket('Volvo data logger', codenames, timeouts=[1.0, 1.0])
+    socket = DateDataPullSocket('Volvo data logger', codenames, timeouts=1.0)
     socket.start()
 
     livesocket = LiveSocket('Volvo data logger', codenames)
@@ -109,4 +110,12 @@ def main():
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt:
+            break
+        except OSError as exception:
+            print("Got '{}'. Waiting 5 min and run again".format(exception))
+            time.sleep(300)
+

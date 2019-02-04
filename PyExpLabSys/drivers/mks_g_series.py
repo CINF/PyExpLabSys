@@ -1,3 +1,4 @@
+
 """ Driver for MKS g-series flow controller """
 from __future__ import print_function
 import time
@@ -92,6 +93,16 @@ class MksGSeries():
         self.comm(command, addr)
         return True
 
+    def purge(self, t=1, addr=254):
+        """ purge for t seconds, default is 1 second """
+        command1 = 'VO!PURGE'
+        command2 = 'VO!NORMAL'
+        self.comm(command1, addr)
+        print('PURGING')
+        time.sleep(abs(t))
+        self.comm(command2, addr)
+        print('DONE PURGING')
+
     def read_flow(self, addr=254):
         """ Read the flow """
         command = 'FX?'
@@ -114,4 +125,4 @@ if __name__ == '__main__':
     MKS = MksGSeries()
     print(MKS.read_serial_number(1))
     print(MKS.read_full_scale_range(1))
-    #print(MKS.set_device_address(254,005))
+#print(MKS.set_device_address(254,005))

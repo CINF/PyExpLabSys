@@ -5,7 +5,11 @@ import time
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import LiveSocket
-from ABE_ADCDACPi import ADCDACPi
+try:
+    from ABE_ADCDACPi import ADCDACPi
+except ImportError:
+    # Newer versions of ABElectronics Python code import from this location
+    from ADCDACPi import ADCDACPi
 
 class AnalogMFC(object):
     """ Driver for controling an analog MFC (or PC) with
@@ -21,7 +25,7 @@ class AnalogMFC(object):
         """ Read the flow (or pressure) value """
         value = 0
         for _ in range(0, 10): # Average to minimiza noise
-            value += self.daq.read_adc_voltage(1)
+            value += self.daq.read_adc_voltage(1, 1)
         value = value / 10
         #print('Value: ' + str(value))
         flow = value * self.fullrange / self.voltagespan
@@ -39,6 +43,7 @@ class FlowControl(threading.Thread):
     """ Keep updated values of the current flow or pressure """
     def __init__(self, mfcs, name):
         threading.Thread.__init__(self)
+        self.daemon = True
         self.mfcs = mfcs
         print(mfcs)
         devices = list(self.mfcs.keys())
@@ -60,7 +65,7 @@ class FlowControl(threading.Thread):
     def value(self, device):
         """ Return the current value of a device """
         return self.values[device]
-        
+
     def run(self):
         while self.running:
             time.sleep(0.1)
