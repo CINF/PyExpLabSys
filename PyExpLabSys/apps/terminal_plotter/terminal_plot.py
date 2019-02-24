@@ -13,6 +13,7 @@ LOGSCALE = True
 """
 import time
 import curses
+import threading
 import numpy as np
 from PyExpLabSys.common.text_plot import CursesAsciiPlot
 from PyExpLabSys.common.socket_clients import DateDataPullClient
@@ -22,10 +23,11 @@ SOCKETNAME = 'omicron_pvci_pull'
 CODENAME = 'omicron_ana_pressure'
 LOGSCALE = True
 
-class DataClient(object):
+class DataClient(threading.Thread):
     """Maintain a numpy queue of newest `size` data points"""
     def __init__(self, hostname, socketname, codename, size=100):
         """Initialize"""
+        threading.Thread.__init__(self)
         self.client = DateDataPullClient(hostname, socketname)
         self.codename = codename
         self.size = size
@@ -34,6 +36,8 @@ class DataClient(object):
         self.values[:] = np.nan
         self.t_start = self.client.get_field(self.codename)[0]
         self.last_values = [-1, -1]
+        self.new = None
+        self.running = True
         self.update()
 
     def update(self):
@@ -48,14 +52,31 @@ class DataClient(object):
             else:
                 self.values[:-1, :] = self.values[1:, :]
                 self.values[-1, :] = values[0] - self.t_start, values[1]
+            self.new = True
+
+    def run(self):
+        """Continuously query for new values"""
+        while self.running:
+            self.update()
+            time.sleep(0.04)
+
+    def stop(self):
+        """Exit main loop"""
+        self.running = False
 
     def get_values(self):
         """Return non-NaN values"""
         index = np.isfinite(self.values)[:, 0]
-        return self.values[index]
+        if self.new:
+            status = True
+            self.new = False
+        else:
+            status = False
+        return self.values[index], status
 
 # Setup communication with data socket
 client = DataClient(HOSTNAME, SOCKETNAME, CODENAME, size=100)
+client.start()
 
 # Init and clear
 stdscr = curses.initscr()
@@ -77,18 +98,20 @@ try:
     )
     # Plot the sine to time since start and 10 sec a head
     while True:
-        stdscr.clear()
+        #stdscr.clear() # Only neccessary if characters on a line isn't completely overwritten
         t0 = time.time() - t_start
         # Write the time right now to the main window
-        client.update()
-        values = client.get_values()
-        x = values[:, 0]
-        y = values[:, 1]
         stdscr.addstr(1, 3, 'T0: {:.2f}       '.format(t0))
-        stdscr.addstr(2, 3, 'T: {:.2f}s   Last value: {}       '.format(x[-1], y[-1]))
         stdscr.refresh()
-        ap.plot(x, y, legend="Data")
+        values, new = client.get_values()
+        if new:
+            x = values[:, 0]
+            y = values[:, 1]
+            stdscr.addstr(2, 3, 'T: {:.2f}s   Last value: {}       '.format(x[-1], y[-1]))
+            stdscr.refresh()
+            ap.plot(x, y, legend="Data")
         time.sleep(0.2)
 finally:
+    client.stop()
     curses.echo()
     curses.endwin()
