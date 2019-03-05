@@ -23,7 +23,7 @@ class Keithley(object):
             self.metadata = {'type': 70,
                              'sem_voltage': 0,
                              'preamp_range': 0,
-                             'comment' : input('Enter comment for measurement: ')
+                             'comment' : input('Enter comment for measurement (measurement name): ')
                              }
 
     def comm(self, command, expect_response=True):
