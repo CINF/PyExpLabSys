@@ -64,12 +64,12 @@ class CursesTui(threading.Thread):
         self.ramp['track'] = 1
         # Initialize screens and draw boxes
         self.screen = curses.initscr()
-        self.win1 = curses.newwin(7,77, 1,1)
-        self.win2 = curses.newwin(7,28, 10,1)
-        self.win3 = curses.newwin(15,44, 10,33)
         curses.textpad.rectangle(self.screen, 0,0, 8,79)
         curses.textpad.rectangle(self.screen, 9,0, 19,30)
         curses.textpad.rectangle(self.screen, 9,32, 27,79)
+        self.win1 = curses.newwin(7,77, 1,1)
+        self.win2 = curses.newwin(8,28, 10,1)
+        self.win3 = curses.newwin(15,44, 10,33)
         self.screen.refresh()
         curses.cbreak()
         curses.noecho()
@@ -213,6 +213,7 @@ class CursesTui(threading.Thread):
         print('PID calculator stopped')
         self.pullsocket.stop()
         print('Pullsocket stopped')
+        print(self.menu_win) ###
 
         
         
@@ -239,7 +240,8 @@ class CursesTui(threading.Thread):
             else:
                 cursor = EMPTY
             self.menu_win = self.menu_win + cursor + '{}: {}\n'.format(self.lst[i], self.menu[self.lst[i]])
-        #self.win2.addstr(0,0, 'Options: ')
+        self.win2.clrtobot()
+        self.win2.addstr(0,0, 'Options: ')
         self.win2.addstr(0,0, self.menu_win)
         self.win2.refresh()
 
@@ -406,6 +408,7 @@ information accordingly """
                     self.update_values()
                     self.update_socket()
         except:
+            print('Exception in TUI loop')
             self.stop()
             raise
 
@@ -434,12 +437,15 @@ if __name__ == '__main__':
     
     # Initalize power supply
     device = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
+    device = '/dev/ttyUSB3'
     fug = FUGNTN140Driver(port=device, device_reset=True, V_max=12.5, I_max=8)
     fug.output(True)
-
+    time.sleep(1)
+    
     # Initalize power calculator (PID)
     calculator = PowerCalculatorClassOmicron(ramp=1.0)
     calculator.start()
+    time.sleep(1)
 
     # Initialize terminal user interface
     TUI = CursesTui(fug, calculator, pullsocket)
