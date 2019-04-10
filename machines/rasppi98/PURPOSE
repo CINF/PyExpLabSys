@@ -1,4 +1,4 @@
-id: rasppi98
+id: Omicron
 purpose: Logs pressures on Omicron setup
 
 This Raspberry Pi is responsible for logging the pressures from the 2 ion gauges on the main Omicron chambers and the pirani pressures on the 3 roughing lines for the turbo pumps.
