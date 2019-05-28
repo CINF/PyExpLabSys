@@ -65,7 +65,7 @@ class AD5667:
         most_significant_byte = relative // 256
         least_significant_byte = relative % 256
         data = [most_significant_byte, least_significant_byte]
-        self.bus.write_i2c_block_data(self.address, 0x18, data)
+        self.bus.write_i2c_block_data(self.address, dac, data)
 
         self.last_write = time.time()
 
