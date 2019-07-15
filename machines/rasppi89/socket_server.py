@@ -25,7 +25,7 @@ class FlowControl(threading.Thread):
             #print qsize
             while qsize > 0:
                 element = self.pushsocket.queue.get()
-                mfc = element.keys()[0]
+                mfc = list(element.keys())[0]
                 print(element[mfc])
                 print('Queue: ' + str(qsize))
                 value, addr = element[mfc], self.mfcs[mfc]
@@ -57,7 +57,7 @@ Livesocket.start()
 
 i = 0
 MFCs = {}
-MKS = mks.Mks_G_Series(port=port)
+MKS = mks.MksGSeries(port=port)
 for i in range(1, 8):
     time.sleep(2)
     print('!')
