@@ -17,8 +17,10 @@ class CursesTui(threading.Thread):
     """ Text gui for controlling the pump """
 
     def __init__(self, turbo_instance):
-        #TODO: Add support for several pumps in one gui
+        # TODO: Add support for several pumps in one gui
         threading.Thread.__init__(self)
+
+        self.quit = False
         self.turbo = turbo_instance
         self.screen = curses.initscr()
         curses.noecho()
@@ -28,7 +30,7 @@ class CursesTui(threading.Thread):
         self.screen.nodelay(1)
 
     def run(self):
-        while True:
+        while not self.quit:
             self.screen.addstr(3, 2, 'Turbo controller running')
             #if self.turbo.status['pump_accelerating']:
             #    self.screen.addstr(3, 30, 'Pump accelerating')
@@ -69,21 +71,23 @@ class CursesTui(threading.Thread):
             char_num = self.screen.getch()
             if char_num == ord('q'):
                 self.turbo.running = False
+                self.quit = True
+                self.screen.addstr(2, 2, 'Quitting...')
             if char_num == ord('d'):
                 self.turbo.status['spin_down'] = True
             if char_num == ord('u'):
                 self.turbo.status['spin_up'] = True
-
             self.screen.refresh()
             time.sleep(0.2)
+
+        LOGGER.info('TUI ended')
 
     def stop(self):
         """ Cleanup terminal """
         curses.nocbreak()
-        self.screen.keypad(0)
+        self.screen.keypad(False)
         curses.echo()
         curses.endwin()
-
 
 class TurboReader(threading.Thread):
     """ Keeps track of all data from a turbo pump with the intend of logging them """
@@ -191,7 +195,7 @@ class TurboLogger(threading.Thread):
 class TurboDriver(threading.Thread):
     """ The actual driver that will communicate with the pump """
 
-    def __init__(self, adress=1, port='/dev/ttyUSB3'):
+    def __init__(self, adress=1, port='/dev/ttyUSB0'):
         threading.Thread.__init__(self)
 
         with open('turbo.txt', 'w'):
@@ -465,4 +469,18 @@ class TurboDriver(threading.Thread):
 
 
 if __name__ == '__main__':
-    pass
+
+    # Initialize communication with the turbo
+    TURBO = TurboDriver()
+    TURBO.start()
+
+    # Start the user interface
+    TUI = CursesTui(TURBO)
+    TUI.start()
+    try:
+        while not TUI.quit:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        LOGGER.info("Program interrupted by user")
+    finally:
+        TUI.stop()
