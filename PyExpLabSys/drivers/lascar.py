@@ -17,13 +17,20 @@ which is used to calculate the relative humidity as:
 
 from __future__ import division, print_function
 
+import sys
 import struct
 try:
     import hid
 except (ImportError, AttributeError):
     print("Cannot import hid, can be install with pip")
-except SyntaxError:
-    print("This module makes use of hid, which is only available for Python2")
+
+
+if sys.version_info.major == 3:
+    TEMP_START = 3
+    HUMIDITY_START = 2
+else:
+    TEMP_START = '\x03'
+    HUMIDITY_START = '\x02'
 
 
 class ElUsbRt(object):
@@ -49,10 +56,10 @@ class ElUsbRt(object):
         out = {}
         while len(out) < 2:
             string = self.dev.read(8)
-            if string.startswith('\x03'):
+            if string[0] == TEMP_START:
                 frac, = struct.unpack('H', string[1:])
                 out['temperature'] = -200 + frac * 0.1
-            elif string.startswith('\x02'):
+            elif string[0] == HUMIDITY_START:
                 frac, = struct.unpack('B', string[1:])
                 out['humidity'] = frac * 0.5
         return out
@@ -61,7 +68,7 @@ class ElUsbRt(object):
         """Returns the temperature  (in celcius, float)"""
         while True:
             string = self.dev.read(8)
-            if string.startswith('\x03'):
+            if string[0] == TEMP_START:
                 frac, = struct.unpack('H', string[1:])
                 return -200 + frac * 0.1
 
@@ -69,4 +76,4 @@ class ElUsbRt(object):
 if __name__ == '__main__':
     DEV = ElUsbRt()
     while True:
-        print(DEV.get_temperature())
+        print(DEV.get_temperature_and_humidity())
