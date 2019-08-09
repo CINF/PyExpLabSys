@@ -1,6 +1,24 @@
 # pylint: disable=too-few-public-methods,no-member
 """File parser for Chemstation files
 
+Copyright (C) 2015-2018 CINF team on GitHub: https://github.com/CINF
+
+The General Stepped Program Runner is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software
+Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+The General Stepped Program Runner is distributed in the hope
+that it will be useful, but WITHOUT ANY WARRANTY; without even
+the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License
+along with The CINF Data Presentation Website.  If not, see
+<http://www.gnu.org/licenses/>.
+
 .. note:: This file parser went through a large re-write on ??? which
    changed the data structures of the resulting objects. This means
    that upon upgrading it *will* be necessary to update code. The
