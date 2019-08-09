@@ -60,7 +60,7 @@ class ElUsbRt(object):
                 frac, = struct.unpack('H', string[1:])
                 out['temperature'] = -200 + frac * 0.1
             elif string[0] == HUMIDITY_START:
-                frac, = struct.unpack('B', string[1:])
+                frac, = struct.unpack('B', string[1:2])
                 out['humidity'] = frac * 0.5
         return out
 
