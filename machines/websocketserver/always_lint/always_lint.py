@@ -53,7 +53,7 @@ TERMINAL_LOGGER = logging.StreamHandler()
 if RUNNING_IN_CRON:
     TERMINAL_LOGGER.setLevel(logging.WARNING)
 else:
-    TERMINAL_LOGGER.setLevel(logging.DEBUG)
+    TERMINAL_LOGGER.setLevel(logging.INFO)
 TERMINAL_LOGGER.setFormatter(FORMATTER)
 LOG.addHandler(TERMINAL_LOGGER)
 LOG.addHandler(ROTATING_FILE_HANDLER)
@@ -341,47 +341,44 @@ class CommitAnalyzer(object):
            id 169 is lines_of_py3_code
         """
         LOG.info('Report totals to MySQL with hall user')
-        with MySQLdb.connect(SQL_SERVER, 'hall', 'hall', 'cinfdata', port=SQL_PORT) as cursor:
-            query = ('INSERT INTO dateplots_hall (time, type, value) VALUES '
-                     '(FROM_UNIXTIME(%s), %s, %s)')
-            # 164 is pylint errors and 165 is number of lines
-            LOG.debug('Using query: %s', query)
+        query = ('INSERT INTO dateplots_hall (time, type, value) VALUES '
+                 '(FROM_UNIXTIME(%s), %s, %s)')
+        # 164 is pylint errors and 165 is number of lines
+        LOG.debug('Using query: %s', query)
 
-            # Error count
-            values = (self.commit_time, 164, sum(self.error_counter.values()))
-            LOG.debug('Sending: %s', values)
-            cursor.execute(query, values)
+        # Error count
+        values = (self.commit_time, 164, sum(self.error_counter.values()))
+        LOG.debug('Sending: %s', values)
+        self.hall_cursor.execute(query, values)
 
-            # Total number of lines
-            values = (self.commit_time, 165, self.total_line_count)
-            LOG.debug('Sending: %s', values)
-            cursor.execute(query, values)
+        # Total number of lines
+        values = (self.commit_time, 165, self.total_line_count)
+        LOG.debug('Sending: %s', values)
+        self.hall_cursor.execute(query, values)
 
-            # Total number of py3 lines
-            values = (self.commit_time, 169, self.total_py3_line_count)
-            LOG.debug('Sending: %s', values)
-            cursor.execute(query, values)
-
+        # Total number of py3 lines
+        values = (self.commit_time, 169, self.total_py3_line_count)
+        LOG.debug('Sending: %s', values)
+        self.hall_cursor.execute(query, values)
         LOG.debug('Total number of errors and lines sent to mysql')
 
         LOG.info('Report error and file stats to MySQL with pylint user')
-        with MySQLdb.connect(SQL_SERVER, 'pylint', 'pylint', 'cinfdata', port=SQL_PORT) as cursor:
-            query = ('INSERT INTO pylint (time, identifier, isfile, value, commit, '
-                     'pytlin_output_json) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s, %s)')
-            LOG.debug('Using query: %s', query)
+        query = ('INSERT INTO pylint (time, identifier, isfile, value, commit, '
+                 'pytlin_output_json) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s, %s)')
+        LOG.debug('Using query: %s', query)
 
-            # Send error stats
-            for key, value in self.error_counter.items():
-                values = (self.commit_time, key, False, value, self.commit, None)
-                cursor.execute(query, values)
-                LOG.debug('Sending: %s', values)
+        # Send error stats
+        for key, value in self.error_counter.items():
+            values = (self.commit_time, key, False, value, self.commit, None)
+            self.pylint_cursor.execute(query, values)
+            LOG.debug('Sending: %s', values)
 
-            # Send file stats
-            for key, value in self.file_counter.items():
-                error_json = self.file_error_json[key]
-                values = (self.commit_time, key, True, value, self.commit, error_json)
-                cursor.execute(query, values)
-                LOG.debug('Sending: %s ... (json left out)', values[:5])
+        # Send file stats
+        for key, value in self.file_counter.items():
+            error_json = self.file_error_json[key]
+            values = (self.commit_time, key, True, value, self.commit, error_json)
+            self.pylint_cursor.execute(query, values)
+            LOG.debug('Sending: %s ... (json left out)', values[:5])
 
         LOG.debug('Everything else sent to mysql')
 
@@ -408,10 +405,12 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         pass
-
-    CommitAnalyzer.lint_cache['pylint_version'] = PYLINT_VERSION
-    with open(CACHE_PATH, 'wb') as lint_file:
-        pickle.dump(CommitAnalyzer.lint_cache, lint_file)
-    LOG.info('Dumped cache with %s elements', len(CommitAnalyzer.lint_cache))
+    except Exception:
+        LOG.exception("Uh oh, an uncaught exception")
+    finally:
+        CommitAnalyzer.lint_cache['pylint_version'] = PYLINT_VERSION
+        with open(CACHE_PATH, 'wb') as lint_file:
+            pickle.dump(CommitAnalyzer.lint_cache, lint_file)
+        LOG.info('Dumped cache with %s elements', len(CommitAnalyzer.lint_cache))
 
     LOG.debug('All done!')
