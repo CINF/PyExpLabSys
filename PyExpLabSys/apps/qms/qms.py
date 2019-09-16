@@ -18,7 +18,7 @@ LOGGER.addHandler(logging.NullHandler())
 class QMS(object):
     """ Complete mass spectrometer """
     def __init__(self, qmg, sqlqueue=None, chamber='dummy', credentials='dummy',
-                 livesocket=None):
+                 livesocket=None, pullsocket=None):
         self.qmg = qmg
         if not sqlqueue is None:
             self.sqlqueue = sqlqueue
@@ -28,6 +28,7 @@ class QMS(object):
         self.current_action = 'Idling'
         self.message = ''
         self.livesocket = livesocket
+        self.pullsocket = pullsocket
         self.current_timestamp = 'None'
         self.measurement_runtime = 0
         self.stop = False
@@ -238,6 +239,7 @@ class QMS(object):
             for channel in range(1, number_of_channels + 1):
                 self.measurement_runtime = time.time()-start_time
                 value, usefull = self.qmg.get_single_sample()
+                LOGGER.debug('Value: {}\tUsefull: {}'.format(value, usefull))
                 if usefull is False:
                     save_values = False
                 #self.channel_list[channel]['value'] = value
@@ -257,8 +259,10 @@ class QMS(object):
                                                       (time.time() - start_time) * 1000,
                                                       value)
                 self.channel_list[channel]['value'] = str(value)
-                if self.livesocket is not None:
+                if self.livesocket is not None and usefull:
                     self.livesocket.set_point_now('qms-value', value)
+                if self.pullsocket is not None and usefull:
+                    self.pullsocket.set_point_now('qms-value', value)
                 if no_save is False and save_values is True:
                     self.sqlqueue.put((query, None))
                 #time.sleep(0.25)
