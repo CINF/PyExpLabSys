@@ -1,0 +1,13 @@
+# To raster inside the microreactor reactor region
+# Time per cycle ~ 66 seconds
+<<<DATA>>>
+step_size=2.2
+speed=0.3
+<<<PATTERN>>>
+0-->Z:-1
+1-->Y:-1
+Z:+2
+Y:+2
+Z:-2
+Y:-2
+<<<END>>>
