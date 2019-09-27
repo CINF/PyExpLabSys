@@ -1,15 +1,5 @@
-import sys
-#import numpy as np
-#import matplotlib.pyplot as plt
-#from mpl_toolkits.mplot3d import Axes3D
-#import mpl_toolkits.mplot3d.art3d as art3d
-#from matplotlib import cm
-#from matplotlib.patches import Circle
-
-
 def gaussian(x, mu, sigma):
     return np.exp(-np.power(x - mu, 2.)/(2*np.power(sigma, 2.)))
-
 
 def load_pattern(filename):
     """Load data from a xxxx.pattern file"""
@@ -85,7 +75,7 @@ Mark end of FILE/PATTERN with \"<<<END>>>\".')
 radius = 2.25
 # Define beam profile
 def skewed_gaussian(X, Y, center_big=(-3,-3), center_small=(-3,0),
-                    cutoff_big=3, mu=(0,0), sigma=(2,4), A=(2,0.3), radius_aperture=2.25):
+                    cutoff_big=3, mu=(0,0), sigma=(2,4), A=(3,0.3), radius_aperture=2.25):
 
     # Low intensity region
     D = (X - center_small[0])**2 + (Y - center_small[1])**2
@@ -99,11 +89,12 @@ def skewed_gaussian(X, Y, center_big=(-3,-3), center_small=(-3,0),
     return Z
 
 # Integrate beam profile and plot it
-def normalize_beam_profile(num=100):
+def normalize_beam_profile(num=100, moodkwargs=dict()):
     X, dx = np.linspace(-3, 3, num, retstep=True)
     Y, dy = np.linspace(-3, 3, num, retstep=True)
     X, Y = np.meshgrid(X, Y)
-    Z = skewed_gaussian(X, Y)
+
+    Z = skewed_gaussian(X, Y, **moodkwargs)
     #area = np.sum(Z)*dx*dy
     area = np.average(Z[X**2 + Y**2 <= radius_aperture**2])
 
@@ -114,10 +105,46 @@ def normalize_beam_profile(num=100):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
+
+    import sys
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    import mpl_toolkits.mplot3d.art3d as art3d
+    from matplotlib import cm
+    from matplotlib.patches import Circle
+
+    if len(sys.argv) > 0:
         title = sys.argv[1]
     else:
         title = 'test_pattern.pattern'
+
+    if len(sys.argv) > 2:
+        #print(sys.argv)
+        mood = sys.argv[2]
+    else:
+        mood = 'bad'
+
+    if mood == 'bad':
+        moodkwargs = dict(
+            center_big = (-3, -3),
+            center_small = (-3,0),
+            cutoff_big = 3,
+            mu = (0, 0),
+            sigma = (2, 4),
+            A = (3, 0.3),
+            radius_aperture = 2.25,
+            )
+    elif mood == 'good':
+        moodkwargs = dict(
+            center_big = (0,0),
+            center_small = (0,0),
+            cutoff_big = 0,
+            mu = (0, 0),
+            sigma = (2, 5),
+            A = (0, 1),
+            radius_aperture = 2.25,
+            )
 
     # Import pattern
     pattern, data = load_pattern(title)
@@ -155,7 +182,11 @@ if __name__ == '__main__':
     start_point = (z*data['step_size'], y*data['step_size']) # coordinates for start algorithm
 
     # Insert centers of raster pattern
-    deposition_rate = 10. # percent coverage per hour (%/h) relative to 4.5 mm aperture
+    #DEPO = [151.9, 75.96]
+    #TIME = [5.34, 1.843]
+    DEPO = [10.67]
+    TIME = [0.5864]
+    deposition_rate = sum(DEPO)/sum(TIME) # percent coverage per hour (%/h) relative to 4.5 mm aperture
     spacing_num = 2
     center_list = []
     (z, y) = start_point
@@ -166,19 +197,22 @@ if __name__ == '__main__':
             # Include endpoint on purpose (motor stops briefly)
             centers, step = np.linspace(z0, z, 10*int(abs(z - z0)+1)/spacing_num, retstep=True)
             center_list.append((zip(centers, np.ones(len(centers))*y), abs(step/speed)))
+            center_list.append(([(centers[-1], y)], 1.2))
         elif axis == 'Y':
             y0 = y
             y += dist*data['step_size']
             # Include endpoint on purpose (motor stops briefly)
             centers, step = np.linspace(y0, y, 10*int(abs(y - y0)+1)/spacing_num, retstep=True)
             center_list.append((zip(np.ones(len(centers))*z, centers), abs(step/speed)))
+            center_list.append(([(z, centers[-1])], 1.2))
         else:
             raise NameError('Unknown axis identifier encountered in pattern: {}'.format(axis))
+    #print(center_list)
+    hold = input('Press key to continue')
 
 
 
-
-    area, bp_ax = normalize_beam_profile()
+    area, bp_ax = normalize_beam_profile(moodkwargs=moodkwargs)
 
     # Main loop
     total_time = 0
@@ -196,9 +230,9 @@ if __name__ == '__main__':
                     markeredgecolor='k',
                     )
             previous_point = c
-            Z += skewed_gaussian(X - c[0], Y - c[1])/area * deposition_rate * dt/3600.
+            Z += skewed_gaussian(X - c[0], Y - c[1], **moodkwargs)/area * deposition_rate * dt/3600.
 
-    print('Time for 1 round: ' + str(total_time))
+    print('Time for 1 round: ' + str(total_time) + 's = ' + str(total_time/60.) + 'min')
     circle_mask = Circle(xy=center_mask, radius=r_mask, edgecolor='k', facecolor='none', linewidth=2)
     sketch.add_patch(circle_mask)
     plt.axis('equal')
@@ -208,21 +242,40 @@ if __name__ == '__main__':
     x_mask = r_mask * np.cos(theta)
     y_mask = r_mask * np.sin(theta)
     z_mask = x_mask*0
+
+    tfrac = sum(TIME)/(total_time/3600)
+    print(tfrac)
+    Z = Z*tfrac
     maximum = np.max(Z)
     average = np.average(Z[ X**2 + Y**2 <= r_mask**2 ])
-    print('Average inside dep area: {}'.format(average))
+    print('Average inside dep area (per raster run): {}'.format(average*total_time/3600/sum(TIME)))
+    print('Average inside dep area (total): {}'.format(average))
     for i in range(3):
         projection.plot(x_mask, y_mask, z_mask + maximum*float(i)/3, linewidth=2, color='k', alpha=0.6)
     projection.plot(x_mask, y_mask, z_mask + average, linewidth=2, color='k', alpha=0.6)
+    projection.set_zlabel('Coverage (\%)')
     #i = [X**2 + Y**2 > r_mask**2]
     #surf = projection.plot_wireframe(X[i], Y[i], Z[i], color='b')
     #surf = projection.scatter(X[i], Y[i], zs=Z[i], c='b', s=5)
-    i = [X**2 + Y**2 <= r_mask**2]
-    surf = projection.scatter(X[i], Y[i], zs=Z[i], c='r', s=20)
+    i =  [X**2 + Y**2 <= r_mask**2]
+    j1 = np.array([X**2 + Y**2 > r_mask**2])
+    j2 = np.array([X**2 + Y**2 < 6**2])
+    j = j1[0] == j2[0]
+    #surf = projection.scatter(X[i], Y[i], zs=Z[i], c='r', s=15)
+    #surf2 = projection.scatter(X[j], Y[j], zs=Z[j], c='b', s=20)
     #surf = projection.plot_wireframe(X[i], Y[i], Z[i], color='r')
+    surf3 = projection.plot_surface(X, Y, Z, cmap=cm.hot, vmin=20, vmax=40)
     for ax in [sketch, projection]:
         ax.set_xlabel('x (mm)')
         ax.set_ylabel('y (mm)')
         ax.set_title(title)
+    fig.colorbar(surf3)
 
+    plt.figure()
+    plt.contourf(X, Y, Z, [5, 10, 15, 20, 25, 30, 35, 40])
+    plt.colorbar()
+    if 1:
+        step = 10/2
+        plt.plot([-step,-step,step,step,-step], [-step,step,step,-step,-step], 'k-', linewidth=2)
+    plt.axis('equal')
     plt.show()

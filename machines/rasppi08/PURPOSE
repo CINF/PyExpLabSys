@@ -1,0 +1,4 @@
+id: Omicron
+purpose: Nanobeam P and T logger
+
+Rasppi08 logs the pressure and temperature of Nanobeam2011 cluster source

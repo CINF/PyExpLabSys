@@ -1,0 +1,28 @@
+# Test pattern for rastering a 9mm area with the 4.5mm aperture
+# Comments after "#"
+#
+#   +Y
+#   ^
+#   |
+#    --> +Z
+<<<DATA>>>
+step_size=4.5
+speed=0.5
+<<<PATTERN>>>
+0-->Z:-1
+1-->Y:-1
+{
+Z:+2
+    Y:+0.05
+Z:-2
+    Y:+0.05
+}*20
+Z:+2
+{
+    Y:-2
+Z:-0.05
+    Y:+2
+Z:-0.05
+}*20
+    Y:-2
+<<<END>>>

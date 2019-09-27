@@ -11,6 +11,7 @@ SOCKETNAME = 'omicron_pvci_pull'
 CODENAME = 'omicron_ana_pressure'
 LOGSCALE = True
 """
+import sys
 import time
 import curses
 import threading
@@ -18,10 +19,15 @@ import numpy as np
 from PyExpLabSys.common.text_plot import CursesAsciiPlot
 from PyExpLabSys.common.socket_clients import DateDataPullClient
 
+if len(sys.argv) == 2:
+    points = int(sys.argv[1])
+else:
+    points = 50
+
 HOSTNAME = 'rasppi98'
 SOCKETNAME = 'omicron_pvci_pull'
-CODENAME = 'omicron_ana_pressure'
-LOGSCALE = True
+CODENAME = 'omicron_prep_pressure'
+LOGSCALE = False
 
 class DataClient(threading.Thread):
     """Maintain a numpy queue of newest `size` data points"""

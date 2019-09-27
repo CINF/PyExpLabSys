@@ -1,8 +1,0 @@
-<autostart>
-  <name>RASPPI80_AUTOSTART</name> <!-- no spaces -->
-  <session>
-    <startdelay>15</startdelay>
-    <command>python3 /home/pi/PyExpLabSys/machines/rasppi80/datalogger.py</command>
-    <name>Temperature + Humidity Logger</name>
-  </session>
-</autostart>
