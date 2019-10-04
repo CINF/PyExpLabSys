@@ -9,7 +9,7 @@ import socket
 import pickle
 from PyQt4 import Qt, QtCore
 from PyQt4.QtGui import QWidget
-from temperature_controller_gui import Ui_temp_control
+from temperature_controller_gui_2 import Ui_temp_control
 from PyExpLabSys.common.plotters import DataPlotter
 from PyExpLabSys.common.supported_versions import python2_only
 import temperature_controller_config as config
@@ -136,7 +136,7 @@ class SimplePlot(QWidget):
             QtCore.QTimer.singleShot(0, self.plot_iteration)
 
     def update_setpoint(self):
-        """Standby button method"""
+        """Update setpoint button method"""
         new_setpoint = self.gui.new_setpoint.text()
         try:
             float(new_setpoint)
@@ -163,7 +163,7 @@ class SimplePlot(QWidget):
         print(received)
 
     def on_stop_ramp(self):
-        """Start temperature ramp"""
+        """Stop temperature ramp"""
         data = 'raw_wn#ramp:str:stop'
         self.sock.sendto(data, (config.controller_hostname, config.controller_push_port))
         self.sock.recv(1024)
