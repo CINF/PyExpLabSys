@@ -2,7 +2,7 @@
 """I2C communication for the Large CO2 MEA setup
 
 This program is responsible for making a socket available. The data
-received on this socket will be writte to a DAC and is currently used
+received on this socket will be written to a DAC and is currently used
 to set the value of pressure controllers. Meanwhile the program
 continuously measures values from a ADC, which is presently used to
 measure the voltage over the MEA and possibly also the state of the
@@ -13,6 +13,7 @@ pressure controllers.
 from queue import Queue, Empty
 from time import sleep, time
 
+import RPi.GPIO as GPIO 
 from PyExpLabSys.drivers.microchip_tech_mcp3428 import MCP3428
 #from PyExpLabSys.drivers.analogdevices_ad5667 import AD5667
 from PyExpLabSys.common.sockets import DataPushSocket
@@ -22,7 +23,7 @@ python3_only(__file__)
 
 
 class I2CComm(object):
-    """Handle I2C communication with DAC and ADC"""
+    """Handle I2C communication with DAC and ADC and use GPIO to control a valve relay"""
 
     def __init__(self):
         self.measurements = {}
@@ -34,12 +35,16 @@ class I2CComm(object):
             callback=self.communicate,
             return_format='json',
         )
-
+        
         # These two queues form a pair, that is used to interrupt the
         # continuous measurement of the values from the ADC to allow
         # setting the DAC and return copy the values from the ADC
         self.comm_flag = Queue()
         self.comm_return = Queue()
+
+        self.relay_channel = [7]
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(self.relay_channel,GPIO.OUT, initial=GPIO.HIGH)
 
         self.dps.start()
 
@@ -61,21 +66,40 @@ class I2CComm(object):
                 continue
 
             # If we escaped the comm_flag test, we should set and enqueue current values
-            if "no_voltages_to_set" not in values_to_set:
-                print("Asked to set DAC values", values_to_set)
-                sleep(0.01)
-                #self.ad5667.set_channel_A(values_to_set['A'])
-                #self.ad5667.set_channel_B(values_to_set['B'])
-                sleep(0.01)
-            self.comm_return.put(dict(self.measurements))
+            # if "no_voltages_to_set" not in values_to_set:
+            #     print("Asked to set DAC values", values_to_set)
+            #     sleep(0.01)
+            #     #self.ad5667.set_channel_A(values_to_set['A'])
+            #     #self.ad5667.set_channel_B(values_to_set['B'])
+            #     sleep(0.01)
+            # Reads the commands about switching set the GPIO output
 
+
+
+            if "switch anode" in values_to_set:
+                print("switching to anode")
+                # setup the GPIO board to use the correct channel
+#                GPIO.setmode(GPIO.BOARD)
+#                GPIO.setup(self.relay_channel,GPIO.OUT, initial=GPIO.HIGH)
+                GPIO.output(self.relay_channel[0],GPIO.LOW)
+            elif "switch cathode" in values_to_set:
+                print("switching to cathode")
+                GPIO.output(self.relay_channel[0],GPIO.HIGH)
+                
+            self.comm_return.put(dict(self.measurements))
+            
     def run(self):
         """Run method used to allow keyboard interrupts"""
         try:
             self.measure()
         except KeyboardInterrupt:
             self.dps.stop()
+            self.destroy()
 
+    def destroy(self):
+        GPIO.output(self.relay_channel,GPIO.HIGH)
+        GPIO.cleanup()
+        
     def communicate(self, data):
         """Send the received values to be written on the DAC and return values
         from the ADC
