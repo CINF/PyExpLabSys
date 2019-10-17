@@ -68,7 +68,7 @@ def main():
     codenames = ['cooling_water_hot', 'cooling_water_cold']
     loggers = {}
     for i in range(0, 2):
-        loggers[codenames[i]] = ValueLogger(tempreader, comp_val=0.5, channel=i)
+        loggers[codenames[i]] = ValueLogger(tempreader, comp_val=0.25, channel=i)
         loggers[codenames[i]].start()
     socket = DateDataPullSocket('hall_cooling_water_temp',
                                 codenames, timeouts=2.0)
@@ -97,4 +97,12 @@ def main():
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt:
+            print("Quitting")
+            break
+        except OSError as exception:  # Network problem
+            print("Got '{}'. Wait 5 min and restart".format(exception))
+            time.sleep(300)

@@ -1,0 +1,12 @@
+<autostart>
+  <name>AUTOSTART</name>
+  <session>
+    <startdelay>0.5</startdelay>
+    <command>python omicron_pvci_monitor.py</command>
+    <name>Pressure logger</name>
+  </session>
+  <session>
+    <startdelay>0.5</startdelay>
+    <name>Blank</name>
+  </session>
+</autostart>

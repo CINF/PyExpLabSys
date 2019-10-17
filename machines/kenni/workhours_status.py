@@ -13,6 +13,7 @@ if sys.version_info.major < 3:
     print("NO! Use Python 3")
     sys.exit(1)
 
+# Extract month difference from args
 difference = 0
 if len(sys.argv) > 1:
     try:
@@ -20,60 +21,76 @@ if len(sys.argv) > 1:
     except ValueError:
         print("Argument must be negative integer. IGNORED.")
 
-cal = calendar.Calendar()
 
+# For current month the current day is not shown, but it is for old months, so adjust that
+cal = calendar.Calendar()
 now = datetime.now()
 year = now.year
 month = now.month
 end_day_to_list = now.day
 if difference != 0:
-    end_day_to_list = calendar.monthrange(year, month)[1] + 1
     if now.month == 1:
         year -= 1
         month = 12
     else:
         month -= 1
+    end_day_to_list = calendar.monthrange(year, month)[1] + 1
     print("#############################")
     print("# Showing stats for {}-{:0>2} #".format(year, month))
     print("#############################")
 
 
 
-# NOTE in Python 0 is monday
+# NOTE in Python 0 is monday. List of (daynumber, weekday)
 days = []
 for daynumber in range(1, end_day_to_list):
+    #print(year, month, daynumber, 12)
     day = datetime(year, month, daynumber, 12)
     days.append((daynumber, day.weekday()))
 
 conn = sqlite3.connect('/home/kenni/.local/share/hamster-applet/hamster.db')
 c = conn.cursor()
 
+# Select depending on whether it is current month or not
 if difference == 0:
     query = (
-        "select "
+        "SELECT "
         "    date(start_time), "
         "    cast(strftime(\"%d\", start_time) as int), "
-        "    (JulianDay(end_time) - JulianDay(start_time)) * 24 "
-        "from facts "
-        "where date(start_time) >= date('now','start of month') AND "
-        "date(start_time) < date('now')"
+        "    (JulianDay(end_time) - JulianDay(start_time)) * 24, "
+        "    name "
+        "FROM "
+        "    facts "
+        "INNER JOIN "
+        "    activities ON facts.activity_id = activities.id "
+        "WHERE "
+        "    date(start_time) >= date('now','start of month') AND "
+        "    date(start_time) < date('now')"
     )
 else:
     query = (
         "select "
         "    date(start_time), "
         "    cast(strftime(\"%d\", start_time) as int), "
-        "    (JulianDay(end_time) - JulianDay(start_time)) * 24 "
-        "from facts "
-        "    where strftime('%Y', start_time) == '{0}' and "
+        "    (JulianDay(end_time) - JulianDay(start_time)) * 24, "
+        "    name "
+        "FROM "
+        "    facts "
+        "INNER JOIN "
+        "    activities ON facts.activity_id = activities.id "
+        "WHERE "
+        "    strftime('%Y', start_time) == '{0}' and "
         "    strftime('%m', start_time) == '{1:0>2}'"
     ).format(year, month)
 
-# 0 is sunday
+
+# Collect work hours and categories, 0 is sunday
 c.execute(query)
 hours_worked = defaultdict(float)
+categories = defaultdict(set)
 for line in c.fetchall():
-    datestring, daynumber, hours = line
+    _, daynumber, hours, name = line
+    categories[daynumber].add(name)
     hours_worked[daynumber] += hours
 
 
@@ -99,6 +116,7 @@ if number_of_workdays + number_of_workdays_with_hours == 0:
     print("No days yet in this month to do statistics on")
     sys.exit(0)
 
+# Print out the table
 print("########################################")
 print("Table")
 last_week_day = None
@@ -114,10 +132,11 @@ for daynumber, weekday in days:
         
     if daynumber not in hours_worked:
         continue
-    print("{: <9} {: <2} has {: >4.1f} hours".format(
+    print("{: <9} {: <2} has {: >4.1f} hours ({})".format(
         calendar.day_name[weekday],
         daynumber,
-        hours_worked[daynumber]
+        hours_worked[daynumber],
+        ', '.join(categories[daynumber]),
     ))
 print("########################################")
 print("Totals")

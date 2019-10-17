@@ -92,6 +92,8 @@ class FUGNTN140Driver(object):
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
             device_reset=True,
+            V_max=6.5,
+            I_max=10,
         ):
         """Initialize object variables
 
@@ -133,6 +135,8 @@ class FUGNTN140Driver(object):
             print('Connected to device: {}'.format(self.identification_string()))
         if device_reset:
             self.reset()
+        self.V_max = V_max
+        self.I_max = I_max
 
     # Answer string handling
     def _check_answer(self):
@@ -244,8 +248,8 @@ class FUGNTN140Driver(object):
         if value < 0.0:
             value = 0.0
         # Maximum voltage
-        if value > 6.5:
-            value = 6.5
+        if value > self.V_max:
+            value = self.V_max
         self._write_register('S0', value)
 
     def get_voltage(self):
@@ -306,8 +310,8 @@ class FUGNTN140Driver(object):
         if value < 0:
             value = 0
         # Maximum current
-        if value > 10:
-            value = 10
+        if value > self.I_max:
+            value = self.I_max
         # Set current
         self._write_register('S1', value)
 

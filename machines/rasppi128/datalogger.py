@@ -38,7 +38,14 @@ class Reader(threading.Thread):
     def run(self):
         while not self.quit:
             self.ttl = 50
-            self.humidity, self.temperature = self.honeywell.read_values()
+            for n in range(10):
+                try:
+                    self.humidity, self.temperature = self.honeywell.read_values()
+                    break
+                except OSError:
+                    time.sleep(5)
+            else:
+                raise RuntimeError("Ran out of retries")
 
 def main():
     """ Main function """
@@ -84,4 +91,12 @@ def main():
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt:
+            print("Quitting")
+            break
+        except OSError as exception:  # Network error
+            print("Got '{}'. Wait 5 min and restart".format(exception))
+            time.sleep(300)

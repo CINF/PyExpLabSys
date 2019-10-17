@@ -75,6 +75,7 @@ class RedFlowMeter(object):
         'setpoint_gas_flow': ('write_float', None, 0x0006),
     }
 
+
     def __init__(self, port, slave_address, **serial_com_kwargs):
         """Initialize driver
 
@@ -94,6 +95,8 @@ class RedFlowMeter(object):
         # Initialize the instrument
         self.instrument = minimalmodbus.Instrument(port, slave_address)
         self._last_call = time()
+        # Specify number of retrys when reading data
+        self.number_of_retries = 10
 
     def _ensure_waittime(self):
         """Ensure waittime"""
@@ -125,11 +128,25 @@ class RedFlowMeter(object):
         # The command_spec is:
         # name: (minimalmodbus_method, conversion_function), method_args...)
         method_name, conversion_function = command_spec[0]
-        method = getattr(self.instrument, method_name)
-        value = method(*command_spec[1:])
-        if conversion_function is not None:
-            value = conversion_function(value)
 
+        for retry_number in range(1, self.number_of_retries):
+            try:
+                method = getattr(self.instrument, method_name)
+                value = method(*command_spec[1:])
+                if conversion_function is not None:
+                    value = conversion_function(value)
+                break
+            except IOError as e:
+                print("I/O error({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                sleep(0.5)
+                continue
+            except ValueError as e:
+                print("ValueError({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                sleep(0.5)
+                continue
+        else:
+            raise RuntimeError('Could not retrieve data in\
+                                       {} retries'.format(self.number_of_retries))
         # Set last call time
         self._last_call = time()
 
@@ -198,11 +215,12 @@ class RedFlowMeter(object):
 
 def main():
     # COM4, address 2 and 247
-    flow_meter = RedFlowMeter('COM4', 2)
+    flow_meter = RedFlowMeter('COM8', 42)
     from pprint import pprint
     pprint(flow_meter.read_all())
-    flow_meter.set_address(247)
-    pprint(flow_meter.read_all())
+    flow_meter.write_value('setpoint_gas_flow', 0.0)
+    #flow_meter.set_address(247)
+    #pprint(flow_meter.read_all())
 
 
 if __name__ == '__main__':

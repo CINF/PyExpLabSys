@@ -2,6 +2,7 @@
 from __future__ import print_function
 import threading
 import time
+import socket
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
 from PyExpLabSys.common.sockets import DateDataPullSocket
@@ -100,4 +101,12 @@ def main():
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except (ConnectionResetError, socket.gaierror) as exception:
+            print("Got '{}'. Wait 300 sec and try again".format(exception))
+            time.sleep(300)
+            continue
+        except:
+            raise

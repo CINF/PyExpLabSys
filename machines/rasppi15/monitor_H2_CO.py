@@ -249,16 +249,30 @@ class GasAlarmMonitor(object):
 
 if __name__ == '__main__':
     # pylint: disable=C0103
-    gas_alarm_monitor = GasAlarmMonitor()
-    time.sleep(1)
-    try:
-        gas_alarm_monitor.main()
-    except KeyboardInterrupt:
-        gas_alarm_monitor.close()
-    except Exception as exception:
-        LOGGER.exception(exception)
-        gas_alarm_monitor.close()
-        raise exception
+    reset = True
+    while True:
+        try:
+            if reset:
+                gas_alarm_monitor = GasAlarmMonitor()
+                time.sleep(1)
+                reset = False
+            gas_alarm_monitor.main()
+        except KeyboardInterrupt:
+            gas_alarm_monitor.close()
+            break
+        except (OSError, MySQLdb.OperationalError) as exception:
+            # Any error caused by problems in power of network should go here
+            LOGGER.warning("'{}' encoutered. Wait 5 min and reset.".format(exception))
+            reset = True
+        except Exception as exception:
+            LOGGER.exception(exception)
+            gas_alarm_monitor.close()
+            raise exception
+
+        if reset:
+            # If we encounter the sort of problem that triggers a
+            # reset, wait a little while
+            time.sleep(300)
 
     time.sleep(2)
     LOGGER.info('Program has stopped')

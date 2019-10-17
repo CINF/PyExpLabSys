@@ -46,8 +46,8 @@ import credentials
 
 
 # Import data file
-import ramp
-#import testing_sequence as ramp
+#import ramp
+import testing_sequence as ramp
 
 class RampRunner(object):
     """The RampRunner. Program to run current and voltage measurements and log measurements
@@ -60,19 +60,20 @@ class RampRunner(object):
         """Try to connect to the COM port of the flow meter and ask for the serial number"""
         print("Try and connect to red flow meter")
         try:
-            self.red_flow_meter = RedFlowMeter(ramp.RED_FLOW_METER_COM_PORT, slave_address=2)
+            self.red_flow_meter = RedFlowMeter(ramp.RED_FLOW_METER_COM_PORT, slave_address=42)
         except SerialException:
             message = 'Cannot find red flow meter on {}'.format(ramp.RED_FLOW_METER_COM_PORT)
             raise RuntimeError(message) 
     
         # Test serial number reply
-        if self.red_flow_meter.read_value('serial') != 181787:
+        if self.red_flow_meter.read_value('serial') != 210059:
             raise RuntimeError('Incorrect reply to serial number')
     
         # Print actual flow value
         print(self.red_flow_meter.read_value('fluid_name'), self.red_flow_meter.read_value('flow'))
-        self.red_flow_meter.set_address(247)
-        print(self.red_flow_meter.read_value('fluid_name'), self.red_flow_meter.read_value('flow'))
+        # If more flow meters are used try them here
+        #self.red_flow_meter.set_address(247)
+        #print(self.red_flow_meter.read_value('fluid_name'), self.red_flow_meter.read_value('flow'))
         
         # Try to conect to power supply 
         print("Try and connect to power supply")
@@ -91,6 +92,9 @@ class RampRunner(object):
         
         self.ramp = ramp.RAMP
         self.metadata = ramp.metadata
+        self.area = ramp.area
+        self.setpoint_pressure = ramp.setpoint_pressure
+        self.setpoint_gas_flow = ramp.setpoint_gas_flow
         self.verify_ramp()
         self.data_set_saver = DataSetSaver(
             'measurements_large_CO2_MEA',
@@ -132,16 +136,13 @@ class RampRunner(object):
                     
             elif step['type'] == 'constant_current':
                 required_keys = {'type', 'duration',\
-                                 'current_density', 'save_rate','area'}
+                                 'current_density', 'save_rate'}
                 if step.keys() != required_keys:
                     raise RuntimeError('The keys must in a constant voltage step must be\
                                        {}'.format(required_keys))
                 elif step['current_density'] < 0: 
                     raise RuntimeError('Current density must be positive, got: {}mA/cm2'\
                                    .format(step['current_density']))
-                elif step['area'] < 0:
-                    raise RuntimeError('Area must be positive, got: {}cm2'\
-                                   .format(step['area']))
             
             # Do checks on the common keys
             elif step['duration'] <= 0: 
@@ -178,13 +179,27 @@ class RampRunner(object):
         self.data_set_saver.add_measurement('current', self.metadata)
         self.metadata['label'] = 'CO2 flow'
         self.data_set_saver.add_measurement('CO2 flow', self.metadata)
+        # If another flow meter is used collect the flow here
+        #self.metadata['label'] = 'cell outlet flow'
+        #self.data_set_saver.add_measurement('cell outlet flow', self.metadata)
+        # Collect the pressure reading from the pressure controller
+        #self.metadata['label'] = 'pressure'
+        #self.data_set_saver.add_measurement('pressure', self.metadata)
         # Add the one custom column
         self.metadata['time'] = now_custom_column
         
         # Set the current limit on the power supply to 10A
         self.cpx.set_current_limit(10)
         
+        # Change address to CO2 flow controller
+        self.red_flow_meter.set_address(42)
+        # Set the CO2 flow to the specified value 
+        self.red_flow_meter.write_value('setpoint_gas_flow', self.setpoint_gas_flow)
+        
+        
         # Set the pressure on the pressure controller
+        #self.message = 'json_wn#' + json.dumps({'A': 0.0, 'B': self.setpoint_pressure })
+        #self.sock.sendto(message.encode('ascii'), (self.host, self.port))
         
         try:
             for step in self.ramp:
@@ -197,14 +212,14 @@ class RampRunner(object):
                     self.run_constant_current_step(step)
         except KeyboardInterrupt:
             print('Program interupted by user')
-            
-        except IOError as e:
-            print("I/O error({0}): {1}".format(e.errno, e.strerror))
-            pass
         finally:
             # End the data collection and turn off power supply after run or interruption
             print('The program has ended')
             self.cpx.output_status(False)
+            self.red_flow_meter.set_address(42)
+            self.red_flow_meter.write_value('setpoint_gas_flow', 0.0)
+            #self.message = 'json_wn#' + json.dumps({'A': 0.0, 'B': 0.0})
+            #self.sock.sendto(message.encode('ascii'), (self.host, self.port))
             self.data_set_saver.wait_for_queue_to_empty()
             self.data_set_saver.stop()
         
@@ -223,8 +238,6 @@ class RampRunner(object):
             print(self.cpx.read_set_voltage())
             pass
         
-        # Change address to CO2 flow meter
-        self.red_flow_meter.set_address(247)
         # Turn on the power supply
         self.cpx.output_status(True)
         
@@ -252,14 +265,21 @@ class RampRunner(object):
                 reply_data = json.loads(reply[4:])
                 actual_voltage = reply_data['3']
                 print('The voltage is: {}V on the cell'.format(actual_voltage))
-            
+                #pressure = reply_data['1']
                 # Read the current from the power supply
                 actual_current  = self.cpx.read_actual_current()
                 print('The current is: {}A'.format(actual_current))
                 
+                # Change address to CO2 flow meter
+                self.red_flow_meter.set_address(42)
                 
-                # Get the CO2 flow from the MFM
+                # Get the CO2 flow from the MFC
                 CO2_flow = self.red_flow_meter.read_value('flow')
+                
+                # If another flow meter is used collect the flow here
+                #self.red_flow_meter.set_address(247)
+                # Get the flow from the cell into the GC from the MFM
+                #cell_outlet_flow = self.red_flow_meter.read_value('flow')
                 
                 # time between data is saved
                 print('Time since last save: {}s'.format(time()-last_save))
@@ -269,7 +289,8 @@ class RampRunner(object):
                 self.data_set_saver.save_point('voltage', (now, actual_voltage))
                 self.data_set_saver.save_point('current', (now, actual_current))
                 self.data_set_saver.save_point('CO2 flow', (now, CO2_flow))
-            
+                #self.data_set_saver.save_point('CO2 flow', (now, pressure))
+                #self.data_set_saver.save_point('cell outlet flow', (now, cell_outlet_flow))
         
     def run_constant_current_step(self, step):
         """Run a single step"""
@@ -277,19 +298,18 @@ class RampRunner(object):
         start_time = time()  # Read from step
         
         # Change address to CO2 flow meter
-        self.red_flow_meter.set_address(247)
+        self.red_flow_meter.set_address(42)
         # Set current limit on power supply and set a high voltage to hit the limit
         # and let the power supply control the voltage
-        area = step['area'] # in cm2
         current_density = step['current_density'] # in mA
-        # Calculte the area 
-        current = current_density/1000*area
+        # Calculate the current from the corresponding area and corrent density
+        current = current_density/1000*self.area
         print("Setting current to {}A".format(current))
         self.cpx.set_current_limit(current)
         self.cpx.set_voltage(4)
         # Turn on the power supply
         self.cpx.output_status(True)
-        
+        #self.red_flow_meter.write_value('setpoint_gas_flow', step['setpoint_gas_flow'])
         last_save = 0
         # Read of the flow and current as long as the duration lasts
         while (time() - start_time) < step['duration']*3600:
@@ -314,15 +334,20 @@ class RampRunner(object):
                 reply_data = json.loads(reply[4:])
                 actual_voltage = reply_data['3']
                 print('The voltage is: {}V on the cell'.format(actual_voltage))
-            
+                #pressure = reply_data['1']
                 # Read the current from the power supply
                 actual_current  = self.cpx.read_actual_current()
                 print('The current is: {}A'.format(actual_current))
                 
-                
+                # Change address to CO2 flow controller
+                self.red_flow_meter.set_address(42)
                 # Get the CO2 flow from the MFM
                 CO2_flow = self.red_flow_meter.read_value('flow')
-                
+                # If another flow meter is used collect the flow here
+                # Change adress to the cell outlet MFM
+                #self.red_flow_meter.set_address(247)
+                # Get the CO2 flow from the MFM
+                #cell_outlet_flow = self.red_flow_meter.read_value('flow')
                 # time between data is saved
                 print('Time since last save: {}s'.format(time()-last_save))
                 last_save = time()
@@ -331,7 +356,8 @@ class RampRunner(object):
                 self.data_set_saver.save_point('voltage', (now, actual_voltage))
                 self.data_set_saver.save_point('current', (now, actual_current))
                 self.data_set_saver.save_point('CO2 flow', (now, CO2_flow))
-
+                #self.data_set_saver.save_point('pressure', (now, pressure))
+                #self.data_set_saver.save_point('cell outlet flow', (now, cell_outlet_flow))
 
     def run_voltage_ramp_step(self, step):
         """ Run voltage ramp step"""

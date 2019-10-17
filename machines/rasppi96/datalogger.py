@@ -126,4 +126,12 @@ def main():
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt:
+            print("Quitting")
+            break
+        except OSError as exception:  # Network error
+            print("Got '{}'. Wait 5 min and restart.".format(exception))
+            time.sleep(300)
