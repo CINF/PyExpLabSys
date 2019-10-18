@@ -1,5 +1,5 @@
-id: rasppi68
-purpose: Runs TPD cell on Omicron setup
+id: Omicron
+purpose: TPD cell on Omicron setup
 
 This Rasberry Pi is responsible for logging the temperature of one of the Omega temperature readers on Omicron setup and
 supplies controls for running heat ramps in the TPD cell. This includes providing power supply and temperature values as live socket values
