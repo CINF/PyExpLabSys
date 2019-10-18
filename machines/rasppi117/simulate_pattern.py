@@ -163,7 +163,7 @@ if __name__ == '__main__':
     #dx, dy = dx*10, dy*10
     X, Y = np.meshgrid(X, Y)
     center_mask = (0, 0)
-    r_mask = 4.5 # mm
+    r_mask = 5.0#4.5 # mm
 
     Z = np.zeros((len(X), len(Y)))
 
