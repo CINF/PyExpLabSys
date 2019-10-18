@@ -32,6 +32,8 @@ class TcReader(threading.Thread):
         if error > 9:
             exit('Error in communication with TC reader')
         print('Connection established')
+        #if self.temperature < -1000:
+        #    self.temperature = None
         #threading.Thread.__init__(self)
         self.quit = False
         self.datasocket = datasocket
@@ -65,6 +67,8 @@ class TcReader(threading.Thread):
                 time.sleep(0.15)
                 try:
                     self.temperature = self.comm.read_register(4096, 1, signed=True)
+                    if self.temperature < -250:
+                        self.temperature = None
                     if error > 0:
                         error = 0
                     # Save points to sockets
@@ -103,8 +107,9 @@ def main():
     logger = LoggingCriteriumChecker(
         codenames=[CODENAMES['Base']],
         types=['lin'],
-        criteria=[0.2],
+        criteria=[0.33],
         time_outs=[300],
+        low_compare_values=[-200],
         )
 
     # Set up pullsocket
@@ -125,11 +130,14 @@ def main():
     sample_logger.start()
 
     time.sleep(5)
-    string = 'Base: {: >6.4} C, Sample: {: >6.4} C'
+    string = 'Base: {: <0 6.4} C, Sample: {: <0 6.4f} C'
     while True:
         try:
             time.sleep(1)
             print(string.format(measurement.temperature, sample_logger.temperature))
+        except ValueError:
+            print(repr(measurement.temperature))
+            print(repr(sample_logger.temperature))
         except KeyboardInterrupt:
             measurement.stop()
             sample_logger.stop()
