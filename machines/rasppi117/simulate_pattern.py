@@ -72,7 +72,6 @@ Mark end of FILE/PATTERN with \"<<<END>>>\".')
                     pattern.append((newline[0], float(newline[1])))
             
 
-radius = 2.25
 # Define beam profile
 def skewed_gaussian(X, Y, center_big=(-3,-3), center_small=(-3,0),
                     cutoff_big=3, mu=(0,0), sigma=(2,4), A=(3,0.3), radius_aperture=2.25):
@@ -96,6 +95,7 @@ def normalize_beam_profile(num=100, moodkwargs=dict()):
 
     Z = skewed_gaussian(X, Y, **moodkwargs)
     #area = np.sum(Z)*dx*dy
+    radius_aperture = moodkwargs['radius_aperture']
     area = np.average(Z[X**2 + Y**2 <= radius_aperture**2])
 
     fig3 = plt.figure(3)
@@ -114,13 +114,17 @@ if __name__ == '__main__':
     from matplotlib import cm
     from matplotlib.patches import Circle
 
+    # Radius of aperture
+    radius_ap = 2.25 # defining spot size
+    # Radius of mask
+    r_mask = 2.5 # desired deposition area
+
     if len(sys.argv) > 0:
-        title = sys.argv[1]
+        filename = sys.argv[1]
     else:
-        title = 'test_pattern.pattern'
+        filename = 'test_pattern.pattern'
 
     if len(sys.argv) > 2:
-        #print(sys.argv)
         mood = sys.argv[2]
     else:
         mood = 'bad'
@@ -133,7 +137,7 @@ if __name__ == '__main__':
             mu = (0, 0),
             sigma = (2, 4),
             A = (3, 0.3),
-            radius_aperture = 2.25,
+            radius_aperture = radius_ap,
             )
     elif mood == 'good':
         moodkwargs = dict(
@@ -143,11 +147,11 @@ if __name__ == '__main__':
             mu = (0, 0),
             sigma = (2, 5),
             A = (0, 1),
-            radius_aperture = 2.25,
+            radius_aperture = radius_ap,
             )
 
     # Import pattern
-    pattern, data = load_pattern(title)
+    pattern, data = load_pattern(filename)
 
     fig = plt.figure(1)
     projection = fig.gca(projection='3d')
@@ -163,11 +167,8 @@ if __name__ == '__main__':
     #dx, dy = dx*10, dy*10
     X, Y = np.meshgrid(X, Y)
     center_mask = (0, 0)
-    r_mask = 5.0#4.5 # mm
 
     Z = np.zeros((len(X), len(Y)))
-
-    radius_aperture = 2.25 # mm
 
     # Load offset and data
     speed = data['speed'] # mm/s
@@ -208,9 +209,7 @@ if __name__ == '__main__':
         else:
             raise NameError('Unknown axis identifier encountered in pattern: {}'.format(axis))
     #print(center_list)
-    hold = input('Press key to continue')
-
-
+    print('Chosen pattern is valid.\nStarting simulation...')
 
     area, bp_ax = normalize_beam_profile(moodkwargs=moodkwargs)
 
@@ -221,7 +220,7 @@ if __name__ == '__main__':
         for c in coordinates:
             total_time += dt    
             # Sketch raster pattern
-            circle = Circle(xy=c, radius=radius, facecolor='b', linewidth=0, alpha=0.05)
+            circle = Circle(xy=c, radius=radius_ap, facecolor='b', linewidth=0, alpha=0.05)
             sketch.add_patch(circle)
             if previous_point:
                 sketch.plot([previous_point[0], c[0]], [previous_point[1], c[1]], 'ko-', 
@@ -235,7 +234,10 @@ if __name__ == '__main__':
     print('Time for 1 round: ' + str(total_time) + 's = ' + str(total_time/60.) + 'min')
     circle_mask = Circle(xy=center_mask, radius=r_mask, edgecolor='k', facecolor='none', linewidth=2)
     sketch.add_patch(circle_mask)
-    plt.axis('equal')
+    try:
+        plt.axis('equal')
+    except NotImplementedError:
+        pass
     sketch.axis([-10, 10, -10, 10])
 
     theta = np.linspace(0, 2*np.pi, 100)
@@ -268,7 +270,7 @@ if __name__ == '__main__':
     for ax in [sketch, projection]:
         ax.set_xlabel('x (mm)')
         ax.set_ylabel('y (mm)')
-        ax.set_title(title)
+        ax.set_title(filename)
     fig.colorbar(surf3)
 
     plt.figure()
@@ -277,5 +279,12 @@ if __name__ == '__main__':
     if 1:
         step = 10/2
         plt.plot([-step,-step,step,step,-step], [-step,step,step,-step,-step], 'k-', linewidth=2)
-    plt.axis('equal')
+    try:
+        plt.axis('equal')
+    except NotImplementedError:
+        pass
+
+    total_intensity = np.sum(Z)
+    in_mask_intensity = np.sum(Z[X**2 + Y**2 <= r_mask**2])
+    print('Percent of charge within mask: {} %'.format(in_mask_intensity/total_intensity*100))
     plt.show()
