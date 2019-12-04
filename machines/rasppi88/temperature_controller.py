@@ -6,8 +6,11 @@ import curses
 import pickle
 import wiringpi as wp
 import PyExpLabSys.auxiliary.pid as PID
+import credentials
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
+from PyExpLabSys.common.value_logger import LoggingCriteriumChecker
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
@@ -202,11 +205,13 @@ class PowerCalculatorClass(threading.Thread):
 
 class HeaterClass(threading.Thread):
     """ Do the actual heating """
-    def __init__(self, power_calculator, datasocket):
+    def __init__(self, power_calculator, datasocket, db_logger, criterium_checker):
         threading.Thread.__init__(self)
         self.pinnumber = 0
         self.pc = power_calculator
         self.datasocket = datasocket
+        self.db_logger = db_logger
+        self.criterium_checker = criterium_checker
         self.beatperiod = 5 # seconds
         self.beatsteps = 100
         self.dutycycle = 0
@@ -214,12 +219,23 @@ class HeaterClass(threading.Thread):
         wp.pinMode(self.pinnumber, 1)  # Set pin 0 to output
 
     def run(self):
+        prefix = 'fr307_furnace_1_'
         while not self.quit:
+            # Get PID output
             self.dutycycle = self.pc.read_power()
-            self.datasocket.set_point_now('dutycycle', self.dutycycle)
-            self.datasocket.set_point_now('pid_p', self.pc.pid.proportional_contribution())
-            self.datasocket.set_point_now('pid_i', self.pc.pid.integration_contribution())
 
+            # Log stuff
+            for name, value in [('dutycycle', self.dutycycle),
+                               ('pid_p', self.pc.pid.proportional_contribution()),
+                               ('pid_i', self.pc.pid.integration_contribution())]:
+                self.datasocket.set_point_now(name, value)
+                if self.criterium_checker.check(prefix+name, value):
+                    self.db_logger.save_point_now(prefix+name, value)
+            name, value = 'S', self.pc.setpoint
+            if self.criterium_checker.check(prefix+name, value):
+                self.db_logger.save_point_now(prefix+name, value)
+
+            # Set output
             for i in range(0, self.beatsteps):
                 time.sleep(1.0 * self.beatperiod / self.beatsteps)
                 if i < self.beatsteps * self.dutycycle:
@@ -244,7 +260,23 @@ def main():
     power_calculator.daemon = True
     power_calculator.start()
 
-    heater = HeaterClass(power_calculator, datasocket)
+    codenames = ['fr307_furnace_1_dutycycle', 'fr307_furnace_1_S',
+                 'fr307_furnace_1_pid_p', 'fr307_furnace_1_pid_i']
+    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_furnaceroom307',
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=codenames)
+    db_logger.start()
+
+    # Criterium checker
+    criterium_checker = LoggingCriteriumChecker(
+        codenames=codenames,
+        types=['lin']*len(codenames),
+        criteria=[0.1, 0.99, 1., 1.],
+        time_outs=[60, 600, 300, 300],
+        )
+    
+    heater = HeaterClass(power_calculator, datasocket, db_logger, criterium_checker)
     heater.start()
 
     tui = CursesTui(heater)
