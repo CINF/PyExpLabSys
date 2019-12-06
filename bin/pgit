@@ -1,0 +1,10 @@
+#!/bin/bash
+
+user="Patrick Str{U+00F8}m-Hansen"
+email="patrick_s-h@hotmail.com"
+
+git config --global user.name "$user"
+git config --global user.email $email
+
+
+git "$@"
