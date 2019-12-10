@@ -55,27 +55,36 @@ class CursesTui(threading.Thread):
         self.ramp['value'] = 1 # Kelvin per second
         self.ramp['stop current'] = 6.0
         self.ramp['stop temperature'] = 50
-        self.calc.pid.pid_p = 0.06 # PID proportional term
-        self.calc.pid.pid_i = 0.00001 # PID integration term
-        self.calc.pid.p_min = -1.0
+        if self.calc:
+            self.calc.pid.pid_p = 0.06 # PID proportional term
+            self.calc.pid.pid_i = 0.00001 # PID integration term
+            self.calc.pid.p_min = -1.0
         self.ramp['start current'] = 0.0 # Adopt starting current as PID minimum current
         self.ramp['standby current'] = 1.0
         self.ramp['wait'] = 0.1
         self.ramp['track'] = 1
         # Initialize screens and draw boxes
         self.screen = curses.initscr()
-        self.win1 = curses.newwin(7,77, 1,1)
-        self.win2 = curses.newwin(7,28, 10,1)
-        self.win3 = curses.newwin(15,44, 10,33)
         curses.textpad.rectangle(self.screen, 0,0, 8,79)
         curses.textpad.rectangle(self.screen, 9,0, 19,30)
         curses.textpad.rectangle(self.screen, 9,32, 27,79)
+        self.win1 = curses.newwin(7,77, 1,1)
+        self.win2 = curses.newwin(8,28, 10,1)
+        self.win3 = curses.newwin(15,44, 10,33)
         self.screen.refresh()
         curses.cbreak()
         curses.noecho()
         curses.halfdelay(self.settings['halfdelay'])
         self.quit = False
-        self.menu = {1: 'Set voltage', 2: 'Set current', 3: 'Run ramp', 4: 'Reset', 5: 'Ramp settings', 6: 'Fitted ramp', 0: 'Quit (Q)'}
+        self.menu = {
+            1: 'Set voltage',
+            2: 'Set current',
+            3: 'Run ramp',
+            4: 'Reset',
+            5: 'Ramp settings',
+            6: 'Fitted ramp',
+            0: 'Quit (Q)',
+        }
         self.cursor = 0
         self.lst = [1, 2, 3, 4, 5, 6, 0]
         self.update_display()
@@ -86,7 +95,7 @@ class CursesTui(threading.Thread):
     def run_ramp(self, fit=False):
         """Ramp function (PID controlled heating)"""
         
-        self.values['status'] = 'Ramp running...'
+        self.values['status'] = 'Ramp running... (exit on "q")'
         self.update_display()
         if self.ramp['track']:
             time_start = time.time()
@@ -213,6 +222,7 @@ class CursesTui(threading.Thread):
         print('PID calculator stopped')
         self.pullsocket.stop()
         print('Pullsocket stopped')
+        print(self.menu_win) ###
 
         
         
@@ -239,7 +249,8 @@ class CursesTui(threading.Thread):
             else:
                 cursor = EMPTY
             self.menu_win = self.menu_win + cursor + '{}: {}\n'.format(self.lst[i], self.menu[self.lst[i]])
-        #self.win2.addstr(0,0, 'Options: ')
+        self.win2.clrtobot()
+        self.win2.addstr(0,0, 'Options: ')
         self.win2.addstr(0,0, self.menu_win)
         self.win2.refresh()
 
@@ -250,9 +261,13 @@ class CursesTui(threading.Thread):
         self.win3.clrtobot()
         self.win3.addstr(0,0, prompt)
         string = self.win3.getstr(y,x)
+        try:
+            number = float(string)
+        except ValueError:
+            number = None
         curses.halfdelay(self.settings['halfdelay'])
         curses.noecho()
-        return float(string)
+        return number
 
     def function(self, num=4):
         """Shortcut to different menus. Default is \"Reset\"
@@ -260,27 +275,37 @@ To add elements to menu, add functionality here, and add the menu element in
 __init__ under 'self.menu' and 'self.lst'"""
         if num == 1:
             # Set voltage
-            cmd = self.get_input(1,2)
-            self.psc.set_voltage(cmd)
-            self.values['voltage_set'] = cmd
-            self.values['power_set'] = self.values['voltage_set']*self.values['current_set']
-            self.values['status'] = 'Voltage set'
+            cmd = self.get_input(prompt='Enter voltage:')
+            if not cmd:
+                self.values['status'] = 'Illegal value: only numbers allowed'
+            elif cmd >= 0 and cmd <= self.psc.V_max:
+                self.psc.set_voltage(cmd)
+                self.values['voltage_set'] = cmd
+                self.values['power_set'] = self.values['voltage_set']*self.values['current_set']
+                self.values['status'] = 'Voltage set'
+            else:
+                self.values['status'] = 'Illegal number entered: out of range.'
             self.update_values()
             self.update_socket()
             self.update_display()
         elif num == 2:
             # Set current
-            cmd = self.get_input(1,2)
-            self.psc.set_current(cmd)
-            self.values['current_set'] = cmd
-            self.values['power_set'] = self.values['voltage_set']*self.values['current_set']
-            self.values['status'] = 'Current set'
+            cmd = self.get_input(prompt='Enter current:')
+            if not cmd:
+                self.values['status'] = 'Illegal value: only numbers allowed'
+            elif cmd >= 0 and cmd <= self.psc.I_max:
+                self.psc.set_current(cmd)
+                self.values['current_set'] = cmd
+                self.values['power_set'] = self.values['voltage_set']*self.values['current_set']
+                self.values['status'] = 'Current set'
+            else:
+                self.values['status'] = 'Illegal number entered: out of range.'
             self.update_values()
             self.update_socket()
             self.update_display()
         elif num == 3:
             # Heat ramp
-            self.run_ramp()
+            self.run_ramp(fit=False)
         elif num == 4:
             # Reset power supply
             for i in ['current_set', 'voltage_set', 'power_set']:
@@ -306,8 +331,17 @@ __init__ under 'self.menu' and 'self.lst'"""
 
     def edit_parameters(self):
         """Function that handles editing parameters in program"""
-        lst = ['Heat slope', 'standby current',  'STOP current', 'STOP temp', 'PID param [p,i]', 'PS ramp voltage', 'PS ramp current', 'PID delay (s)', 'PID tracker']
-        defaults = [self.ramp['value'], self.ramp['standby current'], self.ramp['stop current'], self.ramp['stop temperature'], [self.calc.pid.pid_p, self.calc.pid.pid_i], self.ramp['voltage'], self.ramp['current'], self.ramp['wait'], self.ramp['track']]
+
+        lst = ['Heat slope', 'standby current',
+               'STOP current', 'STOP temp',
+               'PID param [p,i]',
+               'PS ramp voltage', 'PS ramp current',
+               'PID delay (s)', 'PID tracker']
+        defaults = [self.ramp['value'], self.ramp['standby current'],
+                    self.ramp['stop current'], self.ramp['stop temperature'],
+                    [self.calc.pid.pid_p, self.calc.pid.pid_i],
+                    self.ramp['voltage'], self.ramp['current'],
+                    self.ramp['wait'], self.ramp['track']]
         box = 'Edit values below (submit with CTRL+G)\n'
         for i in range(len(lst)):
             box = box + '{}: {}\n'.format(lst[i], defaults[i])
@@ -319,34 +353,74 @@ __init__ under 'self.menu' and 'self.lst'"""
             try:
                 text, value = con.split(':')
             except:
-                pass
+                continue
 
             # Slope of temperature ramp
             if text == lst[0]:
-                self.ramp['value'] = float(value)
+                try:
+                    self.ramp['value'] = float(value)
+                except ValueError:
+                    continue
 
             # Standby current (value after heat ramp)
             elif text == lst[1]:
-                self.ramp['standby current'] = float(value)
+                try:
+                    self.ramp['standby current'] = float(value)
+                except ValueError:
+                    continue
 
             # Stop criteria - current and temperature
             elif text == lst[2]:
-                self.ramp['stop current'] = float(value)
+                try:
+                    self.ramp['stop current'] = float(value)
+                except ValueError:
+                    continue
             elif text == lst[3]:
-                self.ramp['stop temperature'] = float(value)
+                try:
+                    self.ramp['stop temperature'] = float(value)
+                except ValueError:
+                    continue
 
             # PID parameters
             elif text == lst[4]:
                 value = value.lstrip(' [').rstrip('] ')
                 value = value.split(',')
-                self.calc.pid.pid_p = float(value[0])
-                self.calc.pid.pid_i = float(value[1])
+                try:
+                    p = float(value[0])
+                except ValueError:
+                    self.values['status'] = repr(value)
+                    continue
+                try:
+                    i = float(value[1])
+                except ValueError:
+                    self.values['status'] = repr(value)
+                    continue
+                self.calc.pid.pid_p = p
+                self.calc.pid.pid_i = i
 
             # Voltage ramp parameters
             elif text == lst[5]:
                 value = value.lstrip(' [').rstrip('] ')
                 value = value.split(',')
-                self.ramp['voltage'] = [float(value[0]), int(value[1])]
+                self.values['status'] = repr(value)
+                try:
+                    ramp_value = float(value[0])
+                    if ramp_value < 0:
+                        print(1)
+                        continue
+                except ValueError:
+                    print(2)
+                    continue
+                try:
+                    ramp_type = int(value[1])
+                    if not ramp_type in range(5):
+                        print(3)
+                        continue
+                except ValueError:
+                    print(4)
+                    continue
+                self.ramp['voltage'] = [ramp_value, ramp_type]
+                print(self.ramp['voltage'])
                 self.psc.ramp_voltage(self.ramp['voltage'][0], program=self.ramp['voltage'][1])
 
 
@@ -354,17 +428,39 @@ __init__ under 'self.menu' and 'self.lst'"""
             elif text == lst[6]:
                 value = value.lstrip(' [').rstrip('] ')
                 value = value.split(',')
-                self.ramp['current'] = [float(value[0]), int(value[1])]
+                try:
+                    ramp_value = float(value[0])
+                    if ramp_value < 0:
+                        continue
+                except ValueError:
+                    continue
+                try:
+                    ramp_type = int(value[1])
+                    if not ramp_type in range(5):
+                        continue
+                except ValueError:
+                    continue
+                self.ramp['current'] = [ramp_value, ramp_type]
                 self.psc.ramp_current(self.ramp['current'][0], program=self.ramp['current'][1])
 
             # Sleep/wait parameter
             elif text == lst[7]:
-                self.ramp['wait'] = float(value)
+                try:
+                    self.ramp['wait'] = float(value)
+                except ValueError:
+                    continue
 
             # Track values option
             elif text == lst[8]:
-                self.ramp['track'] = int(value)
-                
+                try:
+                    self.ramp['track'] = int(value)
+                except ValueError:
+                    continue
+
+        box = ''
+        for i in range(len(lst)):
+            box = box + '{}: {}\n'.format(lst[i], defaults[i])
+        self.win3.addstr(0, 0, box)
                 
         
 
@@ -406,6 +502,7 @@ information accordingly """
                     self.update_values()
                     self.update_socket()
         except:
+            print('Exception in TUI loop')
             self.stop()
             raise
 
@@ -418,8 +515,9 @@ information accordingly """
 
     def update_socket(self):
         """Write values to pullsocket """
-        self.values['P_error'] = self.calc.pid.error
-        self.values['I_error'] = self.calc.pid.int_err
+        if self.calc:
+            self.values['P_error'] = self.calc.pid.error
+            self.values['I_error'] = self.calc.pid.int_err
         for codename in CODENAMES:
             self.pullsocket.set_point_now(codename, self.values[codename])
 
@@ -436,18 +534,13 @@ if __name__ == '__main__':
     device = '/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0'
     fug = FUGNTN140Driver(port=device, device_reset=True, V_max=12.5, I_max=8)
     fug.output(True)
-
+    time.sleep(1)
+    
     # Initalize power calculator (PID)
     calculator = PowerCalculatorClassOmicron(ramp=1.0)
     calculator.start()
+    time.sleep(1)
 
     # Initialize terminal user interface
     TUI = CursesTui(fug, calculator, pullsocket)
     TUI.start()
-
-
-
-
-
-
-
