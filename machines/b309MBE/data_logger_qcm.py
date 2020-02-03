@@ -1,4 +1,4 @@
-""" Pressure and temperature logger, PVD309"""
+""" QCM logger, PVD309. Originally on rasppi106, but moved here due to repurposing of the rasppi."""
 from __future__ import print_function
 import threading
 import time
