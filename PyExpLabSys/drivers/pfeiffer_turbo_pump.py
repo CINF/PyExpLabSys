@@ -33,12 +33,18 @@ class CursesTui(threading.Thread):
         while not self.quit:
             self.screen.addstr(3, 2, 'Turbo controller running')
             #if self.turbo.status['pump_accelerating']:
-            #    self.screen.addstr(3, 30, 'Pump accelerating')
+            self.screen.addstr(3, 41, '| Vent mode: ' \
+                               + self.turbo.status['vent_mode'] + '      ')
             #    self.screen.clrtoeol()
             #else:
             #    self.screen.addstr(3, 30, 'Pump at constant speed')
+
             self.screen.addstr(4, 2, 'Gas mode: ' + self.turbo.status['gas_mode'] + '      ')
-            self.screen.addstr(5, 2, 'Vent mode: ' + self.turbo.status['vent_mode'] + '      ')
+            tmp = '| Venting setpoint: {:d}%      '
+            self.screen.addstr(4, 41, tmp.format(self.turbo.status['vent_freq']))
+            self.screen.addstr(5, 2, 'Acc A1: ' + self.turbo.status['A1'] + '     ')
+            tmp = '| Venting time: {0:.2f} minutes      '
+            self.screen.addstr(5, 41, tmp.format(self.turbo.status['vent_time']))
             self.screen.addstr(6, 2, 'Sealing gas: ' +
                                self.turbo.status['sealing_gas'] + '      ')
 
@@ -217,6 +223,9 @@ class TurboDriver(threading.Thread):
         self.status['pump_accelerating'] = False
         self.status['gas_mode'] = ''
         self.status['vent_mode'] = ''
+        self.status['A1'] = ''
+        self.status['vent_freq'] = 50
+        self.status['vent_time'] = 0
         self.status['sealing_gas'] = ''
         self.status['drive_current'] = 0
         self.status['drive_power'] = 0
@@ -259,8 +268,11 @@ class TurboDriver(threading.Thread):
             logging.warn('Value error, unreadable reply')
             reply = -1
         # TODO: Implement real crc check
+        except serial.SerialException:
+            logging.warn('Serial connection problem')
+            reply = -1
         return reply
-
+    
     def crc_calc(self, command):
         """ Helper function to calculate crc for commands
         :param command: The command for which to calculate crc
@@ -341,7 +353,41 @@ class TurboDriver(threading.Thread):
         if mode == 2:
             mode_string = 'Direct Venting'
         return mode_string
+    
+    def read_vent_rotation(self):
+        """ Adjust the rotation speed below which
+        the turbo starts venting
+        """
+        command = '720'
+        reply = self.comm(command, True)
+        val = int(reply)
+        return val
 
+    def read_vent_time(self):
+        """ Read the time the venting valve is kept open
+        """
+        command = '721'
+        reply = self.comm(command, True)
+        val = int(reply)/60.0
+        return val
+    
+    def read_acc_a1(self):
+        """ Read the status of accessory A1
+        """
+        command = '035'
+        reply = self.comm(command, True)
+        mode = int(reply)
+        mode_string = ''
+        if mode == 0:
+            mode_string = "Fan (continous)"
+        elif mode == 1:
+            mode_string = "Venting valve, normally closed"
+        elif mode == 4:
+            mode_string = "Fan (temp controlled)"
+        else:
+            mode_string = "Mode is: " + str(mode)
+        return mode_string
+    
     def read_sealing_gas(self):
         """ Read whether sealing gas is applied
         :return: The sealing gas mode
@@ -455,6 +501,9 @@ class TurboDriver(threading.Thread):
                 self.status['set_rotation_speed'] = self.read_set_rotation_speed()
                 self.status['gas_mode'] = self.read_gas_mode()
                 self.status['vent_mode'] = self.read_vent_mode()
+                self.status['A1'] = self.read_acc_a1()
+                self.status['vent_freq'] = self.read_vent_rotation()
+                self.status['vent_time'] = self.read_vent_time()
                 self.status['sealing_gas'] = self.read_sealing_gas()
                 self.status['operating_hours'] = self.read_operating_hours()
             round_robin_counter += 1
