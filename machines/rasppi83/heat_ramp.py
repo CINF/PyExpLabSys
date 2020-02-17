@@ -74,7 +74,7 @@ class PowerCalculatorClassOmicron(object):
         """Get updated setpoint"""
         temp = self.get_temperature()
         self.values['setpoint'] = (time.time() - self.start_values['time']) * self.ramp + self.start_values['temperature']
-        if temp:
+        if not temp is None:
             out_pid = self.pid.get_output(temp, self.values['setpoint'])
             return out_pid + self.zero
         else:

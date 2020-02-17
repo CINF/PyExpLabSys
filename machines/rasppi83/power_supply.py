@@ -44,6 +44,8 @@ class CursesTui(threading.Thread):
         self.values['voltage_set'] = 0
         self.values['current_mon'] = 0
         self.values['current_set'] = 0
+        self.values['T_sample'] = None
+        self.values['T_base'] = None
         #self.values['power_mon'] = 0
         #self.values['power_set'] = 0
         self.values['temperature_set'] = None
@@ -233,6 +235,9 @@ class CursesTui(threading.Thread):
         self.values['voltage_mon'] = self.psc.monitor_voltage()
         self.values['current_mon'] = self.psc.monitor_current()
         #self.values['power_mon'] = self.values['voltage_mon']*self.values['current_mon']
+        self.values['T_sample'] = self.calc.comms['temperature'].get_field('omicron_tpd_sample_temperature')[1]
+        #print(self.values['T_sample'])
+        self.values['T_base'] = self.calc.comms['temperature'].get_field('omicron_tpd_temperature')[1]
         self.update_socket()
 
     def update_socket(self):
@@ -247,14 +252,22 @@ class CursesTui(threading.Thread):
         """Refreshes the window with values"""
         self.update_values()
         try:
+            if self.values['T_sample'] is None:
+                Tsample = '----'
+            else:
+                Tsample = self.values['T_sample']
+            if self.values['T_base'] is None:
+                Tbase = '----'
+            else:
+                Tbase = self.values['T_base']
             self.display = '' + \
                            'Status: {: <50s}\n'.format(self.values['status']) + \
                            '\n' + \
-                           'Voltage setpoint:        Current setpoint:            \n' + \
-                           ' {: <24f} {: <28f}\n'.format(self.values['voltage_set'], self.values['current_set']) + \
+                           'Voltage setpoint:        Current setpoint:            Sample temperature\n' + \
+                           ' {: <24f} {: <28f} {} C\n'.format(self.values['voltage_set'], self.values['current_set'], Tsample) + \
                            '\n' + \
-                           'Voltage value:           Current value:               \n' + \
-                           ' {: <24f} {: <28f}'.format(self.values['voltage_mon'], self.values['current_mon'])
+                           'Voltage value:           Current value:               Base temperature\n' + \
+                           ' {: <24f} {: <28f} {} C'.format(self.values['voltage_mon'], self.values['current_mon'], Tbase)
         except ValueError:
             LOGGER.warning(repr(self.values['status']))
             LOGGER.warning(repr(self.values['voltage_set']))
@@ -303,7 +316,7 @@ __init__ under 'self.menu' and 'self.lst'"""
         if num == 1:
             # Set voltage
             cmd = self.get_input(prompt='Enter voltage:')
-            if not cmd:
+            if cmd is None:
                 self.values['status'] = 'Illegal value: only numbers allowed'
             elif cmd >= 0 and cmd <= self.psc.V_max:
                 self.psc.set_voltage(cmd)
@@ -316,7 +329,7 @@ __init__ under 'self.menu' and 'self.lst'"""
         elif num == 2:
             # Set current
             cmd = self.get_input(prompt='Enter current:')
-            if not cmd:
+            if cmd is None:
                 self.values['status'] = 'Illegal value: only numbers allowed'
             elif cmd >= 0 and cmd <= self.psc.I_max:
                 self.psc.set_current(cmd)
