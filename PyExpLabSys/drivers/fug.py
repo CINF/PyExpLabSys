@@ -20,10 +20,6 @@ from __future__ import print_function
 import sys
 import time
 import serial
-from PyExpLabSys.common.supported_versions import python2_only
-
-
-python2_only(__file__)
 
 # Error codes and their interpretations as copied from manuals
 ERRORCODES = {
@@ -142,9 +138,8 @@ class FUGNTN140Driver(object):
     def _check_answer(self):
         """Verify correct answer string (neglect previous answers) """
 
-        #while self.ser.inWaiting() > 0:
         string = self.ser.readline()
-        if string.encode('ascii').strip() == 'E0':
+        if string.decode('ascii').strip() == 'E0':
             return True
         else:
             self.stop()
@@ -162,21 +157,23 @@ class FUGNTN140Driver(object):
     def _get_answer(self):
         """Get waiting answer string """
 
-        #while self.ser.inWaiting() > 0:
         string = self.ser.readline()
+        string = string.decode('ascii')
         return string
 
     # Register handlers
     def _write_register(self, register, value):
         """Alters the value of a register """
 
-        self.ser.write('>' + register + ' ' + str(value) + self.end)
+        command = '>' + register + ' ' + str(value) + self.end
+        self.ser.write(command.encode())
         self._check_answer()
 
     def _read_register(self, register, value_type=float):
         """Queries a register and returns its value """
 
-        self.ser.write('>' + register + '?' + self.end)
+        command = '>' + register + '?' + self.end
+        self.ser.write(command.encode())
         string = self._get_answer()
         if value_type == float:
             # Interpret answer as 'float'
@@ -197,7 +194,8 @@ class FUGNTN140Driver(object):
     def reset(self):
         """Resets device """
 
-        self.ser.write('=' + self.end)
+        command = '=' + self.end
+        self.ser.write(command.encode())
         self._check_answer()
 
     def stop(self, reset=True):
@@ -218,11 +216,12 @@ class FUGNTN140Driver(object):
     def output(self, state=False):
         """Set output ON (>BON) """
 
-        if state:
+        if state is True:
             register = 'F1'
-        else:
+        elif state is False:
             register = 'F0'
-        self.ser.write(register + self.end)
+        command = register + self.end
+        self.ser.write(command.encode())
         self._check_answer()
 
     def get_state(self):
@@ -347,7 +346,9 @@ class FUGNTN140Driver(object):
 
     def read_H1(self):
         """Read H1 FIXME not yet done"""
-        self.ser.write('>H1?'+self.end)
+
+        command = '>H1?' + self.end
+        self.ser.write(command.encode())
         bytes_ = []
         time.sleep(1)
         while self.ser.inWaiting() > 0:
@@ -375,6 +376,7 @@ def test():
         t0 = time.time()
         power.print_states(t0)
         power.set_voltage(3)
+        return
         power.set_current(2.5)
         while power.ramp_voltage_running():
             power.print_states(t0)

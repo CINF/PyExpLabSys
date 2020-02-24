@@ -652,6 +652,7 @@ __init__ under 'self.menu' and 'self.lst'"""
         self.win3.clrtobot()
         self.win3.addstr(0,0, prompt)
         string = self.win3.getstr(y,x)
+        string = string.decode()
         if ret == 'number':
             try:
                 string = string.replace(',', '.')
