@@ -80,7 +80,7 @@ class CursesTui(threading.Thread):
         self.values['P_error'] = 0
         # Ramp parameters
         try:
-            self.settings = self.load_settings('default.settings')
+            self.load_settings('default.settings')
         except IOError:
             self.values['status'] = 'No "default.settings" file found. Check settings.'
             self.settings = DEFAULT_SETTINGS
