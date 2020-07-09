@@ -122,6 +122,7 @@ class RtdReader(threading.Thread):
         self.calib_temp = calib_temp
         time.sleep(0.2)
         self.calib_value = self.rtd_reader.read()
+        print('Room temperture resistance: ' + str(self.calib_value))
         self.temperature = None
         if self.calib_value < 1000:
             print(self.calib_value)
@@ -129,7 +130,6 @@ class RtdReader(threading.Thread):
             self.quit = False
         else:
             self.quit = True # Not a valid RTD
-    
 
     def value(self):
         """ Return current value of reader """
@@ -152,12 +152,12 @@ def main():
 
     prefix = '/dev/serial/by-id/'
     ports = {}
-    ports[0] = prefix + 'usb-FTDI_USB-RS485_Cable_FTWGRMCG-if00-port0'
-    ports[1] = 'mobile-gaswall-agilent-34410a'
+#    ports[0] = prefix + 'usb-FTDI_USB-RS485_Cable_FTWGRMCG-if00-port0'
+#    ports[1] = 'mobile-gaswall-agilent-34410a'
     ports[2] = prefix + 'usb-FTDI_USB-RS485_Cable_FTWGUBYN-if00-port0'
-    ports[3] = prefix + 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
-    code_names = ['mgw_reactor_tc_temperature',
-                  'mgw_reactor_rtd_temperature',
+#    ports[3] = prefix + 'usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0'
+    code_names = [#'mgw_reactor_tc_temperature',
+                  #'mgw_reactor_rtd_temperature',
                   'mgw_omega_temp_ch01',
                   'mgw_omega_temp_ch02',
                   'mgw_omega_temp_ch03',
@@ -165,50 +165,54 @@ def main():
                   'mgw_omega_temp_ch05',
                   'mgw_omega_temp_ch06',
                   'mgw_omega_temp_ch07',
-                  'mgw_sr630_temp_01',
-                  'mgw_sr630_temp_02',
-                  'mgw_sr630_temp_03',
-                  'mgw_sr630_temp_04',
-                  'mgw_sr630_temp_05',
-                  'mgw_sr630_temp_06',
-                  'mgw_sr630_temp_07',
-                  'mgw_sr630_temp_08',
-                  'mgw_sr630_temp_09',
-                  'mgw_sr630_temp_10',
-                  'mgw_sr630_temp_11',
-                  'mgw_sr630_temp_12',
-                  'mgw_sr630_temp_13',
-                  'mgw_sr630_temp_14',
-                  'mgw_sr630_temp_15',
-                  'mgw_sr630_temp_16']
+                  #'mgw_sr630_temp_01',
+                  #'mgw_sr630_temp_02',
+                  #'mgw_sr630_temp_03',
+                  #'mgw_sr630_temp_04',
+                  #'mgw_sr630_temp_05',
+                  #'mgw_sr630_temp_06',
+                  #'mgw_sr630_temp_07',
+                  #'mgw_sr630_temp_08',
+                  #'mgw_sr630_temp_09',
+                  #'mgw_sr630_temp_10',
+                  #'mgw_sr630_temp_11',
+                  #'mgw_sr630_temp_12',
+                  #'mgw_sr630_temp_13',
+                  #'mgw_sr630_temp_14',
+                  #'mgw_sr630_temp_15',
+                  #'mgw_sr630_temp_16'
+]
 
     measurements = {}
-    measurements[0] = TcReader(ports[0])
-    measurements[0].start()
-    measurements[1] = RtdReader(ports[1], measurements[0].value())
-    measurements[1].start()
+#    measurements[0] = TcReader(ports[0])
+#    measurements[0].start()
+#    measurements[1] = RtdReader(ports[1], measurements[0].value())
+#    measurements[1].start()
     measurements[2] = TemperatureReader(ports[2])
     measurements[2].start()
-    measurements[3] = SrsReader(ports[3])
-    measurements[3].start()
+#    measurements[3] = SrsReader(ports[3])
+#    measurements[3].start()
 
     loggers = {}
-    loggers[code_names[0]] = ValueLogger(measurements[0], comp_val=1.5, comp_type='lin')
-    loggers[code_names[0]].start()
-    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val=0.5, comp_type='lin')
-    loggers[code_names[1]].start()
-    for i in range(2, 9):
+#    loggers[code_names[0]] = ValueLogger(measurements[0], comp_val=1.5,
+#                                         comp_type='lin', low_comp=0)
+#    loggers[code_names[0]].start()
+#    loggers[code_names[1]] = ValueLogger(measurements[1], comp_val=0.5,
+#                                         comp_type='lin', low_comp=0)
+#    loggers[code_names[1]].start()
+#    for i in range(2, 9):
+    for i in range(0,len(code_names)):
         loggers[code_names[i]] = ValueLogger(measurements[2], comp_val=1.0,
                                              comp_type='lin', channel=i-1)
         loggers[code_names[i]].start()
         print(loggers[code_names[i]])
-    for i in range(9, 25):
-        print('Channel: ' + str(i-8) + ' , codename: ' + code_names[i])
-        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=0.3,
-                                             comp_type='lin', channel=i-8)
-        loggers[code_names[i]].start()
-        print(loggers[code_names[i]])
-    datasocket = DateDataPullSocket('mgw_temp', code_names, timeouts=4, port=9001)
+#    for i in range(9, 25):
+#        print('Channel: ' + str(i-8) + ' , codename: ' + code_names[i])
+#        loggers[code_names[i]] = ValueLogger(measurements[3], comp_val=0.3,
+#                                             comp_type='lin', channel=i-8)
+#        loggers[code_names[i]].start()
+#        print(loggers[code_names[i]])
+    datasocket = DateDataPullSocket('mgw_tmp', code_names, timeouts=4, port=9000)
     datasocket.start()
 
     db_logger = ContinuousDataSaver(continuous_data_table='dateplots_mgw',
@@ -223,7 +227,7 @@ def main():
         for name in code_names:
             value = loggers[name].read_value()
             datasocket.set_point_now(name, value)
-            #print(name + ': ' + str(value) + str(loggers[name].read_trigged()))
+            print(name + ': ' + str(value) + str(loggers[name].read_trigged()))
 
             if loggers[name].read_trigged():
                 print(name + ': ' + str(value))
