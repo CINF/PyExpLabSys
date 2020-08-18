@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI93_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>60</startdelay>
+    <command>python3 socket_server.py</command>
+    <name>Flow Controller Seljalandsfoss</name>
+  </session>
+</autostart>
