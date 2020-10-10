@@ -1,3 +1,7 @@
+six
 numpy
+smbus
+pyyaml
+pymysql
 pyserial
-minimalmodbus==0.6
+minimalmodbus
