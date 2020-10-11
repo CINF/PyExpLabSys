@@ -27,6 +27,25 @@ class PowerView(object):
             rooms[room['id']] = self._decode_name(room['name'])
         return rooms
 
+    def _jog_shade(self, shade_id):
+        """
+        Jog the shade to visually identify it.
+        """
+        msg = '{}shades/{}'.format(self.address, shade_id)
+        payload = {"shade": {"motion": "jog"}}
+        r = requests.put(msg, json=payload)
+        success = (r.status_code == 200)
+        return success
+
+    def hub_info(self):
+        """
+        Find configured rooms, this is an internal operatioin that
+        does not need contact to the shades.
+        """
+        r = requests.get(self.address + 'userdata')
+        hub_raw = r.json()
+        print(hub_raw)
+
     def find_all_shades(self):
         """
         Find all configured shades. If contact can be established, each shade
@@ -47,16 +66,6 @@ class PowerView(object):
         msg = '{}shades/{}?updateBatteryLevel=true'
         r = requests.get(msg.format(self.address, shade_id))
         print(r.json())
-
-    def _jog_shade(self, shade_id):
-        """
-        Jog the shade to visually identify it.
-        """
-        msg = '{}shades/{}'.format(self.address, shade_id)
-        payload = {"shade": {"motion": "jog"}}
-        r = requests.put(msg, json=payload)
-        success = (r.status_code == 200)
-        return success
 
     def update_shade(self, shade_id):
         """
@@ -123,9 +132,9 @@ class PowerView(object):
 
 if __name__ == '__main__':
     pv = PowerView('192.168.1.76')
-    pv.find_all_shades()
 
-    # pv.move_shade(32852)
+    pv.find_all_shades()
+    pv.move_shade(32852, percent_pos=85)
     # pv.update_shade(8690)
     pv.print_current_shade_status(8690)
     pv.print_current_shade_status(32852)
