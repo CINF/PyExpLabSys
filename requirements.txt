@@ -4,4 +4,5 @@ smbus
 pyyaml
 pymysql
 pyserial
+requests
 minimalmodbus
