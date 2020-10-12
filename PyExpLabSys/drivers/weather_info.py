@@ -1,6 +1,62 @@
 import datetime
 import requests
 
+try:
+    # Slightly complicated install, do not demand for entire module
+    import atmos
+except ImportError:
+    pass
+
+
+def _virtual_temperature(temperature, dew_point, pressure):
+    abs_temp = temperature + 273.15
+    tmp1 = 10 ** (7.5*dew_point / (237.7 + dew_point))
+    tmp2 = tmp1 / (0.01 * pressure)  # Unit should be hPa, but we use Pa
+    tv = abs_temp / (1 - (0.379 * 6.11 * tmp2))
+    return tv
+
+
+def dew_point_and_abs_humidity(temperature, humidity, pressure):
+    """
+    Calculates dew point and absolute humidity given atmospheric conditions.
+    """
+    atmos_params = {
+        'RH': humidity, 'RH_unit': 'fraction',
+        'T': temperature, 'T_unit': 'degC',
+        'p': pressure, 'p_unit': 'Pa'
+    }
+
+    dew_point = atmos.calculate('Td', Td_unit='degC', **atmos_params)
+    absolute_humidity = atmos.calculate('AH', AH_unit='g/meter**3', **atmos_params)
+    # print('Calculated dew point: {:.1f}C'.format(dew_point))
+    # print('Calculated absolute humidity: {:.1f}g/m3'.format(absolute_humidity))
+    data = {
+        'dew_point': dew_point,  # degree C
+        'absolute_humidity': absolute_humidity  # g/m3
+    }
+    return data
+
+
+def equaivalent_humidity(outside_temp, outside_hum, inside_temp, pressure):
+    """
+    Given outside atmospheric conditaions, calculate the relative humidity
+    inside of the outside air is heated (or cooled) to the inside tempererature.
+    """
+    dew_and_abs = dew_point_and_abs_humidity(outside_temp, outside_hum, pressure)
+    # Calculate inside virtual temperature if outside air was to be
+    # heated to inside temp
+    tv = _virtual_temperature(inside_temp, dew_and_abs['dew_point'], pressure)
+    atmos_params = {
+        'AH': dew_and_abs['absolute_humidity'], 'AH_unit': 'g/meter**3',
+        'Tv': tv, 'Tv_unit': 'K',
+        'p': pressure, 'p_unit': 'Pa',
+        'debug': True
+    }
+
+    # Humidity is returned as percentage
+    indoor_humidity = atmos.calculate('RH', **atmos_params)
+    return indoor_humidity[0]
+
 
 class WheatherInformation(object):
 
@@ -122,4 +178,16 @@ if __name__ == '__main__':
         dmi_prio=dmi_prio,
         open_weather_appid=appid
     )
-    print(vejr.dk_dmi())
+    vejr.dk_dmi()
+    print(vejr.weather_data)
+
+    indoor_hum = equaivalent_humidity(
+        outside_temp=vejr.weather_data['temperature'],
+        outside_hum=vejr.weather_data['humidity'],
+        pressure=vejr.weather_data['pressure'],
+        inside_temp=24
+    )
+    print(indoor_hum)
+
+    # vejr.global_openweather()
+    # print(vejr.weather_data)
