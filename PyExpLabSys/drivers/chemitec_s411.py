@@ -2,14 +2,30 @@ import time
 import serial
 import minimalmodbus
 
+
 class ChemitecS411(object):
-    def __init__(self):
-        self.comm = minimalmodbus.Instrument('/dev/ttyUSB0', 18)
-        self.comm.serial.baudrate = 9600
-        self.comm.serial.parity = serial.PARITY_NONE
-        self.comm.serial.timeout = 0.2
-        self.comm.serial.stopbits = 1
-        self.comm.serial.bytesize = 8
+    def __init__(self, instrument_address=18):
+        if instrument_address > 0:
+            self.comm = self._setup_comm(instrument_address)
+        else:
+            # In this case we scan for instruments and return
+            for address in range(1, 64):
+                self.comm = self._setup_comm(address)
+                try:
+                    value = self.comm.read_float(2, functioncode=4)
+                    msg = 'Found instrument at {}, temperature is {:.1f}C'
+                    print(msg.format(address, value))
+                except minimalmodbus.NoResponseError:
+                    print('No instrument found at {}'.format(address))
+
+    def _setup_comm(self, slaveaddress):
+        comm = minimalmodbus.Instrument('/dev/ttyUSB0', slaveaddress)
+        comm.serial.baudrate = 9600
+        comm.serial.parity = serial.PARITY_NONE
+        comm.serial.timeout = 0.2
+        comm.serial.stopbits = 1
+        comm.serial.bytesize = 8
+        return comm
 
     def _read(self, register, code=3, floatread=False):
         error_count = 0
@@ -26,6 +42,62 @@ class ChemitecS411(object):
                 if error_count > 10:
                     print('Error: {}'.format(error_count))
         return value
+
+    def _write(self, value, registeraddress):
+        try:
+            self.comm.write_register(
+                value=value,
+                registeraddress=registeraddress,
+                functioncode=6
+            )
+        except minimalmodbus.NoResponseError:
+            pass  # This exception is always raised after write
+        time.sleep(0.2)
+        return True
+
+    def read_firmware_version(self):
+        version = self._read(1, code=3)
+        actual_version = version / 10.0
+        return actual_version
+
+    def read_filter_value(self):
+        """
+        Return the current low-pass filter, range is 0-16, units unknown.
+        0: No filter, 16: maximum filtering
+        """
+        filter_code = self._read(4, code=3)
+        return filter_code
+
+    def read_range(self):
+        ranges = {
+            0: '0-20',
+            1: '0-200',
+            2: '0-2000',
+            3: '0-20000'
+        }
+        range_val = self._read(5)
+        # print('Range: {}'.format(ranges[range_val]))
+        return_val = (range_val, ranges[range_val])
+        return return_val
+
+    def read_serial(self):
+        """
+        Returns the serial number of the unit.
+        """
+        serial_nr = '{}{}{}{}'.format(self._read(9, code=3),
+                                      self._read(10, code=3),
+                                      self._read(11, code=3),
+                                      self._read(12, code=3))
+        return serial_nr
+
+    def set_filter(self, filter_value):
+        """
+        Legal values are 0-16
+        """
+        self._write(filter_value, 4)
+        updated_filter = self.read_filter_value()
+        assert updated_filter == filter_value
+        return True
 
     def set_range(self, range_value):
         """
@@ -49,31 +121,57 @@ class ChemitecS411(object):
         assert updated_range[0] == range_value
         return True
 
-    def read_range(self):
-        ranges = {
-            0: '0-20',
-            1: '0-200',
-            2: '0-2000',
-            3: '0-20000'
-        }
-        range_val = self._read(5)
-        # print('Range: {}'.format(ranges[range_val]))
-        return_val = (range_val, ranges[range_val])
-        return return_val
-
     def read_conductivity(self):
-        # todo: Implement auto-range
         conductivity = self._read(0, code=4, floatread=True)
         return conductivity
 
     def read_temperature(self):
-         temperature = self._read(2, code=4, floatread=True)
-         return temperature
-    
+        temperature = self._read(2, code=4, floatread=True)
+        return temperature
+
+    def read_conductivity_raw(self):
+        """
+        Returns raw conductivity value, range 0-2500mV
+        """
+        conductivity = self._read(4, code=4, floatread=True)
+        return conductivity
+
+    def read_temperature_raw(self):
+        """
+        Returns raw temperature measurement value, range 0-5000mV
+        """
+        temperature = self._read(6, code=4, floatread=True)
+        return temperature
+
+    def read_calibrations(self):
+        """
+        Internal calibration values. These are range-dependent.
+        Setting calibrations is also possible, but this is not currently
+        implemented.
+        """
+        calibrations = {
+            'manual_temperature': self._read(8, code=4, floatread=True),
+            'temperature_offset': self._read(10, code=4, floatread=True),
+            'cal2_val_user': self._read(12, code=4, floatread=True),
+            'cal2_mis_user':  self._read(14, code=4, floatread=True),
+            'cal2_val_default': self._read(16, code=4, floatread=True),
+            'cal2_mis_default': self._read(18, code=4, floatread=True)
+        }
+        return calibrations
+
 
 if __name__ == '__main__':
-    s411 = ChemitecS411()
-
+    s411 = ChemitecS411(instrument_address=18)
+    print(s411.read_serial())
+    print(s411.read_firmware_version())
+    print(s411.read_filter_value())
+    print()
+    print(s411.read_conductivity())
+    print(s411.read_conductivity_raw())
+    print(s411.read_temperature())
+    print(s411.read_temperature_raw())
+    print(s411.read_calibrations())
+    print()
     s411.set_range(0)
     range_val = s411.read_range()
     time.sleep(2)
@@ -81,37 +179,3 @@ if __name__ == '__main__':
     temperature = s411.read_temperature()
     msg = 'Range is: {}, Value is: {}, temperature is: {}'
     print(msg.format(range_val[1], conductivity, temperature))
-
-    s411.set_range(1)
-    range_val = s411.read_range()
-    time.sleep(2)
-    conductivity = s411.read_conductivity()
-    temperature = s411.read_temperature()
-    msg = 'Range is: {}, Value is: {}, temperature is: {}'
-    print(msg.format(range_val[1], conductivity, temperature))
-
-    s411.set_range(2)
-    range_val = s411.read_range()
-    time.sleep(2)
-    conductivity = s411.read_conductivity()
-    temperature = s411.read_temperature()
-    msg = 'Range is: {}, Value is: {}, temperature is: {}'
-    print(msg.format(range_val[1], conductivity, temperature))
-    
-    # while True:
-    #     conductivity = s411.read_conductivity()
-    #     temperature = s411.read_temperature()
-    #     msg = 'Conductivity: {}µS/cm. Temperature: {}C'
-    #     print(msg.format(conductivity, temperature))
-    
-# inst_id = comm.read_register(0)
-# print('Inst ID: {}'.format(hex(inst_id)))
-
-# firmware = comm.read_register(1)
-# print('Firmware Version: {}'.format(firmware))
-
-# slave_id = comm.read_register(3)
-# print('Slave ID: {}'.format(slave_id))
-
-# filter_val = comm.read_register(4)
-# print('Filter: {}'.format(filter_val))
