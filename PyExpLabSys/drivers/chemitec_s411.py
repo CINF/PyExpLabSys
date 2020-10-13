@@ -9,7 +9,7 @@ class ChemitecS411(object):
             self.comm = self._setup_comm(instrument_address)
         else:
             # In this case we scan for instruments and return
-            for address in range(1, 64):
+            for address in range(1, 255):
                 self.comm = self._setup_comm(address)
                 try:
                     value = self.comm.read_float(2, functioncode=4)
@@ -18,8 +18,8 @@ class ChemitecS411(object):
                 except minimalmodbus.NoResponseError:
                     print('No instrument found at {}'.format(address))
 
-    def _setup_comm(self, slaveaddress):
-        comm = minimalmodbus.Instrument('/dev/ttyUSB0', slaveaddress)
+    def _setup_comm(self, instrument_address):
+        comm = minimalmodbus.Instrument('/dev/ttyUSB0', instrument_address)
         comm.serial.baudrate = 9600
         comm.serial.parity = serial.PARITY_NONE
         comm.serial.timeout = 0.2
@@ -89,6 +89,16 @@ class ChemitecS411(object):
                                       self._read(11, code=3),
                                       self._read(12, code=3))
         return serial_nr
+
+    def set_instrument_address(self, instrument_address):
+        """
+        Legal values are 1-255
+        """
+        self._write(instrument_address, 3)
+
+        self.comm = self._setup_comm(instrument_address)
+        print(self.read_serial())
+        return True
 
     def set_filter(self, filter_value):
         """
@@ -161,7 +171,12 @@ class ChemitecS411(object):
 
 
 if __name__ == '__main__':
+    # s411 = ChemitecS411(instrument_address=0)
+    # exit()
     s411 = ChemitecS411(instrument_address=18)
+
+    # s411.set_instrument_address(18)
+
     print(s411.read_serial())
     print(s411.read_firmware_version())
     print(s411.read_filter_value())
