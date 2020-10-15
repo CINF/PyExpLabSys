@@ -10,12 +10,18 @@ class ChemitecS411(object):
         else:
             # In this case we scan for instruments and return
             for address in range(1, 255):
-                self.comm = self._setup_comm(address)
-                try:
-                    value = self.comm.read_float(2, functioncode=4)
-                    msg = 'Found instrument at {}, temperature is {:.1f}C'
-                    print(msg.format(address, value))
-                except minimalmodbus.NoResponseError:
+                success = False
+                for i in range(0, 3):
+                    self.comm = self._setup_comm(address)
+                    try:
+                        value = self.comm.read_float(2, functioncode=4)
+                        msg = 'Found instrument at {}, temperature is {:.1f}C'
+                        print(msg.format(address, value))
+                        success = True
+                        break
+                    except minimalmodbus.NoResponseError:
+                        pass
+                if not success:
                     print('No instrument found at {}'.format(address))
 
     def _setup_comm(self, instrument_address):
@@ -174,8 +180,6 @@ if __name__ == '__main__':
     # s411 = ChemitecS411(instrument_address=0)
     # exit()
     s411 = ChemitecS411(instrument_address=18)
-
-    # s411.set_instrument_address(18)
 
     print(s411.read_serial())
     print(s411.read_firmware_version())
