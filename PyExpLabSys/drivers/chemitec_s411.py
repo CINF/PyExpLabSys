@@ -33,7 +33,7 @@ class ChemitecS411(object):
         comm.serial.bytesize = 8
         return comm
 
-    def _read(self, register, code=3, floatread=False):
+    def _read(self, register, code=3, floatread=False, keep_trying=False):
         error_count = 0
         while error_count > -1:
             try:
@@ -46,7 +46,10 @@ class ChemitecS411(object):
                 time.sleep(0.5)
                 error_count += 1
                 if error_count > 10:
-                    print('Error: {}'.format(error_count))
+                    if keep_trying:
+                        print('Error: {}'.format(error_count))
+                    else:
+                        break
         return value
 
     def _write(self, value, registeraddress):
