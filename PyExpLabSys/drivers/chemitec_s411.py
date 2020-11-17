@@ -4,9 +4,9 @@ import minimalmodbus
 
 
 class ChemitecS411(object):
-    def __init__(self, instrument_address=18):
+    def __init__(self, instrument_address=18, tty='/dev/ttyUSB0'):
         if instrument_address > 0:
-            self.comm = self._setup_comm(instrument_address)
+            self.comm = self._setup_comm(instrument_address, tty)
         else:
             # In this case we scan for instruments and return
             for address in range(1, 255):
@@ -24,8 +24,8 @@ class ChemitecS411(object):
                 if not success:
                     print('No instrument found at {}'.format(address))
 
-    def _setup_comm(self, instrument_address):
-        comm = minimalmodbus.Instrument('/dev/ttyUSB0', instrument_address)
+    def _setup_comm(self, instrument_address, tty):
+        comm = minimalmodbus.Instrument(tty, instrument_address)
         comm.serial.baudrate = 9600
         comm.serial.parity = serial.PARITY_NONE
         comm.serial.timeout = 0.2
