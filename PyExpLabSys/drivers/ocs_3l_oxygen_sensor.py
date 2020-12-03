@@ -11,9 +11,10 @@ import wiringpi as wp
 
 
 class OCS3L(object):
-    def __init__(self):
+    def __init__(self, gpio_pin=0):
         wp.wiringPiSetup()
-        wp.pinMode(1, 0)
+        self.pin = gpio_pin
+        wp.pinMode(self.pin, 0)
         time.sleep(0.1)
 
     # Todo: This most likely does not work for the final checksum
@@ -35,12 +36,12 @@ class OCS3L(object):
         implemented with a proper uart if one has the luxury of such a
         gadget available.
         """
-        while wp.digitalRead(0) == 1:
+        while wp.digitalRead(self.pin) == 1:
             pass
 
         time.sleep(0.4)
 
-        while wp.digitalRead(0) == 1:
+        while wp.digitalRead(self.pin) == 1:
             pass
 
         # Now we are certain that we have reached the signal
@@ -50,7 +51,7 @@ class OCS3L(object):
         # Todo: To optimize this, look for the second 9x0 1x1 9x0 marker.
         t = time.perf_counter()
         for i in range(0, 150):
-            while wp.digitalRead(0) == value:
+            while wp.digitalRead(self.pin) == value:
                 pass  # Keep reading until bit changes
             raw_bits.append((value, time.perf_counter() - t))
             value = not value
