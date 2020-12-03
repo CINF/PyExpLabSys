@@ -5,8 +5,7 @@ voltage references."""
 import time
 import io
 import fcntl
-from PyExpLabSys.common.supported_versions import python2_and_3
-python2_and_3(__file__)
+
 
 class I2C:
     """ File based i2c.
@@ -42,8 +41,8 @@ class MCP3428(object):
     use of file based i2c.
     """
 
-    def __init__(self):
-        self.device_address = 0x68
+    def __init__(self, address_index=0):
+        self.device_address = 0x68 + address_index
         self.bus = I2C(self.device_address, 1)
 
     def __del__(self):
@@ -110,7 +109,7 @@ class MCP3428(object):
         return channel_val
 
 if __name__ == '__main__':
-    MCP = MCP3428()
+    MCP = MCP3428(address_index=0)
     print(MCP.read_sample(channel=3, gain=1, resolution=16))
 
     #Negeativ supply should be grounded, diferential behaviour somwhat unknown
