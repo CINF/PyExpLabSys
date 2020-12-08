@@ -41,7 +41,8 @@ class MCP3428(object):
     use of file based i2c.
     """
 
-    def __init__(self, address_index=0):
+    def __init__(self, address_index=0, voltage_ref=2.048):
+        self.voltage_ref = voltage_ref  # On ncd.io devices, this is approx ~11.1745V
         self.device_address = 0x68 + address_index
         self.bus = I2C(self.device_address, 1)
 
@@ -50,25 +51,32 @@ class MCP3428(object):
 
     def read_sample(self, channel=1, gain=1, resolution=12):
         """ Read a single sample """
-        command_byte = (self.resolution(resolution) |
-                        0x00 | # One shot measuremet, use 0x10 for continous mode
-                        self.gain(gain) |
-                        self.channel(channel))
+        command_byte = (
+            self.resolution(resolution) |
+            0x00 |  # One shot measuremet, use 0x10 for continous mode
+            self.gain(gain) |
+            self.channel(channel)
+        )
+        command_byte = command_byte | 0x80  # start conversion
         self.bus.write([command_byte])
 
-        time.sleep(0.001)
-
-        command_byte = command_byte | 0x80 # start conversion
-        self.bus.write([command_byte])
-
+        # t = time.time()
         while True:
             time.sleep(0.001)
             data = self.bus.read(3)
             if (data[2] & 0x80) == 0:
                 break
-        data = self.bus.read(3)
+        # meas_time = time.time() - t
+        # print('High: {}, Low: {}'.format(
+        # bin(data[0])[2:].zfill(8), bin(data[1])[2:].zfill(8)))
+        # print('Execution time: {:.2f}ms'.format(meas_time * 1000))
+
         raw_value = data[0] * 256 + data[1]
-        voltage = (11.1745 * raw_value) / (2**(resolution - 1) * gain)
+        if raw_value > (2**(resolution - 1) - 1):
+            raw_value = raw_value - 2**resolution
+        # print('Raw sensor value: {}'.format(raw_value))
+        bit_size = self.voltage_ref / (2**(resolution - 1) * gain)
+        voltage = raw_value * bit_size
         return voltage
 
     def gain(self, gain=1):
@@ -106,28 +114,21 @@ class MCP3428(object):
             channel_val = 0x40
         if channel == 4:
             channel_val = 0x60
+        # print('Channel val: {}, bin: {}'.format(channel_val, bin(channel_val)))
         return channel_val
 
-if __name__ == '__main__':
-    MCP = MCP3428(address_index=0)
-    print(MCP.read_sample(channel=3, gain=1, resolution=16))
 
-    #Negeativ supply should be grounded, diferential behaviour somwhat unknown
-    #Calibrated to PR33-13 from ncd.io other products will use different
-    #voltage references.
-    #Input, Measured value
-    #0.0:   0.000701904296875
-    #1.0:   0.0894775390625
-    #2.0:   0.178924560546875
-    #3.0:   0.2685546875
-    #4.0:   0.35809326171875
-    #5.0:   0.447601318359375
-    #6.0:   0.537109375
-    #7.0:   0.626617431640625
-    #8.0:   0.71612548828125
-    #9.0:   0.805633544921875
-    #10.0:  0.8951416015625
-    #11.0:  0.984619140625
-    #11.15: 0.998046875
-    #11.172: Max
-    #Best-fit slope: 11.1745
+if __name__ == '__main__':
+    MCP = MCP3428(address_index=4)
+    print(MCP.read_sample(channel=1, gain=1, resolution=16) * (3.3 + 2.2) / 2.2)
+    print(MCP.read_sample(channel=2, gain=1, resolution=16) * (3.3 + 2.2) / 2.2)
+    print(MCP.read_sample(channel=3, gain=1, resolution=16) * (3.3 + 2.2) / 2.2)
+    print(MCP.read_sample(channel=4, gain=1, resolution=16) * (3.3 + 2.2) / 2.2)
+    print()
+
+    # for adc_index in range(0, 8):
+    #     adc = MCP3428(adc_index)
+    #     values = []
+    #     for channel in range(0, 4):
+    #         values.append(adc.read_sample(channel=channel, gain=1, resolution=16))
+    #     print('ADC: {}: {}'.format(adc_index, values))
