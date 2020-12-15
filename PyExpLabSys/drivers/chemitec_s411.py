@@ -2,9 +2,30 @@ import time
 import serial
 import minimalmodbus
 
+try:
+    import wiringpi as wp
+except ImportError:
+    pass  # Will not be able to use DirectionalSerial
+
+
+class DirectionalSerial(serial.Serial):
+    def __init__(self, direction_pin, **kwargs):  # Remove default
+        super().__init__(**kwargs)
+        wp.wiringPiSetup()
+        wp.pinMode(direction_pin, 1)
+        self.direction_pin = direction_pin
+
+    def write(self, request):
+        sleep_length = 0.01 + 1.0 * len(request) / self.baudrate
+        wp.digitalWrite(self.direction_pin, 1)
+        super().write(request)
+        time.sleep(sleep_length)
+        wp.digitalWrite(self.direction_pin, 0)
+
 
 class ChemitecS411(object):
-    def __init__(self, instrument_address=18, tty='/dev/ttyUSB0'):
+    def __init__(self, tty, instrument_address=18, gpio_dir_pin=None):
+        self.gpio_dir_pin = gpio_dir_pin
         if instrument_address > 0:
             self.comm = self._setup_comm(instrument_address, tty)
         else:
@@ -12,7 +33,7 @@ class ChemitecS411(object):
             for address in range(1, 255):
                 success = False
                 for i in range(0, 3):
-                    self.comm = self._setup_comm(address)
+                    self.comm = self._setup_comm(address, tty=tty)
                     try:
                         value = self.comm.read_float(2, functioncode=4)
                         msg = 'Found instrument at {}, temperature is {:.1f}C'
@@ -26,6 +47,20 @@ class ChemitecS411(object):
 
     def _setup_comm(self, instrument_address, tty):
         comm = minimalmodbus.Instrument(tty, instrument_address)
+        # if True:  # Add init-option here:
+        if self.gpio_dir_pin:
+            dir_serial = DirectionalSerial(
+                port=tty,
+                baudrate=19200,
+                parity=serial.PARITY_NONE,
+                bytesize=8,
+                stopbits=1,
+                timeout=0.05,
+                write_timeout=2.0,
+                direction_pin=self.gpio_dir_pin
+            )
+            comm.serial = dir_serial
+
         comm.serial.baudrate = 9600
         comm.serial.parity = serial.PARITY_NONE
         comm.serial.timeout = 0.2
@@ -43,9 +78,9 @@ class ChemitecS411(object):
                     value = self.comm.read_register(register, functioncode=code)
                 error_count = -1
             except minimalmodbus.NoResponseError:
-                time.sleep(0.5)
+                time.sleep(0.2)
                 error_count += 1
-                if error_count > 10:
+                if error_count > 1000:
                     if keep_trying:
                         print('Error: {}'.format(error_count))
                     else:
@@ -61,7 +96,6 @@ class ChemitecS411(object):
             )
         except minimalmodbus.NoResponseError:
             pass  # This exception is always raised after write
-        time.sleep(0.2)
         return True
 
     def read_firmware_version(self):
@@ -180,9 +214,11 @@ class ChemitecS411(object):
 
 
 if __name__ == '__main__':
-    # s411 = ChemitecS411(instrument_address=0)
+    # s411 = ChemitecS411(instrument_address=0, tty='/dev/serial1')
+    # s411 = ChemitecS411(instrument_address=0, tty='/dev/ttyUSB0')
     # exit()
-    s411 = ChemitecS411(instrument_address=18)
+    # s411 = ChemitecS411(instrument_address=15, tty='/dev/ttyUSB0')
+    s411 = ChemitecS411(instrument_address=15, tty='/dev/serial1', gpio_dir_pin=13)
 
     print(s411.read_serial())
     print(s411.read_firmware_version())
