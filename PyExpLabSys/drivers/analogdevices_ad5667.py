@@ -18,12 +18,12 @@ class AD5667:
 
     """Driver for the Analog Devices AD5667 2 channel analog output DAC"""
 
-    def __init__(self):
+    def __init__(self, address=0x0E):
         """Initialize object properties"""
         # Get I2C bus
         self.bus = smbus.SMBus(1)
 
-        self.address = 0x0E
+        self.address = address
         self.dac_and_input_register = {
             'both': 0x1F,
             'A': 0x18,
@@ -32,6 +32,28 @@ class AD5667:
 
         self.last_write = 0
         self.waittime = 0.1
+
+    def reset_device(self):
+        data = [0x00, 0xff]
+        command = 0b00101000
+        self.bus.write_i2c_block_data(0x0c, command, data)
+        return True
+
+    def enable_onbaord_reference(self):
+        """ Enable on-board reference voltage, if no voltage reference is externally
+         given, the onboard must be enabled.
+        """
+        data = [0x00, 0xff]
+        command = 0b00111000
+        self.bus.write_i2c_block_data(0x0c, command, data)
+        return True
+
+    def power_up_or_down(self):
+        # Notice, default state is up, if you run this, device will turn off.
+        data = [0x00, 0xff]
+        command = 0b00100000
+        adc.bus.write_i2c_block_data(0x0c, command, data)
+        return True
 
     def write_to_and_update_dac(self, dac, value):
         """Set a voltage value on the DAC
@@ -102,10 +124,19 @@ class AD5667:
 
 def module_test():
     """Simple module test"""
-    adc = AD5667()
+    adc = AD5667(0x08)
     for number in range(100):
         adc.write_to_and_update_dac('A', number / 99.0 * 5.0)
 
 
 if __name__ == '__main__':
-    module_test()
+    # module_test()
+    adc = AD5667(0x0c)
+
+    adc.reset_device()
+    time.sleep(0.05)
+    adc.enable_onbaord_reference()
+    time.sleep(0.1)
+
+    adc.set_channel_A(0.0)
+    adc.set_channel_B(0.0)
