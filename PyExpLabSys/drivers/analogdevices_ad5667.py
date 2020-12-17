@@ -52,7 +52,7 @@ class AD5667:
         # Notice, default state is up, if you run this, device will turn off.
         data = [0x00, 0xff]
         command = 0b00100000
-        adc.bus.write_i2c_block_data(0x0c, command, data)
+        self.bus.write_i2c_block_data(0x0c, command, data)
         return True
 
     def write_to_and_update_dac(self, dac, value):
