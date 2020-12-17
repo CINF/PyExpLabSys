@@ -102,11 +102,15 @@ class XP_PS(object):
         data = self.bus.read_i2c_block_data(self.device_address, 0x54, 2)
         print((256*data[1] + data[0]) / 100.0)
 
-    def read_actual_values(self):
+    def read_actual_voltage(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x60, 2)
-        print('Voltage: {}V'.format((256*data[1] + data[0]) / 100.0))
+        voltage = (256*data[1] + data[0]) / 100.0
+        return voltage
+
+    def read_actual_current(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x62, 2)
-        print('Current: {}A'.format((256*data[1] + data[0]) / 100.0))
+        current = (256*data[1] + data[0]) / 100.0
+        return current
 
     def remote_enable(self):
         control = 2**7 + 1
