@@ -2,9 +2,9 @@ import smbus
 
 
 class XP_PS(object):
-    def __init__(self):
+    def __init__(self, i2c_address=0x51):
         self.bus = smbus.SMBus(1)
-        self.device_address = 0x51
+        self.device_address = i2c_address
 
     def read_manufacturer(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x00, 16)
