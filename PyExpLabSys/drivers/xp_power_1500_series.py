@@ -104,7 +104,7 @@ class XP_PS(object):
 
     def read_actual_voltage(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x60, 2)
-        if data[1] % 128 == 1:  # Apparantly a firmware bug in device?
+        if data[1] & 128 == 128:  # Apparantly a firmware bug in device?
             data[1] = data[1] - 128
         voltage = (256 * data[1] + data[0]) / 100.0
         return voltage
