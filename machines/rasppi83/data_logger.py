@@ -138,7 +138,13 @@ def main():
     while True:
         try:
             time.sleep(1)
-            print(string.format(measurement.temperature, sample_logger.temperature))
+            sample = sample_logger.temperature
+            if sample is None:
+                sample = '----'
+            base = measurement.temperature
+            if base is None:
+                base = '----'
+            print(string.format(base, sample))
         except ValueError:
             print('ValueError')
             print(repr(measurement.temperature), type(measurement.temperature))
