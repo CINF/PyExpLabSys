@@ -245,7 +245,7 @@ if __name__ == '__main__':
 
     total_dist = 0
     total_turns = 0
-    hardcoded_delay = 0.5 #s
+    hardcoded_delay = 0.2 #s
     if not stationary:
         # Load offset and data
         speed = data['speed'] # mm/s
