@@ -111,6 +111,9 @@ class XP_PS(object):
 
     def read_actual_current(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x62, 2)
+        if data[1] & 128 == 128:  # Apparantly a firmware bug in device?
+            data[1] = data[1] - 128
+        # print('{} {}'.format(bin(data[1])[2:].zfill(8), bin(data[0])[2:].zfill(8)))
         current = (256 * data[1] + data[0]) / 100.0
         return current
 
@@ -144,7 +147,7 @@ class XP_PS(object):
 
 
 if __name__ == '__main__':
-    xp = XP_PS()
+    xp = XP_PS(0x52)
     # xp.remote_enable()
 
     # time.sleep(1)
@@ -162,4 +165,6 @@ if __name__ == '__main__':
     # print()
     # print(xp.read_max_values())
     # print()
-    print(xp.read_actual_values())
+    print(xp.read_actual_voltage())
+    for i in range(0, 20):
+        print(xp.read_actual_current())
