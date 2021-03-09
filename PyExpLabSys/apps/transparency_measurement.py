@@ -13,18 +13,18 @@ from picamera import PiCamera
 # HEIGHT = 3280
 # WIDTH = 2464
 
-# HEIGHT = 1632
-# WIDTH = 1232
+HEIGHT = 1632
+WIDTH = 1232
 
-HEIGHT = 800
-WIDTH = 624
+# HEIGHT = 800
+# WIDTH = 624
 
 # camera = PiCamera(resolution=(HEIGHT, WIDTH), framerate=30)
 
 camera = PiCamera(
     resolution=(HEIGHT, WIDTH),
     # framerate=Fraction(1, 6),
-    framerate=10,
+    framerate=5,
     sensor_mode=2
 )
 
@@ -38,6 +38,23 @@ camera.awb_gains = (1.0, 1.0)
 # First image
 
 time.sleep(2)
+
+target = 0.1
+
+shutter = 1000
+for i in range(0, 10):
+    camera.shutter_speed = shutter
+    time.sleep(0.25)
+    output = np.empty((WIDTH, HEIGHT, 3), dtype=np.uint8)
+    # camera.capture(output, 'rgb', use_video_port=True)
+    camera.capture(output, 'rgb', use_video_port=False)
+    intensity = np.mean(output) / 256
+    rel_int = target / intensity
+    shutter = int(shutter * rel_int)
+    print('Rel Int: {:.3f}, Shutter: {}'.format(rel_int, shutter))
+
+exit()
+
 
 t = time.time()
 output = np.empty((WIDTH, HEIGHT, 3), dtype=np.uint8)
