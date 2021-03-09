@@ -7,47 +7,62 @@ from picamera import PiCamera
 
 # HEIGHT must be multiplum of 32
 # WIDTH must be multiplum of 16
-HEIGHT = 1280
-WIDTH = 720
+# HEIGHT = 1280
+# WIDTH = 720
+
+# HEIGHT = 3280
+# WIDTH = 2464
+
+# HEIGHT = 1632
+# WIDTH = 1232
+
+HEIGHT = 800
+WIDTH = 624
 
 # camera = PiCamera(resolution=(HEIGHT, WIDTH), framerate=30)
 
 camera = PiCamera(
-    resolution=(1280, 720),
+    resolution=(HEIGHT, WIDTH),
     # framerate=Fraction(1, 6),
-    framerate=1/6,
-    sensor_mode=3
+    framerate=10,
+    sensor_mode=2
 )
-camera.awb_mode = 'off'
-camera.awb_gains(1.0)
 
-# camera.shutter_speed = 6000000
-camera.shutter_speed = 6000
+time.sleep(1)
 
-camera.iso = 400
-time.sleep(0.2)  # Two seconds is a more conventional choice
-# Now fix the values
-
-camera.shutter_speed = camera.exposure_speed
 camera.exposure_mode = 'off'
-g = camera.awb_gains
+camera.shutter_speed = 10000
+camera.iso = 400
 camera.awb_mode = 'off'
-camera.awb_gains = g
-
-
+camera.awb_gains = (1.0, 1.0)
 # First image
+
+time.sleep(2)
+
+t = time.time()
 output = np.empty((WIDTH, HEIGHT, 3), dtype=np.uint8)
-camera.capture(output, 'rgb')  
+# camera.capture(output, 'rgb', use_video_port=True)
+camera.capture(output, 'rgb', use_video_port=False)
+exposure_time = time.time() - t
+print('Exposure time: {:.3f}'.format(exposure_time * 1000))
 data = Image.fromarray(output)
 data.save('first.png') 
 first_intensity = np.mean(output) / 256
 
+camera.shutter_speed = 10000
+
 print('Change sample')
-time.sleep(2)
+# time.sleep(2)
+
 
 # Second image
 output = np.empty((WIDTH, HEIGHT, 3), dtype=np.uint8)
-camera.capture(output, 'rgb')  
+t = time.time()
+# camera.capture(output, 'rgb', use_video_port=True)  
+camera.capture(output, 'rgb', use_video_port=False)  
+exposure_time = time.time() - t
+print('Exposure time: {:.3f}ms'.format(exposure_time * 1000))
+
 data = Image.fromarray(output)
 data.save('second.png') 
 second_intensity = np.mean(output) / 256
