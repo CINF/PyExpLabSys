@@ -43,13 +43,18 @@ target = 0.1
 
 shutter = 1000
 for i in range(0, 10):
+    intensities = []
     camera.shutter_speed = shutter
     time.sleep(0.25)
     output = np.empty((WIDTH, HEIGHT, 3), dtype=np.uint8)
     # camera.capture(output, 'rgb', use_video_port=True)
-    camera.capture(output, 'rgb', use_video_port=False)
-    intensity = np.mean(output) / 256
-    rel_int = target / intensity
+    for i in range(0, 5):
+        camera.capture(output, 'rgb', use_video_port=False)
+        intensity = np.mean(output) / 256
+        intensities.append(intensity)
+    print(intensities)
+    mean_int = np.mean(intensities)
+    rel_int = target / mean_int
     shutter = int(shutter * rel_int)
     print('Rel Int: {:.3f}, Shutter: {}'.format(rel_int, shutter))
 
