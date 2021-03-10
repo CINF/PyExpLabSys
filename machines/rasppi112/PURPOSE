@@ -1,0 +1,4 @@
+id: SIGRUN_GC
+purpose: GC control and readout
+
+This raspberry pi is used to start the Agilent 7890a GC on the Sigrun Hetcat test reactor and read the analog data from the TCD and FID detector. The GC provides a high/low voltage for when it's ready, which is monitored.
