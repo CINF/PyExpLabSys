@@ -39,7 +39,7 @@ class PowerWalker(object):
         return reply
 
     def device_information(self):
-        reply = pw.comm('I', '#')
+        reply = self.comm('I', '#')
         information = {
             'company': reply[0:15].strip(),
             'model': reply[16:26].strip(),
@@ -48,7 +48,7 @@ class PowerWalker(object):
         return information
 
     def device_ratings(self):
-        reply = pw.comm('F', '#')
+        reply = self.comm('F', '#')
         values = reply.split(' ')
         ratings = {
             'rated_voltage': float(values[0]),
@@ -59,7 +59,7 @@ class PowerWalker(object):
         return ratings
 
     def device_status(self):
-        reply = pw.comm('Q1', '(')
+        reply = self.comm('Q1', '(')
         values = reply.split(' ')
 
         bat_volt_string = values[5]
