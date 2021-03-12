@@ -118,7 +118,12 @@ class XP_PS(object):
         return current
 
     def remote_enable(self):
-        control = 2**7 + 1
+        control = 2**7 + 1  # Add one to avoid turning off the unit
+        # control = 1
+        self.bus.write_i2c_block_data(self.device_address, 0x7c, [control])
+
+    def turn_off_unit(self):
+        control = 0
         # control = 1
         self.bus.write_i2c_block_data(self.device_address, 0x7c, [control])
 
@@ -158,13 +163,8 @@ if __name__ == '__main__':
     # xp.read_status()
     # exit()
 
-    # print('Manufacturer: {}'.format(xp.read_manufacturer()))
-    # print('Model: {}'.format(xp.read_model()))
-    # print('Serial: {}'.format(xp.read_serial_nr()))
-    # print('Temperature: {}C'.format(xp.read_temperature()))
-    # print()
-    # print(xp.read_max_values())
-    # print()
-    print(xp.read_actual_voltage())
-    for i in range(0, 20):
-        print(xp.read_actual_current())
+    print('Manufacturer: {}'.format(xp.read_manufacturer()))
+    print('Model: {}'.format(xp.read_model()))
+    print('Serial: {}'.format(xp.read_serial_nr()))
+    print('Temperature: {}C'.format(xp.read_temperature()))
+
