@@ -1,5 +1,8 @@
 import time
+import crc16
 import serial
+
+import usb
 
 
 class PowerWalker(object):
@@ -7,36 +10,8 @@ class PowerWalker(object):
     https://networkupstools.org/protocols/megatec.html
     Apparantly, for the available model, none of the control works.
     """
-    def __init__(self, port='/dev/ttyUSB2'):
-        self.serial = serial.Serial(
-            port=port,
-            baudrate=2400,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=1
-        )
-
     def comm(self, command, start_byte):
-        error = 0
-        while -1 < error < 10:
-            command = command + '\r'
-            self.serial.write(command.encode())
-            reply_raw = self.serial.readline()
-            reply = reply_raw.decode()
-
-            if not (reply[0] == start_byte and reply[-1] == '\r'):
-                self.serial.flush()
-                time.sleep(0.25)
-                error += 1
-            else:
-                error = -1
-
-        if error > -1:
-            raise RuntimeError('Communication error with UPS')
-
-        reply = reply[1:-1]
-        return reply
+        raise NotImplementedError
 
     def device_information(self):
         reply = self.comm('I', '#')
@@ -62,7 +37,7 @@ class PowerWalker(object):
         reply = self.comm('Q1', '(')
         values = reply.split(' ')
 
-        bat_volt_string = values[5]
+        # bat_volt_string = values[5]
         # For on-line units battery voltage/cell is provided in the form S.SS.
         # For standby units actual battery voltage is provided in the form SS.S.
         # UPS type in UPS status will determine which reading was obtained.
@@ -97,8 +72,89 @@ class PowerWalker(object):
         return status
 
 
+class PowerWalkerUsb(PowerWalker):
+    def __init__(self, port='/dev/ttyUSB0'):
+        # USB reverse engineering by
+        # allican.be/blog/2017/01/28/reverse-engineering-cypress-serial-usb.html
+        vendorId = 0x0665
+        productId = 0x5161
+        interface = 0
+        self.dev = usb.core.find(idVendor=vendorId, idProduct=productId)
+        if self.dev.is_kernel_driver_active(interface):
+            self.dev.detach_kernel_driver(interface)
+            self.dev.set_interface_altsetting(0, 0)
+
+    def getCommand(self, cmd):
+        cmd = cmd.encode('utf-8')
+        crc = crc16.crc16xmodem(cmd).to_bytes(2, 'big')
+        cmd = cmd + crc
+        cmd = cmd + b'\r'
+        while len(cmd) < 8:
+            cmd = cmd + b'\0'
+        return cmd
+
+    def sendCommand(self, cmd):
+        self.dev.ctrl_transfer(0x21, 0x9, 0x200, 0, cmd)
+
+    def getResult(self, timeout=100):
+        res = ""
+        i = 0
+        while '\r' not in res and i < 20:
+            try:
+                res += "".join(
+                    [chr(i) for i in self.dev.read(0x81, 8, timeout) if i != 0x00]
+                )
+            except usb.core.USBError as e:
+                if e.errno == 110:
+                    pass
+                else:
+                    raise
+            i += 1
+        return res
+
+    def comm(self, command, start_byte):
+        self.sendCommand(self.getCommand(command + '\r'))
+        res = self.getResult()
+        reply = res[1:-1]
+        return reply
+
+
+class PowerWalkerSerial(PowerWalker):
+    def __init__(self, port='/dev/ttyUSB0'):
+        self.serial = serial.Serial(
+            port=port,
+            baudrate=2400,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            timeout=1
+        )
+
+    def comm(self, command, start_byte):
+        error = 0
+        while -1 < error < 10:
+            command = command + '\r'
+            self.serial.write(command.encode())
+            reply_raw = self.serial.readline()
+            reply = reply_raw.decode()
+
+            if not (reply[0] == start_byte and reply[-1] == '\r'):
+                self.serial.flush()
+                time.sleep(0.25)
+                error += 1
+            else:
+                error = -1
+
+        if error > -1:
+            raise RuntimeError('Communication error with UPS')
+
+        reply = reply[1:-1]
+        return reply
+
+
 if __name__ == '__main__':
-    pw = PowerWalker()
+    # pw = PowerWalkerSerial()
+    pw = PowerWalkerUsb()
     print(pw.device_status())
     print(pw.device_information())
     print(pw.device_ratings())
