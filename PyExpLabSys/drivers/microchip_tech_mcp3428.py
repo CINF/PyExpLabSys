@@ -49,7 +49,8 @@ class MCP3428(object):
     def __del__(self):
         self.bus.close()
 
-    def read_sample(self, channel=1, gain=1, resolution=12):
+    def read_sample(self, channel: int = 1, gain: int = 1,
+                    resolution: int = 12) -> float:
         """ Read a single sample """
         command_byte = (
             self.resolution(resolution) |
@@ -79,7 +80,7 @@ class MCP3428(object):
         voltage = raw_value * bit_size
         return voltage
 
-    def gain(self, gain=1):
+    def gain(self, gain: int = 1) -> int:
         """ Return the command code to set gain """
         gain_val = 0x00
         if gain == 1:
@@ -92,7 +93,7 @@ class MCP3428(object):
             gain_val = 0x03
         return gain_val
 
-    def resolution(self, resolution=12):
+    def resolution(self, resolution: int = 12) -> int:
         """ Return the command code to set resolution """
         resolution_val = 0x00
         if resolution == 12:
@@ -103,7 +104,7 @@ class MCP3428(object):
             resolution_val = 0x08
         return resolution_val
 
-    def channel(self, channel=1):
+    def channel(self, channel: int = 1) -> int:
         """ Return the command code to set channel """
         channel_val = 0x00
         if channel == 1:
