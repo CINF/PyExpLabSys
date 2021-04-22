@@ -34,9 +34,15 @@ class PowerWalker(object):
         return ratings
 
     def device_status(self):
-        reply = self.comm('Q1', '(')
-        values = reply.split(' ')
-
+        values = []
+        errors = 0
+        while len(values) < 7:
+            reply = self.comm('Q1', '(')
+            values = reply.split(' ')
+            errors += 1
+            time.sleep(0.1)
+            if errors > 10:
+                raise Exception('Unable to get status from UPS!')
         # bat_volt_string = values[5]
         # For on-line units battery voltage/cell is provided in the form S.SS.
         # For standby units actual battery voltage is provided in the form SS.S.
