@@ -36,13 +36,20 @@ class PowerWalker(object):
     def device_status(self):
         values = []
         errors = 0
-        while len(values) < 7:
+        while -1 < errors < 10:
             reply = self.comm('Q1', '(')
+            # print('Reply: {}'.format(reply))
             values = reply.split(' ')
-            errors += 1
-            time.sleep(0.1)
-            if errors > 10:
-                raise Exception('Unable to get status from UPS!')
+            try:
+                assert(len(values) == 8)
+                assert(len(values[7]) == 8)
+                errors = -1
+            except AssertionError:
+                errors += 1
+                time.sleep(0.01)
+        # print(values)
+        if errors > 0:
+            raise Exception('Unable to get status from UPS!')
         # bat_volt_string = values[5]
         # For on-line units battery voltage/cell is provided in the form S.SS.
         # For standby units actual battery voltage is provided in the form SS.S.
@@ -69,7 +76,7 @@ class PowerWalker(object):
             'input_voltage': float(values[0]),
             'input_fault_voltage': float(values[1]),
             'output_voltage': float(values[2]),
-            'output_current': float(values[3]),
+            'output_current': float(values[3]) / 10,
             'input_frequency': float(values[4]),
             'battery_voltage': float(values[5]),
             'temperature': float(values[6]),
@@ -159,8 +166,8 @@ class PowerWalkerSerial(PowerWalker):
 
 
 if __name__ == '__main__':
-    # pw = PowerWalkerSerial()
-    pw = PowerWalkerUsb()
+    pw = PowerWalkerSerial()
+    # pw = PowerWalkerUsb()
     print(pw.device_status())
     print(pw.device_information())
     print(pw.device_ratings())
