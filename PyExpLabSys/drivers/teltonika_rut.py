@@ -19,7 +19,6 @@ class TeltonikaRut(object):
         payload.update(
             {'params': [self.session] + params}
         )
-
         url = 'http://{}/ubus'.format(self.ip)
         r = requests.post(url, data=json.dumps(payload))
         reply = r.json()
@@ -49,6 +48,16 @@ class TeltonikaRut(object):
         ]
         reply = self._comm(params)
         info = reply[1]['stdout']
+
+        if info.find('LTE') > 0:
+            pos = info.find('LTE') + 5
+            data = info[pos:].split(',')
+            cell_info = {
+                'mcc': data[1],
+                'mnc': data[2],
+                'lac':  int(data[9], 16),
+                'cell_id': int(data[3], 16)
+            }
 
         if info.find('GSM') > 0:
             pos = info.find('GSM') + 5
