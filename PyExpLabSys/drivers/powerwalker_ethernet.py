@@ -42,7 +42,12 @@ class PowerWalkerEthernet(object):
         # FAULT (appears in front-end)
         print(values)
 
-    def read_static_data(self):
+    def _read_static_data(self):
+        """
+        Reads combined static information about the unit, this is
+        traditionally returned as two seperate calls, thus this is
+        considered a private function.
+        """
         command = '/var/www/html/web_pages_Galleon/cgi-bin/baseInfo.cgi'
         stdin, stdout, stderr = self.ssh.exec_command(command)
         raw_lines = stdout.readlines()
@@ -56,6 +61,7 @@ class PowerWalkerEthernet(object):
         nominal_output = int(lines[4][4:])
         values = {
             'model': lines[2],
+            'version': lines[6],
             'nominal_input_voltage': nominal_input,
             'nominal_output_voltage': nominal_output,
             'nominal_output_frequency': int(lines[10]) / 10.0,
@@ -65,6 +71,26 @@ class PowerWalkerEthernet(object):
         }
         print(values)
 
+    def device_information(self):
+        statics = self._read_static_data()
+        information = {
+            'company': 'Power Walker',
+            'model': statics['model']
+            'version': statics['version']
+        }
+        return information
+
+    def device_ratings(self):
+        statics = self._read_static_data()
+        ratings = {
+            'rated_voltage': statics['nominal_output_voltage'],
+            'rated_current': statics['rated_output_current'],
+            'battery_voltage': statics['rated_battery_voltage'],
+            'rated_frequency': statics['nominal_output_frequency']
+        }
+        return ratings
+
+        
     def read_events(self, only_new=False):
         command = 'cd /var/log/eventlog; cat "$(ls -1rt | tail -n1)"'
         stdin, stdout, stderr = self.ssh.exec_command(command)
