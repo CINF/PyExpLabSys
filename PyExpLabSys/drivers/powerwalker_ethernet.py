@@ -16,32 +16,6 @@ class PowerWalkerEthernet(object):
         self.ssh.connect(ip_address, username='root',
                          password='12345678', look_for_keys=False)
 
-    def read_dynamic_data(self):
-        command = '/var/www/html/web_pages_Galleon/cgi-bin/realInfo.cgi'
-        stdin, stdout, stderr = self.ssh.exec_command(command)
-        raw_lines = stdout.readlines()
-
-        lines = []
-        for line in raw_lines:
-            if line.strip():
-                lines.append(line.strip())
-
-        values = {
-            'ups_temperature': int(lines[2]) / 10.0,
-            'battery_voltage': int(lines[8]) / 10.0,
-            'battery_capacity': int(lines[9]),
-            'remaining_battery': lines[10],  # minutes
-            'input_frequency': int(lines[11]) / 10.0,
-            'input_voltage': int(lines[12]) / 10.0,
-            'output_frequency': int(lines[14]) / 10.0,
-            'output_voltage': int(lines[15]) / 10.0,
-            'load_level': int(lines[17]),
-            'output_current': int(lines[35]) / 10.0,
-        }
-        # WARNING (appears in front-end)
-        # FAULT (appears in front-end)
-        print(values)
-
     def _read_static_data(self):
         """
         Reads combined static information about the unit, this is
@@ -90,7 +64,33 @@ class PowerWalkerEthernet(object):
         }
         return ratings
 
-        
+    def device_status(self):
+        command = '/var/www/html/web_pages_Galleon/cgi-bin/realInfo.cgi'
+        stdin, stdout, stderr = self.ssh.exec_command(command)
+        raw_lines = stdout.readlines()
+
+        lines = []
+        for line in raw_lines:
+            if line.strip():
+                lines.append(line.strip())
+
+        values = {
+            'input_voltage': int(lines[12]) / 10.0,
+            'output_voltage': int(lines[15]) / 10.0,
+            'output_current': int(lines[35]) / 10.0,
+            'input_frequency': int(lines[11]) / 10.0,
+            'battery_voltage': int(lines[8]) / 10.0,
+            'temperature': int(lines[2]) / 10.0,
+            'status': [], # TODO!
+            'battery_capacity': int(lines[9]),
+            'remaining_battery': lines[10],  # minutes
+            'output_frequency': int(lines[14]) / 10.0,
+            'load_level': int(lines[17])
+        }
+        # WARNING (appears in web front-end - find how to read)
+        # FAULT (appears in web front-end - find how to read)
+        return status
+
     def read_events(self, only_new=False):
         command = 'cd /var/log/eventlog; cat "$(ls -1rt | tail -n1)"'
         stdin, stdout, stderr = self.ssh.exec_command(command)
