@@ -43,7 +43,7 @@ class PowerWalkerEthernet(object):
             'rated_va': int(lines[8]),
             'rated_output_current': int(lines[11])
         }
-        print(values)
+        return values
 
     def device_information(self):
         statics = self._read_static_data()
