@@ -49,7 +49,7 @@ class PowerWalkerEthernet(object):
         statics = self._read_static_data()
         information = {
             'company': 'Power Walker',
-            'model': statics['model']
+            'model': statics['model'],
             'version': statics['version']
         }
         return information
@@ -81,7 +81,7 @@ class PowerWalkerEthernet(object):
             'input_frequency': int(lines[11]) / 10.0,
             'battery_voltage': int(lines[8]) / 10.0,
             'temperature': int(lines[2]) / 10.0,
-            'status': [], # TODO!
+            'status': [],  # TODO!
             'battery_capacity': int(lines[9]),
             'remaining_battery': lines[10],  # minutes
             'output_frequency': int(lines[14]) / 10.0,
@@ -89,7 +89,7 @@ class PowerWalkerEthernet(object):
         }
         # WARNING (appears in web front-end - find how to read)
         # FAULT (appears in web front-end - find how to read)
-        return status
+        return values
 
     def read_events(self, only_new=False):
         command = 'cd /var/log/eventlog; cat "$(ls -1rt | tail -n1)"'
