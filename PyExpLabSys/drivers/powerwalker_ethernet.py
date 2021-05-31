@@ -41,7 +41,7 @@ class PowerWalkerEthernet(object):
             'nominal_output_frequency': int(lines[10]) / 10.0,
             'rated_battery_voltage': int(lines[12]) / 10.0,
             'rated_va': int(lines[8]),
-            'rated_output_current': int(lines[11])
+            'rated_output_current': int(lines[11]) / 10.0
         }
         return values
 
@@ -114,12 +114,18 @@ class PowerWalkerEthernet(object):
             }
             events.append(event)
             self.latest_event = timestamp
-        print(events)
-
+        return events
 
 if __name__ == '__main__':
-    pw = PowerWalkerEthernet(ip_address='192.168.1.149')
+    pw = PowerWalkerEthernet(ip_address='192.168.2.100')
 
-    # pw.read_data()
-    # pw.read_static_data()
-    pw.read_events()
+    print(pw.device_status())
+    print()
+    print()
+    print(pw._read_static_data())
+    print()
+    print()
+    event = pw.read_events()
+    for event in events:
+        print(event)
+
