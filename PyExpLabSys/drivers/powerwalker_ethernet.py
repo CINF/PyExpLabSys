@@ -23,7 +23,7 @@ class PowerWalkerEthernet(object):
         considered a private function.
         """
         command = '/var/www/html/web_pages_Galleon/cgi-bin/baseInfo.cgi'
-        stdin, stdout, stderr = self.ssh.exec_command(command)
+        stdin, stdout, stderr = self.ssh.exec_command(command, timeout=0.75)
         raw_lines = stdout.readlines()
 
         lines = []
@@ -66,7 +66,7 @@ class PowerWalkerEthernet(object):
 
     def device_status(self):
         command = '/var/www/html/web_pages_Galleon/cgi-bin/realInfo.cgi'
-        stdin, stdout, stderr = self.ssh.exec_command(command)
+        stdin, stdout, stderr = self.ssh.exec_command(command, timeout=0.75)
         raw_lines = stdout.readlines()
 
         lines = []
@@ -97,7 +97,7 @@ class PowerWalkerEthernet(object):
 
     def read_events(self, only_new=False):
         command = 'cd /var/log/eventlog; cat "$(ls -1rt | tail -n1)"'
-        stdin, stdout, stderr = self.ssh.exec_command(command)
+        stdin, stdout, stderr = self.ssh.exec_command(command, timeout=0.75)
         raw_lines = stdout.readlines()
 
         if len(raw_lines) < 2:
