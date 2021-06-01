@@ -74,6 +74,10 @@ class PowerWalkerEthernet(object):
             if line.strip():
                 lines.append(line.strip())
 
+        status = []   # TODO!
+        if not lines[1] == 'Line Mode':
+            status.append('Utility Fail')  # Compatibility with serial interface
+
         values = {
             'input_voltage': int(lines[12]) / 10.0,
             'output_voltage': int(lines[15]) / 10.0,
@@ -81,7 +85,7 @@ class PowerWalkerEthernet(object):
             'input_frequency': int(lines[11]) / 10.0,
             'battery_voltage': int(lines[8]) / 10.0,
             'temperature': int(lines[2]) / 10.0,
-            'status': [],  # TODO!
+            'status': status,
             'battery_capacity': int(lines[9]),
             'remaining_battery': lines[10],  # minutes
             'output_frequency': int(lines[14]) / 10.0,
@@ -105,7 +109,7 @@ class PowerWalkerEthernet(object):
             split_line = line.strip().split(',')
             timestamp = datetime.datetime.strptime(split_line[0],
                                                    '%Y/%m/%d %H:%M:%S')
-            if only_new and timestamp < self.latest_event:
+            if only_new and timestamp <= self.latest_event:
                 continue
             event = {
                 'timestamp': timestamp,
@@ -125,7 +129,6 @@ if __name__ == '__main__':
     print(pw._read_static_data())
     print()
     print()
-    event = pw.read_events()
+    events = pw.read_events()
     for event in events:
         print(event)
-
