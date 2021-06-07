@@ -59,7 +59,7 @@ class TeltonikaRut(object):
                 'cell_id': int(data[3], 16)
             }
 
-        if info.find('GSM') > 0:
+        elif info.find('GSM') > 0:
             pos = info.find('GSM') + 5
             data = info[pos:].split(',')
             cell_info = {
@@ -67,6 +67,13 @@ class TeltonikaRut(object):
                 'mnc': data[1],
                 'lac': int(data[2], 16),
                 'cell_id': int(data[3], 16)
+            }
+        else:  # Unsupported network, or no SIM at all
+            cell_info = {
+                'mcc': 0,
+                'mnc': 0,
+                'lac': 0,
+                'cell_id': 0
             }
         # print('Lac: {}, Lac dec: {}'.format(lac, int(lac, 16)))
         return cell_info
