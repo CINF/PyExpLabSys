@@ -31,6 +31,20 @@ class TeltonikaRut(object):
         session_key = reply[1]['ubus_rpc_session']
         return session_key
 
+    def send_sms(self, phone_number, text):
+        """
+        Send SMS
+        """
+        send_command = '{} {}'.format(phone_number, text)
+        params = [
+            'file', 'exec', {
+                'command': 'gsmctl', 'params': ['-S', '--send', send_command]
+            }
+        ]
+        reply = self._comm(params)
+        reply_text = reply[1]['stdout']
+        return reply_text
+
     def rssi(self):
         """
         Obtain signal strength
@@ -89,3 +103,7 @@ if __name__ == '__main__':
     print(tr.rssi())
     print()
     print(tr.cell_information())
+
+    print()
+    print('Sending SMS')
+    print(tr.send_sms('0045number', 'Text Text'))
