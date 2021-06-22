@@ -1,3 +1,5 @@
+import time
+import json
 import datetime
 import requests
 
@@ -64,7 +66,9 @@ class WheatherInformation(object):
         self.kwargs = kwargs
         self.x_pos = x_pos
         self.y_pos = y_pos
+        self.clear_data()
 
+    def clear_data(self):
         self.weather_data = {
             'time': None,  # Time of latest update
             'temperature': None,
@@ -84,14 +88,26 @@ class WheatherInformation(object):
     def dk_dmi(self):
         params = {
             'cmd': 'obj',
-            'south': self.y_pos - 0.15,
-            'north': self.y_pos + 0.15,
-            'west': self.x_pos - 0.15,
-            'east': self.x_pos + 0.15
+            'south': self.y_pos - 0.25,
+            'north': self.y_pos + 0.25,
+            'west': self.x_pos - 0.25,
+            'east': self.x_pos + 0.25
         }
         url = 'https://www.dmi.dk/NinJo2DmiDk/ninjo2dmidk'
-        response = requests.get(url, params=params)
-        data = response.json()
+        error = 0
+        while -1 < error < 30:
+            try:
+                response = requests.get(url, params=params)
+                error = -1
+                data = response.json()
+            except requests.exceptions.ConnectionError:
+                error = error + 1
+                print('Connection error to: {}'.format(url))
+                time.sleep(60)
+            except json.decoder.JSONDecodeError:
+                error = error + 1
+                print('JSON decode error: {}'.format(url))
+                time.sleep(60)
 
         pri_list = self.kwargs.get('dmi_prio', {})
         if pri_list is {}:
@@ -99,7 +115,11 @@ class WheatherInformation(object):
             exit()
         # 06180: Lufthavn
         # 06186: Landbohøjskolen
-        print(pri_list)
+        print(data)
+
+        if not pri_list[0] in data:
+            print('Did not find priority 0 in data-list, give up!')
+            return
         dmi_time_field = data[pri_list[0]]['time'][0:12]
         self.weather_data['time'] = datetime.datetime.strptime(
             dmi_time_field, '%Y%m%d%H%M')
