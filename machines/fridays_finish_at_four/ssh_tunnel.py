@@ -47,11 +47,11 @@ def get_ip_address():
     Only if it fails will it attempt the wlan0 interface. Will return None if
     neither succeeds.
     """
-    eth0_ip = get_ip_address_of_interface('eth0')
+    eth0_ip = get_ip_address_of_interface(b'eth0')
     if eth0_ip is not None:
         return 'eth0', eth0_ip
 
-    wlan0_ip = get_ip_address_of_interface('wlan0')
+    wlan0_ip = get_ip_address_of_interface(b'wlan0')
     if wlan0_ip is not None:
         return 'wlan0', wlan0_ip
 
