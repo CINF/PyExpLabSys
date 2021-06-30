@@ -117,7 +117,11 @@ class Bar101(object):
             except OperationalError:
                 time.sleep(1)
         self.picaso.move_cursor(7, 0)
-        self.picaso.put_string('Connection to database')
+        if not self.bar_database:
+            self.picaso.put_string('No connection to database')
+            time.sleep(5)
+        else:
+            self.picaso.put_string('Connection to database')
 
         # Start barcode scanner
         dev_ = detect_barcode_device()
