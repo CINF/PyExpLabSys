@@ -193,6 +193,8 @@ def main():
         sock.sendto(command, (network_adress, 9000))
         received = sock.recv(1024)
         received = received.decode('ascii')
+        if received == 'OLD_DATA':
+            raise RuntimeError("Received OLD_DATA from rasppi12. Please check it.")
         start_temp = float(received[received.find(',') + 1:])
         agilent_hostname = '10.54.6.56'
         rtd_reader = RtdReader(agilent_hostname, start_temp)
@@ -206,7 +208,7 @@ def main():
     power_supply = {}
     for k in range(1, 3):
         power_supply[k] = cpx.CPX400DPDriver(k, interface='lan',
-                                             hostname='cinf-microreactorng-heating-ps',
+                                             hostname='surfcat-stm312-heating-ps',
                                              tcp_port=9221)
         power_supply[k].set_voltage(0)
         power_supply[k].output_status(True)

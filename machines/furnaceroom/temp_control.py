@@ -9,7 +9,7 @@ import socket
 import pickle
 from PyQt4 import Qt, QtCore
 from PyQt4.QtGui import QWidget
-from temperature_controller_gui import Ui_temp_control
+from temperature_controller_gui_2 import Ui_temp_control
 from PyExpLabSys.common.plotters import DataPlotter
 from PyExpLabSys.common.supported_versions import python2_only
 import temperature_controller_config as config
@@ -55,7 +55,7 @@ class TemperatureControllerComm(threading.Thread):
                 self.status['temperature'] = self.read_param('temperature')
                 self.status['temp_connected'] = True
             except socket.error:
-                self.status['temp_connected'] = True
+                self.status['temp_connected'] = False
             try:
                 self.status['dutycycle'] = self.read_param('dutycycle')
                 print(self.status['dutycycle'])
@@ -126,7 +126,7 @@ class SimplePlot(QWidget):
                                self.update_setpoint)
     def on_start(self):
         """Start button method"""
-        print('start pressed')
+        print('<< start pressed >>')
         if not self.active:
             self.start = time.time()
             self.active = True
@@ -134,14 +134,19 @@ class SimplePlot(QWidget):
             for key in self.plotter.data.keys():
                 self.plotter.data[key] = []
             QtCore.QTimer.singleShot(0, self.plot_iteration)
+        else:
+            print('...already running!')
 
     def update_setpoint(self):
-        """Standby button method"""
+        """Update setpoint button method"""
+        print('<< Updating setpoint >>')
         new_setpoint = self.gui.new_setpoint.text()
         try:
             float(new_setpoint)
         except ValueError:
+            message = '...ValueError: {}\nOriginal setpoint used instead.'.format(repr(new_setpoint))
             new_setpoint = str(self.tcc.status['setpoint'])
+            print(message)
         self.gui.new_setpoint.setProperty("text", new_setpoint)
         data = 'raw_wn#setpoint:float:' + str(new_setpoint)
         self.sock.sendto(data, (config.controller_hostname, config.controller_push_port))
@@ -151,6 +156,9 @@ class SimplePlot(QWidget):
 
     def on_start_ramp(self):
         """Start temperature ramp"""
+        print('<< Start ramp pressed >>')
+        print('Current ramp settings:')
+        print(self.ramp)
         self.ramp_start = time.time()
         for i in range(0, 11):
             self.ramp['time'][i] = int(self.gui.temperature_ramp.item(i, 0).text())
@@ -161,16 +169,20 @@ class SimplePlot(QWidget):
         self.sock.sendto(data, (config.controller_hostname, config.controller_push_port))
         received = self.sock.recv(1024)
         print(received)
+        print('New ramp settings:')
+        print(self.ramp)
 
     def on_stop_ramp(self):
-        """Start temperature ramp"""
+        """Stop temperature ramp"""
+        print('<< Stop ramp pressed >>')
         data = 'raw_wn#ramp:str:stop'
         self.sock.sendto(data, (config.controller_hostname, config.controller_push_port))
-        self.sock.recv(1024)
+        received = self.sock.recv(1024)
+        print(received)
 
     def on_stop(self):
         """Stop button method"""
-        print('stop pressed')
+        print('<< Stop pressed >>')
         self.active = False
 
     def plot_iteration(self):

@@ -140,6 +140,7 @@ class Brooks(object):
         return True
 
 if __name__ == '__main__':
-    BROOKS = Brooks()
+    BROOKS = Brooks('3F2320902001')
     print(BROOKS.long_address)
+    print(BROOKS.read_full_range())
     print(BROOKS.read_flow())

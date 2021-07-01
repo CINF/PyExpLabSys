@@ -6,10 +6,13 @@
 from pprint import pprint
 from struct import unpack, calcsize
 
-from numpy import fromfile, dtype
+from numpy import fromfile
+
+from PyExpLabSys.common.supported_versions import python3_only
+python3_only(__file__)
 
 
-type_translation = {
+TYPE_TRANSLATION = {
     'Uint32': '>I',
     'int32': '>i',
     'long': '>l',
@@ -18,7 +21,7 @@ type_translation = {
 
 
 #FILE_REFERENCE = (
-    
+
 #    FIXME
 #)
 
@@ -36,12 +39,12 @@ FILE_HEADER = (
 
 DATA_HEADER = (
     ('author', 'string'),
-    ('author_host' , 'string'),
-    ('time_and_date_created',  'pnw_date'),
-    ('editor' , 'string'),
-    ('editor_host' , 'string'),
+    ('author_host', 'string'),
+    ('time_and_date_created', 'pnw_date'),
+    ('editor', 'string'),
+    ('editor_host', 'string'),
     ('time_and_date_last_edited', 'pnw_date'),
-    ('site_id' , 'string'),
+    ('site_id', 'string'),
     ('number_of_times_edited_saved_since_creation', 'long'),
     ('edit_flags', 'int32'),
     ('file_description', 'string'),
@@ -59,7 +62,7 @@ ADHEADER = (
     ('Channel Number', 'int32'),
     ('Operator Initials', 'string'),
     ('Sequence File Spec', 'string'), #FILE_REFERENCE),
-    ('Sequence Entry \#', 'int32'),
+    ('Sequence Entry #', 'int32'),
     ('Autosampler name', 'string'),
     ('Rack Number', 'int32'),
     ('Vial Number', 'int32'),
@@ -156,17 +159,17 @@ INSTRUMENT_METHOD_STRUCTURE = (
 
 def parse_simple_types(specification, file_):
     """Parse simple types"""
-    print("PARSE")
+    #print("PARSE")
     output = {}
     for name, type_ in specification:
-        print("\nPARSE SPEC", name, type_, "AT", file_.tell())
+        #print("\nPARSE SPEC", name, type_, "AT", file_.tell())
         if type_ == 'string':
             size = unpack('>i', file_.read(4))[0]
             format_ = '>{}s'.format(size)
             if size % 4 != 0:
                 format_ += 'x' * (4 - size % 4)
             bytes_ = file_.read(calcsize(format_))
-            print("Read {} bytes of string".format(len(bytes_)))
+            #print("Read {} bytes of string".format(len(bytes_)))
             value = unpack(format_, bytes_)[0].decode('ascii')
         elif type_ == 'double':
             # Appearently, in this serialization, the two groups of 4
@@ -178,14 +181,15 @@ def parse_simple_types(specification, file_):
             unix_time = unpack('>i', file_.read(4))[0]
 
             # We do not fully understand the time stamp, FIXME
-            import datetime
-            print(
-                datetime.datetime.fromtimestamp(
-                    unix_time
-                ).strftime('%Y-%m-%d %H:%M:%S')
-            )
+            #import datetime
+            #print(
+            #    datetime.datetime.fromtimestamp(
+            #        unix_time
+            #    ).strftime('%Y-%m-%d %H:%M:%S')
+            #)
             timestamp = unpack('>bbhbbbb', file_.read(8))
-            print(timestamp)
+            #timestamp = unpack('>hBBBBBB', file_.read(8))
+            #print("TIMESTAMP", timestamp)
             #file_.read(11)
 
             # Just save unix time for now
@@ -194,9 +198,9 @@ def parse_simple_types(specification, file_):
             value = parse_simple_types(type_, file_)
         else:
             # struct parseable type
-            format_ = type_translation[type_]
+            format_ = TYPE_TRANSLATION[type_]
             value = unpack(format_, file_.read(calcsize(format_)))[0]
-        print("VALUE IS", repr(value))
+        #print("VALUE IS", repr(value))
         output[name] = value
     return output
 
@@ -232,24 +236,26 @@ class Raw:
 
             # Sequence FIXME
             #file_.read(8)
-            print("\n\n\n##############################")
+            #print("\n\n\n##############################")
             self.seq_description = parse_simple_types(SEQ_DESCRIPTION, file_)
 
-            print(file_.tell())
+            #print(file_.tell())
             self.raw_data_points = parse_array('>i4', file_)
 
-            print("\n\n\n##############################")
+            #print("\n\n\n##############################")
             #self.instrument_method_structure = parse_simple_types(
             #    INSTRUMENT_METHOD_STRUCTURE, file_,
             #)
 
-        #print()
-        #print(self.file_header)
-        for k, v in self.file_header.items():
-            print(k, repr(v))
 
 
+def module_demo():
+    """Module demon"""
+    filepath = ('/home/kenni/surfcat/setups/307-059-largeCO2MEA/'
+                'GC_parsing/Test8_Carrier=Ar_70mLH2_26mLCO_60C_Att'
+                '=-2_NoRamp.raw')
+    raw_file = Raw(filepath)
+    print(raw_file)
 
-filepath = '/home/kenni/surfcat/setups/307-059-largeCO2MEA/GC_parsing/Test8_Carrier=Ar_70mLH2_26mLCO_60C_Att=-2_NoRamp.raw'
-#filepath = '/home/kenni/surfcat/setups/307-059-largeCO2MEA/GC_parsing/After_reinstall_coloumn_3mLAr_H2_CO_30C180C30C.raw'
-Raw(filepath)
+if __name__ == '__main__':
+    module_demo()

@@ -103,7 +103,7 @@ class ContinuousLogger(threading.Thread):
     :var database: Database name, value is ``cinfdata``.
     """
 
-    host = 'servcinf-sql'
+    host = 'servcinf-sql.fysik.dtu.dk'
     database = 'cinfdata'
 
     def __init__(self, table, username, password, measurement_codenames,

@@ -67,7 +67,14 @@ class RedFlowMeter(object):
         'range': (('read_float', None), 0x6020),
         'fluid_name': (('read_string', process_string), 0x6042, 4),
         'unit': (('read_string', process_string), 0x6046, 4),
+        'control_function': (('read_register', None), 0x000e),
     }
+    # The command map for set operations consists of
+    # name: (minimalmodbus_method, conversion_function, address)
+    command_map_set = {
+        'setpoint_gas_flow': ('write_float', None, 0x0006),
+    }
+
 
     def __init__(self, port, slave_address, **serial_com_kwargs):
         """Initialize driver
@@ -88,6 +95,15 @@ class RedFlowMeter(object):
         # Initialize the instrument
         self.instrument = minimalmodbus.Instrument(port, slave_address)
         self._last_call = time()
+        # Specify number of retrys when reading data
+        self.number_of_retries = 10
+
+    def _ensure_waittime(self):
+        """Ensure waittime"""
+        waittime = 0.004 / 9600 * self.serial_com_kwargs['BAUDRATE']
+        time_to_sleep = waittime - (time() - self._last_call)
+        if time_to_sleep > 0:
+            sleep(time_to_sleep)
 
     def read_value(self, value_name):
         """Read a value
@@ -100,8 +116,7 @@ class RedFlowMeter(object):
             ValueError: On invalid key
         """
         # Ensure waittime
-        waittime = 0.004 / 9600 * self.serial_com_kwargs['BAUDRATE']
-        sleep(waittime - (time() - self._last_call))
+        self._ensure_waittime()
 
         # Extract command_spec
         try:
@@ -113,10 +128,58 @@ class RedFlowMeter(object):
         # The command_spec is:
         # name: (minimalmodbus_method, conversion_function), method_args...)
         method_name, conversion_function = command_spec[0]
+
+        for retry_number in range(1, self.number_of_retries):
+            try:
+                method = getattr(self.instrument, method_name)
+                value = method(*command_spec[1:])
+                if conversion_function is not None:
+                    value = conversion_function(value)
+                break
+            except IOError as e:
+                print("I/O error({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                sleep(0.5)
+                continue
+            except ValueError as e:
+                print("ValueError({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                sleep(0.5)
+                continue
+        else:
+            raise RuntimeError('Could not retrieve data in\
+                                       {} retries'.format(self.number_of_retries))
+        # Set last call time
+        self._last_call = time()
+
+        return value
+
+    def write_value(self, value_name, value):
+        """Write a value
+
+        Args:
+            value_name (str): The name of the value to read. Valid values are the keys in
+                self.command_map
+            value (object): The value to write
+
+        Raises:
+            ValueError: On invalid key
+        """
+        # Ensure waittime
+        self._ensure_waittime()
+
+        # Extract command_spec
+        try:
+            command_spec = self.command_map_set[value_name]
+        except KeyError:
+            msg = "Invalid value name. Valid names are: {}"
+            raise ValueError(msg.format(list(self.command_map_set.keys())))
+
+        # The command_spec for set is:
+        # name: (minimalmodbus_method, conversion_function, address)
+        method_name, conversion_function, address = command_spec
         method = getattr(self.instrument, method_name)
-        value = method(*command_spec[1:])
-        if conversion_function is not None:
+        if conversion_function:
             value = conversion_function(value)
+        method(address, value)
 
         # Set last call time
         self._last_call = time()
@@ -131,7 +194,7 @@ class RedFlowMeter(object):
         """Return the current flow (alias for read_value('flow')"""
         return self.read_value('flow')
 
-    def read_temperatre(self):
+    def read_temperature(self):
         """Return the current temperature"""
         return self.read_value('temperature')
 
@@ -152,11 +215,12 @@ class RedFlowMeter(object):
 
 def main():
     # COM4, address 2 and 247
-    flow_meter = RedFlowMeter('COM4', 2)
+    flow_meter = RedFlowMeter('COM8', 42)
     from pprint import pprint
     pprint(flow_meter.read_all())
-    flow_meter.set_address(247)
-    pprint(flow_meter.read_all())
+    flow_meter.write_value('setpoint_gas_flow', 0.0)
+    #flow_meter.set_address(247)
+    #pprint(flow_meter.read_all())
 
 
 if __name__ == '__main__':

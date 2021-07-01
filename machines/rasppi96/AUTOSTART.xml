@@ -1,0 +1,13 @@
+<autostart>
+  <name>RASPPI96_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>20</startdelay>
+    <command>python datalogger.py</command>
+    <name>Pressure</name>
+  </session>
+  <session>
+    <startdelay>20</startdelay>
+    <command>python ../../PyExpLabSys/apps/edwards_nxds_logger.py rasppi96</command>
+    <name>Edwards Rough Pump</name>
+  </session>
+</autostart>

@@ -1,115 +1,89 @@
-""" Pressure and temperature logger, PVD309"""
+""" Data logger for heating block on VHP alkali doser """
 from __future__ import print_function
 import threading
+import logging
 import time
-from PyExpLabSys.common.loggers import ContinuousLogger
-from PyExpLabSys.common.sockets import LiveSocket
-from PyExpLabSys.common.sockets import DateDataPullSocket
+import minimalmodbus
+import serial
+from PyExpLabSys.drivers.omega_cn7800 import CN7800
 from PyExpLabSys.common.value_logger import ValueLogger
-import PyExpLabSys.drivers.intellemetrics_il800 as intellemetrics_il800
-import PyExpLabSys.drivers.inficon_sqm160 as inficon_sqm160
-from PyExpLabSys.common.utilities import get_logger
+from PyExpLabSys.common.database_saver import ContinuousDataSaver
+from PyExpLabSys.common.sockets import DateDataPullSocket
+from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
+python2_and_3(__file__)
 
-LOGGER = get_logger('PVD309 QCM', level='info', file_log=True,
-                    file_name='qcm_log.txt', terminal_log=True)
 
-class QcmReader(threading.Thread):
-    """ QCM Reader """
-    def __init__(self, qcm):
+class TemperatureReader(threading.Thread):
+    """ Communicates with the Omega ?? """
+    def __init__(self, omega):
         threading.Thread.__init__(self)
-        self.qcm = qcm
-        self.rate = None
-        self.thickness = None
-        self.frequency = None
+        self.omega = omega
+        self.temperature = None
         self.quit = False
         self.ttl = 20
-
-    def value(self, channel):
-        """ Read values """
-        self.ttl = self.ttl - 1
-        if self.ttl < 0:
+        
+    def value(self,channel=None):
+        self.ttl -= 1
+        if self.ttl <= 0:
             self.quit = True
             return_val = None
         else:
-            if channel == 0:
-                return_val = self.rate
-            if channel == 1:
-                return_val = self.thickness
-            if channel == 2:
-                return_val = self.frequency
-        return return_val
-
+            return_val = self.temperature
+        return return_val        
+    
     def run(self):
-        while not self.quit:
-            self.ttl = 50
-            time.sleep(0.1)
-            self.thickness = self.qcm.thickness()
-            self.frequency = self.qcm.frequency()
-            self.rate = self.qcm.rate()
-
+        try:
+            while not self.quit:
+                self.ttl = 50
+                self.temperature = self.omega.read_temperature()
+        except ValueError:
+            self.temperature = None
+            self.ttl -= 1
+            print("Check if omega has power")
+        finally:
+            self.quit = True
 def main():
-    """ Main loop """
-    il800 = intellemetrics_il800.IL800('/dev/serial/by-id/' +
-                                       'usb-Prolific_Technology_Inc.' +
-                                       '_USB-Serial_Controller_D-if00-port0')
-    sqm160 = inficon_sqm160.InficonSQM160('/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0')
+    """ Main function """
+    logging.basicConfig(filename="logger.txt", level=logging.ERROR)
+    logging.basicConfig(level=logging.ERROR)
 
-    qcm1 = QcmReader(il800)
-    qcm1.start()
+    codenames = ['vhp_T_jacket']
 
-    qcm2 = QcmReader(sqm160)
-    qcm2.start()
+    datasocket = DateDataPullSocket('VHP_T_jacket_reader', codenames,
+                                    port=9001)
+    datasocket.start()
 
-    time.sleep(2.5)
-
-    codenames = ['pvd309_qcm1_rate', 'pvd309_qcm1_thickness', 'pvd309_qcm1_frequency',
-                 'pvd309_qcm2_rate', 'pvd309_qcm2_thickness', 'pvd309_qcm2_frequency']
-
-    loggers = {}
-    loggers[codenames[0]] = ValueLogger(qcm1, comp_val=0.01,
-                                        comp_type='lin', channel=0)
-    loggers[codenames[1]] = ValueLogger(qcm1, comp_val=0.1,
-                                        comp_type='lin', channel=1)
-    loggers[codenames[2]] = ValueLogger(qcm1, comp_val=1,
-                                        comp_type='lin', channel=2)
-    loggers[codenames[3]] = ValueLogger(qcm2, comp_val=0.3,
-                                        comp_type='lin', channel=0)
-    loggers[codenames[4]] = ValueLogger(qcm2, comp_val=0.1,
-                                        comp_type='lin', channel=1)
-    loggers[codenames[5]] = ValueLogger(qcm2, comp_val=1,
-                                        comp_type='lin', channel=2)
-    for name in codenames:
-        loggers[name].daemon = True
-        loggers[name].start()
-
-
-    livesocket = LiveSocket('pvd309 qcm logger', codenames)
-    livesocket.start()
-
-    socket = DateDataPullSocket('pvd309 qcm', codenames, timeouts=[1.0]*len(codenames))
-    socket.start()
-
-    db_logger = ContinuousLogger(table='dateplots_pvd309',
-                                 username=credentials.user,
-                                 password=credentials.passwd,
-                                 measurement_codenames=codenames)
+    db_logger = ContinuousDataSaver(continuous_data_table='dateplots_vhp_setup',
+                                    username=credentials.user,
+                                    password=credentials.passwd,
+                                    measurement_codenames=codenames)
     db_logger.start()
 
-    while qcm1.isAlive() and qcm2.isAlive():
-        time.sleep(0.25)
-        for name in codenames:
-            value = loggers[name].read_value()
-            livesocket.set_point_now(name, value)
-            socket.set_point_now(name, value)
-            if loggers[name].read_trigged():
-                print(name + ': ' + str(value))
-                db_logger.enqueue_point_now(name, value)
-                loggers[name].clear_trigged()
+    ports = {}
+    ports['vhp_T_jacket'] = 'usb-FTDI_USB-RS485_Cable_FT1F9WC2-if00-port0'
+    loggers = {}
+    temperature_readers = {}
+    for logger_name in codenames:
+        temperature_readers[logger_name] = TemperatureReader(CN7800(ports[logger_name]))
+        temperature_readers[logger_name].daemon = True
+        temperature_readers[logger_name].start()
+        loggers[logger_name] = ValueLogger(temperature_readers[logger_name], comp_val=1)
+        loggers[logger_name].start()
+
+    time.sleep(5)
+
+    values = {}
+    while True:
+        time.sleep(1)
+        for logger_name in codenames:
+            values[logger_name] = loggers[logger_name].read_value()
+            datasocket.set_point_now(logger_name, values[logger_name])
+            if loggers[logger_name].read_trigged():
+                print(logger_name + ': ' + str(values[logger_name]))
+                db_logger.save_point_now(logger_name, values[logger_name])
+                loggers[logger_name].clear_trigged()
+
 
 if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        LOGGER.exception(e)
-        raise e
+    main()

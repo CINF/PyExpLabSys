@@ -5,7 +5,7 @@
 from __future__ import print_function
 from textwrap import wrap
 import sys
-from StringIO import StringIO
+#from StringIO import StringIO
 
 
 COWS = {
@@ -56,16 +56,16 @@ class Cowsay(object):
 
         self.width = width
 
-        self.out = sys.stdout
+        self.out = ''#sys.stdout
 
     def say(self, text):
         """Make the cow say something"""
         wrapped_lines = wrap(text, self.width)
         text_width = max(len(line) for line in wrapped_lines)
-        self.out.write('  ' + '_' * text_width + '\n',)
+        self.out += '  ' + '_' * text_width + '\n'
         template = '{{}} {{: <{}}} {{}}\n'.format(text_width)
         if len(wrapped_lines) == 1:
-            self.out.write(template.format('<', wrapped_lines[0], '>'))
+            self.out += template.format('<', wrapped_lines[0], '>')
         else:
             for line_num, line in enumerate(wrapped_lines):
                 if line_num == 0:
@@ -74,19 +74,16 @@ class Cowsay(object):
                     left, right = '\\', '/'
                 else:
                     left, right = '|', '|'
-                self.out.write(template.format(left, line, right))
+                self.out += template.format(left, line, right)
 
-        self.out.write('  ' + '-' * text_width + '\n')
-        self.out.write(self.cow + '\n')
+        self.out += '  ' + '-' * text_width + '\n'
+        self.out += self.cow + '\n'
 
     def say_get_string(self, text):
         """Get the cow output as a string"""
-        sio = StringIO()
-        self.out = sio
+        self.out = ''
         self.say(text)
-        self.out = sys.stdout
-        sio.seek(0)
-        return sio.read()
+        return self.out
 
 
 if __name__ == '__main__':

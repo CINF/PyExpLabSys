@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI70_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>15</startdelay>
+    <command>python datalogger.py</command>
+    <name>Rasppi70 Datalogger</name>
+  </session>
+</autostart>

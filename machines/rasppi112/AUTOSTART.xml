@@ -1,0 +1,13 @@
+<autostart>
+  <name>RASPPI112_AUTOSTART</name><!-- no spaces -->
+  <session>
+    <startdelay>5</startdelay>
+    <command>python3 /home/pi/PyExpLabSys/machines/rasppi112/GC_control.py</command>
+    <name>Rasppi112 GC</name>
+  </session>
+  <session>
+    <startdelay>5</startdelay>
+    <command>python3 /home/pi/PyExpLabSys/machines/rasppi112/datalogger.py</command>
+    <name>Rasppi112 datalogger</name>
+  </session>
+</autostart>

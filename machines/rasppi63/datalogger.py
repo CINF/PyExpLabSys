@@ -11,7 +11,7 @@ import PyExpLabSys.drivers.honeywell_6000 as honeywell_6000
 import PyExpLabSys.common.utilities
 from PyExpLabSys.common.supported_versions import python2_and_3
 import credentials
-PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
+# PyExpLabSys.common.utilities.ERROR_EMAIL = 'robert.jensen@fysik.dtu.dk'
 python2_and_3(__file__)
 
 LOGGER = get_logger('Small office temperature logger', level='WARN', file_log=True,
@@ -89,4 +89,11 @@ def main():
                 loggers[name].clear_trigged()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except OSError as exception:
+            LOGGER.warning("Got '{}', restarting in 300s".format(exception))
+            time.sleep(300)
+        except KeyboardInterrupt:
+            break

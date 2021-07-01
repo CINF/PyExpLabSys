@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI26_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>10</startdelay>
+    <command>python analog_mfc.py</command>
+    <name>Analog MFC</name>
+  </session>
+</autostart>

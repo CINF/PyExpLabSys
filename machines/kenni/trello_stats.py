@@ -24,7 +24,7 @@ import hall_credentials
 #'498', 'trello_user_kenneth', 'Trello user Kenneth Nielsen'
 #'499', 'trello_user_robert', 'Trello user Robert Jensen'
 #'500', 'trello_user_brian', 'Trello user Brian'
-
+#'502', 'trello_list_broken_stuff', 'Trello list Broken Stuff'
 
 
 LIST_ID_TO_DB_ID = {
@@ -36,6 +36,7 @@ LIST_ID_TO_DB_ID = {
     '5416c831187734dc95e3e683': 490,  # Unsorted - add new stuff here
     '553dfee6e6464cba3e47a53b': 495,  # TODAY
     '553dff5d0a8a0ef3556f3f4e': 496,  # On hold'
+    '5b9229ee34b1da2692a589b7': 502,  # 'Broken stuff'
 }
 
 

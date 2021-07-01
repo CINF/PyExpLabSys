@@ -24,9 +24,9 @@ class PressureReader(threading.Thread):
 
     def value(self, channel):
         """ Return the value of the reader """
-        if channel == 0:
+        if channel == 2:
             value = self.containment
-        if channel == 1:
+        if channel == 3:
             value = self.bufferpressure
         return value
 
@@ -35,8 +35,8 @@ class PressureReader(threading.Thread):
             time.sleep(1)
             try:
                 pressures = self.xgs.read_all_pressures()
-                self.containment = pressures[0]
-                self.bufferpressure = pressures[1]
+                self.containment = pressures[2]
+                self.bufferpressure = pressures[3]
             except IndexError:
                 print('Av')
 
@@ -53,9 +53,9 @@ def main():
     reader.start()
 
     buffer_logger = ValueLogger(reader, comp_val=0.1, comp_type='log',
-                                channel=0, low_comp=1e-3)
+                                channel=2, low_comp=1e-3)
     containment_logger = ValueLogger(reader, comp_val=0.1, comp_type='log',
-                                     channel=1, low_comp=1e-3)
+                                     channel=3, low_comp=1e-3)
     buffer_logger.start()
     containment_logger.start()
 
@@ -75,6 +75,7 @@ def main():
     db_logger.start()
     time.sleep(5)
 
+    counter = 0
     while reader.isAlive():
         time.sleep(0.2)
         p_containment = containment_logger.read_value()
@@ -83,14 +84,19 @@ def main():
         socket.set_point_now('buffer_pressure', p_buffer)
         livesocket.set_point_now('containment_pressure', p_containment)
         livesocket.set_point_now('buffer_pressure', p_buffer)
+        # Print values every 2 seconds
+        counter += 1
+        if counter == 10:
+            print(p_containment, p_buffer)
+            counter = 0
 
         if containment_logger.read_trigged():
-            print(p_containment)
+            print('Saving containment: ', p_containment)
             db_logger.save_point_now('mgw_pressure_containment', p_containment)
             containment_logger.clear_trigged()
 
         if buffer_logger.read_trigged():
-            print(p_buffer)
+            print('Saving buffer: ', p_buffer)
             db_logger.save_point_now('mgw_pressure_buffer', p_buffer)
             buffer_logger.clear_trigged()
 

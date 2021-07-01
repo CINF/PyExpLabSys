@@ -199,7 +199,7 @@ class SystemStatus(object):
         # This procedure has given us problems in the past, so sorround with try-except
         try:
             # Get the IP of servcinf-sql
-            sql_ip = socket.gethostbyname('servcinf-sql')
+            sql_ip = socket.gethostbyname('servcinf-sql.fysik.dtu.dk')
             # Get the route for the servcinf-sql ip, it will look like one of these:
             #10.54.6.26 dev eth0  src 10.54.6.43 \    cache
             #130.225.86.27 via 10.54.6.1 dev eth0  src 10.54.6.43 \    cache

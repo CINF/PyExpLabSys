@@ -1,0 +1,10 @@
+# Raster in Z-axis only back and forth
+# XX minutes per cycle
+<<<DATA>>>
+step_size=2.0
+speed=0.5
+<<<PATTERN>>>
+0-->Z:-1
+Z:+2
+Z:-2
+<<<END>>>

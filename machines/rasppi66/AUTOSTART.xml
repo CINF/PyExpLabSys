@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI66_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>60</startdelay>
+    <command>python datalogger.py</command>
+    <name>Ventilation Pressure and Hall Temp. and humidity</name>
+  </session>
+</autostart>

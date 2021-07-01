@@ -70,7 +70,8 @@ if os.environ.get('READTHEDOCS') == 'True':
     # Special case for read the docs
     USERSETTINGS_PATH = path.join(THISDIR, '..', 'bootstrap', 'user_settings.yaml')
 else:
-    if sys.platform.lower().startswith('linux'):
+    # Krabbe is the sole responsible person for the MAC check, if it breaks bug him
+    if sys.platform.lower().startswith('linux') or sys.platform.lower() == "darwin":
         USERSETTINGS_PATH = \
             path.join(path.expanduser('~'), '.config', 'PyExpLabSys', 'user_settings.yaml')
     else:

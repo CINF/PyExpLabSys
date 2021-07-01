@@ -13,6 +13,8 @@ As pylint user:
 
 """
 
+# --disable=no-member
+
 from __future__ import print_function
 import os
 import sys
@@ -60,17 +62,18 @@ LOG.addHandler(ROTATING_FILE_HANDLER)
 if sys.version_info.major != 3:
     raise RuntimeError('Run with python 3')
 
-ARCHIVE_PATH = '/home/kenni/pylint_pyexplabsys/PyExpLabSys'
+# General settings
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+ARCHIVE_PATH = '/home/service/pylint_pyexplabsys/PyExpLabSys'
 SKIP_FILE_LINESTART = ('# Form implementation generated from reading ui file',)
 GIT_PREFIX_ARGS = ['git', '-C', ARCHIVE_PATH]
 PYLINTRC = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), '..', '..', 'bootstrap',
-    '.pylintrc'
+    THIS_DIR , '..', '..', '..', 'bootstrap', '.pylintrc'
 )
-PYLINT_VERSION = subprocess.check_output(['/home/kenni/.local/bin/pylint --version 2> /dev/null'], shell=True)
-
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+PYLINT_VERSION = subprocess.check_output(['pylint3 --version 2> /dev/null'], shell=True)
 CACHE_PATH = os.path.join(THIS_DIR, 'lint_cache')
+SQL_SERVER = '127.0.0.1'
+SQL_PORT = 9000
 
 
 # Helper function
@@ -129,7 +132,7 @@ def update_git():
 def get_commits_in_db():
     """Returns the last commit from the database"""
     LOG.debug('Get last commit from db with user pylint')
-    with MySQLdb.connect('servcinf-sql', 'pylint', 'pylint', 'cinfdata') as cursor:
+    with MySQLdb.connect(SQL_SERVER, 'pylint', 'pylint', 'cinfdata', port=SQL_PORT) as cursor:
         query = "select distinct(commit) from pylint"
         cursor.execute(query)
         commits_in_db = set(item[0] for item in cursor.fetchall())
@@ -175,6 +178,14 @@ class CommitAnalyzer(object):
             raise RuntimeError("Git checkout of commit %s failed", commit)
         # Find commit time as unix time stamp
         self.commit_time = git("log {} --pretty=format:%ct -n 1".format(commit))
+
+        # Form database connections and cursors
+        self.hall_connection = MySQLdb.connect(SQL_SERVER, 'hall', 'hall', 'cinfdata', port=SQL_PORT)
+        self.hall_connection.autocommit(True)
+        self.hall_cursor = self.hall_connection.cursor()
+        self.pylint_connection = MySQLdb.connect(SQL_SERVER, 'pylint', 'pylint', 'cinfdata', port=SQL_PORT)
+        self.pylint_connection.autocommit(True)
+        self.pylint_cursor = self.pylint_connection.cursor()
 
     def run_all(self):
         """Run pylint and gather statistics"""
@@ -283,8 +294,11 @@ class CommitAnalyzer(object):
                 sys.stdout.flush()
             LOG.debug('No lint cache found for %s, actually run pylint', md5sum)
             # Collect lint statistics
-            args = ['/home/kenni/.local/bin/pylint', '--output-format=json', '--disable=F0401', '-r', 'n',
-                    '--rcfile={}'.format(PYLINTRC), filepath]
+            args = [
+                'pylint3', '--output-format=json', '--disable=no-member',
+                '--disable=import-error', '-r', 'n', '--rcfile={}'.format(PYLINTRC),
+                filepath,
+            ]
             process = subprocess.Popen(args, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             out, _ = process.communicate()
@@ -327,47 +341,44 @@ class CommitAnalyzer(object):
            id 169 is lines_of_py3_code
         """
         LOG.info('Report totals to MySQL with hall user')
-        with MySQLdb.connect('servcinf-sql', 'hall', 'hall', 'cinfdata') as cursor:
-            query = ('INSERT INTO dateplots_hall (time, type, value) VALUES '
-                     '(FROM_UNIXTIME(%s), %s, %s)')
-            # 164 is pylint errors and 165 is number of lines
-            LOG.debug('Using query: %s', query)
+        query = ('INSERT INTO dateplots_hall (time, type, value) VALUES '
+                 '(FROM_UNIXTIME(%s), %s, %s)')
+        # 164 is pylint errors and 165 is number of lines
+        LOG.debug('Using query: %s', query)
 
-            # Error count
-            values = (self.commit_time, 164, sum(self.error_counter.values()))
-            LOG.debug('Sending: %s', values)
-            cursor.execute(query, values)
+        # Error count
+        values = (self.commit_time, 164, sum(self.error_counter.values()))
+        LOG.debug('Sending: %s', values)
+        self.hall_cursor.execute(query, values)
 
-            # Total number of lines
-            values = (self.commit_time, 165, self.total_line_count)
-            LOG.debug('Sending: %s', values)
-            cursor.execute(query, values)
+        # Total number of lines
+        values = (self.commit_time, 165, self.total_line_count)
+        LOG.debug('Sending: %s', values)
+        self.hall_cursor.execute(query, values)
 
-            # Total number of py3 lines
-            values = (self.commit_time, 169, self.total_py3_line_count)
-            LOG.debug('Sending: %s', values)
-            cursor.execute(query, values)
-
+        # Total number of py3 lines
+        values = (self.commit_time, 169, self.total_py3_line_count)
+        LOG.debug('Sending: %s', values)
+        self.hall_cursor.execute(query, values)
         LOG.debug('Total number of errors and lines sent to mysql')
 
         LOG.info('Report error and file stats to MySQL with pylint user')
-        with MySQLdb.connect('servcinf-sql', 'pylint', 'pylint', 'cinfdata') as cursor:
-            query = ('INSERT INTO pylint (time, identifier, isfile, value, commit, '
-                     'pytlin_output_json) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s, %s)')
-            LOG.debug('Using query: %s', query)
+        query = ('INSERT INTO pylint (time, identifier, isfile, value, commit, '
+                 'pytlin_output_json) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s, %s)')
+        LOG.debug('Using query: %s', query)
 
-            # Send error stats
-            for key, value in self.error_counter.items():
-                values = (self.commit_time, key, False, value, self.commit, None)
-                cursor.execute(query, values)
-                LOG.debug('Sending: %s', values)
+        # Send error stats
+        for key, value in self.error_counter.items():
+            values = (self.commit_time, key, False, value, self.commit, None)
+            self.pylint_cursor.execute(query, values)
+            LOG.debug('Sending: %s', values)
 
-            # Send file stats
-            for key, value in self.file_counter.items():
-                error_json = self.file_error_json[key]
-                values = (self.commit_time, key, True, value, self.commit, error_json)
-                cursor.execute(query, values)
-                LOG.debug('Sending: %s ... (json left out)', values[:5])
+        # Send file stats
+        for key, value in self.file_counter.items():
+            error_json = self.file_error_json[key]
+            values = (self.commit_time, key, True, value, self.commit, error_json)
+            self.pylint_cursor.execute(query, values)
+            LOG.debug('Sending: %s ... (json left out)', values[:5])
 
         LOG.debug('Everything else sent to mysql')
 
@@ -385,8 +396,8 @@ def main():
             commit_analyzer = CommitAnalyzer(commit, send_to_database=True)
             commit_analyzer.run_all()
         else:
-            LOG.info('Commit number %s out of %s from archive already analyzed',
-                     commit_number, number_of_commits_in_archive)
+            LOG.info('Commit number %s (%s) out of %s from archive already analyzed',
+                     commit_number, commit, number_of_commits_in_archive)
 
 
 if __name__ == '__main__':
@@ -394,10 +405,12 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         pass
-
-    CommitAnalyzer.lint_cache['pylint_version'] = PYLINT_VERSION
-    with open(CACHE_PATH, 'wb') as lint_file:
-        pickle.dump(CommitAnalyzer.lint_cache, lint_file)
-    LOG.info('Dumped cache with %s elements', len(CommitAnalyzer.lint_cache))
+    except Exception:
+        LOG.exception("Uh oh, an uncaught exception")
+    finally:
+        CommitAnalyzer.lint_cache['pylint_version'] = PYLINT_VERSION
+        with open(CACHE_PATH, 'wb') as lint_file:
+            pickle.dump(CommitAnalyzer.lint_cache, lint_file)
+        LOG.info('Dumped cache with %s elements', len(CommitAnalyzer.lint_cache))
 
     LOG.debug('All done!')

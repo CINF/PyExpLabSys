@@ -1,0 +1,23 @@
+# Raster a 5mm area with the 4.5mm aperture
+#
+<<<DATA>>>
+step_size=2.5
+speed=0.5
+<<<PATTERN>>>
+0-->Z:-1.0
+1-->Y:-1.0
+{
+Z:+2
+    Y:+0.1
+Z:-2
+    Y:+0.1
+}*10
+Z:+2
+{
+    Y:-2
+Z:-0.1
+    Y:+2
+Z:-0.1
+}*10
+    Y:-2
+<<<END>>>

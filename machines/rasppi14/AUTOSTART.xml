@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI14_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>5</startdelay>
+    <command>python ups_logger.py</command>
+    <name>UPS Logger</name>
+  </session>
+</autostart>

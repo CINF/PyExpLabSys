@@ -20,10 +20,6 @@ from __future__ import print_function
 import sys
 import time
 import serial
-from PyExpLabSys.common.supported_versions import python2_only
-
-
-python2_only(__file__)
 
 # Error codes and their interpretations as copied from manuals
 ERRORCODES = {
@@ -92,6 +88,8 @@ class FUGNTN140Driver(object):
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
             device_reset=True,
+            V_max=6.5,
+            I_max=10,
         ):
         """Initialize object variables
 
@@ -133,14 +131,15 @@ class FUGNTN140Driver(object):
             print('Connected to device: {}'.format(self.identification_string()))
         if device_reset:
             self.reset()
+        self.V_max = V_max
+        self.I_max = I_max
 
     # Answer string handling
     def _check_answer(self):
         """Verify correct answer string (neglect previous answers) """
 
-        #while self.ser.inWaiting() > 0:
         string = self.ser.readline()
-        if string.encode('ascii').strip() == 'E0':
+        if string.decode('ascii').strip() == 'E0':
             return True
         else:
             self.stop()
@@ -158,21 +157,23 @@ class FUGNTN140Driver(object):
     def _get_answer(self):
         """Get waiting answer string """
 
-        #while self.ser.inWaiting() > 0:
         string = self.ser.readline()
+        string = string.decode('ascii')
         return string
 
     # Register handlers
     def _write_register(self, register, value):
         """Alters the value of a register """
 
-        self.ser.write('>' + register + ' ' + str(value) + self.end)
+        command = '>' + register + ' ' + str(value) + self.end
+        self.ser.write(command.encode())
         self._check_answer()
 
     def _read_register(self, register, value_type=float):
         """Queries a register and returns its value """
 
-        self.ser.write('>' + register + '?' + self.end)
+        command = '>' + register + '?' + self.end
+        self.ser.write(command.encode())
         string = self._get_answer()
         if value_type == float:
             # Interpret answer as 'float'
@@ -193,7 +194,8 @@ class FUGNTN140Driver(object):
     def reset(self):
         """Resets device """
 
-        self.ser.write('=' + self.end)
+        command = '=' + self.end
+        self.ser.write(command.encode())
         self._check_answer()
 
     def stop(self, reset=True):
@@ -214,11 +216,12 @@ class FUGNTN140Driver(object):
     def output(self, state=False):
         """Set output ON (>BON) """
 
-        if state:
+        if state is True:
             register = 'F1'
-        else:
+        elif state is False:
             register = 'F0'
-        self.ser.write(register + self.end)
+        command = register + self.end
+        self.ser.write(command.encode())
         self._check_answer()
 
     def get_state(self):
@@ -244,8 +247,8 @@ class FUGNTN140Driver(object):
         if value < 0.0:
             value = 0.0
         # Maximum voltage
-        if value > 6.5:
-            value = 6.5
+        if value > self.V_max:
+            value = self.V_max
         self._write_register('S0', value)
 
     def get_voltage(self):
@@ -306,8 +309,8 @@ class FUGNTN140Driver(object):
         if value < 0:
             value = 0
         # Maximum current
-        if value > 10:
-            value = 10
+        if value > self.I_max:
+            value = self.I_max
         # Set current
         self._write_register('S1', value)
 
@@ -341,13 +344,63 @@ class FUGNTN140Driver(object):
 
         return self._read_register('S1S', bool)
 
-    def read_H1(self):
+    def read_H1(self, ret=False):
         """Read H1 FIXME not yet done"""
-        self.ser.write('>H1?'+self.end)
-        bytes_ = []
-        time.sleep(1)
-        while self.ser.inWaiting() > 0:
-            bytes_.append(self.ser.read(1))
+
+        t0 = time.time()
+        command = '>H1?' + self.end
+        self.ser.write(command.encode())
+        bytes_ = self.ser.read(36)
+        bytes_ = bytes_[3:-1].decode()
+        # Byte 01
+        voltage = int.from_bytes(bytes.fromhex(bytes_[0:4]), byteorder='little')/65535*12.5
+        # Byte 23
+        current = int.from_bytes(bytes.fromhex(bytes_[4:8]), byteorder='little')/65535*8
+        if ret is True:
+            return voltage, current
+        # Byte 4
+        print('Byte 4: ', end='')
+        byte = bytes.fromhex(bytes_[8:10])
+        bits = bin(int.from_bytes(byte, byteorder='big'))[2:].zfill(2)
+        print(bits)
+        print('Power supply is {}digitally controlled'.format('not ' if bits[-1] == '0' else ''))
+        print('Power supply is {}analogue controlled'.format('not ' if bits[-2] == '0' else ''))
+        print('Power supply is {}in calibration mode'.format('not ' if bits[-3] == '0' else ''))
+        print('X-STAT: {}'.format(bits[-4]))
+        print('3-REG: {}'.format(bits[-5]))
+        print('Output is {}'.format('ON' if bits[-6] == '1' else 'OFF'))
+        if bits[:2] == '01':
+            mode = 'is in CV mode'
+        elif bits[:2] == '10':
+            mode = 'is in CC mode'
+        elif bits[:2] == '00':
+            mode = 'is not regulated'
+        elif bits[:2] == '11':
+            mode = 'appears to be in both CV and CC mode'
+        print('Power supply {}'.format(mode))
+        # Byte 5
+        print('Byte 5: ', end='')
+        byte = bytes.fromhex(bytes_[10:12])
+        bits = bin(int.from_bytes(byte, byteorder='big'))[2:].zfill(8)
+        print(bits)
+        print('Polarity of voltage: {}'.format('positive' if bits[-1] == '0' else 'negative'))
+        print('Polarity of current: {}'.format('positive' if bits[-2] == '0' else 'negative'))
+        
+        print()
+        # UNUSED 6789
+        # Byte 10 11 12 13
+        print('Serial number: ', end='')
+        byte = bytes.fromhex(bytes_[20:28])
+        print(int.from_bytes(byte, byteorder='big'))
+        # Byte 14
+        byte = bytes.fromhex(bytes_[28:30])
+        code = int.from_bytes(byte, byteorder='big')
+        print('Last error code: {}\n'.format(code))
+        print('{:6.4} V  -  {:6.4} A   '.format(voltage, current))
+        #while self.ser.inWaiting() > 0:
+        #    bytes_.append(self.ser.read(1))
+        #bytes_.append(self.ser.read(32)
+        print('Command time: {} s'.format(time.time() - t0))
         return bytes_
 
     def print_states(self, t0=0):
@@ -365,12 +418,14 @@ def test():
     """Module test function"""
     try:
         power = FUGNTN140Driver(port='/dev/ttyUSB2', device_reset=True)
+        return power
         power.output(True)
         power.ramp_current(value=0.2, program=1)
         power.ramp_voltage(value=0.2, program=1)
         t0 = time.time()
         power.print_states(t0)
         power.set_voltage(3)
+        return
         power.set_current(2.5)
         while power.ramp_voltage_running():
             power.print_states(t0)
@@ -392,4 +447,4 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
+    ps = test()

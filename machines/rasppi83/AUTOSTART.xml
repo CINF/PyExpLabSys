@@ -1,0 +1,18 @@
+<autostart>
+  <name>AUTOSTART_Ejler</name>
+  <session>
+    <startdelay>0.5</startdelay>
+    <command>python data_logger.py</command>
+    <name>Temperature logger</name>
+  </session>
+  <session>
+    <startdelay>0.5</startdelay>
+    <command>python dataq_reader.py</command>
+    <name>HV logger</name>
+  </session>
+  <session>
+    <startdelay>0.5</startdelay>
+    <command>echo "python2 power_supply.py"</command>
+    <name>Power supply</name>
+  </session>
+</autostart>

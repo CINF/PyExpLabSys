@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI42_AUTOSTART</name> <!-- no spaces -->
+  <session>
+    <startdelay>5</startdelay>
+    <command>python3 host_status.py</command>
+    <name>Host Checker</name>
+  </session>
+</autostart>

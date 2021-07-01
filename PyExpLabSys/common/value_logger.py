@@ -6,7 +6,7 @@ from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
 class ValueLogger(threading.Thread):
-    """ Read a continuously updated values and decides
+    """ Reads continuously updated values and decides
     whether it is time to log a new point """
     def __init__(self, value_reader, maximumtime=600, low_comp=None,
                  comp_type='lin', comp_val=1, channel=None):
@@ -63,14 +63,14 @@ class ValueLogger(threading.Thread):
                                        (1 + self.compare['val']))
                 error_count = 0
             except (UnboundLocalError, TypeError):
-                #Happens when value is not yes ready from reader
+                #Happens when value is not yet ready from reader
                 val_trigged = False
                 time_trigged = False
                 error_count = error_count + 1
             if error_count > 15:
                 raise Exception('Error in ValueLogger')
 
-            # Will only trig on value of value is larger than low_comp
+            # Will only trig on value if value is larger than low_comp
             if self.compare['low_comp'] is not None:
                 if self.value < self.compare['low_comp']:
                     val_trigged = False
@@ -153,18 +153,23 @@ class LoggingCriteriumChecker(object):
         except KeyError:
             raise KeyError('Codename \'{}\' is unknown'.format(codename))
 
-        # Pull out last value and update it with current
+        # Pull out last value
         last = self.last_values.get(codename)
-        self.last_values[codename] = value
+
+        # Never trigger if the compared value is None
+        if value is None:
+            return False
 
         # Always trigger for the first value
         if last is None:
             self.last_time[codename] = time.time()
+            self.last_values[codename] = value
             return True
 
         # Always trigger on a timeout
         if time.time() - self.last_time[codename] > measurement['time_out']:
             self.last_time[codename] = time.time()
+            self.last_values[codename] = value
             return True
 
         # Check if below lower compare value
@@ -176,9 +181,11 @@ class LoggingCriteriumChecker(object):
         if measurement['type'] == 'lin':
             if abs_diff > measurement['criterium']:
                 self.last_time[codename] = time.time()
+                self.last_values[codename] = value
                 return True
         elif measurement['type'] == 'log':
             if abs_diff / abs(last) > measurement['criterium']:
                 self.last_time[codename] = time.time()
+                self.last_values[codename] = value
                 return True
         return False

@@ -1,3 +1,4 @@
+
 """ Driver for MKS g-series flow controller """
 from __future__ import print_function
 import time
@@ -17,9 +18,12 @@ class MksGSeries():
         self.ser.bytesize = serial.EIGHTBITS
         self.ser.stopbits = serial.STOPBITS_ONE
 
-    def checksum(self, command):
+    def checksum(self, command, reply=False):
         """ Calculate checksum of command """
-        com_string = '@' + command
+        if not reply:
+            com_string = '@' + command
+        else:
+            com_string = command
         total = 0
         for i in range(0, len(com_string)):
             total = total + ord(com_string[i])
@@ -34,17 +38,23 @@ class MksGSeries():
         self.ser.write(com_string)
         time.sleep(0.1)
         reply = self.ser.read(self.ser.inWaiting())
-        reply = reply.decode()
+        try:
+            reply = reply.decode('ascii')
+        except: UnicodeDecodeError:
+            reply = reply.decode('ascii', 'ignore')
+            reply = reply.strip('\x00')
+            reply = '@' + reply
+
         if len(reply) == 0:
             LOGGER.warning('No such device')
         else:
-            if reply[-2:] == self.checksum(reply[1:-2]):
+            if reply[-3:] == self.checksum(reply[1:-3], reply=True):
                 reply = reply[6:-3] # Cut away master address and checksum
             else:
                 LOGGER.error('Checksum error in reply')
                 reply = ''
-            if reply[0:3] == 'ACK':
-                reply = reply[3:]
+            if reply[1:4] == 'ACK':
+                reply = reply[4:-3]
             else:
                 LOGGER.warning('Error in command')
         return reply
@@ -92,6 +102,16 @@ class MksGSeries():
         self.comm(command, addr)
         return True
 
+    def purge(self, t=1, addr=254):
+        """ purge for t seconds, default is 1 second """
+        command1 = 'VO!PURGE'
+        command2 = 'VO!NORMAL'
+        self.comm(command1, addr)
+        print('PURGING')
+        time.sleep(abs(t))
+        self.comm(command2, addr)
+        print('DONE PURGING')
+
     def read_flow(self, addr=254):
         """ Read the flow """
         command = 'FX?'
@@ -114,4 +134,4 @@ if __name__ == '__main__':
     MKS = MksGSeries()
     print(MKS.read_serial_number(1))
     print(MKS.read_full_scale_range(1))
-    #print(MKS.set_device_address(254,005))
+#print(MKS.set_device_address(254,005))
