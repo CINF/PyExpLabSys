@@ -1,0 +1,4 @@
+id: SIGRUN_MFC
+purpose mass flow and pressure readout
+
+This raspberry pi is used to communicate with BROOKS analog massflow controllers. These are a collection of 5850a and TR5800 series. An arduino nano every is used to convert the analog to digital signals.

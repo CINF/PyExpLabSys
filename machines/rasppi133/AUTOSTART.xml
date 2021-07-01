@@ -1,0 +1,8 @@
+<autostart>
+  <name>RASPPI133_AUTOSTART</name><!-- no spaces -->
+  <session>
+    <startdelay>5</startdelay>
+    <command>python3 /home/pi/PyExpLabSys/machines/rasppi133/datalogger.py</command>
+    <name>Rasppi133 datalogger</name>
+  </session>
+</autostart>
