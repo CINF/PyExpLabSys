@@ -21,6 +21,10 @@ class PID(object):
         self.last_error = (0, 0)
         self.error = (0, 0)
         self.int_error = 0
+        self.output = 0
+        # D-term testing
+        self.d_term = [self.error[0], self.output]
+        self.last_d_term = [self.error[0]-1, self.output]
 
     def integration_contribution(self):
         """ Return the contribution from the i-term """
@@ -32,7 +36,10 @@ class PID(object):
 
     def differential_contribution(self):
         """ Return the contribution from the d-term """
-        return self.pid_d * (self.error[1] - self.last_error[1])/(self.error[0] - self.last_error[1])
+        self.last_d_term = self.d_term
+        self.d_term = [self.error[0], self.output]
+        return self.pid_d * (self.error[1] - self.last_error[1])/(self.error[0] - self.last_error[0])
+        #return self.pid_d * (self.d_term[1] - self.last_d_term[1])/(self.d_term[0] - self.last_d_term[0])
 
     def integrated_error(self):
         """ Return the currently integrated error """
@@ -52,5 +59,8 @@ class PID(object):
         """ Return output of PID loop """
         self.last_error = self.error
         self.error = (time.time(), setpoint - value)
-        self.int_error += self.error[1]
-        return self.proportional_contribution() + self.integration_contribution() - self.differential_contribution()
+        self.int_error += self.error[1] * (self.error[0] - self.last_error[0])
+        #self.output = self.proportional_contribution() + self.integration_contribution()
+        #output = self.differential_contribution()
+        return self.proportional_contribution() + self.integration_contribution() + self.differential_contribution()
+        #return self.output

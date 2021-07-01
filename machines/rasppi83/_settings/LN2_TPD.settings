@@ -1,0 +1,1 @@
+{"wait": 0.0, "standby current": 1.8, "stop temperature": 20.0, "Description": "", "heating rate": 0.5, "name": "LN2_TPD", "description": "PID parameters for -180 C - 50 C using LN2 cooling\u00a8", "ramp current": [0.0, 0], "ramp voltage": [0.0, 0], "stop current": 5.5, "pid": [0.02, 0.00075, 0.0], "track": 1}

@@ -156,6 +156,10 @@ class LoggingCriteriumChecker(object):
         # Pull out last value
         last = self.last_values.get(codename)
 
+        # Never trigger if the compared value is None
+        if value is None:
+            return False
+
         # Always trigger for the first value
         if last is None:
             self.last_time[codename] = time.time()

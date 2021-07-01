@@ -1,6 +1,7 @@
 """Run a heat ramp for the Omicron TPD stage """
 import logging
 import time
+import socket
 #import threading
 import pid as PID
 from PyExpLabSys.common.socket_clients import DateDataPullClient
@@ -15,8 +16,15 @@ class PowerCalculatorClassOmicron(object):
     """
     def __init__(self, ramp=None):
         #threading.Thread.__init__(self)
+        self.error = ''
         self.comms = {}
         self.comms['temperature'] = DateDataPullClient('rasppi83', 'mgw_temp', exception_on_old_data=True)
+        try:
+            #self.comms['temperature sample'] = DateDataPullClient('rasppi98', 'omicron_TPD_sample_temp', exception_on_old_data=True, port=9002, timeout=0.1)
+            self.comms['temperature sample'] = DateDataPullClient('10.54.7.193', 'omicron_TPD_sample_temp', exception_on_old_data=True, port=9002, timeout=0.1)
+        except socket.timeout:
+            self.comms['temperature sample'] = None
+            self.error = 'socket'
         #self.comms['pressure'] = DateDataPullClient('rasppi98', 'omicron_pvci_pull')
         self.values = {}
         self.values['pid'] = 0
@@ -39,21 +47,50 @@ class PowerCalculatorClassOmicron(object):
 
     def get_temperature(self):
         """Updates the temperature (Kelvin)"""
+
         t0 = time.time()
         while time.time() - t0 < 1.0: # Timeout on old values
+            # Restart socket client
+            if self.comms['temperature sample'] is None:
+                try:
+                    self.comms['temperature sample'] = DateDataPullClient('omicron-ms.clients.net.dtu.dk', 'omicron_TPD_sample_temp', exception_on_old_data=True, port=9002, timeout=0.1)
+                except socket.timeout:
+                    self.comms['temperature sample'] = None
+                    self.error = 'socket' # Broadcasting socket is offline
+                    return None
+            # Get temperature from DateDataPullSocket
             try:
-                ret = self.comms['temperature'].get_field('omicron_tpd_sample_temperature')
-            except ValueError as e:
-                LOGGER.error('Raising valueerror.', exc_info=True)
-                raise ValueError('Error in DateDataPullClient. Try and restart DateDataPullSocket.', e)
+                ret = self.comms['temperature sample'].get_field('omicron_T_sample')
+                self.error = ''
+                if ret[1] == -1000:
+                    self.error = 'open'
+                    return None
+                elif ret[1] == -2000:
+                    self.error = 'cjc error'
+                    return None
+            except socket.timeout:
+                # Broadcasting client may have crashed - kill client
+                self.comms['temperature sample'] = None
+                continue
+            #except ValueError as e:
+            #    LOGGER.error('Raising valueerror.', exc_info=True)
+            #    raise ValueError('Error in DateDataPullClient. Try and restart DateDataPullSocket.', e)
+
+            # Check for old data
             if ret[0] != self.values['time']:
+                #print(5)
                 self.values['temperature'] = ret[1]
                 self.values['time'] = ret[0]
                 # For testing:
                 #if time.time() - self.start_values['time'] > 10:
                 #    self.values['temperature'] += (time.time() - self.start_values['time'] - 10)*2.
+                self.error = ''
                 return self.values['temperature']
-        LOGGER.warning('get_temperature timeout: returning None')
+            else:
+                self.error = 'old data'
+                return None
+        LOGGER.warning('{:.2} s ramp runtime. get_temperature timeout: returning None'.format(time.time()-self.start_values['time']))
+        self.error = 'timeout'
         return None
 
     def initialize(self):
@@ -72,14 +109,23 @@ class PowerCalculatorClassOmicron(object):
 
     def get_setpoint(self):
         """Get updated setpoint"""
-        temp = self.get_temperature()
-        self.values['setpoint'] = (time.time() - self.start_values['time']) * self.ramp + self.start_values['temperature']
-        if not temp is None:
-            out_pid = self.pid.get_output(temp, self.values['setpoint'])
-            return out_pid + self.zero
-        else:
-            LOGGER.warning('Temperature timeout: returning PID output (setpoint) as None')
-            return None
+        temp = None
+        counter = 0
+        while temp is None:
+            temp = self.get_temperature()
+            self.values['setpoint'] = (time.time() - self.start_values['time']) * self.ramp + self.start_values['temperature']
+            if not temp is None:
+                out_pid = self.pid.get_output(temp, self.values['setpoint'])
+                return out_pid + self.zero
+            elif temp is None and self.error == 'old data':
+                if counter > 5:
+                    LOGGER.warning('Temperature error: returning PID output (setpoint) as None. ' + self.error)
+                    return None
+                counter += 1
+                continue
+            else:
+                LOGGER.warning('Temperature error: returning PID output (setpoint) as None. ' + self.error)
+                return None
 
     def error(self):
         """ Print PID error information """
