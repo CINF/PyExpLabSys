@@ -9,8 +9,11 @@ class PowerWalkerEthernet(object):
     values. SNMP could also be used, but apparently most values miss a
     digit compared to the internal tools.
     """
-    def __init__(self, ip_address):
-        self.latest_event = datetime.datetime.min
+    def __init__(self, ip_address, read_old_events=True):
+        if read_old_events:
+            self.latest_event = datetime.datetime.min
+        else:
+            self.latest_event = datetime.datetime.now()
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.ssh.connect(ip_address, username='root',
