@@ -32,8 +32,8 @@ class XP_PS(object):
 
     def read_temperature(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x68, 1)
-        value = int(str(data[0]), 16)
-        return value
+        return data[0]
+
 
     def read_status(self):
         print()
@@ -152,12 +152,12 @@ class XP_PS(object):
 
 
 if __name__ == '__main__':
-    xp = XP_PS(0x52)
+    import time
+    xp = XP_PS(0x50)
     # xp.remote_enable()
-
     # time.sleep(1)
 
-    # xp.set_voltage(1.11)
+    # xp.set_voltage(1.0)
     # xp.set_current(1.0)
 
     # xp.read_status()
@@ -166,5 +166,10 @@ if __name__ == '__main__':
     print('Manufacturer: {}'.format(xp.read_manufacturer()))
     print('Model: {}'.format(xp.read_model()))
     print('Serial: {}'.format(xp.read_serial_nr()))
-    print('Temperature: {}C'.format(xp.read_temperature()))
+
+    print()
+    while True:
+        time.sleep(2)
+        xp.read_temperature()
+        print('Temperature: {}C'.format(xp.read_temperature()))
 
