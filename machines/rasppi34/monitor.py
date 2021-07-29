@@ -32,7 +32,7 @@ class GasAlarmMonitor(object):
                      'B307_gasalarm_CO_055', 'B307_gasalarm_H2_055',
                      'B307_gasalarm_CO_059', 'B307_gasalarm_H2_059',
                      'B307_gasalarm_CO_061', 'B307_gasalarm_H2_061',
-                     'B307_gasalarm_CO_42-43', 'B307_gasalarm_H2_2sal',
+                     'B307_gasalarm_CO_42-43', 'B307_gasalarm_Sam_Kobl',
                      'B307_gasalarm_CO_932', 'B307_gasalarm_H2_932']
         self.db_logger = ContinuousLogger(table='dateplots_b307gasalarm',
                                           username=credentials.USERNAME,
