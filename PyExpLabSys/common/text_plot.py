@@ -1,4 +1,3 @@
-
 """GNU plot based plots direcly into a curses window
 
 This module provides two classes for creating text plots, one for
@@ -152,7 +151,7 @@ class AsciiPlot(object):
         self.debug = debug
 
         # Open a process for gnuplot
-        self.process = Popen(['gnuplot'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        self.process = Popen(['gnuplot'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
         self.read = self.process.stdout.read
 
         # Setup ascii output and size
@@ -177,7 +176,7 @@ class AsciiPlot(object):
         """
         if self.debug:
             print(repr(string))
-        self.process.stdin.write(string)    
+        self.process.stdin.write(string.encode())
         
     def plot(self, x, y, style='lines', legend=""):
         """Plot data
@@ -198,9 +197,9 @@ class AsciiPlot(object):
 
         # The first char is a form feed
         self.read(1)
-        out = self.read(self.size[0] * self.size[1])
+        out = self.read(self.size[0] * self.size[1]).decode('ascii')
         while out[-1] != '\n':
-            out += self.read(1)
+            out += self.read(1).decode('ascii')
         return out
 
 

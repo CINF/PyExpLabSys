@@ -78,7 +78,7 @@ class TcReader(threading.Thread):
                         error = 0
                     # Save points to sockets
                     self.datasocket.set_point_now(self.codename, self.temperature)
-                    if self.crlogger is not None and self.db_logger is not None:
+                    if self.crlogger is not None and self.db_logger is not None and self.temperature is not None:
                         if self.crlogger.check(self.codename, self.temperature):
                             self.db_logger.save_point_now(self.codename, self.temperature)
                             self.logger.debug(self.codename + ': ' + str(self.temperature))

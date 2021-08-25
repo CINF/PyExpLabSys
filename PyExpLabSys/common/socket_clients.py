@@ -18,10 +18,12 @@ class DateDataPullClient(object):
     codenames and name are available as attributes
     """
 
-    def __init__(self, host, expected_socket_name, port=9000, exception_on_old_data=True):
+    def __init__(self, host, expected_socket_name, port=9000, exception_on_old_data=True, timeout=None):
         """Initialize the DateDataPullClient object"""
         self.exception_on_old_data = exception_on_old_data
         self.socket_ = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if timeout is not None:
+            self.socket_.settimeout(timeout)
         self.host_port = (host, port)
 
         # Read name and test expected_socket_name

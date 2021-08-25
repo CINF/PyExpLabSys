@@ -5,8 +5,10 @@
 
 try:
     import MySQLdb
+    print('Using MySQLdb..')
 except ImportError:
     import pymysql as MySQLdb
+    print('Using pymysql..')
 import time
 
 
@@ -48,17 +50,17 @@ class BarDatabase(object):
 
     def replace_item(self, barcode, field, value):
         """cursor replace one or more statements with data"""
-        print field, value
+        print(field, value)
         with self.connection:
             query = "UPDATE fridays_items SET {}=%s WHERE barcode=%s".format(field)
             try:
                 self.cursor.execute(query, (value, barcode))
             except Exception as exception:
-                print exception.message
+                print(exception.message)
 
     def replace_items(self, barcode, **kwargs):
         """Replace a number of fields for barcode"""
-        print kwargs
+        print(kwargs)
         for key, value in kwargs.items():
             self.replace_item(barcode, key, value)
 
@@ -82,8 +84,8 @@ class BarDatabase(object):
                 row = self.cursor.fetchall()
                 out = row[0][0]
             else:
-                print "Statement not found in fridays_item"
-            #print out
+                print("Statement not found in fridays_item")
+            #print(out)
         return out
 
     def insert_user(self, user_id, name):
@@ -103,7 +105,7 @@ class BarDatabase(object):
             self.cursor.execute("SELECT name, id FROM fridays_user WHERE user_barcode=%s",
                                 (user_barcode,))
             row = self.cursor.fetchall()
-            print row[0]
+            print(row[0])
         return row[0]
 
     def insert_log(self, user_id, user_barcode, transaction_type, amount, item=None):
@@ -112,7 +114,7 @@ class BarDatabase(object):
         "purchase" for buying item (negative amount)"""
 
         if transaction_type not in ("deposit", "purchase"):
-            print "Is transaction a deposit or purchase?"
+            print("Is transaction a deposit or purchase?")
         else:
             if transaction_type == "purchase":
                 amount = -abs(amount)
@@ -135,14 +137,14 @@ class BarDatabase(object):
                                 "WHERE user_id=%s", (user_id,))
 
             row = self.cursor.fetchall()
-            print 'amount sum:', row[0][0]
+            print('amount sum: {}'.format(row[0][0]))
         return row[0][0]
 
     def insert_review(self, user_id, item, review):
         """Insert review"""
         raise NotImplementedError
         # if review not in range(1, 7):
-        #     print "Give from 1 to 6 stars"
+        #     print("Give from 1 to 6 stars")
         # else:
         #     values = (user_id, item, review)
         #     with self.connection:
@@ -160,7 +162,7 @@ class BarDatabase(object):
         #     self.cursor.execute("SELECT avg(review) FROM fridays_reviews "
         #                         "WHERE item=%s", (item,))
         #     grade = self.cursor.fetchall()
-        #     print count, grade
+        #     print(count, grade)
         # return count, grade
 
     def get_type(self, barcode):
@@ -196,13 +198,13 @@ def module_test():
     #DATABASE.insert_user(1234567890128,"test2")
 
     username, id_ = database.get_user('test')
-    print "For barcode 'test' fetch name '{}' and id '{}'".format(username, id_)
+    print("For barcode 'test' fetch name '{}' and id '{}'".format(username.decode(), id_))
 
-    print "For id {} fetch sum {}".format(id_, database.sum_log(id_))
+    print("For id {} fetch sum {}".format(id_, database.sum_log(id_)))
 
     database.cursor.execute('select * from fridays_items')
     for line in database.cursor.fetchall():
-        print line
+        print(line)
 
     if through_tunnel:
         close_tunnel()

@@ -1,0 +1,4 @@
+id: SIGRUN_furnace
+purpose: furnace control
+
+This raspberry pi is used to communicate and control the ATS 3210 furnace on the Sigrun hetcat test reactor.

@@ -1,0 +1,1 @@
+{"name": "default", "description": "LN2_Si settings as default", "pid": [0.03, 0.0035, 0.0], "heating rate": 0.5, "standby current": 1.5, "ramp voltage": [0.0, 0], "track": 1, "stop current": 6.5, "ramp current": [0.0, 0], "wait": 0.0, "stop temperature": 25.0, "Description": ""}

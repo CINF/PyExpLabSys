@@ -12,11 +12,13 @@ from PyExpLabSys.drivers.vivo_technologies import ThreadedBarcodeReader, detect_
 from ssh_tunnel import create_tunnel, close_tunnel, get_ip_address, test_demon_connection
 from MySQLdb import OperationalError
 from cowsay import Cowsay
+from nfc_reader import ThreadedNFCReader
 
 
-__version__ = 2.317
-COWSAY = Cowsay(cow='cow', width=34)
-
+__version__ = 2.318
+COWSAY = Cowsay(cow='tux', width=34)
+STANDARDTEXT = "Welcome to the Friday Bar. Please scan your barcode!"
+ALTTEXT = "Welcome to Wismann's PhD Dinner. Please scan your barcode!"
 
 def cowsay(text):
     """Display text in Cowsay manner"""
@@ -35,6 +37,7 @@ class Bar101(object):
     def __init__(self):
         # Initialize internal variables
         self.tbs = None
+        self.nfc = None
         self.bar_database = None
         # Setup of display
         for port in range(8):
@@ -52,12 +55,20 @@ class Bar101(object):
     def timer(self, timeout=3):
         """Set timeout to None to run forever"""
         while timeout is None or timeout > 0:
-            time.sleep(0.1)
+            time.sleep(0.05)
             if timeout is not None:
-                timeout -= 0.1
+                timeout -= 0.05
             barcode = self.tbs.last_barcode_in_queue
             if barcode is not None:
-                print "Barcode: ", repr(barcode)
+                print("Barcode: {}".format(repr(barcode)))
+                raise NewBarcode(barcode)
+            time.sleep(0.05)
+            if timeout is not None:
+                timeout -= 0.05
+            if self.nfc.active:
+                barcode = self.nfc.last_item_in_queue
+            if barcode is not None:
+                print("Barcode (nfc): {}".format(repr(barcode)))
                 raise NewBarcode(barcode)
 
     def start_up(self):
@@ -106,26 +117,41 @@ class Bar101(object):
             except OperationalError:
                 time.sleep(1)
         self.picaso.move_cursor(7, 0)
-        self.picaso.put_string('Connection to database')
+        if not self.bar_database:
+            self.picaso.put_string('No connection to database')
+            time.sleep(5)
+        else:
+            self.picaso.put_string('Connection to database')
 
         # Start barcode scanner
         dev_ = detect_barcode_device()
-        print dev_
+        print(dev_)
         self.tbs = ThreadedBarcodeReader(dev_)
         self.tbs.start()
         time.sleep(1)
 
+        # Start NFC reader
+        self.nfc = ThreadedNFCReader()
+        self.nfc.start()
+        time.sleep(1)
+        print('NFC Reader status: {}'.format(self.nfc.active))
+
+        # Finished start up
+        print('-'*10)
+
     def clean_up(self):
         """Closing down"""
         self.tbs.close()
-        print 'cleaning up'
+        if self.nfc.active:
+            self.nfc.close()
+        print('cleaning up')
         time.sleep(1)
 
     def query_barcode(self):
         """Initial message"""
         self.picaso.clear_screen()
         self.picaso.move_cursor(1, 0)
-        self.picaso.put_string(cowsay("Welcome to the Friday Bar. Please scan your barcode!"))
+        self.picaso.put_string(cowsay(STANDARDTEXT))
         self.picaso.move_cursor(19, 0)
         self.picaso.put_string("Friday Bar System Version {:.3f}".format(__version__))
         self.timer(None)
@@ -145,22 +171,22 @@ class Bar101(object):
         self.picaso.clear_screen()
         self.picaso.move_cursor(1, 0)
         self.picaso.put_string(cowsay("Enjoy your delicious {}".format(
-            to_ascii_utf8(self.bar_database.get_item(barcode, statement='name'))
-        )))
+            to_ascii_utf8(self.bar_database.get_item(barcode, statement='name')).decode('utf8'))))
         self.timer(4)
 
-    def present_insult(self):
+    def present_insult(self, id_string):
         """Presents insult if programme handled wrong"""
         self.picaso.clear_screen()
         self.picaso.move_cursor(1, 0)
-        self.picaso.put_string(cowsay("You did it all wrong! Time to go home?"))
-        self.timer(2)
+        string = "ID \"{}\" not found in any database.".format(id_string)
+        self.picaso.put_string(cowsay(string + "You did it all wrong! Time to go home?"))
+        self.timer(5)
 
     def purchase_beer(self, beer_barcode, user_barcode):
         """User purchases beer"""
         beer_price = self.bar_database.get_item(beer_barcode, statement='price')
         user_name, user_id = self.bar_database.get_user(user_barcode)
-        user_name = to_ascii_utf8(user_name)
+        user_name = to_ascii_utf8(user_name).decode('utf8')
         if beer_price <= self.bar_database.sum_log(user_id):
             # Since the beer_barcode may be both the real barcode or the alternative
             # barcode we need to get the real barcode from the db for the transactions log
@@ -168,7 +194,7 @@ class Bar101(object):
             self.bar_database.insert_log(user_id, user_barcode, "purchase", beer_price,
                                          item=real_beer_barcode)
             beer_name = self.bar_database.get_item(beer_barcode, statement='name')
-            beer_name = to_ascii_utf8(beer_name)
+            beer_name = to_ascii_utf8(beer_name).decode('utf8')
             balance = self.bar_database.sum_log(user_id)
 
             self.picaso.clear_screen()
@@ -225,7 +251,7 @@ class Bar101(object):
     def present_user(self, user_barcode):
         """Present user info, i.e. user name and balance"""
         user_name, user_id = self.bar_database.get_user(user_barcode)
-        user_name = to_ascii_utf8(user_name)
+        user_name = to_ascii_utf8(user_name).decode('utf8')
         balance = self.bar_database.sum_log(user_id)
         # Screen layout, username
         self.picaso.clear_screen()
@@ -301,7 +327,7 @@ class Bar101(object):
                         }
                 elif barcode_type == 'invalid':
                     action = self.present_insult
-                    kwargs = {}
+                    kwargs = {'id_string': new_barcode.barcode}
 
 
 def main():
