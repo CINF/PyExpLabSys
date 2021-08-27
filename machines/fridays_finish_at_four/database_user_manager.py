@@ -11,7 +11,7 @@ import time
 
 
 DB = BarDatabase(host='servcinf-sql', port=3306)
-     
+# XXX the use of "with DB.connection:" works in MySQLdb.__version__ < 1.4.x
 
 def show_user_list(user_id):
     with DB.connection:

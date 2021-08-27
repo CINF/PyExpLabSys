@@ -9,8 +9,8 @@ BAR_DATABASE = BarDatabase(host='servcinf-sql', port=3306)
 
 def read_barcode():
     """Read the barcode and return the number or None on error"""
-    print 'Scan barcode now!'
-    line = raw_input()
+    print('Scan barcode now!')
+    line = input()
     out = int(line)
     return out
 
@@ -37,7 +37,7 @@ def new():
         except IndexError:
             pass
         else:
-            print 'Beer already exist in database. Update instead!'
+            print('Beer already exist in database. Update instead!')
             return
         
         message = 'type price: '
@@ -51,10 +51,10 @@ def new():
         message = 'type volume in liters: '
         data['volume'] = input_with_type(message, float)
     except ValueError:
-        print 'Wrong input!... are you drunk?'
+        print('Wrong input!... are you drunk?')
         return
 
-    print data
+    print(data)
     BAR_DATABASE.insert_item(**data)
 
 
@@ -71,15 +71,15 @@ def update():
         message = 'state the field to update: '
         data['field'] = input_with_type(message, str)
         message_new = 'state the new value: '
-        data['value'] = raw_input(message_new)
+        data['value'] = input(message_new)
         BAR_DATABASE.replace_item(data['barcode'], data['field'], data['value'])
     except ValueError:
-        print 'Wrong input!... are you drunk?'
+        print('Wrong input!... are you drunk?')
         return
 
 def input_with_type(prompt, type_function):
     '''Read input from raw input and type convert'''
-    out = raw_input(prompt)
+    out = input(prompt)
     out = type_function(out)
 
     return out
@@ -89,7 +89,7 @@ def run():
     select = None
     while select != 'q':
         message = "Enter (n)ew, (u)pdate or (q)uit and press enter: "
-        select = raw_input(message)
+        select = input(message)
         if select == 'n':
             new()
         elif select == 'u':
