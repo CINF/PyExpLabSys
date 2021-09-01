@@ -7,15 +7,21 @@ gasses than oxygen.
 """
 import time
 
+import serial
 import wiringpi as wp
 
 
 class OCS3L(object):
-    def __init__(self, gpio_pin=0):
-        wp.wiringPiSetup()
-        self.pin = gpio_pin
-        wp.pinMode(self.pin, 0)
-        time.sleep(0.1)
+    def __init__(self, gpio_pin=0, port=None):
+        if port is not None:
+            self.ser = serial.Serial(port, 9600, timeout=2)
+            time.sleep(0.1)
+        else:
+            self.ser = None  # Indicates to rest of progrem to use uart
+            wp.wiringPiSetup()
+            self.pin = gpio_pin
+            wp.pinMode(self.pin, 0)
+            time.sleep(0.1)
 
     # Todo: This most likely does not work for the final checksum
     # calculation, that contains 9 digits
@@ -27,8 +33,33 @@ class OCS3L(object):
         return value
 
     def _uart_read(self):
-        # Not implemented
-        pass
+        # This driver was historically written as a bit-banged driver,
+        # for this reason, uart-read is now implemented to mimic the
+        # output to avoid re-testing the uart-procedure.
+        c = self.ser.read(self.ser.inWaiting())
+        dt = 0
+        while dt < 0.2:
+            t = time.time()
+            c = self.ser.read(1)
+            dt = time.time() - t
+
+        ret_string = [c]
+        dt = 0
+        while dt < 0.2:
+            t = time.time()
+            c = self.ser.read(1)
+            dt = time.time() - t
+            if dt < 0.2:
+                ret_string.append(c)
+
+        bits = []
+        for char in ret_string:
+            bit_string = bin(ord(char))[2:].zfill(8)
+            bits.append(0)
+            for bit in bit_string[::-1]:
+                bits.append(int(bit))
+            bits.append(0)
+        return bits
 
     def _bitbanged_read(self):
         """
@@ -119,13 +150,21 @@ class OCS3L(object):
         expected_checksum = 256 - expected_checksum
 
         checksum = list(reversed(parsed_bytes[110:]))
+
+        if self._checksum(checksum[1:]) == expected_checksum:
+            # This will happen for a successfull uart-read
+            return True
+
+        # Typically the bit-banged read will end here.
         filled_checksum = (9 - len(checksum)) * [1] + checksum
         success = self._checksum(filled_checksum) == expected_checksum
-        # print(hex(expected_checksum), hex(self._checksum(filled_checksum)))
         return success
 
     def read_oxygen_and_temperature(self):
-        parsed_bytes = self._bitbanged_read()
+        if self.ser is None:
+            parsed_bytes = self._bitbanged_read()
+        else:
+            parsed_bytes = self._uart_read()
         if parsed_bytes is None:
             return None
 
@@ -142,7 +181,7 @@ class OCS3L(object):
 
 
 if __name__ == '__main__':
-    oxygen_sensor = OCS3L()
+    oxygen_sensor = OCS3L(port='/dev/serial1')
 
     while True:
         readout = oxygen_sensor.read_oxygen_and_temperature()
