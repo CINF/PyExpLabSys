@@ -1,5 +1,6 @@
 import time
 import json
+import socket
 import datetime
 import requests
 
@@ -108,6 +109,10 @@ class WheatherInformation(object):
                 error = error + 1
                 print('JSON decode error: {}'.format(url))
                 time.sleep(60)
+            except socket.gaierror:
+                error = error + 1
+                print('Temporary failure in name resolution. {}'.format(url))
+                time.sleep(60)
 
         pri_list = self.kwargs.get('dmi_prio', {})
         if pri_list is {}:
@@ -169,8 +174,27 @@ class WheatherInformation(object):
             'cloud_percentage': ('clouds', 1)
         }
         url = 'https://api.openweathermap.org/data/2.5/onecall'
-        response = requests.get(url, params=params)
-        data = response.json()
+        # This code is used twice, refactor (and do it right, so
+        # it will recover after extended loss of internet)?
+        error = 0
+        while -1 < error < 30:
+            try:
+                response = requests.get(url, params=params)
+                error = -1
+                data = response.json()
+            except requests.exceptions.ConnectionError:
+                error = error + 1
+                print('Connection error to: {}'.format(url))
+                time.sleep(60)
+            except json.decoder.JSONDecodeError:
+                error = error + 1
+                print('JSON decode error: {}'.format(url))
+                time.sleep(60)
+            except socket.gaierror:
+                error = error + 1
+                print('Temporary failure in name resolution. {}'.format(url))
+                time.sleep(60)
+
         # See also keys 'hourly' and 'daily'
         current = data['current']
         # time_field = datetime.datetime.fromtimestamp(current['dt'])
