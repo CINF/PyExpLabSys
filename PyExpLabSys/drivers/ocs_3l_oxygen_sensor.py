@@ -27,6 +27,8 @@ class OCS3L(object):
     # calculation, that contains 9 digits
     def _checksum(self, bool_list):
         value = 0
+        if len(bool_list) == 7:
+            bool_list.append(0)
         for n in range(0, 8):
             value += bool_list[7 - n] * 2**n
             # value = value % 256
@@ -181,8 +183,8 @@ class OCS3L(object):
 
 
 if __name__ == '__main__':
-    oxygen_sensor = OCS3L(port='/dev/serial1')
-
+    # oxygen_sensor = OCS3L(port='/dev/serial1')
+    oxygen_sensor = OCS3L(gpio_pin=26)
     while True:
         readout = oxygen_sensor.read_oxygen_and_temperature()
         if readout is not None:
