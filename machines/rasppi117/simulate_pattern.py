@@ -104,7 +104,7 @@ def normalize_beam_profile(num=100, moodkwargs=dict()):
 
     # Plot and return normalized
     fig3 = plt.figure(3)
-    bp_ax = fig3.gca(projection='3d')
+    bp_ax = fig3.gca(projection='3d') ### DEPRECATED
     bp_ax.plot_wireframe(X, Y, Z/area*10)
     return area, bp_ax
 
@@ -131,6 +131,7 @@ def color(text='', ctext='red'):
 if __name__ == '__main__':
     print('-'*40)
     import sys
+    from pathlib import Path
     import numpy as np
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
@@ -209,7 +210,7 @@ if __name__ == '__main__':
         pattern, data = load_pattern(filename)
 
     fig = plt.figure(1)
-    projection = fig.gca(projection='3d')
+    projection = fig.gca(projection='3d') ### DEPRECATED
 
     fig2 = plt.figure(2)
     sketch = fig2.add_subplot(111)
@@ -330,7 +331,12 @@ if __name__ == '__main__':
     # Save beam profile
     import pickle
     beam = skewed_gaussian(X, Y, **moodkwargs)
-    filename_beam = 'data_dumps/beam_profile_{}.pickle'.format(moodkwargs['name'])
+    path = Path.cwd() / 'data_dumps'
+    if not path.exists():
+        print('Creating folder: {}'.format(path))
+        path.mkdir()
+    
+    filename_beam = path / 'beam_profile_{}.pickle'.format(moodkwargs['name'])
     with open(filename_beam, 'wb') as f:
         pickle.dump((X, Y, beam), f, pickle.HIGHEST_PROTOCOL)
     # Find index delimiters of beam profile
