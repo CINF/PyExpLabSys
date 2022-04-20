@@ -19,7 +19,7 @@ from PyExpLabSys.common.sockets import LiveSocket, DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.utilities import activate_library_logging
 from PyExpLabSys.common.supported_versions import python2_and_3
-BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')] + 'PyExpLabSys'
+BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
 import settings # pylint: disable=wrong-import-position
 python2_and_3(__file__)
@@ -74,7 +74,7 @@ class MassSpec(object):
         self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
                           credentials=settings.username, livesocket=livesocket,
                           pullsocket=pullsocket)
-#        self.qmg.reverse_range = settings.reverse_range
+        self.qmg.reverse_range = settings.reverse_range
         self.printer = qmg_status_output.QmsStatusOutput(self.qms,
                                                          sql_saver_instance=self.data_saver)
         self.printer.start()
@@ -130,8 +130,8 @@ if __name__ == '__main__':
     try:
         # Initialize QMS
         MS = MassSpec()
-        #MS.sem_and_filament(True, 1800)
-        #MS.sleep(10)
+        MS.sem_and_filament(True, 1800)
+        MS.sleep(10)
 
         # Choose and start measurement(s)
         #MS.leak_search(speed=8)
