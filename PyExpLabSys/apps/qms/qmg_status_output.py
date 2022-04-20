@@ -15,34 +15,21 @@ class QmsStatusOutput(threading.Thread):
     def __init__(self, qms_instance, sql_saver_instance=None, meta_channel_instance=None):
         threading.Thread.__init__(self)
         self.daemon = True
-        print('inside QMS STATUS')
         self.qms = qms_instance
-        print('2 inside QMS STATUS')
         if not sql_saver_instance is None:
             self.sql = sql_saver_instance
-            print('2a inside QMS STATUS')
         else:
             self.sql = None
-            print('2b inside QMS STATUS')
-        print('3 inside QMS STATUS')
         self.meta_channels = meta_channel_instance
-        print('3a after meta channel instanceS STATUS')
         self.screen = curses.initscr()
-        print('3b after meta channel instanceS STATUS')
         curses.noecho()
-        print('4b after meta channel instanceS STATUS')
         curses.cbreak()
-        print('5b after meta channel instanceS STATUS')
         curses.curs_set(False)
-        print('6b after meta channel instanceS STATUS')
         self.screen.keypad(1)
-        print('7b after meta channel instanceS STATUS')
         self.screen.nodelay(1)
-        print('9 inside QMS STATUS')
 
     def run(self):
         while True:
-            print('inside irunnign STATUS')
             self.screen.addstr(1, 1, self.qms.operating_mode)
             self.screen.clrtoeol()
 
@@ -93,6 +80,28 @@ class QmsStatusOutput(threading.Thread):
                 self.screen.addstr(5, 1, 'Current action: ' + self.qms.current_action)
                 self.screen.clrtoeol()
 
+            if self.qms.operating_mode == "Meta Channels Only":
+                try:
+                    timestamp = ("Timestamp: " +
+                                 self.qms.current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+                except AttributeError:
+                    timestamp = 'Timestamp: None'
+                self.screen.addstr(3, 1, timestamp)
+                runtime = "Experiment runtime: {0:.1f}s  ".format(self.qms.measurement_runtime)
+                self.screen.addstr(4, 1, runtime)
+                qsize = "Queue length: {0:.0f} items".format(self.sql.queue.qsize())
+                self.screen.addstr(5, 1, qsize)
+                self.screen.clrtoeol()
+
+                self.screen.addstr(9, 30, 'Meta-channels')
+                if self.meta_channels is None:
+                    self.screen.addstr(11, 30, 'No access to meta-channels')
+                else:
+                    for i in range(0, len(self.meta_channels.channels)):
+                        channel = self.meta_channels.channels[i]
+                        self.screen.addstr(11 + i, 30, channel.channel_data['label'] +
+                                           ': ' + str(channel.channel_data['value']) +
+                                           '                ')
 
 
             if not self.sql is None:

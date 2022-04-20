@@ -209,12 +209,28 @@ class QMS(object):
             LOGGER.error('Range-value: %f', value)
         return value
 
+    def meta_channels_only(self, timestamp, no_save=False):
+        """ Start meta channel only measurement """
+        self.operating_mode = "Meta Channels Only"
+        self.stop = False
+
+        start_time = (time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1000000.0)
+        self.current_timestamp = timestamp
+
+        while self.stop is False:
+            LOGGER.info('start meta channels only measurement run')
+            time.sleep(0.01)
+            scan_start_time = time.time()
+            self.measurement_runtime = time.time()-start_time
+            LOGGER.error('Scan time: %f', time.time() - scan_start_time)
+        self.operating_mode = "Idling"
 
     def mass_time(self, ms_channel_list, timestamp, no_save=False):
         """ Perfom a mass-time scan """
         self.operating_mode = "Mass Time"
         self.stop = False
         number_of_channels = len(ms_channel_list) - 1
+
         self.qmg.mass_time(number_of_channels)
 
         start_time = (time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1000000.0)
