@@ -15,22 +15,34 @@ class QmsStatusOutput(threading.Thread):
     def __init__(self, qms_instance, sql_saver_instance=None, meta_channel_instance=None):
         threading.Thread.__init__(self)
         self.daemon = True
-
+        print('inside QMS STATUS')
         self.qms = qms_instance
+        print('2 inside QMS STATUS')
         if not sql_saver_instance is None:
             self.sql = sql_saver_instance
+            print('2a inside QMS STATUS')
         else:
             self.sql = None
+            print('2b inside QMS STATUS')
+        print('3 inside QMS STATUS')
         self.meta_channels = meta_channel_instance
+        print('3a after meta channel instanceS STATUS')
         self.screen = curses.initscr()
+        print('3b after meta channel instanceS STATUS')
         curses.noecho()
+        print('4b after meta channel instanceS STATUS')
         curses.cbreak()
+        print('5b after meta channel instanceS STATUS')
         curses.curs_set(False)
+        print('6b after meta channel instanceS STATUS')
         self.screen.keypad(1)
+        print('7b after meta channel instanceS STATUS')
         self.screen.nodelay(1)
+        print('9 inside QMS STATUS')
 
     def run(self):
         while True:
+            print('inside irunnign STATUS')
             self.screen.addstr(1, 1, self.qms.operating_mode)
             self.screen.clrtoeol()
 
