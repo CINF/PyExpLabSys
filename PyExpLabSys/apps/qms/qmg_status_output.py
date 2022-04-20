@@ -15,6 +15,7 @@ class QmsStatusOutput(threading.Thread):
     def __init__(self, qms_instance, sql_saver_instance=None, meta_channel_instance=None):
         threading.Thread.__init__(self)
         self.daemon = True
+
         self.qms = qms_instance
         if not sql_saver_instance is None:
             self.sql = sql_saver_instance

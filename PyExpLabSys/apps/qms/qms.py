@@ -230,7 +230,6 @@ class QMS(object):
         self.operating_mode = "Mass Time"
         self.stop = False
         number_of_channels = len(ms_channel_list) - 1
-
         self.qmg.mass_time(number_of_channels)
 
         start_time = (time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1000000.0)
