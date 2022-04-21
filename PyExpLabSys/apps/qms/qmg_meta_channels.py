@@ -27,12 +27,8 @@ class MetaChannels(threading.Thread):
             channel_data['host'] = channel_list['meta'][i]['host']
             channel_data['port'] = channel_list['meta'][i]['port']
             channel_data['cmd'] = channel_list['meta'][i]['command']
-            try:
-                channel_data['measurement_type'] = channel_list['meta'][i]['measurement_type']
-            except KeyError:
-                LOGGER.warning('No measurement type given for: %s, '
-                               'defaults to 5 (mass_scan)', self.channel_data['label'])
-                channel_data['measurement_type'] = 5
+            channel_data['measurement_type'] = channel_list['meta'][i]['measurement_type']
+
             self.create_channel(channel_data)
 
     def create_channel(self, channel_data):
@@ -46,7 +42,6 @@ class MetaChannels(threading.Thread):
                                                    masslabel=channel_data['label'],
                                                    amp_range=-1, comment=self.comment,
                                                    metachannel=True,
-                                                   measurement_type=channel_data['measurement_type']
                                                    )
         channel_data['id'] = sql_id
         channel_data['value'] = -1

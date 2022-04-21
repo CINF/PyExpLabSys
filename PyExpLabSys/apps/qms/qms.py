@@ -159,6 +159,14 @@ class QMS(object):
                 channel_list['meta'][meta] = {'host':host, 'port':port,
                                               'repeat_interval':repeat_interval,
                                               'label':label, 'command':command}
+
+                try:
+                    meas_type = int(params[params.index('measurement_type')+1])
+                    channel_list['meta'][meta]['measurement_type'] = meas_type
+                except ValueError:
+                    channel_list['meta'][meta]['measurement_type'] = 5
+                    LOGGER.warning(f'No measurement type was giving in channel list for {label}'
+                            'Revert to default 5 (mass_scan)')
                 meta += 1
 
         # Index 0 is used to hold general parameters

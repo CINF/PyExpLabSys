@@ -57,10 +57,9 @@ class MetaLogger(object):
         self.qmg = None  #qmg422.qmg_422(port=settings.port, speed=settings.speed)
 
 
-
         self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
                           credentials=settings.username,# livesocket=livesocket,
-                          pullsocket=pullsocket)
+                          )#pullsocket=pullsocket)
         try:
             self.printer = qmg_status_output.QmsStatusOutput(self.qms,
                                                          sql_saver_instance=self.data_saver)
