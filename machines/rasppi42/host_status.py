@@ -13,7 +13,11 @@ import json
 import MySQLdb
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.supported_versions import python2_and_3
+import credentials
 python2_and_3(__file__)
+
+default_user = credentials.host['default_user']
+default_passwd = credentials.host['default_passwd']
 
 LOGGER = get_logger('Host Checker', level='debug', file_log=True,
                     file_name='host_checker.log', terminal_log=True,
@@ -38,7 +42,7 @@ def host_status(hostname, port):
             host_is_up = False
     return host_is_up
 
-def uptime(hostname, port, username='pi', password='cinf123'):
+def uptime(hostname, port, username=default_user, password=default_passwd):
     """ Fetch as much information as possible from a host """
     return_value = {}
     return_value['up'] = ''
@@ -47,6 +51,7 @@ def uptime(hostname, port, username='pi', password='cinf123'):
     return_value['host_temperature'] = ''
     return_value['python_version'] = ''
     return_value['model'] = ''
+    return_value['os_version'] = ''
     if port == 22: # SSH
         uptime_string = subprocess.check_output(["sshpass",
                                                  "-p",
@@ -89,6 +94,11 @@ def uptime(hostname, port, username='pi', password='cinf123'):
             pass
 
         try:
+            os_version = system_status['os_version']
+        except (KeyError, UnboundLocalError):
+            os_version = ''
+
+        try:
             model = system_status['rpi_model']
             host_temperature = system_status['rpi_temperature']
         except (KeyError, UnboundLocalError):
@@ -102,6 +112,7 @@ def uptime(hostname, port, username='pi', password='cinf123'):
         return_value['model'] = model
         return_value['host_temperature'] = host_temperature
         return_value['python_version'] = python_version
+        return_value['os_version'] = os_version
 
         try:
             apt_up_time = system_status['last_apt_cache_change_unixtime']
@@ -192,12 +203,11 @@ def main():
     """ Main function """
     hosts = queue.Queue()
 
-    #TODO: The contact information should not be in this file!
     database = MySQLdb.connect(
-        host='servcinf-sql.fysik.dtu.dk',
-        user='cinf_reader',
-        passwd='cinf_reader',
-        db='cinfdata',
+        host=credentials.sql_host,
+        user=credentials.user,
+        passwd=credentials.passwd,
+        db=credentials.db,
     )
     cursor = database.cursor()
     database.autocommit(True)

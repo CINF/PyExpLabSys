@@ -25,24 +25,40 @@ except ImportError:
 
 # Source: http://www.raspberrypi-spy.co.uk/2012/09/checking-your-raspberry-pi-board-version/
 RPI_REVISIONS = {
-    '0002': 'Model B Revision 1.0',
-    '0003': 'Model B Revision 1.0 + ECN0001 (no fuses, D14 removed)',
-    '0004': 'Model B Revision 2.0 Mounting holes',
-    '0005': 'Model B Revision 2.0 Mounting holes',
-    '0006': 'Model B Revision 2.0 Mounting holes',
-    '0007': 'Model A Mounting holes',
-    '0008': 'Model A Mounting holes',
-    '0009': 'Model A Mounting holes',
-    '000d': 'Model B Revision 2.0 Mounting holes',
-    '000e': 'Model B Revision 2.0 Mounting holes',
-    '000f': 'Model B Revision 2.0 Mounting holes',
-    '0010': 'Model B+',
-    '900032': 'Model B+',
+    '0002': 'Model B 256MB Revision 1.0',
+    '0003': 'Model B 256MB Revision 1.0 + ECN0001 (no fuses, D14 removed)',
+    '0004': 'Model B 256MB Revision 2.0 Mounting holes',
+    '0005': 'Model B 256MB Revision 2.0 Mounting holes',
+    '0006': 'Model B 256MB Revision 2.0 Mounting holes',
+    '0007': 'Model A 256MB Mounting holes',
+    '0008': 'Model A 256MB Mounting holes',
+    '0009': 'Model A 256MB Mounting holes',
+    '000d': 'Model B 512MB Revision 2.0 Mounting holes',
+    '000e': 'Model B 512MB Revision 2.0 Mounting holes',
+    '000f': 'Model B 512MB Revision 2.0 Mounting holes',
+    '0010': 'Model B+ 512MB',
+    '0013': 'Model B+ 512MB',
+    '900032': 'Model B+ 512MB',
     '0011': 'Compute Module',
-    '0012': 'Model A+',
-    'a01041': 'Pi 2 Model B',
-    'a21041': 'Pi 2 Model B',
-    'a02082': 'Pi 3 Model B',
+    '0012': 'Model A+ 256MB',
+    'a01041': 'Pi 2 Model B v1.1 1GB',
+    'a21041': 'Pi 2 Model B v1.1 1GB (Embest, China)',
+    'a22042': 'Pi 2 Model B v1.2 1GB',
+    '900092': 'Pi Zero v1.2 512MB',
+    '900093': 'Pi Zero v1.3 512MB',
+    '9000C1': 'Pi Zero W rev 1.1 512MB',
+    'a02082': 'Pi 3 Model B 1GB rev 1.2',
+    'a020d3': 'Pi 3 Model B+ 1GB rev 1.3',
+    'a03111': 'Pi 4 1GB rev 1.1',
+    'b03111': 'Pi 4 2GB rev 1.1',
+    'b03112': 'Pi 4 2GB rev 1.2',
+    'b03114': 'Pi 4 2GB rev 1.2',
+    'c03111': 'Pi 4 4GB rev 1.1',
+    'c03112': 'Pi 4 4GB rev 1.2',
+    'c03114': 'Pi 4 4GB rev 1.4',
+    'd03114': 'Pi 4 8GB rev 1.4',
+    'c03130': 'Pi 400 4GB rev 1.0',
+    '902120': 'Pi Zero 2 W 1GB rev 1.0',
 }
 # Temperature regular expression
 RPI_TEMP_RE = re.compile(r"temp=([0-9\.]*)'C")
@@ -235,6 +251,20 @@ class SystemStatus(object):
                 return None
 
         return RPI_REVISIONS.get(revision, 'Undefined revision')
+
+    @staticmethod
+    @works_on('linux2')
+    def os_version():
+        """Return the Linux OS version"""
+        with open('/etc/os-release') as file_:
+            for line in file_:
+                if line.startswith('VERSION='):
+                    # The line looks like this:
+                    #VERSION="9 (Stretch)"
+                    version = line.strip().split("=")[1].strip('"')
+                    return version
+            else:
+                return None
 
     @staticmethod
     @works_on('linux2')
