@@ -1,0 +1,8 @@
+<autostart>
+  <name>AUTOSTART_Ejler</name>
+  <session>
+    <startdelay>0.5</startdelay>
+    <command>python2 data_logger.py</command>
+    <name>Temperature logger</name>
+  </session>
+</autostart>
