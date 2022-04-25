@@ -125,14 +125,14 @@ class Settings(object):
         This is done when the first Settings object is instantiated
         """
         with open(DEFAULT_PATH, 'rb') as file_:
-            default_settings = yaml.load(file_)
+            default_settings = yaml.load(file_, Loader=yaml.SafeLoader)
         LOG.info('Loaded defaults: %s', default_settings)
 
         user_settings = {}
         if os.path.isfile(USERSETTINGS_PATH) and os.access(USERSETTINGS_PATH, os.R_OK):
             try:
                 with open(USERSETTINGS_PATH, 'rb') as file_:
-                    user_settings = yaml.load(file_)
+                    user_settings = yaml.load(file_, Loader=yaml.SafeLoader)
                 LOG.info('Loaded user settings %s from path %s', user_settings,
                          USERSETTINGS_PATH)
             except Exception:
