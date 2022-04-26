@@ -4,6 +4,12 @@ telnet interface of the device.
 """
 from __future__ import print_function
 import telnetlib
+try:
+    from credentials import upsuser, upspasswd
+except ImportError:
+    print("Did not find user/pswd settings in credentials.py. Using default!")
+    upsuser = 'apc'
+    upspasswd = 'apc'
 from PyExpLabSys.common.supported_versions import python2_and_3
 python2_and_3(__file__)
 
@@ -13,9 +19,9 @@ class Galaxy3500(object):
         self.status = {}
         self.ups_handle = telnetlib.Telnet(hostname)
         self.ups_handle.expect([b': '])
-        self.ups_handle.write(b'apc' + b'\r')
+        self.ups_handle.write('{}\r'.format(upsuser).encode())
         self.ups_handle.expect([b': '])
-        self.ups_handle.write(b'apc' + b'\r')
+        self.ups_handle.write('{}\r'.format(upspasswd).encode())
         self.ups_handle.expect([b'apc>'])
 
     def comm(self, command, keywords=None):
