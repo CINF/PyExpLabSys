@@ -44,7 +44,7 @@ pressurereader = PressureReader(adc_instance)
 pressurereader.daemon = True
 pressurereader.start()
 
-logger = ValueLogger(pressurereader, comp_val = 0.5)
+logger = ValueLogger(pressurereader, comp_val = 0.05)
 logger.start()
 
 socket = DateDataPullSocket('hall_waterpressure',
