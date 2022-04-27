@@ -72,7 +72,7 @@ def main():
 
     loggers = {}
     for i in range(0, len(codenames)):
-        loggers[codenames[i]] = ValueLogger(reader, comp_val=0.1, channel=i)
+        loggers[codenames[i]] = ValueLogger(reader, comp_val=0.11, channel=i, pre_trig=True)
         loggers[codenames[i]].start()
     socket = DateDataPullSocket('UPS status', codenames,
                                 timeouts=[5.0] * len(codenames))
@@ -89,16 +89,35 @@ def main():
 
     time.sleep(5)
 
-    while reader.isAlive():
-        time.sleep(0.25)
-        for name in codenames:
-            value = loggers[name].read_value()
-            socket.set_point_now(name, value)
-            live_socket.set_point_now(name, value)
-            if loggers[name].read_trigged():
-                print(value)
-                db_logger.save_point_now(name, value)
-                loggers[name].clear_trigged()
+    try:
+        while reader.isAlive():
+            time.sleep(0.25)
+            for name in codenames:
+                value = loggers[name].read_value()
+                socket.set_point_now(name, value)
+                live_socket.set_point_now(name, value)
+                # Save to database
+                if loggers[name].read_trigged():
+                    ##### New edit
+                    #point = loggers[name].pre_trig
+                    #if point is not None:
+                    #    print('Saving extra point to database: {}'.format(point))
+                    #    #db_logger.save_point(name, point)
+                    for point in loggers[name].saved_points:
+                        print('Saving point for {}: {}'.format(name, point))
+                        db_logger.save_point(name, point)
+                    ####
+                    #print(value)
+                    #db_logger.save_point_now(name, value)
+                    loggers[name].clear_trigged()
+    except:
+        reader.quit = True
+        db_logger.stop()
+        socket.stop()
+        live_socket.stop()
+        for name, logger in loggers.items():
+            logger.status['quit'] = True
+        raise
 
 if __name__ == '__main__':
     while True:
@@ -108,5 +127,9 @@ if __name__ == '__main__':
             print("Got '{}'. Wait 300 sec and try again".format(exception))
             time.sleep(300)
             continue
+        except KeyboardInterrupt:
+            print('Terminating with keyboard interrupt!')
+            break
         except:
+            print('Did not catch a specific error in main()')
             raise

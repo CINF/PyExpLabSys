@@ -1,4 +1,4 @@
-""" Read a continuously updated values and decides whether it is time to log a new point """
+""" Reads continuously updated values and decides whether it is time to log a new point """
 
 import threading
 import time
@@ -9,7 +9,8 @@ class ValueLogger(threading.Thread):
     """ Reads continuously updated values and decides
     whether it is time to log a new point """
     def __init__(self, value_reader, maximumtime=600, low_comp=None,
-                 comp_type='lin', comp_val=1, channel=None):
+                 comp_type='lin', comp_val=1, channel=None,
+                 pre_trig=None, pre_trig_value=0.1):
         threading.Thread.__init__(self)
         self.daemon = True
         self.valuereader = value_reader
@@ -26,6 +27,13 @@ class ValueLogger(threading.Thread):
         self.status['trigged'] = False
         self.last['time'] = 0
         self.last['val'] = 0
+        # "Fancy" algorithm
+        self.saved_points = []
+        self.pre_trig = pre_trig
+        #self.pre_trig_value = pre_trig_value * comp_val
+        self.compare['low val'] = pre_trig_value * comp_val
+        self.pre_trig_queue = []
+        self.low_time = self.maximumtime * pre_trig_value
 
     def read_value(self):
         """ Read the current value """
@@ -38,9 +46,14 @@ class ValueLogger(threading.Thread):
     def clear_trigged(self):
         """ Clear trigger """
         self.status['trigged'] = False
+        if not self.pre_trig is None:
+            self.pre_trig = False
+        self.saved_points = []
 
     def run(self):
         error_count = 0
+        #previous_point = None
+
         while not self.status['quit']:
             time.sleep(1)
             if self.channel is None:
@@ -49,6 +62,8 @@ class ValueLogger(threading.Thread):
                 self.value = self.valuereader.value(self.channel)
             time_trigged = ((time.time() - self.last['time'])
                             > self.maximumtime)
+            pre_time_trigged = ((time.time() - self.last['time'])
+                            > self.low_time)
 
             try:
                 if self.compare['type'] == 'lin':
@@ -63,7 +78,7 @@ class ValueLogger(threading.Thread):
                                        (1 + self.compare['val']))
                 error_count = 0
             except (UnboundLocalError, TypeError):
-                #Happens when value is not yet ready from reader
+                # Happens when value is not yet ready from reader
                 val_trigged = False
                 time_trigged = False
                 error_count = error_count + 1
@@ -75,10 +90,48 @@ class ValueLogger(threading.Thread):
                 if self.value < self.compare['low_comp']:
                     val_trigged = False
 
-            if (time_trigged or val_trigged) and (self.value is not None):
+            if val_trigged and (self.value is not None):
+                self.status['trigged'] = True
+                if pre_time_trigged:
+                    # Loop back through previous data points to find onset
+                    low_val_trigged = False
+                    for i in range(len(self.pre_trig_queue) - 1, -1, -1):
+                        t_i, y_i = self.pre_trig_queue[i]
+                        if self.compare['type'] == 'lin':
+                            low_val_trigged = not (self.last['val'] - self.compare['low val']
+                                    < self.value
+                                    < self.last['val'] + self.compare['low val'])
+                        if self.compare['type'] == 'log':
+                            low_val_trigged = not (self.last['val'] *
+                                       (1 - self.compare['low val'])
+                                       < self.value
+                                       < self.last['val'] *
+                                       (1 + self.compare['low val']))
+                        if low_val_trigged:
+                            # Save extra point
+                            self.saved_points.append((t_i, y_i))
+                            break
+                self.last['time'] = time.time()
+                self.last['val'] = self.value
+                self.saved_points.append((self.last['time'], self.last['val']))
+                self.pre_trig_queue = []
+                #if val_trigged:
+                #    try:
+                #        pre_time, pre_val = previous_point
+                #        if pre_val is not None:
+                #            if self.last['time'] - pre_time > self.maximumtime*0.1:
+                #                self.pre_trig = (pre_time, pre_val)
+                #    except TypeError:
+                #        pass
+            elif time_trigged and (self.value is not None):
                 self.status['trigged'] = True
                 self.last['time'] = time.time()
                 self.last['val'] = self.value
+                self.saved_points.append((time.time(), self.value))
+                self.pre_trig_queue = []
+            else:
+                self.pre_trig_queue.append((time.time(), self.value))
+            #previous_point = (time.time(), self.value)
 
 
 class LoggingCriteriumChecker(object):
