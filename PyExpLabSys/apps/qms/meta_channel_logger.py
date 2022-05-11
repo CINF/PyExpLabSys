@@ -19,8 +19,9 @@ from PyExpLabSys.common.sockets import DateDataPullSocket#, LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.utilities import activate_library_logging
 from PyExpLabSys.common.supported_versions import python2_and_3
-BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]+'PyExpLabSys'
+BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
+time.sleep(2)
 import settings # pylint: disable=wrong-import-position
 python2_and_3(__file__)
 
@@ -73,11 +74,11 @@ class MetaLogger(object):
     def meta_channels_logger(self, channel_list='channel_list'):
         """ start logging of meta data """
         timestamp = datetime.datetime.now()
-
         qms_channel_list = self.qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
                                                          sys.argv[1] + '/channel_lists/' +
                                                          channel_list + '.txt')
         meta_udp = qmg_meta_channels.MetaChannels(self.qms, timestamp, qms_channel_list)
+
         meta_udp.daemon = True
         meta_udp.start()
         self.printer.meta_channels = meta_udp
@@ -95,8 +96,8 @@ class MetaLogger(object):
 if __name__ == '__main__':
     ML = MetaLogger()
 
-    ML.sleep(1)
-    ML.meta_channels_logger()
     ML.sleep(2)
+    ML.meta_channels_logger()
+    ML.sleep(5)
 
     ML.printer.stop()
