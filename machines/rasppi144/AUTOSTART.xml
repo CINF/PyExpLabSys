@@ -2,7 +2,7 @@
   <name>RASPPI144_AUTOSTART</name> <!-- no spaces -->
   <session>
     <startdelay>10</startdelay>
-    <command>python datalogger.py</command>
+    <command>python</command>
     <name>Data Logger</name>
   </session>
 </autostart>
