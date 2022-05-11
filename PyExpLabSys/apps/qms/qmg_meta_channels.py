@@ -42,7 +42,7 @@ class MetaChannels(threading.Thread):
                                                    masslabel=channel_data['label'],
                                                    amp_range=-1, comment=self.comment,
                                                    metachannel=True,
-                                                   )
+                                                   measurement_type=channel_data['measurement_type'])
         channel_data['id'] = sql_id
         channel_data['value'] = -1
         reader = UdpChannel(channel_data, self.qms, self.timestamp)
