@@ -79,9 +79,6 @@ class MassSpec(object):
                                                          sql_saver_instance=self.data_saver)
         self.printer.start()
 
-    def __del__(self):
-        self.printer.stop()
-
     def sem_and_filament(self, turn_on=False, voltage=1800):
         """ Turn on and off the mas spec """
         if turn_on is True:

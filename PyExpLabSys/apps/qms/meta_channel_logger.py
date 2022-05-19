@@ -19,7 +19,7 @@ from PyExpLabSys.common.sockets import DateDataPullSocket#, LiveSocket
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.utilities import activate_library_logging
 from PyExpLabSys.common.supported_versions import python2_and_3
-BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
+BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')] + '/PyExpLabSys'
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
 time.sleep(2)
 import settings # pylint: disable=wrong-import-position
