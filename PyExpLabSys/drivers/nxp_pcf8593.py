@@ -23,6 +23,7 @@ class NXP_PCF8593(object):
         
     def read_counter(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x01, 3)
+        # print(data)
         # print(
         #     hex(data[2])[2:].zfill(2),
         #     hex(data[1])[2:].zfill(2),
@@ -30,11 +31,17 @@ class NXP_PCF8593(object):
         # )
         try:
             low_digit = int(hex(data[0])[2:])
-            middle_digit = int(hex(data[1])[2:])
-            high_digit = int(hex(data[2])[2:])
-            count = high_digit * 10**4 + middle_digit * 10** 2 + low_digit
         except ValueError:
-            count = 0
+            low_digit = 0
+        try:
+            middle_digit = int(hex(data[1])[2:])
+        except ValueError:
+            middle_digit = 0
+        try:
+            high_digit = int(hex(data[2])[2:])
+        except ValueError:
+            high_digit = 0
+        count = high_digit * 10**4 + middle_digit * 10** 2 + low_digit
         return count
 
 
