@@ -148,6 +148,7 @@ class QMS(object):
                                                 'mass':mass, 'amp_range':amp_range}
                 ms_count += 1
 
+
             if key == 'meta_channel':
                 params = items[1].split(',')
                 params = [param.strip() for param in params]
@@ -159,6 +160,15 @@ class QMS(object):
                 channel_list['meta'][meta] = {'host':host, 'port':port,
                                               'repeat_interval':repeat_interval,
                                               'label':label, 'command':command}
+
+                try:
+                    meas_type = int(params[params.index('measurement_type')+1])
+                    channel_list['meta'][meta]['measurement_type'] = meas_type
+                except ValueError:
+                    channel_list['meta'][meta]['measurement_type'] = 5
+                    #print(channel_list['meta'][meta])
+                    LOGGER.warning(f'No measurement type was giving in channel list for {label}'
+                            'Revert to default 5 (mass_scan)')
                 meta += 1
 
         # Index 0 is used to hold general parameters
@@ -209,6 +219,21 @@ class QMS(object):
             LOGGER.error('Range-value: %f', value)
         return value
 
+    def meta_channels_only(self, timestamp, no_save=False):
+        """ Start meta channel only measurement """
+        self.operating_mode = "Meta Channels Only"
+        self.stop = False
+
+        start_time = (time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1000000.0)
+        self.current_timestamp = timestamp
+
+        while self.stop is False:
+            LOGGER.info('start meta channels only measurement run')
+            time.sleep(0.01)
+            scan_start_time = time.time()
+            self.measurement_runtime = time.time()-start_time
+            #LOGGER.error('Scan time: %f', time.time() - scan_start_time)
+        self.operating_mode = "Idling"
 
     def mass_time(self, ms_channel_list, timestamp, no_save=False):
         """ Perfom a mass-time scan """

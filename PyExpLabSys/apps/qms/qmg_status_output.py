@@ -81,6 +81,28 @@ class QmsStatusOutput(threading.Thread):
                 self.screen.addstr(5, 1, 'Current action: ' + self.qms.current_action)
                 self.screen.clrtoeol()
 
+            if self.qms.operating_mode == "Meta Channels Only":
+                try:
+                    timestamp = ("Timestamp: " +
+                                 self.qms.current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+                except AttributeError:
+                    timestamp = 'Timestamp: None'
+                self.screen.addstr(3, 1, timestamp)
+                runtime = "Experiment runtime: {0:.1f}s  ".format(self.qms.measurement_runtime)
+                self.screen.addstr(4, 1, runtime)
+                qsize = "Queue length: {0:.0f} items".format(self.sql.queue.qsize())
+                self.screen.addstr(5, 1, qsize)
+                self.screen.clrtoeol()
+
+                self.screen.addstr(9, 30, 'Meta-channels')
+                if self.meta_channels is None:
+                    self.screen.addstr(11, 30, 'No access to meta-channels')
+                else:
+                    for i in range(0, len(self.meta_channels.channels)):
+                        channel = self.meta_channels.channels[i]
+                        self.screen.addstr(11 + i, 30, channel.channel_data['label'] +
+                                           ': ' + str(channel.channel_data['value']) +
+                                           '                ')
 
 
             if not self.sql is None:

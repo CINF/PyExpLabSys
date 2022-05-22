@@ -1,0 +1,11 @@
+comment:testing_metachannel
+
+mass-scan-interval: 999999
+
+meta_channel: repeat_interval, 5, label, TC anodic bonding (top), measurement_type, 65, host, rasppi144.fysik.dtu.dk, port, 9000, command, mr_bonding_temp_top#raw
+meta_channel: repeat_interval, 5, label, TC anodic bonding (bottom),measurement_type, 65, host, rasppi144.fysik.dtu.dk, port, 9000, command, mr_bonding_temp_bottom#raw
+meta_channel: repeat_interval, 5, label, Setpoint voltage,measurement_type, 65, host, rasppi144.fysik.dtu.dk, port, 9000, command, setpoint#raw
+meta_channel: repeat_interval, 5, label, Heater voltage 1,measurement_type, 65, host, rasppi144.fysik.dtu.dk, port, 9000, command, actual_voltage_1#raw
+meta_channel: repeat_interval, 5, label, Heater current 1,measurement_type, 65, host, rasppi144.fysik.dtu.dk, port, 9000, command, actual_current_1#raw
+meta_channel: repeat_interval, 5, label, Total power,measurement_type, 65, host, rasppi144.fysik.dtu.dk, port, 9000, command, power_1#raw
+

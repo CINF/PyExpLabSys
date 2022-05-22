@@ -59,6 +59,8 @@ class MassSpec(object):
         if settings.qmg == '422':
             print(settings.port)
             self.qmg = qmg422.qmg_422(port=settings.port, speed=settings.speed)
+        if not settings.qmg:
+            self.qmg = None
 
         try:
             livesocket = LiveSocket(settings.name + '-mass-spec', ['qms-value'])
@@ -129,9 +131,9 @@ if __name__ == '__main__':
         MS.sleep(10)
 
         # Choose and start measurement(s)
-        MS.leak_search(speed=8)
+        #MS.leak_search(speed=8)
 
-        #MS.mass_time_scan()
+        MS.mass_time_scan()
 
         #MS.mass_scan(0, 50, 'flow6', amp_range=-11)
         #MS.mass_scan(0, 50, 'After power line cleanup', amp_range=-11)
