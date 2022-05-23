@@ -8,7 +8,7 @@ if exists("b:current_syntax")
 endif
 
 " Keywords
-syn keyword celBlockCmd port amp_range mass speed masslabel repeat_interval label host command
+syn keyword celBlockCmd port amp_range mass speed masslabel repeat_interval label host command measurement_type
 
 syn keyword TitelBlock autorange comment ms_channel meta_channel
 
