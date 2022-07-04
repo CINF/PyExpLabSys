@@ -13,8 +13,8 @@ class HIH6130(object):
     """ Class for reading pressure and temperature from
     Honeywell HumidIcon HIH-6130/6131 """
 
-    def __init__(self):
-        self.bus = smbus.SMBus(1)
+    def __init__(self, i2cbus=1):
+        self.bus = smbus.SMBus(i2cbus)
         self.device_address = 0x27
 
     def read_values(self):
