@@ -2,19 +2,13 @@
 
 """Classes for saving coninuous data and data sets to a database"""
 
-
-from __future__ import unicode_literals, division, print_function
 import re
 import time
 import logging
 import threading
 import socket
 from collections import namedtuple
-# Py2/3 import of Queue
-try:
-    from Queue import Queue
-except ImportError:
-    from queue import Queue  # pylint: disable=import-error
+from queue import Queue
 
 try:
     import MySQLdb
@@ -22,21 +16,13 @@ except ImportError:
     import pymysql as MySQLdb
     MySQLdb.install_as_MySQLdb()
 
-# Mark this module as supporting Python 2 and 3
-from PyExpLabSys.common.supported_versions import python2_and_3
-python2_and_3(__file__)
-
-# Database constants
-#: Hostname of the database server
-HOSTNAME = 'servcinf-sql.fysik.dtu.dk'
-#: Database name
-DATABASE = 'cinfdata'
+from ..settings import Settings
+SETTINGS = Settings()
 
 # Used for check of valid, un-escaped column names, to prevent injection
 COLUMN_NAME = re.compile(r'^[0-9a-zA-Z$_]*$')
 # namedtuple used for custom column formatting, see MeasurementSaver.__init__
 CustomColumn = namedtuple('CustomColumn', ['value', 'format_string'])
-
 
 # Loging object for the DataSetSaver (DSS) shortened, because it will be written a lot
 DSS_LOG = logging.getLogger(__name__ + '.MeasurementSaver')
@@ -127,10 +113,10 @@ class DataSetSaver(object):
 
         # Init local database connection
         self.connection = MySQLdb.connect(
-            host=socket.gethostbyname(HOSTNAME),
+            host=socket.gethostbyname(SETTINGS.sql_server_host),
             user=username,
             passwd=password,
-            db=DATABASE
+            db=SETTINGS.sql_database
         )
         self.cursor = self.connection.cursor()
 
@@ -308,7 +294,7 @@ class ContinuousDataSaver(object):
     datetime. The class can ONLY be used with the new layout of tables for continous data,
     where there is only one table per setup, as apposed to the old layout where there was
     one table per measurement type per setup. The class sends data to the hostname and
-    database named in :data:`.HOSTNAME` and :data:`.DATABASE` respectively.
+    database named in SETTINGS.sql_server_host and SETTINGS.sql_database respectively.
     """
 
     def __init__(self, continuous_data_table, username, password, measurement_codenames=None):
@@ -340,10 +326,10 @@ class ContinuousDataSaver(object):
 
         # Init local database connection
         self.connection = MySQLdb.connect(
-            host=socket.gethostbyname(HOSTNAME),
+            host=socket.gethostbyname(SETTINGS.sql_server_host),
             user=username,
             passwd=password,
-            db=DATABASE
+            db=SETTINGS.sql_database
         )
         self.cursor = self.connection.cursor()
 
@@ -479,10 +465,10 @@ class SqlSaver(threading.Thread):
         # Initialize database connection
         SQL_SAVER_LOG.debug('Open connection to MySQL database')
         self.connection = MySQLdb.connect(
-            host=socket.gethostbyname(HOSTNAME),
+            host=socket.gethostbyname(SETTINGS.sql_server_host),
             user=username,
             passwd=password,
-            db=DATABASE
+            db=SETTINGS.sql_database
         )
         self.cursor = self.connection.cursor()
         SQL_SAVER_LOG.debug('Connection opened, init done')
@@ -545,10 +531,10 @@ class SqlSaver(threading.Thread):
                     time.sleep(5)
                     try:
                         self.connection = MySQLdb.connect(
-                            host=socket.gethostbyname(HOSTNAME),
+                            host=socket.gethostbyname(SETTINGS.sql_server_host),
                             user=self.username,
                             passwd=self.password,
-                            db=DATABASE
+                            db=SETTINGS.sql_database
                         )
                         self.cursor = self.connection.cursor()
                     except MySQLdb.OperationalError: # Failed to re-connect
