@@ -267,7 +267,7 @@ def collect_timezone_info():
     """Collect information about the timezone setting"""
     tests = {
         'Time zone': 'Europe/Copenhagen',
-        'NTP synchronized': 'yes'
+        'synchronized': 'yes'
     }
     time_zone_lines = check_output(
         'export LC_ALL=C; timedatectl',
