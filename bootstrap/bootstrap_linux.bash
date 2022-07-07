@@ -9,20 +9,19 @@
 # apt install packages line 1, general packages
 #
 # NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen ntp python python3 i2c-tools vim-nox"
+apt1="openssh-server emacs graphviz screen python3 i2c-tools vim-nox"
 
 # apt install packages line 2, python extensions
 #
 # NOTE: This line used to contain colorama, but it is a dependency of
 # pip, so it will be installed anyway
-apt2="python-pip python-mysqldb python3-pip python-numpy python3-numpy"
+apt2="python3-pip python3-numpy"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
-declare -a apt3=("libpython2.7-dev" "libpython3-dev" "python-dev" "python3-dev" "libmysqlclient-dev" "libmariadbclient-dev")
+declare -a apt3=("libpython3-dev" "python3-dev" "libmysqlclient-dev" "libmariadbclient-dev")
 
-# packages to be installe by pip
-pippackages="minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml pylint chainmap"
-pip3packages="minimalmodbus==0.6 pyusb python-usbtmc pyserial pyyaml mysqlclient"
+# packages to be installed by pip
+pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient"
 # Put packages into this array, whose installation sometimes fail
 declare -a pip3problempackages=("pylint")
 
@@ -34,6 +33,11 @@ export PYTHONPATH=$HOME/PyExpLabSys
 stty -ixon
 
 machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME
+if [ -d $machin_dir ]; then
+    echo "Entering machine dir: $machine_dir"
+    cd $machine_dir
+fi
+machine_dir=$HOME/machines/$HOSTNAME
 if [ -d $machin_dir ]; then
     echo "Entering machine dir: $machine_dir"
     cd $machine_dir
@@ -57,7 +61,7 @@ alias python=\"/usr/bin/python3\"
 alias a=\"cd ~/PyExpLabSys/PyExpLabSys/apps\"
 alias c=\"cd ~/PyExpLabSys/PyExpLabSys/common\"
 alias d=\"cd ~/PyExpLabSys/PyExpLabSys/drivers\"
-alias m=\"if [ -d ~/PyExpLabSys/machines/\$HOSTNAME ];then cd ~/PyExpLabSys/machines/\$HOSTNAME; else cd ~/PyExpLabSys/machines; fi\"
+alias m=\"if [ -d ~/machines/\$HOSTNAME ];then cd ~/machines/\$HOSTNAME; else cd ~/machines; fi\"
 alias p=\"cd ~/PyExpLabSys/PyExpLabSys\"
 alias b=\"cd ~/PyExpLabSys/bootstrap\"
 alias s=\"screen -x\"
@@ -251,20 +255,6 @@ fi
 # Install extra packages with pip
 if [ $1 == "pip" ] || [ $1 == "all" ];then
     echo
-    # Test if pip is there
-    pip --version > /dev/null
-    if [ $? -eq 0 ];then
-	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP"
-	echoblue "---> $pippackages"
-	sudo pip install -U $pippackages
-	echogood "+++++> DONE"
-    else
-	echobad "pip not installed, run install step and then re-try pip step"
-    fi
-
-    echo
-
-
     # Test if pip3 is there
     PIPEXECUTABLE=`which pip3`
     if [ $? -ne 0 ];then
