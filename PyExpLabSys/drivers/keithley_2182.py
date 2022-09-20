@@ -20,6 +20,9 @@ class Keithley2182(SCPI):
         if interface == 'gpib':
             SCPI.__init__(self, interface=interface, gpib_address=gpib_address)
 
+        # For now, turn off continous trigger - this might need reconsideration
+        self.scpi_comm('INIT:CONT OFF')
+
     def set_range(self, channel1: float = None, channel2: float = None):
         """
         Set the measurement range of the device, 0 will indicate auto-range
@@ -74,8 +77,8 @@ if __name__ == '__main__':
     GPIB = 7
     NVM = Keithley2182(interface='gpib', gpib_address=GPIB)
 
-    print(NVM.set_range(0, 0))
-    print(NVM.set_integration_time(2))
+    print(NVM.set_range(1, 0.01))
+    print(NVM.set_integration_time(10))
 
     for i in range(0, 10):
         print()
