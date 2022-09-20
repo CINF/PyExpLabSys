@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # pylint: disable=no-member,invalid-name,no-else-return,global-statement
 
-"""Small utility script to show commonly used status information about the Raspberry Pi
+"""Small utility script to show commonly used status info about the Raspberry Pi
 
 The information should be broken down into the following sections:
 
@@ -30,33 +30,28 @@ Check settings (only print if wrong)
 
 """
 
-from __future__ import print_function
 from time import time
 import os
-from os.path import expanduser, join, isdir, isfile, abspath
-from os import getlogin, listdir, sep, chdir, getcwd, popen, environ
 import sys
 import shutil
 import socket
+import pathlib
 import argparse
+
 from threading import Thread
 from textwrap import wrap
 from functools import partial
 from subprocess import check_output
-from PyExpLabSys.common.supported_versions import python2_and_3
+
 T0 = time()
-python2_and_3(__file__)
+
 try:
     import getpass
 except ImportError:
     pass
 
-if sys.version_info.major < 3:
-    print("This script is Python 3 or above only")
-    raise SystemExit(1)
-
 try:
-    if environ['TERM'] == 'screen':
+    if os.environ['TERM'] == 'screen':
         print("In screen. Do not run pistatus.")
         raise SystemExit(2)
 except KeyError:
@@ -66,15 +61,8 @@ except KeyError:
 COL = 80
 if sys.version_info.minor > 2:
     COL, _ = shutil.get_terminal_size((78, 40))
-else:
-    # This will most likely fail on non-Linux platforms, in that case
-    # just ignore and use default
-    try:
-        _, COL = [int(num) for num in popen('stty size', 'r').read().split()]
-    except:  # pylint: disable=bare-except
-        pass
-
 WIDTH = COL - 4
+
 
 # Parse args for possible other HOSTNAME
 def get_hostname():
@@ -92,14 +80,18 @@ def get_hostname():
         else:
             return pi
 
+
 # Machine folder
 HOSTNAME = get_hostname()
 
-PYEXPLABSYS_DIR = join(expanduser("~"), "PyExpLabSys")
-PYEXPLABSYS_DIR_EXISTS = os.path.isdir(PYEXPLABSYS_DIR)
-
-MACHINE_DIR = join(PYEXPLABSYS_DIR, 'machines', HOSTNAME)
-if not isdir(MACHINE_DIR):
+PYEXPLABSYS_DIR = pathlib.Path.home() / 'PyExpLabSys'
+MACHINE_DIR_OLD = PYEXPLABSYS_DIR / 'machines' / HOSTNAME
+MACHINE_DIR_NEW = pathlib.Path.home() / 'machines' / HOSTNAME
+if MACHINE_DIR_NEW.exists():
+    MACHINE_DIR = MACHINE_DIR_NEW
+elif MACHINE_DIR_OLD.exists():
+    MACHINE_DIR = MACHINE_DIR_OLD
+else:
     MACHINE_DIR = None
 
 # key width default
@@ -107,19 +99,21 @@ KEY_WIDTH = 16
 
 # Username
 try:
-    USERNAME = getlogin()
+    USERNAME = os.getlogin()
 except FileNotFoundError:
     USERNAME = getpass.getuser()
 
-SCREEN_FOLDER = join(abspath(sep), 'var', 'run', 'screen', 'S-' + USERNAME)
+SCREEN_FOLDER = pathlib.Path('/') / 'var' / 'run' / 'screen' / ('S-' + USERNAME)
 
 # Dict used to collect data from thread
 THREAD_COLLECT = {}
+
 
 # Utility functions
 def color_(line, color):
     """Print with ansi color"""
     return '\x1b[{}m{}\x1b[0m'.format(color, line)
+
 
 red = partial(color_, color='1;31')
 bold = partial(color_, color='1;37')
@@ -158,11 +152,9 @@ def machine_status():
     # Purpose
     purpose = 'N/A'
     if MACHINE_DIR:
-        try:
-            with open(join(MACHINE_DIR, 'PURPOSE')) as file_:
-                purpose = file_.read()
-        except IOError:
-            pass
+        purpose_file = MACHINE_DIR / 'PURPOSE'
+        if purpose_file.exists():
+            purpose = purpose_file.read_text()
 
     # The purpose files have had two different formats, check for the new one
     purpose_lines = purpose.split('\n')
@@ -174,7 +166,6 @@ def machine_status():
         if not purpose:
             purpose = purpose_lines[1].replace('purpose:', '').strip()
 
-
     spaces = ' ' * (KEY_WIDTH - 7)
     purpose_key = 'purpose' + spaces + ': '
     purpose_lines = wrap(purpose, WIDTH, initial_indent=purpose_key)
@@ -183,10 +174,12 @@ def machine_status():
         framed(line)
 
     # Has autostart
-    if MACHINE_DIR and isfile(join(MACHINE_DIR, 'AUTOSTART.xml')):
-        value_pair('Has autostart', YES)
-    else:
-        value_pair('Has autostart', 'NO')
+    if MACHINE_DIR:
+        autostart = MACHINE_DIR / 'AUTOSTART.xml'
+        if autostart.exists():
+            value_pair('Has autostart', YES)
+        else:
+            value_pair('Has autostart', 'NO')
 
 
 def collect_running_programs():
@@ -202,7 +195,7 @@ def running_programs():
     framed(bold('================'))
 
     try:
-        screens = listdir(SCREEN_FOLDER)
+        screens = os.listdir(SCREEN_FOLDER)
     except FileNotFoundError:
         screens = (())
     if screens:
@@ -231,12 +224,12 @@ def collect_last_commit():
     """Collect last commit"""
     # older gits did not have the -C options, to change current
     # working directory internally, so we have to do it manually
-    cwd = getcwd()
-    if not PYEXPLABSYS_DIR_EXISTS:
+    cwd = pathlib.Path.cwd()
+    if not PYEXPLABSYS_DIR.exists():
         THREAD_COLLECT['last_commit'] = red('No PyExpLabSys archive')
         return
 
-    chdir(PYEXPLABSYS_DIR)
+    os.chdir(PYEXPLABSYS_DIR)
     last_commit = check_output(
         'git log --date=iso -n 1 --pretty=format:"%ad"',
         shell=True,
@@ -244,30 +237,31 @@ def collect_last_commit():
     THREAD_COLLECT['last_commit'] = last_commit
 
     # Change cwd back
-    chdir(cwd)
+    os.chdir(cwd)
 
 
 def collect_git_status():
     """Collect git status"""
     # older gits did not have the -C options, to change current
     # working directory internally, so we have to do it manually
-    cwd = getcwd()
-    if not PYEXPLABSYS_DIR_EXISTS:
+    cwd = pathlib.Path.cwd()
+    if not PYEXPLABSYS_DIR.exists():
         THREAD_COLLECT['git_status'] = None
         return
 
-    chdir(PYEXPLABSYS_DIR)
+    os.chdir(PYEXPLABSYS_DIR)
     git_status = check_output('git status --porcelain', shell=True)
     THREAD_COLLECT['git_status'] = git_status
 
     # Change cwd back
-    chdir(cwd)
+    os.chdir(cwd)
+
 
 def collect_timezone_info():
     """Collect information about the timezone setting"""
     tests = {
         'Time zone': 'Europe/Copenhagen',
-        'NTP synchronized': 'yes'
+        'synchronized': 'yes'
     }
     time_zone_lines = check_output(
         'export LC_ALL=C; timedatectl',
@@ -287,6 +281,7 @@ def collect_timezone_info():
             break
 
     THREAD_COLLECT['timezone'] = status
+
 
 def time_zone():
     """Display time zone information"""
@@ -341,8 +336,8 @@ def main():
     # line, so we put the three calls to the command line out into
     # threads
     threads = []
-    for function in (collect_running_programs, collect_last_commit, collect_git_status,
-                     collect_timezone_info):
+    for function in (collect_running_programs, collect_last_commit,
+                     collect_git_status, collect_timezone_info):
         thread = Thread(target=function)
         thread.start()
         threads.append(thread)
@@ -351,7 +346,6 @@ def main():
     hline()
     framed(yellow('Raspberry Pi status ({})'.format(HOSTNAME)), align='^')
     hline()
-
 
     machine_status()
     framed('')
