@@ -38,6 +38,28 @@ class SR830(SCPI):
         self.scpi_comm('FREQ {}'.format(frequency))
         self.scpi_comm('SLVL {}'.format(amplitude))
 
+    def sensitivity(self, sensitivity: int = None):
+        """
+         0: 2 nV/fA       1: 5 nV/fA         2: 10 nV/fA       3: 20 nV/fA
+         4: 50 nV/fA      5: 100 nV/fA       6: 200 nV/fA      7: 500 nV/fA
+         8: 1µV/pA        9: 2µV/pA         10: µV/pA         11: µV/pA
+        12: µV/pA        13: 50 µV/pA       14: 100 µV/pA     15: 200 µV/pA
+        16: 500 µV/pA    17: 1 mV/n         18: 2 mV/nA       19: 5 mV/nA
+        20: 10 mV/nA     21: 20 mV/nA       22: 50 mV/nA      23: 100 mV/nA
+        24: 200 mV/nA    25: 500 mV/nA      26: 1 V/µA
+        """
+        print(self.scpi_comm('SENS?'))
+
+    def time_constant(self, time_constant: int = None):
+        """
+         0: 10 µs         1: 30 µs           2: 100 µs         3: 300 µs
+         4: 1 ms          5: 3 ms            6: 10 ms          7: 30 ms
+         8: 100 ms        9: 300 ms         10: 1s            11: 3s
+        12: 10 s         13: 30 s           14: 100 s         15: 300 s
+        16: 1 ks         17: 3 ks           18: 10 ks         19: 30 ks
+        """
+        print(self.scpi_comm('OFLT?'))
+
     def read_x_and_y(self):
         """
         Returns the x and y values as well as the reference frequency.
@@ -63,6 +85,10 @@ class SR830(SCPI):
 
 if __name__ == '__main__':
     LockIn = SR830('gpib', 8)
+    LockIn.sensitivity()
+
+    exit()
+
     LockIn.use_internal_freq_reference(500.0)
     time.sleep(1)
     for i in range(0, 10):
