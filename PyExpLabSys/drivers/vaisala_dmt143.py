@@ -14,6 +14,9 @@ class VaisalaDMT143():
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS
         )
+        self.serial.reset_input_buffer()
+        self.comm(chr(0x1b))  # Stop data flow
+        self.serial.reset_input_buffer()
 
     def comm(self, command):
         """
