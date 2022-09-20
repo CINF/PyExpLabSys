@@ -52,28 +52,6 @@ class Keithley6220(SCPI):
                 self.latest_error.append(error_string)
         return register_ok
 
-    def read_status(self):
-        status_ok = True
-        registers = {
-            '*ESR?': 'Standard Event Status',
-            # 'STATUS:MEASUREMENT:CONDITION?': 'Measurement Condition Register',
-            '*STB?': 'Status Byte Register',
-            'STATUS:MEASUREMENT:EVENT?': 'Measurement Event Register',
-            'STATUS:QUESTIONABLE:EVENT?': 'Questionable Event Register'
-        }
-        for command, message in registers.items():
-            status_ok = status_ok & self._check_register(command, message)
-
-        # Operation Event Register - apparantly only available doing sweeps:
-        # 'STATUS:OPERATON:EVENT?'
-
-        # This seems to be a summary. If performance is a problem, it can be
-        # used to check if other conditions needs to be checked.
-        # Service Request Enable: '*SRE?'
-        if status_ok:
-            self.latest_error = []
-        return status_ok
-
     def read_error_queue(self):
         error_list = {}
         error = 1
@@ -88,6 +66,33 @@ class Keithley6220(SCPI):
                     error_list[error] = {'count': 1, 'msg': msg}
         return error_list
 
+    def read_status(self):
+        status_ok = True
+        registers = {
+            '*ESR?': 'Standard Event Status',
+            # 'STATUS:MEASUREMENT:CONDITION?': 'Measurement Condition Register',
+            '*STB?': 'Status Byte Register',
+            'STATUS:MEASUREMENT:EVENT?': 'Measurement Event Register',
+            'STATUS:QUESTIONABLE:EVENT?': 'Questionable Event Register'
+        }
+        for command, message in registers.items():
+            status_ok = status_ok & self._check_register(command, message)
+
+        error_queue = self.read_error_queue()
+        if error_queue:
+            status_ok = False
+            for error in error_queue.values():
+                self.latest_error.append(error['msg'])
+        # Operation Event Register - apparantly only available doing sweeps:
+        # 'STATUS:OPERATON:EVENT?'
+
+        # This seems to be a summary. If performance is a problem, it can be
+        # used to check if other conditions needs to be checked.
+        # Service Request Enable: '*SRE?'
+        if status_ok:
+            self.latest_error = []
+        return status_ok
+
     def output_state(self, output_state: bool = None):
         """ Turn the output on or off """
         if output_state is not None:
@@ -101,10 +106,12 @@ class Keithley6220(SCPI):
 
     def set_current_range(self, current_range: float = None):
         """
-        This device can only source current, not voltage
+        This device can only source current, not voltage.
+        Currently we set both DC and AC range at the same time
         """
         if current_range is not None:
             self.scpi_comm('CURRENT:RANGE {}'.format(current_range))
+            self.scpi_comm('SOURCE:WAVE:RANGING FIXED')
         actual_range_raw = self.scpi_comm('CURRENT:RANGE?')
         print(actual_range_raw)
         actual_range = float(actual_range_raw)
@@ -122,15 +129,23 @@ class Keithley6220(SCPI):
         self.scpi_comm('CURRENT {:.9f}'.format(current))
         return True
 
+    def set_wave_amplitude(self, amplitude: float):
+        cmd = 'SOUR:WAVE:AMPL {:.9f}'.format(amplitude)
+        self.scpi_comm(cmd)
+        return True
+
     def source_sine_wave(self, frequency, amplitude):
         self.scpi_comm('SOUR:WAVE:FUNC SIN')
         self.scpi_comm('SOUR:WAVE:FREQ {}'.format(frequency))
-        self.scpi_comm('SOUR:WAVE:AMPL {}'.format(amplitude))
+        self.scpi_comm('SOUR:WAVE:AMPL {}'.format(1e-11))
         self.scpi_comm('SOUR:WAVE:OFFS 0')  # Offset
-        # self.scpi_comm('SOUR:WAVE:PMAR:STAT OFF')  !!!! ‘ Turn off phase marker.
+        self.scpi_comm('SOUR:WAVE:PMAR:STAT ON')
+        self.scpi_comm('SOUR:WAVE:PMAR 269')
+        self.scpi_comm('SOUR:WAVE:PMAR:OLIN 1')
         self.scpi_comm('SOUR:WAVE:DUR:TIME INF')
-        self.scpi_comm('SOUR:WAVE:RANG BEST')
+        # self.scpi_comm('SOUR:WAVE:RANG BEST')
         self.scpi_comm('SOUR:WAVE:ARM')
+        self.scpi_comm('SOUR:WAVE:AMPL {}'.format(amplitude))
         self.scpi_comm('SOUR:WAVE:INIT')
 
     def stop_and_unarm(self):
@@ -139,16 +154,42 @@ class Keithley6220(SCPI):
 
 if __name__ == '__main__':
     GPIB = 12
-    SMU = Keithley6220(interface='gpib', gpib_address=GPIB)
-    SMU.stop_and_unarm()
-    print(SMU.read_status())
-
+    AC_DC_CS = Keithley6220(interface='gpib', gpib_address=GPIB)
+    AC_DC_CS.stop_and_unarm()
+    AC_DC_CS.set_current_range(1e-4)
+    time.sleep(2)
+    print(AC_DC_CS.read_status())
+    AC_DC_CS.source_sine_wave(1298, 1e-5)
+    exit()
+    time.sleep(10)
+    AC_DC_CS.set_wave_amplitude(2e-5)
+    time.sleep(10)
+    AC_DC_CS.set_wave_amplitude(4e-5)
+    time.sleep(10)
+    AC_DC_CS.set_wave_amplitude(6e-5)
+    time.sleep(10)
+    AC_DC_CS.set_wave_amplitude(8e-5)
+    time.sleep(10)
+    AC_DC_CS.set_wave_amplitude(1e-4)
+    time.sleep(10)
+    AC_DC_CS.set_wave_amplitude(1e-5)
+    time.sleep(10)
+    AC_DC_CS.set_wave_amplitude(1e-6)
+    # SMU.source_sine_wave(1298, 1e-4)
+    # time.sleep(60)
+    # AC_DC_CS.stop_and_unarm()
+    exit()
+    
     print(SMU.set_voltage_limit(0.1))
     SMU.set_current_range(1e-4)
     SMU.set_current(1e-5)
     SMU.output_state(True)
 
     time.sleep(2)
+    print(SMU.scpi_comm('CURRENT?'))
+    SMU.output_state(False)
+    time.sleep(0.1)
+    print(SMU.scpi_comm('CURRENT?'))
 
     print(SMU.read_error_queue())
     print(SMU.read_status())
