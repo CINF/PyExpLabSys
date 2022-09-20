@@ -161,21 +161,28 @@ class Keithley2400(SCPI):
         self.scpi_comm('SOURCE:CURRENT {:.9f}'.format(current))
         return True
 
+    def set_voltage(self, voltage: float):
+        """ Set the desired current """
+        self.scpi_comm('SOURCE:VOLT {:.9f}'.format(voltage))
+        return True
+
 
 if __name__ == '__main__':
     GPIB = 22
     SMU = Keithley2400(interface='gpib', gpib_address=GPIB)
-    SMU.set_source_function('i')
-    # print(SMU.set_current_limit(1e-6))
+    SMU.set_source_function('v')
+    SMU.output_state(True)
+    print(SMU.set_current_limit(100e-6))
 
-    SMU.set_voltage_limit(1e-1)
-    # SMU.set_current(2e-5)
-    SMU.read_software_version()
+    # SMU.set_voltage_limit(1e-1)
+    SMU.set_voltage(0.0)
+    print(SMU.read_software_version())
     # SMU.output_state(True)
 
     # print(SMU.output_state())
 
     current = SMU.read_current()
     voltage = SMU.read_voltage()
+
     print('Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
         current * 1e6, voltage * 1000, voltage / current))
