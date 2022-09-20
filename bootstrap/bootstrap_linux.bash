@@ -33,12 +33,12 @@ export PYTHONPATH=$HOME/PyExpLabSys
 stty -ixon
 
 machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME
-if [ -d $machin_dir ]; then
+if [ -d $machine_dir ]; then
     echo "Entering machine dir: $machine_dir"
     cd $machine_dir
 fi
 machine_dir=$HOME/machines/$HOSTNAME
-if [ -d $machin_dir ]; then
+if [ -d $machine_dir ]; then
     echo "Entering machine dir: $machine_dir"
     cd $machine_dir
 fi
@@ -157,7 +157,7 @@ if [ $1 == "bash" ] || [ $1 == "all" ];then
 	grep "pistatus" ~/.bashrc > /dev/null
 	if [ $? -ne 0 ];then
 	    echo 'machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME' >> ~/.bashrc
-	    echo 'if [ -d $machin_dir ]; then' >> ~/.bashrc
+	    echo 'if [ -d $machine_dir ]; then' >> ~/.bashrc
 	    echo '    echo "Entering machine dir: $machine_dir"' >> ~/.bashrc
 	    echo '    cd $machine_dir' >> ~/.bashrc
 	    echo 'fi' >> ~/.bashrc
