@@ -272,14 +272,14 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
             return
         if first_call:
             text = "Quitting."
-            if self.core.isAlive() and 'can_stop' in self.core.capabilities:
+            if self.core.is_alive() and 'can_stop' in self.core.capabilities:
                 text += ' Asking stepped program to stop and wait for it to do so.'
                 self.append_text(text)
                 self.core.command('stop', '')
             else:
                 self.append_text(text)
 
-        if self.core.isAlive():
+        if self.core.is_alive():
             self.quit_timer.start(100)
         else:
             self.append_text('<b>Bye!</b>')

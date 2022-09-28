@@ -94,7 +94,7 @@ def main():
     while everything_ok:
         time.sleep(0.25)
         for channel in settings.channels.values():
-            if not channel['reader'].isAlive():
+            if not channel['reader'].is_alive():
                 everything_ok = False
                 # Report error here!!!
                 # Consider to keep program running even in case of

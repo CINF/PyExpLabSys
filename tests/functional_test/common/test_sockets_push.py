@@ -524,7 +524,7 @@ class TestEnqueue(object):
         time.sleep(0.1)
 
         dequeuer.stop = True
-        while dequeuer.isAlive():
+        while dequeuer.is_alive():
             time.sleep(0.01)
 
         # Check that the correct data is there and received in less than 10 ms
