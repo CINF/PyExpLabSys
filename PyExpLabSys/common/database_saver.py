@@ -481,7 +481,7 @@ class SqlSaver(threading.Thread):
         self._stop_called = True
         # Make sure to wait untill it is closed down to return, otherwise we are going to
         # tear down the environment around it
-        while self.isAlive():
+        while self.is_alive():
             time.sleep(10**-5)
         SQL_SAVER_LOG.debug('stopped')
 
