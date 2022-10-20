@@ -24,9 +24,11 @@ COLUMN_NAME = re.compile(r'^[0-9a-zA-Z$_]*$')
 # namedtuple used for custom column formatting, see MeasurementSaver.__init__
 CustomColumn = namedtuple('CustomColumn', ['value', 'format_string'])
 
-# Loging object for the DataSetSaver (DSS) shortened, because it will be written a lot
+# Loging object for the DataSetSaver (DSS) shortened, because it will be
+# written a lot
 DSS_LOG = logging.getLogger(__name__ + '.MeasurementSaver')
 DSS_LOG.addHandler(logging.NullHandler())
+
 
 class DataSetSaver(object):
     """A class to save a measurement
@@ -41,7 +43,7 @@ class DataSetSaver(object):
         insert_batch_query (str): The query used to insert a batch of points
         connection (MySQLdb connection): The database connection used to register new
             measurements
-        cursor (MySQLdb cursor): The database cursor used to register new measurements
+        cursor (MySQLdb cursor): The db cursor used to register new measurements
 
     """
 
@@ -57,9 +59,9 @@ class DataSetSaver(object):
             measurement_specs (sequence): A sequence of ``measurement_codename,
                 metadata`` pairs, see below
 
-        ``measurement_specs`` is used if you want to initialize all the measurements at
-        ``__init__`` time. You can also do it later with :meth:`add_measurement`. The
-        expected value is a sequence of ``measurement_codename, metadata`` e.g::
+        ``measurement_specs`` is used if you want to initialize all the measurements
+        at ``__init__`` time. You can also do it later with :meth:`add_measurement`.
+        the expected value is a sequence of ``measurement_codename, metadata`` e.g::
 
             measurement_specs = [
                 ['M2', {'type': 5, 'timestep': 0.1, 'mass_label': 'M2M'}],
@@ -67,14 +69,14 @@ class DataSetSaver(object):
                 ['M32', {'type': 5, 'timestep': 0.1, 'mass_label': 'M2M'}],
             ]
 
-        As above, the expected ``metadata`` is simply a mapping of column names to column
-        values in the ``measurements_table``.
+        As above, the expected ``metadata`` is simply a mapping of column names to
+        column values in the ``measurements_table``.
 
-        Per default, the value will be put into the table as is. If it is necessary to do
-        SQL processing on the value, to make it fit the column type, then the value must
-        be replaced with a :class:`CustomColumn` instance, whose arguments are the value
-        and the format/processing string. The format/processing string must contain a '%s'
-        as a placeholder for the value. It could look like this::
+        Per default, the value will be put into the table as is. If it is necessary
+        to do SQL processing on the value, to make it fit the column type, then the
+        value must be replaced with a :class:`CustomColumn` instance, whose arguments
+        are the value and the format/processing string. The format/processing string
+        must contain a '%s'  as a placeholder for the value. It could look like this::
 
             measurement_specs = [
                 ['M2', {'type': 5, 'time': CustomColumn(M2_timestamp, 'FROM_UNIXTIME(%s)')}],
@@ -103,13 +105,14 @@ class DataSetSaver(object):
         self.sql_saver = SqlSaver(username, password)
 
         # Initialize queries
-        self.insert_measurement_query = 'INSERT INTO {} ({{}}) values ({{}})'\
-            .format(measurements_table)
-        self.insert_point_query = 'INSERT INTO {} (measurement, x, y) values (%s, %s, %s)'\
-            .format(xy_values_table)
-        self.insert_batch_query = 'INSERT INTO {} (measurement, x, y) values {{}}'\
-            .format(xy_values_table)
-        self.select_distict_query = 'SELECT DISTINCT {{}} from {}'.format(measurements_table)
+        query = 'INSERT INTO {} ({{}}) values ({{}})'
+        self.insert_measurement_query = query.format(measurements_table)
+        query = 'INSERT INTO {} (measurement, x, y) values (%s, %s, %s)'
+        self.insert_point_query = query.format(xy_values_table)
+        query = 'INSERT INTO {} (measurement, x, y) values {{}}'
+        self.insert_batch_query = query.format(xy_values_table)
+        query = 'SELECT DISTINCT {{}} from {}'
+        self.select_distict_query = query.format(measurements_table)
 
         # Init local database connection
         self.connection = MySQLdb.connect(
@@ -138,19 +141,20 @@ class DataSetSaver(object):
             metadata (dict): The dictionary that holds the information for the
                 measurements table. See :meth:`__init__` for details.
         """
-        DSS_LOG.info('Add measurement codenamed: \'%s\' with metadata: %s', codename, metadata)
-        # Collect column names, values and format strings, a format string is a SQL value
-        # placeholder including processing like e.g: %s or FROM_UNIXTIME(%s)
+        DSS_LOG.info('Add measurement codenamed: \'%s\' with metadata: %s',
+                     codename, metadata)
+        # Collect column names, values and format strings, a format string is a SQL
+        # value placeholder including processing like e.g: %s or FROM_UNIXTIME(%s)
         column_names, values, value_format_strings = [], [], []
         for column_name, value in metadata.items():
             if not COLUMN_NAME.match(column_name):
-                message = 'Invalid column name: \'{}\'. Only column names using a-z, '\
-                          'A-Z, 0-9 and \'_\' and \'$\' are allowed'.format(column_name)
-                raise ValueError(message)
+                msg = 'Invalid column name: \'{}\'. Only column names using a-z, '
+                msg += 'A-Z, 0-9 and \'_\' and \'$\' are allowed'
+                raise ValueError(msg.format(column_name))
 
             if isinstance(value, CustomColumn):
-                # If the value from the metadata dict is a CustomColumn (which is 2 value
-                # tuple), the unpack it
+                # If the value from the metadata dict is a CustomColumn (which
+                # is 2 value tuple), the unpack it
                 real_value, value_format_string = value
             else:
                 # Else, that value is just a value with default place holder
@@ -164,9 +168,10 @@ class DataSetSaver(object):
         column_string = ', '.join(column_names)
         # Form the value marker string e.g: '%s, FROM_UNIXTIME(%s), %s'
         value_marker_string = ', '.join(value_format_strings)
-        query = self.insert_measurement_query.format(column_string, value_marker_string)
+        query = self.insert_measurement_query.format(
+            column_string, value_marker_string)
 
-        # Make the insert and save the measurement_table id for use in saving the data
+        # Make the insert and save the measurement_table id for use in saving data
         self.cursor.execute(query, values)
         self.measurement_ids[codename] = self.cursor.lastrowid
         DSS_LOG.debug('Measurement codenamed: \'%s\' added', codename)
@@ -182,8 +187,8 @@ class DataSetSaver(object):
         try:
             query_args = [self.measurement_ids[codename]]
         except KeyError:
-            message = 'No entry in measurements_ids for codename: \'{}\''.format(codename)
-            raise ValueError(message)
+            message = 'No entry in measurements_ids for codename: \'{}\''
+            raise ValueError(message.format(codename))
 
         # The query expects 3 values; measurement_id, x, y
         query_args.extend(point)
@@ -196,30 +201,31 @@ class DataSetSaver(object):
             codename (str): The codename for the measurement to save the points for
             x_values (sequence): A sequence of x values
             y_values (sequence): A sequence of y values
-            batchsize (int): The number of points to send in the same batch. Defaults to
-                1000, see the warning below before changing it
+            batchsize (int): The number of points to send in the same batch.
+                Defaults to 1000, see the warning below before changing it
 
-        .. warning:: The batchsize is ultimately limited by the max package size that the
-           MySQL server will receive. The default is 1MB. Each point amounts to around 60
-           bytes in the final query. Rounding this up to 100, means that the limit is
-           ~10000 points. This means that the default of 1000 should be safe and that if
-           it is changed by the user, expect problems if exceeding the lower 10000ths.
-
+        .. warning:: The batchsize is ultimately limited by the max package size that
+           the MySQL server will receive. The default is 1MB. Each point amounts to
+           around 60 bytes in the final query. Rounding this up to 100, means that
+           the limit is ~10000 points. This means that the default of 1000 should be
+           safe and that if it is changed by the user, expect problems if exceeding
+           the lower 10000ths.
         """
         DSS_LOG.debug('For codename \'%s\' save %s points in batches of %s',
                       codename, len(x_values), batchsize)
 
         # Check lengths and get measurement_id
         if len(x_values) != len(y_values):
-            raise ValueError('Number of x and y values must be the same. Values are {} and {}'\
-                             .format(len(x_values), len(y_values)))
+            msg = 'Number of x and y values must be the same. Values are {} and {}'
+            raise ValueError(msg.format(len(x_values), len(y_values)))
         try:
             measurement_id = self.measurement_ids[codename]
         except KeyError:
-            message = 'No entry in measurements_ids for codename: \'{}\''.format(codename)
-            raise ValueError(message)
+            message = 'No entry in measurements_ids for codename: \'{}\''
+            raise ValueError(message.format(codename))
 
-        # Gather values in batches of batsize, start enumerate from 1, to make the criteria
+        # Gather values in batches of batchsize, start enumerate from 1, to make
+        # the criteria
         values = []
         number_of_values = 0
         for x_value, y_value in zip(x_values, y_values):
@@ -247,10 +253,10 @@ class DataSetSaver(object):
         This is commonly used in fileparsers to identify the files already uploaded
 
         Args:
-            column (str): The column specification to extract values from. This can be
-                just a column name e.g. "time", but it is also allowed to contain SQL
-                processing e.g. UNIX_TIMESTAMP(time). The value of column will be
-                formatted directly into the query.
+            column (str): The column specification to extract values from. This can
+                be just a column name e.g. "time", but it is also allowed to contain
+                SQL processing e.g. UNIX_TIMESTAMP(time). The value of column will
+                be formatted directly into the query.
         """
         self.cursor.execute(self.select_distict_query.format(column))
         return set(item[0] for item in self.cursor.fetchall())
@@ -345,13 +351,13 @@ class ContinuousDataSaver(object):
         Args:
             codename (str): Codename for the measurement to add
 
-        .. note:: The codenames are the 'official' codenames defined in the database for
-            contionuous measurements NOT codenames that can be userdefined
+        .. note:: The codenames are the 'official' codenames defined in the database
+            for contionuous measurements NOT codenames that can be userdefined
 
         """
         CDS_LOG.info('Add measurements for codename \'%s\'', codename)
-        query = 'SELECT id FROM dateplots_descriptions WHERE codename=\'{}\''.format(codename)
-        self.cursor.execute(query)
+        query = 'SELECT id FROM dateplots_descriptions WHERE codename=\'{}\''
+        self.cursor.execute(query.format(codename))
         results = self.cursor.fetchall()
         if len(results) != 1:
             message = 'Measurement code name \'{}\' does not have exactly one entry in '\
@@ -414,6 +420,7 @@ class ContinuousDataSaver(object):
 
 SQL_SAVER_LOG = logging.getLogger(__name__ + '.SqlSaver')
 SQL_SAVER_LOG.addHandler(logging.NullHandler())
+
 
 class SqlSaver(threading.Thread):
     """The SqlSaver class administers a queue from which it executes SQL queries
