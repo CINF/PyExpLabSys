@@ -523,11 +523,12 @@ class SqlSaver(threading.Thread):
                     success = True
                     SQL_SAVER_LOG.debug('Executed query\n\'%.70s\'\nwith args: %.60s', query,
                                         args)
-                except MySQLdb.OperationalError: # Failed to perfom commit
-                    SQL_SAVER_LOG.error(
-                        'Executing a query raised an MySQLdb.OperationalError. Make new '
-                        'database connection and retry in 5 seconds.'
-                    )
+                # Naming exceptions is a bit tricky here, since we import different
+                # sql-libraries at runtime, not all exceptions are available and we
+                # end up with a NameError instead. Catching all should be ok here.
+                except Exception as e: # Failed to perfom commit
+                    msg = 'Executing a query raised an error: {}'.format(e)
+                    SQL_SAVER_LOG.error(msg)
                     time.sleep(5)
                     try:
                         self.connection = MySQLdb.connect(
@@ -537,7 +538,7 @@ class SqlSaver(threading.Thread):
                             db=SETTINGS.sql_database
                         )
                         self.cursor = self.connection.cursor()
-                    except MySQLdb.OperationalError: # Failed to re-connect
+                    except Exception: # Failed to re-connect
                         pass
 
             self.connection.commit()
