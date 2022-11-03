@@ -26,7 +26,7 @@ components.
 
 The project is hosted on `Github
 <https://github.com/CINF/PyExpLabSys>`_ and `documented
-<http://pyexplabsys.readthedocs.org/en/latest/>`__ with `Sphinx
+<https://pyexplabsys.readthedocs.io/>`__ with `Sphinx
 <http://sphinx-doc.org/>`__ on the `read the docs webpage
 <https://readthedocs.org/>`__, with varying documentation
 levels.
