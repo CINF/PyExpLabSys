@@ -1,13 +1,10 @@
-
 """ Driver for MKS g-series flow controller """
-from __future__ import print_function
 import time
 import logging
 import serial
-from PyExpLabSys.common.supported_versions import python2_and_3
 LOGGER = logging.getLogger(__name__)
-LOGGER.addHandler(logging.NullHandler())
-python2_and_3(__file__)
+# LOGGER.addHandler(logging.NullHandler())
+
 
 class MksGSeries():
     """ Driver for G-series flow controllers from MKS """
@@ -22,8 +19,13 @@ class MksGSeries():
         """ Calculate checksum of command """
         if not reply:
             com_string = '@' + command
+            # If com_string contains more than one @, replace with only one
+            for i in range(5, 1, -1):
+                com_string = com_string.replace('@' * i, '@')
         else:
             com_string = command
+        pos = com_string.find(';') + 1
+        com_string = com_string[:pos]
         total = 0
         for i in range(0, len(com_string)):
             total = total + ord(com_string[i])
@@ -40,23 +42,24 @@ class MksGSeries():
         reply = self.ser.read(self.ser.inWaiting())
         try:
             reply = reply.decode('ascii')
-        except: UnicodeDecodeError:
+        except UnicodeDecodeError:
             reply = reply.decode('ascii', 'ignore')
             reply = reply.strip('\x00')
             reply = '@' + reply
-
         if len(reply) == 0:
             LOGGER.warning('No such device')
+            return ''
+
+        if reply[-2:] == self.checksum(reply, reply=True):
+            reply = reply[6:-3]  # Cut away master address and checksum
         else:
-            if reply[-3:] == self.checksum(reply[1:-3], reply=True):
-                reply = reply[6:-3] # Cut away master address and checksum
-            else:
-                LOGGER.error('Checksum error in reply')
-                reply = ''
-            if reply[1:4] == 'ACK':
-                reply = reply[4:-3]
-            else:
-                LOGGER.warning('Error in command')
+            LOGGER.error('Checksum error in reply')
+            reply = ''
+
+        if reply.find('ACK') > -1:
+            reply = reply.replace('ACK', '')
+        else:
+            LOGGER.warning('Error in command')
         return reply
 
     def read_full_scale_range(self, addr):
@@ -130,8 +133,13 @@ class MksGSeries():
         command = 'SN?'
         return self.comm(command, addr)
 
+
 if __name__ == '__main__':
     MKS = MksGSeries()
-    print(MKS.read_serial_number(1))
-    print(MKS.read_full_scale_range(1))
-#print(MKS.set_device_address(254,005))
+    # Notice, default is a catch-all adresse for MKG G-series, use only if only
+    # a single device is connected to the chain.
+    print(MKS.read_serial_number(254))
+    print(MKS.read_full_scale_range(254))
+    print(MKS.read_flow(254))
+    print(MKS.read_current_gas_type(254))
+    # print(MKS.set_device_address(254,005))
