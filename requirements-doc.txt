@@ -6,6 +6,5 @@ sphinxcontrib-napoleon
 pyserial
 evdev
 minimalmodbus
-MySQL-python
 smbus-cffi
 unicodecsv
