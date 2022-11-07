@@ -40,7 +40,7 @@ class MksGSeries():
         reply = self.ser.read(self.ser.inWaiting())
         try:
             reply = reply.decode('ascii')
-        except: UnicodeDecodeError:
+        except UnicodeDecodeError:
             reply = reply.decode('ascii', 'ignore')
             reply = reply.strip('\x00')
             reply = '@' + reply
