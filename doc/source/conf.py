@@ -27,7 +27,7 @@ sys.path.insert(1, os.path.join(os.path.abspath('.'), '..', '..'))
 # If we are on read the docs, generate the overview. This is normally
 # done by the make file, but that does not get executed on read the docs
 if os.environ.get('READTHEDOCS', None) == 'True':
-    print 'Generating: overview.rst'
+    print('Generating: overview.rst')
     # Add the dir of conf.py temporarily
     this_dir = os.path.dirname(os.path.realpath(__file__))
     sys.path.append(this_dir)
@@ -38,6 +38,7 @@ if os.environ.get('READTHEDOCS', None) == 'True':
 
     # Pop this dir of import path again
     sys.path.pop()
+
 
 # -- General configuration -----------------------------------------------------
 
@@ -54,7 +55,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.inheritance_diagram',
     'sphinx.ext.autosummary',
-    'sphinxcontrib.napoleon',
+    'sphinx.ext.napoleon',
 ]
 todo_include_todos = True
 
@@ -71,8 +72,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'PyExpLabSys'
-copyright = u'2013, CINF'
+project = 'PyExpLabSys'
+copyright = '2013-, CINF'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -294,3 +295,28 @@ def setup(app):
     """Make custom setup"""
     app.connect("autodoc-skip-member", skip)
     app.add_stylesheet('theme_overrides.css')
+
+
+# -- PyExpLabSys build hacks ---------------------------------------------------
+
+
+# Fill in required settings
+from PyExpLabSys.settings import Settings
+settings = Settings()
+settings.util_log_warning_email = "fake@non.com"
+settings.util_log_error_email = "fake@non.com"
+settings.util_log_mail_host = "none"
+
+
+# Insert fake missing modules that are sometimes missing when building the docs
+class FakeSMBus:
+
+    def SMBus(self, number):
+        # The SMBus function in the smbus modules is sometimes called
+        # at the modules level and depends on hardware, so we fake it
+        # when generating documentation
+        pass
+
+sys.modules["curses"] = object()
+sys.modules["smbus"] = FakeSMBus()
+sys.modules["hid"] = object()
