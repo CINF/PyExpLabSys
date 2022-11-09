@@ -13,17 +13,17 @@ Getting started
 To use the settings module instantiate a :class:`.Settings` object and access the settings
 as attributes::
 
-    >>> from PyExpLabSys.settings import Settings
-    >>> settings = Settings()
-    >>> settings.util_log_max_emails_per_period
-    5
+ >>> from PyExpLabSys.settings import Settings
+ >>> settings = Settings()
+ >>> settings.util_log_max_emails_per_period
+ 5
 
 User settings can be modified at run time simply by assigning a new value to the
 attributes::
 
-    >>> settings.util_log_max_emails_per_period = 7
-    >>> settings.util_log_max_emails_per_period
-    7
+ >>> settings.util_log_max_emails_per_period = 7
+ >>> settings.util_log_max_emails_per_period
+ 7
 
 Details
 =======
@@ -33,17 +33,20 @@ The settings are handled in two layers; **defaults** and **user settings**.
 The defaults are stored in the `PyExpLabSys/defaults.yaml
 <https://github.com/CINF/PyExpLabSys/blob/master/PyExpLabSys/defaults.yaml>`_ file.
 
-.. note:: It is not possible to write to a setting that does not have a default
+.. note::
+   It is not possible to write to a setting that does not have a default
 
-.. note:: In the defaults, a value of ``null`` is used to indicate a settings that must be
+.. note::
+   In the defaults, a value of ``null`` is used to indicate a settings that must be
    overwritten by a user setting before any modules tries to use it.
 
 The user settings are stored in a user editable file. The path used is stored in the
 `settings.USERSETTINGS_PATH` variable.  On Linux system the user settings path is
 ``~/.config.PyExpLabSys.user_settings.yaml``.
 
-.. note:: If the value is None, it means that your operating system is not yet supported
-   by the sett ings module. This should be reported as an issue on Github.
+.. note::
+   If the value is None, it means that your operating system is not yet supported
+   by the settings module. This should be reported as an issue on Github.
 
 All :class:`.Settings` objects share the same settings, so changes made via one object
 will be used everywhere, in fact that is what makes it possible to modify settings at
