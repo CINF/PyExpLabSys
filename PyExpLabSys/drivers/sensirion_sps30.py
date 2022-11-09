@@ -2,7 +2,7 @@
 import time
 import serial
 import struct
-import logger
+import logging
 
 
 class SensirionSPS30():
@@ -45,7 +45,7 @@ class SensirionSPS30():
 
         if not ord(self.serial.read(1)) == 0x7e:
             read_success = False
-            logger.warning('First char should have been 0x7e')
+            logging.warning('First char should have been 0x7e')
 
         chars = bytes()
         char = self.serial.read(1)
@@ -61,6 +61,7 @@ class SensirionSPS30():
 
         if not  chars[0] == 0:
             # Address, 0x7E is already stripped
+            pass
         expected_checksum = self._calculate_checksum(chars[:-1])
         assert expected_checksum == chars[-1]
 
