@@ -2,9 +2,15 @@ chainmap
 crc16
 pyyaml
 sphinx
-sphinxcontrib-napoleon
 pyserial
 evdev
-minimalmodbus
+minimalmodbus==0.6
 smbus-cffi
 unicodecsv
+sphinx-rtd-theme
+pymysql
+pyodbc
+numpy
+pyusb
+wiringpi
+paramiko
