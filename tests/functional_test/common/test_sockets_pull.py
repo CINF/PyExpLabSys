@@ -12,9 +12,16 @@ except ImportError:
 SocketServer.UDPServer.allow_reuse_address = True
 
 # Extra modules
-import mock
+from unittest import mock
 import pytest
 # Own imports
+from PyExpLabSys import settings
+
+SETTINGS = settings.Settings()
+SETTINGS.util_log_warning_email = "fake@non.com"
+SETTINGS.util_log_error_email = "fake@non.com"
+SETTINGS.util_log_mail_host = "non.com"
+
 import PyExpLabSys.common.sockets
 DATA = PyExpLabSys.common.sockets.DATA
 from PyExpLabSys.common.sockets import DataPullSocket, DateDataPullSocket
@@ -32,7 +39,7 @@ DEFAULT_PORTS = {
 DEFAULT_CODENAMES = ['Laser1', 'Laser2']
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def sock():
     """Client socket fixture"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

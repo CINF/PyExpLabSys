@@ -7,12 +7,19 @@ from __future__ import unicode_literals, print_function
 
 import sys
 import time
-import mock
+from unittest import mock
 import json
 import collections
 import socket
 import pytest
 from numpy import isclose
+from PyExpLabSys import settings
+
+SETTINGS = settings.Settings()
+SETTINGS.util_log_warning_email = "fake@non.com"
+SETTINGS.util_log_error_email = "fake@non.com"
+SETTINGS.util_log_mail_host = "non.com"
+
 from PyExpLabSys.common import sockets
 from PyExpLabSys.common.sockets import (
     bool_translate, socket_server_status, PullUDPHandler, CommonDataPullSocket, DataPullSocket,
@@ -54,7 +61,7 @@ def mocket():
     return mock.MagicMock()
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def sockets_data_single():
     """A fixture for replaced sockets.DATA with SINGLE_DATA"""
     old_data = sockets.DATA
@@ -63,7 +70,7 @@ def sockets_data_single():
     sockets.DATA = old_data
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def sockets_data_all():
     """A fixture for replaced sockets.DATA with ALL_DATA"""
     old_data = sockets.DATA
@@ -80,7 +87,7 @@ def server():
     return server_
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def pull_udp_handler(mocket, server):
     """A PullUDPHandler fixture"""
     # Since init on a handler calls handle, mock it out while initing, so that it can be tested
@@ -102,7 +109,7 @@ def cdps_init_args():
     }
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def udp_server():
     """A UDPServer fixure"""
     if sys.version_info[0] == 2:
@@ -113,7 +120,7 @@ def udp_server():
         with mock.patch('socketserver.UDPServer') as udp_server:
             yield udp_server
 
-@pytest.yield_fixture
+@pytest.fixture
 def clean_data():
     """A clean sockets.DATA fixture"""
     old_data = sockets.DATA
@@ -122,7 +129,7 @@ def clean_data():
     sockets.DATA = old_data
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def push_udp_handler(mocket, server):
     """An any request PushUDPHandler"""
     # mock handle, which is called at instantiate time, inside a try except
@@ -428,7 +435,7 @@ class TestCommonDataPullSocket(object):
         # Check init of timeouts
         if init_timeouts:
             # If timeouts is given as a single number, make a list
-            if not isinstance(timeouts, collections.Iterable):
+            if not isinstance(timeouts, collections.abc.Iterable):
                 timeouts = [timeouts] * len(CODENAMES)
             timeouts = dict(zip(CODENAMES, timeouts))
             assert config['timeouts'] == timeouts
