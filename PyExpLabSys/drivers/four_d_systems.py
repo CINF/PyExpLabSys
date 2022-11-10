@@ -7,26 +7,31 @@
 For usage examples see the file
 PyExpLabSys/test/integration_tests/test_four_d_systems.py
 
-.. note:: Only a small sub-set of the specification is plemented, but with the
-    available examples it should be real easy to add more commands.
+.. note::
+   Only a small sub-set of the specification is plemented, but with the
+   available examples it should be real easy to add more commands.
 
-.. note:: An internal method '_to_16_bit_rgb' exists to convert a HTML hex
-    color code or an RGB tuple of floats to the irregular 16 bit RGB color
-    scale this device use. It should make working with colors a lot easier.
+.. note::
+   An internal method '_to_16_bit_rgb' exists to convert a HTML hex
+   color code or an RGB tuple of floats to the irregular 16 bit RGB color
+   scale this device use. It should make working with colors a lot easier.
 
-.. note:: The displays must be activated for serial communication. At present
-    the only way we know how to do that, is to follow the procedure described
-    in the serial specification, which involves taking it past a Windows
-    program.
+.. note::
+   The displays must be activated for serial communication. At present
+   the only way we know how to do that, is to follow the procedure described
+   in the serial specification, which involves taking it past a Windows
+   program.
 
-.. note:: At present only communication via the USB connection has been tested.
-    For communication directly via the internal connection on the Raspberry Pi
-    it may be necessary to do some preparation in order to free the pins up for
-    serial communication.
+.. note::
+   At present only communication via the USB connection has been tested.
+   For communication directly via the internal connection on the Raspberry Pi
+   it may be necessary to do some preparation in order to free the pins up for
+   serial communication.
 
-.. seealso:: Docs for this implementation are on the wiki at:
-    https://cinfwiki.fysik.dtu.dk/cinfwiki/Equipment#Picaso_uLCD-28PTU    or online at:
-    http://www.4dsystems.com.au/product/4D_Workshop_4_IDE/downloads
+.. seealso::
+   Docs for this implementation are on the wiki at:
+   https://cinfwiki.fysik.dtu.dk/cinfwiki/Equipment#Picaso_uLCD-28PTU or online at:
+   http://www.4dsystems.com.au/product/4D_Workshop_4_IDE/downloads
 
 """
 
@@ -124,7 +129,7 @@ def to_ascii(string):
 
 
 def to_ascii_utf8(string):
-    """Convert non-ascii character in a utf-8 encoded string to ascii"""
+    """Convert non-ascii characters in a utf-8 encoded string to ascii"""
     string = string.decode('utf-8')
     for char in string:
         if char in LATIN_DICT:
@@ -139,9 +144,10 @@ to_word = partial(pack, '>H')  # pylint: disable=invalid-name
 def to_words(*args):
     """Convert integers or tuples of integers to 2 byte words
 
-    This will convert e.g args:
-        1, 200 -> b'\x00\x01\x00\xc8'
-        (1, 200) -> b'\x00\x01\x00\xc8'
+    This will convert e.g args::
+
+     1, 200 -> b'\\x00\\x01\\x00\\xc8'
+     (1, 200) -> b'\\x00\\x01\\x00\\xc8'
 
     Args:
         args: integers or tuple of lists of integers
@@ -201,9 +207,10 @@ class PicasoCommon(object):
     """Implementation of the common parts of the serial communication to the
     Picaso devices
 
-    :raises: :py:class:`serial.serialutil.SerialException` - All public methods
-        in this class may raise this exception if there are problems with the
-        serial communication
+    raises:
+        :py:class:`serial.serialutil.SerialException` - All public methods
+            in this class may raise this exception if there are problems with
+            the serial communication
     """
 
     def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600,
@@ -330,7 +337,7 @@ class PicasoCommon(object):
 
         Args:
             color (str or tuple): 24 bit RGB HTML hex string e.g. ``'#ffffff'``
-            or RGB tuple or floats e.g. ``(1.0, 1.0, 1.0)``
+                or RGB tuple or floats e.g. ``(1.0, 1.0, 1.0)``
 
         Returns:
             str: An integer that represents the 2 bytes
@@ -422,8 +429,7 @@ class PicasoCommon(object):
         Raises:
             PicasoException: If the command fails or if the reply does not have
                 the expected length
-        :raises: :py:class:`~exceptions.ValueError` - If ``character`` does not
-            have length 1
+            ValueError: If ``character`` does not have length 1
         """
 
         if len(character) != 1:
@@ -443,8 +449,7 @@ class PicasoCommon(object):
         Raises:
             PicasoException: If the command fails or if the reply does not have
                 the expected length
-        :raises: :py:class:`~exceptions.ValueError` - If ``character`` does not
-            have length 1
+            ValueError: If ``character`` does not have length 1
         """
         if len(character) != 1:
             raise ValueError('character must be a string of length 1')
@@ -583,8 +588,7 @@ class PicasoCommon(object):
         Raises:
             PicasoException: If the command fails or if the reply does not have
                 the expected length
-        :raises: :py:class:`~exceptions.ValueError` - If ``attribute`` is
-            unknown
+            ValueError: If ``attribute`` is unknown
         """
         if attribute not in TEXT_PROPERTY_TO_COMMAND:
             message = 'Attribute \'{0}\' unknown. Valid attributes are {1}'\
@@ -652,8 +656,7 @@ class PicasoCommon(object):
 
     # Sub-section .14
     def put_pixel(self, x, y, color):
-        """Set a pixel
-        """
+        """Set a pixel"""
         command = b'\xFF\xC1' + to_words(x, y, self._to_16_bit_rgb(color))
         self._send_command(command)
 
@@ -693,17 +696,18 @@ class PicasoCommon(object):
     def get_graphics_parameters(self, parameter):  # Sub-section 38
         """Gets graphics parameters
 
-        .. note:: The meaning of the results from the ``'last_object_*'``
-            parameters is not known. It was expected to be coordinates, but
-            they are much to large
+        .. note::
+           The meaning of the results from the ``'last_object_*'``
+           parameters is not known. It was expected to be coordinates, but
+           they are much to large
 
         Args:
             parameter (str): The parameter to fetch, can be ``'x_max'`` for
-            the x resolution under the current orientation, ``'y_max'`` for
-            the y resolution under the current orientation,
-            ``'last_object_left'``, ``'last_object_top'``,
-            ``'last_object_right'``, ``'last_object_bottom'`` for the relevant
-            parameter for the last object.
+                the x resolution under the current orientation, ``'y_max'`` for
+                the y resolution under the current orientation,
+                ``'last_object_left'``, ``'last_object_top'``,
+                ``'last_object_right'``, ``'last_object_bottom'`` for the relevant
+                parameter for the last object.
 
         Returns:
           int: The requested parameter

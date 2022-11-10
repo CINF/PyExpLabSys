@@ -51,7 +51,7 @@ def single_file_py23_status(filepath):
 def single_file_description(filepath):
     """Extract the description as the first line of the module doc string"""
     # Try to determine encoding
-    encoding = 'ascii'
+    encoding = 'utf-8'
     with open(filepath, 'rb') as file_:
         for line in file_:
             # See if the line is a encoding line and update the encoding
@@ -119,7 +119,8 @@ def allfiles_statuses():
             try:
                 statuses.append(single_file_status(filepath))
             except Exception:  # pylint: disable=broad-except
-                statuses.append((filepath, 'ERROR', False, 'ERROR'))
+                print("Module {} single_file_status_failed")
+                raise
 
     return statuses
 

@@ -10,3 +10,4 @@ machines/towermain/temperature_log*
 *error_log.txt
 *logger.txt
 .cache
+.venv

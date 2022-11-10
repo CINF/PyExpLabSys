@@ -1,3 +1,6 @@
+
+"""Weather info driver"""
+
 import time
 import json
 import socket
