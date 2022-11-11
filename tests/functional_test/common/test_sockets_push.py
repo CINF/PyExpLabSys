@@ -67,7 +67,7 @@ DATA_SETS['NONE'] = {'action': 'None'}
 
 
 ### Define fixtures
-@pytest.yield_fixture
+@pytest.fixture
 def sock():
     """Client socket fixture"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -88,7 +88,7 @@ def raw_data(request):
     return DATA_SETS[data_dict_name], DATA_SETS[request.param]
 
 
-@pytest.yield_fixture(scope='class')
+@pytest.fixture(scope='class')
 def class_dps(request):
     """DataPushSocket fixture
 
@@ -147,7 +147,7 @@ def queue(request):
         return Queue.Queue()
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def callback(request):  # pylint: disable=unused-argument
     """Generate a memory callback function and reset afterwards"""
     yield memory_callback
