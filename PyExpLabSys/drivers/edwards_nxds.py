@@ -1,13 +1,10 @@
 """ Driver for Edwards, nXDS pumps """
-from __future__ import print_function
 import time
 import logging
 import serial
-from PyExpLabSys.common.supported_versions import python2_and_3
-# Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
-python2_and_3(__file__)
+
 
 class EdwardsNxds(object):
     """ Driver for the Edwards nXDS series of dry pumps """
@@ -37,15 +34,15 @@ class EdwardsNxds(object):
         temperatures = return_string.split(';')
         pump = int(temperatures[0])
         controller = int(temperatures[1])
-        return {'pump':pump, 'controller':controller}
+        return {'pump': pump, 'controller': controller}
 
     def read_serial_numbers(self):
         """ Read Pump Serial numbers """
         return_string = self.comm('?S835')
         service = return_string.split(';')
         serials = service[0].split(' ')
-        return {'Pump SNs':serials[0], 'drive-module SN':serials[1],
-                'PCA SN':serials[2], 'type':service[1].strip()}
+        return {'Pump SNs': serials[0], 'drive-module SN': serials[1],
+                'PCA SN': serials[2], 'type': service[1].strip()}
 
     def read_run_hours(self):
         """ Return number of run hours """
@@ -78,7 +75,7 @@ class EdwardsNxds(object):
         status = return_string.split(';')
         time_since = int(status[0])
         time_to = int(status[1])
-        return {'time_since_service': time_since, 'time_to_service':time_to}
+        return {'time_since_service': time_since, 'time_to_service': time_to}
 
     def pump_controller_status(self):
         """ Read  the status of the pump controller """
@@ -86,7 +83,8 @@ class EdwardsNxds(object):
         status = return_string.split(';')
         controller_run_time = int(status[0])
         time_to_service = int(status[1])
-        return {'controller_run_time': controller_run_time, 'time_to_service':time_to_service}
+        return {'controller_run_time': controller_run_time,
+                'time_to_service': time_to_service}
 
     def read_normal_speed_threshold(self):
         """ Read the value for acknowledge the pump as normally running """
@@ -113,7 +111,7 @@ class EdwardsNxds(object):
             messages.append('Standby Active')
         if system_status_1[12] is True:
             messages.append('Above normal Speed')
-        #if system_status_1[11] is True: # It is not entirely clear what this
+        # if system_status_1[11] is True: # It is not entirely clear what this
         #    messages.append('Above ramp speed') # message means
         if system_status_1[5] is True:
             messages.append('Serial interface enabled')
@@ -192,16 +190,17 @@ class EdwardsNxds(object):
             return_string = self.comm('!C803 0')
         return return_string
 
+
 if __name__ == '__main__':
     PUMP = EdwardsNxds('/dev/ttyUSB3')
-    #print(PUMP.read_pump_type())
+    # print(PUMP.read_pump_type())
     print(PUMP.read_pump_temperature())
-    #print(PUMP.read_serial_numbers())
-    #print(PUMP.read_run_hours())
-    #print(PUMP.read_normal_speed_threshold())
-    #print(PUMP.read_standby_speed())
-    #print(PUMP.pump_controller_status())
-    #print(PUMP.bearing_service())
-    #print(PUMP.read_pump_status()['rotational_speed'])
-    #print(PUMP.set_run_state(True))
-    #print(PUMP.set_standby_mode(False))
+    # print(PUMP.read_serial_numbers())
+    # print(PUMP.read_run_hours())
+    # print(PUMP.read_normal_speed_threshold())
+    # print(PUMP.read_standby_speed())
+    # print(PUMP.pump_controller_status())
+    # print(PUMP.bearing_service())
+    # print(PUMP.read_pump_status()['rotational_speed'])
+    # print(PUMP.set_run_state(True))
+    # print(PUMP.set_standby_mode(False))
