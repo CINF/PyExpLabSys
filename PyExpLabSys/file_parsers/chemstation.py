@@ -46,6 +46,7 @@ import numpy
 
 from PyExpLabSys.thirdparty.cached_property import cached_property
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
@@ -73,7 +74,7 @@ class Sequence(object):
         self.metadata = {}
         self._parse()
         if not self.injections:
-            msg = 'No injections in sequence: {}'.format(self.sequence_dir_path)
+            msg = "No injections in sequence: {}".format(self.sequence_dir_path)
             raise NoInjections(msg)
         self._parse_metadata()
 
@@ -81,11 +82,12 @@ class Sequence(object):
         """Parse metadata"""
         # Add metadata from first injection to sequence metadata
         first_injection = self.injections[0]
-        self.metadata['sample_name'] = first_injection.metadata['sample_name']
-        self.metadata['sequence_start'] = first_injection.metadata['injection_date']
-        self.metadata['sequence_start_timestruct'] = \
-            first_injection.metadata['injection_date_timestruct']
-        self.metadata['acq_method'] = first_injection.metadata['acq_method']
+        self.metadata["sample_name"] = first_injection.metadata["sample_name"]
+        self.metadata["sequence_start"] = first_injection.metadata["injection_date"]
+        self.metadata["sequence_start_timestruct"] = first_injection.metadata[
+            "injection_date_timestruct"
+        ]
+        self.metadata["acq_method"] = first_injection.metadata["acq_method"]
 
     def _parse(self):
         """Parse the sequence"""
@@ -123,18 +125,18 @@ class Sequence(object):
         # Set the column names default values
         if column_names is None:
             column_names = {
-                'peak_name': 'Compound Name',
-                'retention_time': 'Retention Time / min',
-                'area': 'Area'
+                "peak_name": "Compound Name",
+                "retention_time": "Retention Time / min",
+                "area": "Area",
             }
 
         # Initialize the start time and data collection objects
         data = defaultdict(list)
-        start_time = self.injections[0].metadata['injection_date_unixtime']
+        start_time = self.injections[0].metadata["injection_date_unixtime"]
 
         # Loop over injections and collect data
         for injection in self.injections:
-            elapsed_time = injection.metadata['injection_date_unixtime'] - start_time
+            elapsed_time = injection.metadata["injection_date_unixtime"] - start_time
             # Unknowns is used to sum up unknown values for a detector
             unknowns = defaultdict(float)
 
@@ -144,8 +146,8 @@ class Sequence(object):
                 for report_line in report:
                     label = self._generate_label(data, signal, report_line, column_names)
                     # If it is a unknown peak, add the area
-                    area = report_line[column_names['area']]
-                    if label.endswith('?'):
+                    area = report_line[column_names["area"]]
+                    if label.endswith("?"):
                         unknowns[label] += area
                     else:
                         data[label].append([elapsed_time, area])
@@ -167,22 +169,22 @@ class Sequence(object):
             column_names (dict): column_names dict, see :meth:`~full_sequence_dataset`
         """
         # Base label e.g: "FID1 A  - CH4" or "TCD3 C  - ?"
-        peak_name = report_line[column_names['peak_name']]
-        label = '{} - {}'.format(signal, peak_name)
-        if peak_name == '?':
+        peak_name = report_line[column_names["peak_name"]]
+        label = "{} - {}".format(signal, peak_name)
+        if peak_name == "?":
             return label
 
         # Check whether we already have a label for this detector, molecule
         for existing_label in data:
             # Existing label is something like: "FID2 B  - CO2 (12.071)"
             # Extract the base label part from that
-            existing_base_label = existing_label.split('(')[0].rstrip()
+            existing_base_label = existing_label.split("(")[0].rstrip()
             if existing_base_label == label:
                 return existing_label
 
         # For an known peak that we do not alread know about, add the retention time to
         # the label
-        return '{} ({})'.format(label, report_line[column_names['retention_time']])
+        return "{} ({})".format(label, report_line[column_names["retention_time"]])
 
 
 class Injection(object):
@@ -210,9 +212,9 @@ class Injection(object):
     # This is scary. I don't know how many standard formats exist, or
     # if it is customizable !!!
     datetime_formats = (
-        '%m/%d/%Y %I:%M:%S %p',  # '11/24/2017 12:11:42 PM'
-        '%d-%b-%y %I:%M:%S %p',  # '24-Nov-17 12:10:07 PM'
-        '%d-%b-%y, %H:%M:%S',  # '13-Jan-15, 11:16:49'
+        "%m/%d/%Y %I:%M:%S %p",  # '11/24/2017 12:11:42 PM'
+        "%d-%b-%y %I:%M:%S %p",  # '24-Nov-17 12:10:07 PM'
+        "%d-%b-%y, %H:%M:%S",  # '13-Jan-15, 11:16:49'
     )
 
     def __init__(self, injection_dirpath, load_raw_spectra=True, read_report_txt=True):
@@ -238,9 +240,9 @@ class Injection(object):
         # Read and save the Report.TXT file is requested
         self.report_txt = None
         if read_report_txt:
-            report_path = os.path.join(self.injection_dirpath, 'Report.TXT')
+            report_path = os.path.join(self.injection_dirpath, "Report.TXT")
             if os.path.isfile(report_path):
-                with codecs.open(report_path, encoding='UTF16') as file_:
+                with codecs.open(report_path, encoding="UTF16") as file_:
                     self.report_txt = file_.read()
 
     def _parse_date(self, date_part):
@@ -260,18 +262,18 @@ class Injection(object):
     def _read_csv_data(filepath):
         """Return a list of rows from a csv file"""
         bytes_io = BytesIO()
-        with codecs.open(filepath, encoding='UTF-16LE') as file_:
+        with codecs.open(filepath, encoding="UTF-16LE") as file_:
             content = file_.read()[1:]  # Get rid of the 2 byte order bytes
-            bytes_io.write(content.encode('utf-8'))
+            bytes_io.write(content.encode("utf-8"))
         bytes_io.seek(0)
 
-        csv_reader = csv.reader(bytes_io, encoding='utf-8')
+        csv_reader = csv.reader(bytes_io, encoding="utf-8")
         return list(csv_reader)
 
     def _add_value_unit_to_metadata(self, name, value, unit):
         """Add value or value / unit to metadata under name"""
         if unit.strip() != "":
-            self.metadata[name] = value + ' / ' + unit
+            self.metadata[name] = value + " / " + unit
         else:
             self.metadata[name] = value
 
@@ -280,52 +282,54 @@ class Injection(object):
 
         Extract information about: sample name, injection date and sequence start
         """
-        csv_rows = self._read_csv_data(os.path.join(self.injection_dirpath, 'Report00.CSV'))
+        csv_rows = self._read_csv_data(os.path.join(self.injection_dirpath, "Report00.CSV"))
 
         # Convert names and types
         type_functions = {
-            'number_of_signals': int, 'seq_line': int, 'inj': int,
-            'number_of_columns': int,
+            "number_of_signals": int,
+            "seq_line": int,
+            "inj": int,
+            "number_of_columns": int,
         }
         for row in csv_rows:  # row is [name, value, other]
             name, value, _ = row
-            name = name.strip().lower().replace('. ', '_').replace(' ', '_')
+            name = name.strip().lower().replace(". ", "_").replace(" ", "_")
             row[0] = name
             if name in type_functions:
                 row[1] = type_functions[name](value)
 
         # Parse first section of metadata
-        row_iter = iter(csv_rows)  # Use an iterator to flexibly move through the 
+        row_iter = iter(csv_rows)  # Use an iterator to flexibly move through the
         for row in row_iter:
             name, value, unit = row
-            if name == 'number_of_signals':
+            if name == "number_of_signals":
                 self.metadata[name] = value
                 break
 
             self._add_value_unit_to_metadata(name, value, unit)
             if name in ("data_file", "analysis_method", "sequence_file"):
-                self.metadata[name + '_filename'] = unit
+                self.metadata[name + "_filename"] = unit
 
         # Deal with signals
-        self.metadata['signals'] = []
-        for name, value, _ in islice(row_iter, self.metadata['number_of_signals']):
+        self.metadata["signals"] = []
+        for name, value, _ in islice(row_iter, self.metadata["number_of_signals"]):
             self.metadata[name] = value
-            self.metadata['signals'].append(value)
+            self.metadata["signals"].append(value)
 
         # More metadata
         for row in row_iter:
             name, value, unit = row
-            if name == 'number_of_columns':
+            if name == "number_of_columns":
                 self.metadata[name] = value
                 break
             self._add_value_unit_to_metadata(name, value, unit)
 
         # Deal with columns
-        self.metadata['columns'] = []
-        for name, value, unit in islice(row_iter, self.metadata['number_of_columns']):
+        self.metadata["columns"] = []
+        for name, value, unit in islice(row_iter, self.metadata["number_of_columns"]):
             self._add_value_unit_to_metadata(name, value, unit)
             self.metadata[name] = self.metadata[name].strip()
-            self.metadata['columns'].append(self.metadata[name])
+            self.metadata["columns"].append(self.metadata[name])
 
         # Confirm that there are no more lines left
         try:
@@ -333,42 +337,42 @@ class Injection(object):
         except StopIteration:
             pass
         else:
-            raise RuntimeError('Still items left in metadata CSV')
+            raise RuntimeError("Still items left in metadata CSV")
 
         # Add a few extra fields for time structs
         for name in ("injection_date", "results_created"):
             if name in self.metadata:
-                self.metadata[name + '_timestruct'] = self._parse_date(self.metadata[name])
-                self.metadata[name + '_unixtime'] = time.mktime(
-                    self.metadata[name + '_timestruct']
+                self.metadata[name + "_timestruct"] = self._parse_date(self.metadata[name])
+                self.metadata[name + "_unixtime"] = time.mktime(
+                    self.metadata[name + "_timestruct"]
                 )
 
     def _parse_tables(self):
         """Parse the report tables from CSV files"""
         # Guess types for columns
         types = {}
-        for column_name in self.metadata['columns']:
-            if 'peak number' in column_name.lower():
+        for column_name in self.metadata["columns"]:
+            if "peak number" in column_name.lower():
                 types[column_name] = int
-            elif 'peak type' in column_name.lower() or 'name' in column_name.lower():
+            elif "peak type" in column_name.lower() or "name" in column_name.lower():
                 types[column_name] = str
             else:
                 types[column_name] = float
 
         # Iterate over signals
-        for signal_number in range(1, self.metadata['number_of_signals'] + 1):
+        for signal_number in range(1, self.metadata["number_of_signals"] + 1):
             self._parse_table(signal_number, types)
 
     def _parse_table(self, signal_number, types):
         """Parse a single report table from a CSV file"""
-        report_filename = 'REPORT{:0>2}.CSV'.format(signal_number)
+        report_filename = "REPORT{:0>2}.CSV".format(signal_number)
         report_path = os.path.join(self.injection_dirpath, report_filename)
         csv_data = self._read_csv_data(report_path)
-        signal = self.metadata['signal_{}'.format(signal_number)]
+        signal = self.metadata["signal_{}".format(signal_number)]
         for row in csv_data:
             row_dict = {}
             row_dict_raw = {}
-            for column_name, value_str in zip(self.metadata['columns'], row):
+            for column_name, value_str in zip(self.metadata["columns"], row):
                 row_dict_raw[column_name] = value_str.strip()
                 type_function = types[column_name]
                 if type_function is str:
@@ -381,7 +385,7 @@ class Injection(object):
     def _load_raw_spectra(self, injection_dirpath):
         """Load all the raw spectra (.ch-files) associated with this injection"""
         for file_ in os.listdir(injection_dirpath):
-            if os.path.splitext(file_)[1] == '.ch':
+            if os.path.splitext(file_)[1] == ".ch":
                 filepath = os.path.join(injection_dirpath, file_)
                 self.raw_files[file_] = CHFile(filepath)
 
@@ -391,21 +395,20 @@ class Injection(object):
 
 
 # Constants used for binary file parsing
-ENDIAN = '>'
-STRING = ENDIAN + '{}s'
-UINT8 = ENDIAN + 'B'
-UINT16 = ENDIAN + 'H'
-INT16 = ENDIAN + 'h'
-INT32 = ENDIAN + 'i'
+ENDIAN = ">"
+STRING = ENDIAN + "{}s"
+UINT8 = ENDIAN + "B"
+UINT16 = ENDIAN + "H"
+INT16 = ENDIAN + "h"
+INT32 = ENDIAN + "i"
 
 
-def parse_utf16_string(file_, encoding='UTF16'):
+def parse_utf16_string(file_, encoding="UTF16"):
     """Parse a pascal type UTF16 encoded string from a binary file object"""
     # First read the expected number of CHARACTERS
     string_length = unpack(UINT8, file_.read(1))[0]
     # Then read and decode
-    parsed = unpack(STRING.format(2 * string_length),
-                    file_.read(2 * string_length))
+    parsed = unpack(STRING.format(2 * string_length), file_.read(2 * string_length))
     return parsed[0].decode(encoding)
 
 
@@ -434,24 +437,24 @@ class CHFile(object):
     # Fields is a table of name, offset and type. Types 'x-time' and 'utf16' are specially
     # handled, the rest are format arguments for struct unpack
     fields = (
-        ('sequence_line_or_injection', 252, UINT16),
-        ('injection_or_sequence_line', 256, UINT16),
-        ('start_time', 282, 'x-time'),
-        ('end_time', 286, 'x-time'),
-        ('version_string', 326, 'utf16'),
-        ('description', 347, 'utf16'),
-        ('sample', 858, 'utf16'),
-        ('operator', 1880, 'utf16'),
-        ('date', 2391, 'utf16'),
-        ('inlet', 2492, 'utf16'),
-        ('instrument', 2533, 'utf16'),
-        ('method', 2574, 'utf16'),
-        ('software version', 3601, 'utf16'),
-        ('software name', 3089, 'utf16'),
-        ('software revision', 3802, 'utf16'),
-        ('units', 4172, 'utf16'),
-        ('detector', 4213, 'utf16'),
-        ('yscaling', 4732, ENDIAN + 'd')
+        ("sequence_line_or_injection", 252, UINT16),
+        ("injection_or_sequence_line", 256, UINT16),
+        ("start_time", 282, "x-time"),
+        ("end_time", 286, "x-time"),
+        ("version_string", 326, "utf16"),
+        ("description", 347, "utf16"),
+        ("sample", 858, "utf16"),
+        ("operator", 1880, "utf16"),
+        ("date", 2391, "utf16"),
+        ("inlet", 2492, "utf16"),
+        ("instrument", 2533, "utf16"),
+        ("method", 2574, "utf16"),
+        ("software version", 3601, "utf16"),
+        ("software name", 3089, "utf16"),
+        ("software revision", 3802, "utf16"),
+        ("units", 4172, "utf16"),
+        ("detector", 4213, "utf16"),
+        ("yscaling", 4732, ENDIAN + "d"),
     )
     # The start position of the data
     data_start = 6144
@@ -466,7 +469,7 @@ class CHFile(object):
         """
         self.filepath = filepath
         self.metadata = {}
-        with open(self.filepath, 'rb') as file_:
+        with open(self.filepath, "rb") as file_:
             self._parse_header(file_)
             self.values = self._parse_data(file_)
 
@@ -477,25 +480,25 @@ class CHFile(object):
         parsed = unpack(STRING.format(length), file_.read(length))
         version = int(parsed[0])
         if version not in self.supported_versions:
-            raise ValueError('Unsupported file version {}'.format(version))
-        self.metadata['magic_number_version'] = version
+            raise ValueError("Unsupported file version {}".format(version))
+        self.metadata["magic_number_version"] = version
 
         # Parse all metadata fields
         for name, offset, type_ in self.fields:
             file_.seek(offset)
-            if type_ == 'utf16':
+            if type_ == "utf16":
                 self.metadata[name] = parse_utf16_string(file_)
-            elif type_ == 'x-time':
-                self.metadata[name] = unpack(ENDIAN + 'f', file_.read(4))[0] / 60000
+            elif type_ == "x-time":
+                self.metadata[name] = unpack(ENDIAN + "f", file_.read(4))[0] / 60000
             else:
                 self.metadata[name] = unpack(type_, file_.read(struct.calcsize(type_)))[0]
 
         # Convert date
-        self.metadata['datetime'] = time.strptime(self.metadata['date'], '%d-%b-%y, %H:%M:%S')
+        self.metadata["datetime"] = time.strptime(self.metadata["date"], "%d-%b-%y, %H:%M:%S")
 
     def _parse_header_status(self):
         """Print known and unknown parts of the header"""
-        file_ = open(self.filepath, 'rb')
+        file_ = open(self.filepath, "rb")
         # Map positions to fields for all the known fields
         knowns = {item[1]: item for item in self.fields}
         # A couple of places has a \x01 byte before a string, these we simply skip
@@ -505,7 +508,7 @@ class CHFile(object):
 
         # Initialize variables for unknown bytes
         unknown_start = None
-        unknown_bytes = b''
+        unknown_bytes = b""
         # While we have not yet reached the data
         while file_.tell() < self.data_start:
             current_position = file_.tell()
@@ -517,38 +520,41 @@ class CHFile(object):
             # If we know about a data field that starts at this point
             if current_position in knowns:
                 # If we have collected unknown bytes, print them out and reset
-                if unknown_bytes != b'':
-                    print('Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00')))
-                    unknown_bytes = b''
+                if unknown_bytes != b"":
+                    print("Unknown at", unknown_start, repr(unknown_bytes.rstrip(b"\x00")))
+                    unknown_bytes = b""
                     unknown_start = None
 
                 # Print out the position, type, name and value of the known value
-                print('Known field at {: >4},'.format(current_position), end=' ')
+                print("Known field at {: >4},".format(current_position), end=" ")
                 name, _, type_ = knowns[current_position]
-                if type_ == 'x-time':
-                    print('x-time, "{: <19}'.format(name + '"'),
-                          unpack(ENDIAN + 'f', file_.read(4))[0] / 60000)
-                elif type_ == 'utf16':
-                    print(' utf16, "{: <19}'.format(name + '"'),
-                          parse_utf16_string(file_))
+                if type_ == "x-time":
+                    print(
+                        'x-time, "{: <19}'.format(name + '"'),
+                        unpack(ENDIAN + "f", file_.read(4))[0] / 60000,
+                    )
+                elif type_ == "utf16":
+                    print(' utf16, "{: <19}'.format(name + '"'), parse_utf16_string(file_))
                 else:
                     size = struct.calcsize(type_)
-                    print('{: >6}, "{: <19}'.format(type_, name + '"'),
-                          unpack(type_, file_.read(size))[0])
+                    print(
+                        '{: >6}, "{: <19}'.format(type_, name + '"'),
+                        unpack(type_, file_.read(size))[0],
+                    )
             else:  # We do not know about a data field at this position If we have already
                 # collected 4 zero bytes, assume that we are done with this unkonw field,
                 # print and reset
-                if unknown_bytes[-4:] == b'\x00\x00\x00\x00':
-                    print('Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00')))
-                    unknown_bytes = b''
+                if unknown_bytes[-4:] == b"\x00\x00\x00\x00":
+                    print("Unknown at", unknown_start, repr(unknown_bytes.rstrip(b"\x00")))
+                    unknown_bytes = b""
                     unknown_start = None
 
                 # Read one byte and save it
                 one_byte = file_.read(1)
-                if unknown_bytes == b'':
+                if unknown_bytes == b"":
                     # Only start a new collection of unknown bytes, if this byte is not a
                     # zero byte
-                    if one_byte != b'\x00':
+                    if one_byte != b"\x00":
                         unknown_bytes = one_byte
                         unknown_start = file_.tell() - 1
                 else:
@@ -564,10 +570,11 @@ class CHFile(object):
 
         # Read the data into a numpy array
         file_.seek(self.data_start)
-        return numpy.fromfile(file_, dtype='<d', count=n_points) * self.metadata['yscaling']
+        return numpy.fromfile(file_, dtype="<d", count=n_points) * self.metadata["yscaling"]
 
     @cached_property
     def times(self):
         """The time values (x-value) for the data set in minutes"""
-        return numpy.linspace(self.metadata['start_time'], self.metadata['end_time'],
-                              len(self.values))
+        return numpy.linspace(
+            self.metadata["start_time"], self.metadata["end_time"], len(self.values)
+        )

@@ -10,65 +10,75 @@ import math
 
 
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
-#PEAK_FIT_WIDTH = 5
+# PEAK_FIT_WIDTH = 5
 
 
 def fit_peak(time, mass, data, fit_values):
-    """ Fit a gaussian peak """
+    """Fit a gaussian peak"""
     values = {}
     center = np.where(data[:, 0] > fit_values[mass])[0][0]
-    values['x'] = data[center - 75:center + 75, 0]
-    values['y'] = data[center - 75:center + 75, 1]
-    center = np.where(values['y'] == max(values['y']))[0][0]
-    fitfunc = lambda p, x: p[0]*math.e**(-1*((x-fit_values[mass]-p[2])**2)/p[1])
-    errfunc = lambda p, x, y: fitfunc(p, x) - y # Distance to the target function
-    p0 = [max(values['y']), 0.00001, 0] # Initial guess for the parameters
+    values["x"] = data[center - 75 : center + 75, 0]
+    values["y"] = data[center - 75 : center + 75, 1]
+    center = np.where(values["y"] == max(values["y"]))[0][0]
+    fitfunc = lambda p, x: p[0] * math.e ** (-1 * ((x - fit_values[mass] - p[2]) ** 2) / p[1])
+    errfunc = lambda p, x, y: fitfunc(p, x) - y  # Distance to the target function
+    p0 = [max(values["y"]), 0.00001, 0]  # Initial guess for the parameters
     try:
-        p1, success = optimize.leastsq(errfunc, p0[:], args=(values['x'], values['y']),
-                                       maxfev=10000)
-    except: # Fit failed
+        p1, success = optimize.leastsq(
+            errfunc, p0[:], args=(values["x"], values["y"]), maxfev=10000
+        )
+    except:  # Fit failed
         p1 = p0
         success = 0
     # Only use the values if fit succeeded and peak has decent height
-    usefull = (p1[0] > 15) and (p1[1] < 1e-3) and (success==1)
+    usefull = (p1[0] > 15) and (p1[1] < 1e-3) and (success == 1)
     if usefull:
         print(p1)
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    ax.plot(values['x'], values['y'], 'k-')
-    ax.plot(values['x'], fitfunc(p1, values['x']), 'r-')
-    ax.plot(values['x'], fitfunc(p0, values['x']), 'c-')
-    #ax.axvline(values['x'][center-PEAK_FIT_WIDTH])
-    #ax.axvline(values['x'][center+PEAK_FIT_WIDTH])
+    ax.plot(values["x"], values["y"], "k-")
+    ax.plot(values["x"], fitfunc(p1, values["x"]), "r-")
+    ax.plot(values["x"], fitfunc(p0, values["x"]), "c-")
+    # ax.axvline(values['x'][center-PEAK_FIT_WIDTH])
+    # ax.axvline(values['x'][center+PEAK_FIT_WIDTH])
     plt.show()
     return usefull, p1
 
+
 def x_axis_fit_func(p, time):
-    #mass = p[1]* pow(time-p[0], p[2])
-    mass = p[1]* pow(time-p[0], 2)
+    # mass = p[1]* pow(time-p[0], p[2])
+    mass = p[1] * pow(time - p[0], 2)
     return mass
 
+
 def fit_x_axis(fit_values):
-    """ Fit a quadratic dependence for the mass versus time relation """
-    errfunc = lambda p, x, y: x_axis_fit_func(p, x) - y # Distance to the target function
-    fit_params = [0.1, 0.1, 2] # Initial guess for the parameters
-    fitted_params, success = optimize.leastsq(errfunc, fit_params[:],
-                                              args=(list(fit_values.values()), list(fit_values.keys())),
-                                              maxfev=10000)
+    """Fit a quadratic dependence for the mass versus time relation"""
+    errfunc = lambda p, x, y: x_axis_fit_func(p, x) - y  # Distance to the target function
+    fit_params = [0.1, 0.1, 2]  # Initial guess for the parameters
+    fitted_params, success = optimize.leastsq(
+        errfunc,
+        fit_params[:],
+        args=(list(fit_values.values()), list(fit_values.keys())),
+        maxfev=10000,
+    )
     return fitted_params
 
+
 def main():
-    """Main function """
+    """Main function"""
     spectrum_number = sys.argv[1]
     print(spectrum_number)
 
-    database = mysql.connector.connect(host="servcinf-sql.fysik.dtu.dk", user="tof",
-                                       passwd="tof", db="cinfdata")
+    database = mysql.connector.connect(
+        host="servcinf-sql.fysik.dtu.dk", user="tof", passwd="tof", db="cinfdata"
+    )
     cursor = database.cursor()
-    cursor.execute("SELECT x * 1000000,y FROM xy_values_tof where measurement = " +
-                   str(spectrum_number))
+    cursor.execute(
+        "SELECT x * 1000000,y FROM xy_values_tof where measurement = " + str(spectrum_number)
+    )
     data = np.array(cursor.fetchall())
 
     fit_values = {}
@@ -109,28 +119,38 @@ def main():
     """
     fig = plt.figure()
     axis = fig.add_subplot(2, 1, 1)
-    axis.plot(list(fit_values.values()), list(fit_values.keys()) -
-              x_axis_fit_func(p1_x_axis, list(fit_values.values())), 'bo')
+    axis.plot(
+        list(fit_values.values()),
+        list(fit_values.keys()) - x_axis_fit_func(p1_x_axis, list(fit_values.values())),
+        "bo",
+    )
     axis = fig.add_subplot(2, 1, 2)
     x_fit = np.arange(0, 45, 0.01)
-    axis.plot(list(fit_values.values()), list(fit_values.keys()), 'bo')
-    axis.plot(x_fit, x_axis_fit_func(p1_x_axis, x_fit), 'k-')
+    axis.plot(list(fit_values.values()), list(fit_values.keys()), "bo")
+    axis.plot(x_fit, x_axis_fit_func(p1_x_axis, x_fit), "k-")
     plt.show()
 
     fig = plt.figure()
     axis = fig.add_subplot(1, 1, 1)
-    axis.plot(x_axis_fit_func(p1_x_axis, data[:, 0]), data[:, 1], 'k-')
+    axis.plot(x_axis_fit_func(p1_x_axis, data[:, 0]), data[:, 1], "k-")
     axis.set_xlim(1, 300)
     print(p1_x_axis)
     plt.show()
 
-    query = ('update measurements_tof set time=time, tof_p1_0=' + str(p1_x_axis[0]) +
-             ', tof_p1_1=' + str(p1_x_axis[1]) + ', tof_p1_2=' + str(p1_x_axis[2]) +
-             ' where id = ' + str(spectrum_number))
-    if sys.argv[2] == 'yes':
+    query = (
+        "update measurements_tof set time=time, tof_p1_0="
+        + str(p1_x_axis[0])
+        + ", tof_p1_1="
+        + str(p1_x_axis[1])
+        + ", tof_p1_2="
+        + str(p1_x_axis[2])
+        + " where id = "
+        + str(spectrum_number)
+    )
+    if sys.argv[2] == "yes":
         print(query)
         cursor.execute(query)
 
-        
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

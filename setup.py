@@ -3,10 +3,6 @@
 
 """Setup file for PyExpLabSys"""
 
-# 19:20 - 20:10
-# 20:40 - 21:20
-# 21:15 - 21:55
-
 import codecs
 import os
 import re

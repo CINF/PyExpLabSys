@@ -60,15 +60,13 @@ LOG.addHandler(logging.NullHandler())
 
 
 # User settings
-if os.environ.get('READTHEDOCS') == 'True':
+if os.environ.get("READTHEDOCS") == "True":
     # Special case for read the docs
-    USERSETTINGS_PATH = Path.cwd().parents[0] / 'bootstrap' / 'user_settings.yaml'
+    USERSETTINGS_PATH = Path.cwd().parents[0] / "bootstrap" / "user_settings.yaml"
 else:
     # Krabbe is the sole responsible person for the MAC check, if it breaks bug him
-    if sys.platform.lower().startswith('linux') or sys.platform.lower() == "darwin":
-        USERSETTINGS_PATH = (
-            Path.home() / '.config' / 'PyExpLabSys' / 'user_settings.yaml'
-        )
+    if sys.platform.lower().startswith("linux") or sys.platform.lower() == "darwin":
+        USERSETTINGS_PATH = Path.home() / ".config" / "PyExpLabSys" / "user_settings.yaml"
     else:
         USERSETTINGS_PATH = None
 
@@ -76,9 +74,9 @@ else:
 def value_str(obj):
     """Return a object and type str or NOT_SET if obj is None"""
     if obj is None:
-        return 'NOT_SET'
+        return "NOT_SET"
     else:
-        return '{} ({})'.format(obj, obj.__class__.__name__)
+        return "{} ({})".format(obj, obj.__class__.__name__)
 
 
 class Settings(object):
@@ -109,7 +107,7 @@ class Settings(object):
     _access_lock = Lock()
 
     def __init__(self):
-        LOG.info('Init')
+        LOG.info("Init")
         with self._access_lock:
             if self.settings is None:
                 self._load_settings()
@@ -120,30 +118,29 @@ class Settings(object):
         This is done when the first Settings object is instantiated
         """
         default_settings = {
-            'sql_server_host': None,
-            'sql_database': None,
-            'common_sql_reader_user': None,
-            'common_sql_reader_password': None,
-            'common_liveserver_host': None,
-            'common_liveserver_port': None,
-            'util_log_warning_email': None,
-            'util_log_error_email': None,
-            'util_log_mail_host': None,
-            'util_log_max_emails_per_period': 5,
-            'util_log_email_throttle_time': 86400,  # 1 day
-            'util_log_backlog_limit': 250
+            "sql_server_host": None,
+            "sql_database": None,
+            "common_sql_reader_user": None,
+            "common_sql_reader_password": None,
+            "common_liveserver_host": None,
+            "common_liveserver_port": None,
+            "util_log_warning_email": None,
+            "util_log_error_email": None,
+            "util_log_mail_host": None,
+            "util_log_max_emails_per_period": 5,
+            "util_log_email_throttle_time": 86400,  # 1 day
+            "util_log_backlog_limit": 250,
         }
 
         user_settings = {}
         if USERSETTINGS_PATH is not None and USERSETTINGS_PATH.exists():
             try:
-                user_settings = yaml.load(USERSETTINGS_PATH.read_text(),
-                                          yaml.SafeLoader)
+                user_settings = yaml.load(USERSETTINGS_PATH.read_text(), yaml.SafeLoader)
             except Exception:
-                LOG.exception('Exception during loading of user settings')
+                LOG.exception("Exception during loading of user settings")
             # FIXME check user_settings keys
         else:
-            msg = 'No user settings found, file %s does not exist or is not readable'
+            msg = "No user settings found, file %s does not exist or is not readable"
             LOG.info(msg, USERSETTINGS_PATH)
 
         self.__class__.settings = ChainMap(user_settings, default_settings)
@@ -155,7 +152,7 @@ class Settings(object):
             if key in self.settings:
                 self.settings[key] = value
             else:
-                msg = 'Only settings that have a default can be set. They are:\n{}'
+                msg = "Only settings that have a default can be set. They are:\n{}"
                 # Pretty format the list of names in the exception
                 raise AttributeError(msg.format(pformat(self.settings_names)))
 
@@ -165,17 +162,17 @@ class Settings(object):
             if key in self.settings:
                 value = self.settings[key]
             else:
-                msg = 'Invalid settings name: {}. Available settings are:\n{}'
+                msg = "Invalid settings name: {}. Available settings are:\n{}"
                 # Pretty format the list of names in the exception
                 raise AttributeError(msg.format(key, pformat(self.settings_names)))
 
             if value is None:
                 msg = (
                     'The setting "{}" is indicated in the defaults as *requiring* a '
-                    'user setting before it can be used. Fill in the value in the '
+                    "user setting before it can be used. Fill in the value in the "
                     'user settings file "{}" or instantiate a '
-                    'PyExpLabSys.settings.Settings object and set the value there, '
-                    '*before* attempting to use it.'
+                    "PyExpLabSys.settings.Settings object and set the value there, "
+                    "*before* attempting to use it."
                 )
                 raise AttributeError(msg.format(key, USERSETTINGS_PATH))
 
@@ -184,7 +181,7 @@ class Settings(object):
     def print_settings(self):
         """Pretty print of all default and user settings"""
         user_settings, default_settings = self.settings.maps
-        print_template = '{{: <{}}}: {{: <{}}}  {{: <{}}}'
+        print_template = "{{: <{}}}: {{: <{}}}  {{: <{}}}"
 
         # Calculate key length
         max_key_length = max(len(str(key)) for key in self.settings)
@@ -205,12 +202,12 @@ class Settings(object):
         )
 
         # Printout the settings
-        print('Settings')
-        print(print_template.format('Key', 'Default', 'User'))
-        print('=' * len(print_template.format('', '', '')))
+        print("Settings")
+        print(print_template.format("Key", "Default", "User"))
+        print("=" * len(print_template.format("", "", "")))
         for key in sorted(self.settings.keys()):
             default = default_strs[key]
-            print(print_template.format(key, default, user_strs.get(key, '')))
+            print(print_template.format(key, default, user_strs.get(key, "")))
 
 
 def main():
@@ -227,5 +224,5 @@ def main():
     settings.print_settings()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

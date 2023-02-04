@@ -24,13 +24,15 @@ if len(sys.argv) == 2:
 else:
     points = 50
 
-HOSTNAME = 'rasppi98'
-SOCKETNAME = 'omicron_pvci_pull'
-CODENAME = 'omicron_prep_pressure'
+HOSTNAME = "rasppi98"
+SOCKETNAME = "omicron_pvci_pull"
+CODENAME = "omicron_prep_pressure"
 LOGSCALE = False
+
 
 class DataClient(threading.Thread):
     """Maintain a numpy queue of newest `size` data points"""
+
     def __init__(self, hostname, socketname, codename, size=100):
         """Initialize"""
         threading.Thread.__init__(self)
@@ -80,6 +82,7 @@ class DataClient(threading.Thread):
             status = False
         return self.values[index], status
 
+
 # Setup communication with data socket
 client = DataClient(HOSTNAME, SOCKETNAME, CODENAME, size=100)
 client.start()
@@ -99,21 +102,23 @@ t_start = time.time()
 try:
     # Create the Curses Ascii Plotter
     ap = CursesAsciiPlot(
-        win, title="Logging: {}/{}/{}".format(HOSTNAME, SOCKETNAME, CODENAME), xlabel="Time [s]",
+        win,
+        title="Logging: {}/{}/{}".format(HOSTNAME, SOCKETNAME, CODENAME),
+        xlabel="Time [s]",
         logscale=LOGSCALE,
     )
     # Plot the sine to time since start and 10 sec a head
     while True:
-        #stdscr.clear() # Only neccessary if characters on a line isn't completely overwritten
+        # stdscr.clear() # Only neccessary if characters on a line isn't completely overwritten
         t0 = time.time() - t_start
         # Write the time right now to the main window
-        stdscr.addstr(1, 3, 'T0: {:.2f}       '.format(t0))
+        stdscr.addstr(1, 3, "T0: {:.2f}       ".format(t0))
         stdscr.refresh()
         values, new = client.get_values()
         if new:
             x = values[:, 0]
             y = values[:, 1]
-            stdscr.addstr(2, 3, 'T: {:.2f}s   Last value: {}       '.format(x[-1], y[-1]))
+            stdscr.addstr(2, 3, "T: {:.2f}s   Last value: {}       ".format(x[-1], y[-1]))
             stdscr.refresh()
             ap.plot(x, y, legend="Data")
         time.sleep(0.2)

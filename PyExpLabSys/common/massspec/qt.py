@@ -5,8 +5,9 @@ lists
 from PyQt4 import QtGui, QtCore
 from channel import Channel
 
+
 class QtMSChannel(object):
-    """ Mass spectrometer channel including separate widgets to change the
+    """Mass spectrometer channel including separate widgets to change the
     values. These widgets are meant to be included separately in a grid.
 
     The widget defined are:
@@ -20,12 +21,12 @@ class QtMSChannel(object):
     """
 
     def __init__(self, parent, channel):
-        """ Initialize the QtMSChannel """
+        """Initialize the QtMSChannel"""
         # Instantiate ???
         self._channel = channel
         # Initialize widgets
-        self._gui = {'active': QtGui.QCheckBox('Active', parent)}
+        self._gui = {"active": QtGui.QCheckBox("Active", parent)}
 
     def gui(self, name):
-        """ Return the GUI component with the given name """
+        """Return the GUI component with the given name"""
         return self._gui[name]

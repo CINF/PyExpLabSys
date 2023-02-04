@@ -3,30 +3,30 @@ import smbus
 
 
 class XP_HPA_PS(object):
-    def __init__(self, i2c_address=0x5f):
+    def __init__(self, i2c_address=0x5F):
         self.bus = smbus.SMBus(1)
         self.bus.pec = True  # Enable PEC-check, is this good?
         self.device_address = i2c_address
 
     def read_manufacturer(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x99, 16)
-        return_string = ''
+        return_string = ""
         for char in data:
             return_string += chr(char)
         return_string = return_string.strip()
         return return_string
 
     def read_model(self):
-        data = self.bus.read_i2c_block_data(self.device_address, 0x9a, 32)
-        return_string = ''
+        data = self.bus.read_i2c_block_data(self.device_address, 0x9A, 32)
+        return_string = ""
         for char in data:
             return_string += chr(char)
         return_string = return_string.strip()
         return return_string
 
     def read_serial_nr(self):
-        data = self.bus.read_i2c_block_data(self.device_address, 0x9e, 16)
-        return_string = ''
+        data = self.bus.read_i2c_block_data(self.device_address, 0x9E, 16)
+        return_string = ""
         for char in data:
             return_string += chr(char)
         return_string = return_string.strip()
@@ -40,11 +40,11 @@ class XP_HPA_PS(object):
         temperature1 = 0
         if read_all:
             # Temperature sensor 1 - secondary
-            data = self.bus.read_i2c_block_data(self.device_address, 0x8d, 2)
+            data = self.bus.read_i2c_block_data(self.device_address, 0x8D, 2)
             temperature1 = 256 * data[1] + data[0]
 
         # Temperature sensor 2 - primary
-        data = self.bus.read_i2c_block_data(self.device_address, 0x8e, 2)
+        data = self.bus.read_i2c_block_data(self.device_address, 0x8E, 2)
         temperature2 = 256 * data[1] + data[0]
         return (temperature1, temperature2)
 
@@ -61,7 +61,7 @@ class XP_HPA_PS(object):
         mantissa = data[0] + high_mantissa
         if exp > 16:
             exp = exp - 2**5
-        value = 1.0 * mantissa * 2 ** exp
+        value = 1.0 * mantissa * 2**exp
         return value
 
     def read_fan_speeds(self):
@@ -77,20 +77,17 @@ class XP_HPA_PS(object):
         fault_limit = self._decode_linear(data)
         data = self.bus.read_i2c_block_data(self.device_address, 0x88, 2)
         v_in = self._decode_linear(data)
-        return_value = {
-            'fault_limit': fault_limit,
-            'v_in': v_in
-        }
+        return_value = {"fault_limit": fault_limit, "v_in": v_in}
         return return_value
 
     def read_actual_voltage(self):
-        data = self.bus.read_i2c_block_data(self.device_address, 0x8b, 2)
+        data = self.bus.read_i2c_block_data(self.device_address, 0x8B, 2)
         # print('Actual voltage readback: {}'.format(data))
         voltage = (256 * data[1] + data[0]) / 1024.0
         return voltage
 
     def read_actual_current(self):
-        data = self.bus.read_i2c_block_data(self.device_address, 0x8c, 2)
+        data = self.bus.read_i2c_block_data(self.device_address, 0x8C, 2)
         current = self._decode_linear(data)
         return current
 
@@ -104,7 +101,7 @@ class XP_HPA_PS(object):
         bits = bin(data[0])[2:].zfill(8)
         length = len(error_list)
         for i in range(0, length):
-            if bits[length - 1 - i] == '1':
+            if bits[length - 1 - i] == "1":
                 actual_errors.append(error_list[i])
         return actual_errors
 
@@ -113,51 +110,86 @@ class XP_HPA_PS(object):
         Fast combined status read, will give a rough overview.
         """
         error_values = [
-            'NONE_OF_THE_ABOVE', 'CML', 'TEMPERATURE', 'VIN_UV_FAULT',
-            'IOUT_OC_FAULT', 'VOUT_OV_FAULT', 'OFF', 'BUSY'
+            "NONE_OF_THE_ABOVE",
+            "CML",
+            "TEMPERATURE",
+            "VIN_UV_FAULT",
+            "IOUT_OC_FAULT",
+            "VOUT_OV_FAULT",
+            "OFF",
+            "BUSY",
         ]
         actual_errors = self._common_status_read(0x78, error_values)
         return actual_errors
 
     def read_voltage_out_status(self):
         error_values = [
-            'Not used', 'Not used', 'Not used', 'Not used', 'VOUT_UV_FAULT',
-            'VOUT_UV_WARNING', 'VOUT_OV_WARNING', 'VOUT_OV_FAULT'
+            "Not used",
+            "Not used",
+            "Not used",
+            "Not used",
+            "VOUT_UV_FAULT",
+            "VOUT_UV_WARNING",
+            "VOUT_OV_WARNING",
+            "VOUT_OV_FAULT",
         ]
-        actual_errors = self._common_status_read(0x7a, error_values)
+        actual_errors = self._common_status_read(0x7A, error_values)
         return actual_errors
 
     def read_current_out_status(self):
         error_values = [
-            'Not used', 'Not used', 'IN_POWER_LIMIT', 'Not used', 'Not used',
-            'IOUT_OC_WARNING', 'IOUT_OC_LV_FAULT', 'OUT_OC_FAULT'
+            "Not used",
+            "Not used",
+            "IN_POWER_LIMIT",
+            "Not used",
+            "Not used",
+            "IOUT_OC_WARNING",
+            "IOUT_OC_LV_FAULT",
+            "OUT_OC_FAULT",
         ]
-        actual_errors = self._common_status_read(0x7b, error_values)
+        actual_errors = self._common_status_read(0x7B, error_values)
         return actual_errors
 
     def read_ac_input_status(self):
         error_values = [
-            'Not used', 'Not used', 'Not used', 'Not used', 'VIN_UV_FAULT',
-            'VIN_UV_WARNING', 'VIN_OV_WARNING', 'VIN_OV_FAULT'
+            "Not used",
+            "Not used",
+            "Not used",
+            "Not used",
+            "VIN_UV_FAULT",
+            "VIN_UV_WARNING",
+            "VIN_OV_WARNING",
+            "VIN_OV_FAULT",
         ]
-        actual_errors = self._common_status_read(0x7c, error_values)
+        actual_errors = self._common_status_read(0x7C, error_values)
         return actual_errors
 
     def read_temperature_status(self):
         error_values = [
-            'OT_PRELOAD', 'Not used', 'Not used', 'Not used', 'Not used',
-            'Not used', 'OT_WARNING', 'OT_FAULT'
+            "OT_PRELOAD",
+            "Not used",
+            "Not used",
+            "Not used",
+            "Not used",
+            "Not used",
+            "OT_WARNING",
+            "OT_FAULT",
         ]
-        actual_errors = self._common_status_read(0x7d, error_values)
+        actual_errors = self._common_status_read(0x7D, error_values)
         return actual_errors
 
     def read_communication_status(self):
         error_values = [
-            'MEM_LOGIC_FAULT', 'OTHER_CML_FAULT', 'Reserved - Not used',
-            'MCU_FAULT', 'MEMORY_FAULT', 'PEC_FAILED', 'INVALID_DATA',
-            'INVALID_COMMAND'
+            "MEM_LOGIC_FAULT",
+            "OTHER_CML_FAULT",
+            "Reserved - Not used",
+            "MCU_FAULT",
+            "MEMORY_FAULT",
+            "PEC_FAILED",
+            "INVALID_DATA",
+            "INVALID_COMMAND",
         ]
-        actual_errors = self._common_status_read(0x7e, error_values)
+        actual_errors = self._common_status_read(0x7E, error_values)
         return actual_errors
 
     # 0x81 Fans 1 and 2
@@ -165,30 +197,30 @@ class XP_HPA_PS(object):
 
     def read_user_configuration(self):
         values = [
-            'CFG_CURRENT_SOFTSTART_ENABLE',
-            'CFG_FAST_SOFTSTART_DISABLE',
-            'CFG_PRELOAD_DISABLE',
-            'CFG_FAN_OFF',
-            'CFG_ACOK_SIG_LOGIC',
-            'CFG_DCOK_SIG_LOGIC',
-            'Reserved',
-            'CFG_FAN_TEMP_OK_SIG_LOGIC',
-            'CFG_SYNC_PWR_ON',
-            'CFG_REMOTE_INHIBIT_LOGIC',
-            'CFG_POTENTIOMETER_DISABLE',
-            'CFG_POTENTIOMETER_FULL_ADJ',
-            'CFG_ANALOG_PROG',
-            'CFG_DISABLE_IPROG',
-            'CFG_DISABLE_VPROG',
-            'CFG_NO_PRELOAD_IN_SD'
+            "CFG_CURRENT_SOFTSTART_ENABLE",
+            "CFG_FAST_SOFTSTART_DISABLE",
+            "CFG_PRELOAD_DISABLE",
+            "CFG_FAN_OFF",
+            "CFG_ACOK_SIG_LOGIC",
+            "CFG_DCOK_SIG_LOGIC",
+            "Reserved",
+            "CFG_FAN_TEMP_OK_SIG_LOGIC",
+            "CFG_SYNC_PWR_ON",
+            "CFG_REMOTE_INHIBIT_LOGIC",
+            "CFG_POTENTIOMETER_DISABLE",
+            "CFG_POTENTIOMETER_FULL_ADJ",
+            "CFG_ANALOG_PROG",
+            "CFG_DISABLE_IPROG",
+            "CFG_DISABLE_VPROG",
+            "CFG_NO_PRELOAD_IN_SD",
         ]
         # Consider to extend _common_status_read() to handle this
         actual_settings = []
-        data = self.bus.read_i2c_block_data(self.device_address, 0xd6, 2)
+        data = self.bus.read_i2c_block_data(self.device_address, 0xD6, 2)
         data_sum = data[1] * 256 + data[0]
         bits = bin(data_sum)[2:].zfill(16)
         for i in range(0, 16):
-            if bits[16 - 1 - i] == '1':
+            if bits[16 - 1 - i] == "1":
                 actual_settings.append(values[i])
         return actual_settings
 
@@ -202,10 +234,9 @@ class XP_HPA_PS(object):
             bits += 2**index
         return bits
 
-    def configure_user_settings(
-            self, cfg_fan_off=None, cfg_remote_inhibit_logic=None):
+    def configure_user_settings(self, cfg_fan_off=None, cfg_remote_inhibit_logic=None):
         # Read current state
-        data = self.bus.read_i2c_block_data(self.device_address, 0xd6, 2)
+        data = self.bus.read_i2c_block_data(self.device_address, 0xD6, 2)
         data_sum = data[1] * 256 + data[0]
 
         if cfg_fan_off is not None:
@@ -217,7 +248,7 @@ class XP_HPA_PS(object):
         high_byte = data_sum >> 8
         low_byte = data_sum % 256
         data = [low_byte, high_byte]
-        self.bus.write_i2c_block_data(self.device_address, 0xd6, data)
+        self.bus.write_i2c_block_data(self.device_address, 0xD6, data)
 
     def operation(self, turn_on=False, turn_off=False):
         """
@@ -280,38 +311,38 @@ class XP_HPA_PS(object):
         self.bus.write_i2c_block_data(self.device_address, 0x46, data)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     xp = XP_HPA_PS()
     xp.write_enable()
     # xp.store_user_all()
     xp.operation(turn_on=True)
     xp.clear_errors()
 
-    print('Comm status: {}'.format(xp.read_communication_status()))
+    print("Comm status: {}".format(xp.read_communication_status()))
     # xp.configure_user_settings(cfg_fan_off=True)
     # xp.configure_user_settings(cfg_remote_inhibit_logic=False)
-    print('User configuration: {}'.format(xp.read_user_configuration()))
-    print('Comm status: {}'.format(xp.read_communication_status()))
-    print('Voltage output status: {}'.format(xp.read_voltage_out_status()))
-    print('Manufacturer: {}'.format(xp.read_manufacturer()))
-    print('Model: {}'.format(xp.read_model()))
-    print('Serial: {}'.format(xp.read_serial_nr()))
+    print("User configuration: {}".format(xp.read_user_configuration()))
+    print("Comm status: {}".format(xp.read_communication_status()))
+    print("Voltage output status: {}".format(xp.read_voltage_out_status()))
+    print("Manufacturer: {}".format(xp.read_manufacturer()))
+    print("Model: {}".format(xp.read_model()))
+    print("Serial: {}".format(xp.read_serial_nr()))
     temps = xp.read_temperatures()
-    print('Primary temp sensor: {}C. Secondary: {}C'.format(temps[1], temps[0]))
+    print("Primary temp sensor: {}C. Secondary: {}C".format(temps[1], temps[0]))
 
-    print('Fan speeds: {}'.format(xp.read_fan_speeds()))
-    print('Input voltage: {}'.format(xp.read_input_voltage()))
+    print("Fan speeds: {}".format(xp.read_fan_speeds()))
+    print("Input voltage: {}".format(xp.read_input_voltage()))
 
     xp.set_voltage(1)
     xp.set_current(1)
     # xp.set_voltage(0.5)
 
     time.sleep(1)
-    print('PS Voltage: {}V'.format(xp.read_actual_voltage()))
-    print('PS Current: {}A'.format(xp.read_actual_current()))
+    print("PS Voltage: {}V".format(xp.read_actual_voltage()))
+    print("PS Current: {}A".format(xp.read_actual_current()))
     print()
-    print('Status byte: {}'.format(xp.read_status_byte()))
-    print('Voltage output status: {}'.format(xp.read_voltage_out_status()))
-    print('Current output status: {}'.format(xp.read_current_out_status()))
-    print('Comm status: {}'.format(xp.read_communication_status()))
+    print("Status byte: {}".format(xp.read_status_byte()))
+    print("Voltage output status: {}".format(xp.read_voltage_out_status()))
+    print("Current output status: {}".format(xp.read_current_out_status()))
+    print("Comm status: {}".format(xp.read_communication_status()))
     print()

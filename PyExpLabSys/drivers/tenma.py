@@ -27,6 +27,7 @@ from functools import wraps
 from serial import Serial
 
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Mark this module as supporting both Python 2 and 3
 python2_and_3(__file__)
 
@@ -55,8 +56,12 @@ class TenmaBase(Serial):
                 command, to make sure that the device is ready for another one. Defaults
                 to 0.1, but quick tests suggest that 0.05 might be enough.
         """
-        LOG.info('%s init on device: %s, sleep_after_command=%s', self.__class__.__name__,
-                 device, sleep_after_command)
+        LOG.info(
+            "%s init on device: %s, sleep_after_command=%s",
+            self.__class__.__name__,
+            device,
+            sleep_after_command,
+        )
         super(TenmaBase, self).__init__(device)
         self.sleep_after_command = sleep_after_command
 
@@ -68,16 +73,16 @@ class TenmaBase(Serial):
             decode_reply (bool): (Optional) Whether the reply should be utf-8 decoded to
                 return a unicode object
         """
-        LOG.debug('Send command: %s', command)
-        self.write(command.encode('utf-8'))
+        LOG.debug("Send command: %s", command)
+        self.write(command.encode("utf-8"))
         sleep(self.sleep_after_command)
-        if command.endswith('?'):
+        if command.endswith("?"):
             reply = self.read(self.in_waiting)
             if decode_reply:
-                reply = reply.decode('utf-8')  # pylint: disable=redefined-variable-type
-                LOG.debug('Got (utf-8) decoded reply: %s', repr(reply))
+                reply = reply.decode("utf-8")  # pylint: disable=redefined-variable-type
+                LOG.debug("Got (utf-8) decoded reply: %s", repr(reply))
             else:
-                LOG.debug('Got reply: %s', repr(reply))
+                LOG.debug("Got reply: %s", repr(reply))
             return reply
 
     # Spec command 1
@@ -87,8 +92,8 @@ class TenmaBase(Serial):
         Args:
             current (float): The current to set
         """
-        LOG.debug('set_current called with: %s', current)
-        self.com('ISET1:{:.3f}'.format(current))
+        LOG.debug("set_current called with: %s", current)
+        self.com("ISET1:{:.3f}".format(current))
 
     # Spec command 2
     def get_current(self):
@@ -97,8 +102,8 @@ class TenmaBase(Serial):
         Returns:
             float: The current setpoint
         """
-        LOG.debug('get_current called')
-        current_reply = self.com('ISET1?')
+        LOG.debug("get_current called")
+        current_reply = self.com("ISET1?")
         return float(current_reply.strip())
 
     # Spec command 3
@@ -108,8 +113,8 @@ class TenmaBase(Serial):
         Args:
             voltage (float): The voltage to set
         """
-        LOG.debug('set_voltage called with: %s', voltage)
-        self.com('VSET1:{:.2f}'.format(voltage))
+        LOG.debug("set_voltage called with: %s", voltage)
+        self.com("VSET1:{:.2f}".format(voltage))
 
     # Spec command 4
     def get_voltage(self):
@@ -119,8 +124,8 @@ class TenmaBase(Serial):
         Returns:
             float: The voltage setpoint
         """
-        LOG.debug('get_voltage called')
-        voltage_reply = self.com('VSET1?')
+        LOG.debug("get_voltage called")
+        voltage_reply = self.com("VSET1?")
         return float(voltage_reply.strip())
 
     # Spec command 5
@@ -130,8 +135,8 @@ class TenmaBase(Serial):
         Returns:
             float: The actual current
         """
-        LOG.debug('get_actual_current called')
-        current_reply = self.com('IOUT1?')
+        LOG.debug("get_actual_current called")
+        current_reply = self.com("IOUT1?")
         return float(current_reply.strip())
 
     # Spec command 6
@@ -141,8 +146,8 @@ class TenmaBase(Serial):
         Returns:
             float: The actual coltage
         """
-        LOG.debug('get_actual_voltage called')
-        voltage_reply = self.com('VOUT1?')
+        LOG.debug("get_actual_voltage called")
+        voltage_reply = self.com("VOUT1?")
         return float(voltage_reply.strip())
 
     # Spec command 7
@@ -151,8 +156,8 @@ class TenmaBase(Serial):
 
         on_off (bool): The beep status to set
         """
-        LOG.debug('set_beep called with: %s', on_off)
-        self.com('BEEP' + ('1' if on_off else '0'))
+        LOG.debug("set_beep called with: %s", on_off)
+        self.com("BEEP" + ("1" if on_off else "0"))
 
     # Spec command 8
     def set_output(self, on_off):
@@ -160,8 +165,8 @@ class TenmaBase(Serial):
 
         on_off (bool): The otput status to set
         """
-        LOG.debug('set_output called with: %s', on_off)
-        self.com('OUT' + ('1' if on_off else '0'))
+        LOG.debug("set_output called with: %s", on_off)
+        self.com("OUT" + ("1" if on_off else "0"))
 
     # Spec command 9
     def status(self):
@@ -181,22 +186,22 @@ class TenmaBase(Serial):
         Returns:
             dict: See fields specification above
         """
-        LOG.debug('status called')
-        status_byte = ord(self.com('STATUS?', decode_reply=False))
+        LOG.debug("status called")
+        status_byte = ord(self.com("STATUS?", decode_reply=False))
         # Convert to binary representation, zeropad and reverse
-        status_bitstring = '{:0>8b}'.format(status_byte)[::-1]
+        status_bitstring = "{:0>8b}".format(status_byte)[::-1]
 
         # Form a status dict
         status = {
-            'channel1_mode': 'CV' if status_bitstring[0] == '1' else 'CC',
-            'channel2_mode': 'CV' if status_bitstring[1] == '1' else 'CC',
-            'beep_on': status_bitstring[4] == '1',
-            'lock_on': status_bitstring[5] == '1',
-            'output_on': status_bitstring[6] == '1',
+            "channel1_mode": "CV" if status_bitstring[0] == "1" else "CC",
+            "channel2_mode": "CV" if status_bitstring[1] == "1" else "CC",
+            "beep_on": status_bitstring[4] == "1",
+            "lock_on": status_bitstring[5] == "1",
+            "output_on": status_bitstring[6] == "1",
         }
-        tracking_bits = status_bitstring[2: 4]
-        tracking_translation = {'00': 'Independent', '01': 'Series', '11': 'Parallel'}
-        status['tracking_status'] = tracking_translation[tracking_bits]
+        tracking_bits = status_bitstring[2:4]
+        tracking_translation = {"00": "Independent", "01": "Series", "11": "Parallel"}
+        status["tracking_status"] = tracking_translation[tracking_bits]
         return status
 
     # Spec command 10
@@ -206,8 +211,8 @@ class TenmaBase(Serial):
         Returns:
             str: E.g: 'TENMA 72-2535 V2.0'
         """
-        LOG.debug('get_identification called')
-        return self.com('*IDN?')
+        LOG.debug("get_identification called")
+        return self.com("*IDN?")
 
     # Spec command 11
     def recall_memory(self, memory_number):
@@ -221,11 +226,11 @@ class TenmaBase(Serial):
         Raises:
             ValueError: On invalid memory_number
         """
-        LOG.debug('recall_memory called with: %s', memory_number)
+        LOG.debug("recall_memory called with: %s", memory_number)
         if memory_number not in range(1, 6):
-            msg = 'Memory number must be int in range: {}'
+            msg = "Memory number must be int in range: {}"
             raise ValueError(msg.format(list(range(1, 6))))
-        self.com('RCL{}'.format(memory_number))
+        self.com("RCL{}".format(memory_number))
 
     # Spec command 12
     def save_memory(self, memory_number):
@@ -241,11 +246,11 @@ class TenmaBase(Serial):
             ValueError: On invalid memory_number
 
         """
-        LOG.debug('save_memory called with: %s', memory_number)
+        LOG.debug("save_memory called with: %s", memory_number)
         if memory_number not in range(1, 6):
-            msg = 'Memory number must be int in range: {}'
+            msg = "Memory number must be int in range: {}"
             raise ValueError(msg.format(list(range(1, 6))))
-        self.com('SAV{}'.format(memory_number))
+        self.com("SAV{}".format(memory_number))
 
     # Spec command 13
     def set_overcurrent_protection(self, on_off):
@@ -254,8 +259,8 @@ class TenmaBase(Serial):
         Args:
             on_off (bool): The overcurrent protection mode to set
         """
-        LOG.debug('set_overcurrent_protection called with: %s', on_off)
-        self.com('OCP' + ('1' if on_off else '0'))
+        LOG.debug("set_overcurrent_protection called with: %s", on_off)
+        self.com("OCP" + ("1" if on_off else "0"))
 
     # Spec command 14
     def set_overvoltage_protection(self, on_off):
@@ -266,8 +271,8 @@ class TenmaBase(Serial):
         Args:
             on_off (bool): The overvoltage protection mode to set
         """
-        LOG.debug('set_overvoltage_protection called with: %s', on_off)
-        self.com('OVP' + ('1' if on_off else '0'))
+        LOG.debug("set_overvoltage_protection called with: %s", on_off)
+        self.com("OVP" + ("1" if on_off else "0"))
 
 
 class Tenma722535(TenmaBase):
@@ -287,26 +292,26 @@ def main():
     logging.basicConfig(level=logging.INFO)
     from random import random
 
-    device = '/dev/serial/by-id/usb-USB_Vir_USB_Virtual_COM_NT2009101400-if00'
+    device = "/dev/serial/by-id/usb-USB_Vir_USB_Virtual_COM_NT2009101400-if00"
     tenma = Tenma722535(device)
-    print('ID:', tenma.get_identification())
-    print('Status:', tenma.status())
+    print("ID:", tenma.get_identification())
+    print("Status:", tenma.status())
 
     current = random()
-    print('\nSet current to:', current)
+    print("\nSet current to:", current)
     tenma.set_current(current)
-    print('Read current', tenma.get_current())
+    print("Read current", tenma.get_current())
 
     voltage = random()
-    print('\nSet voltage to:', voltage)
+    print("\nSet voltage to:", voltage)
     tenma.set_voltage(voltage)
-    print('Read voltage', tenma.get_voltage())
+    print("Read voltage", tenma.get_voltage())
 
     tenma.set_output(True)
-    print('\nActual current:', tenma.get_actual_current())
-    print('Actual voltage:', tenma.get_actual_voltage())
+    print("\nActual current:", tenma.get_actual_current())
+    print("Actual voltage:", tenma.get_actual_voltage())
 
-    print('\nOvercurrent and overvoltage protection, watch the LEDS switch')
+    print("\nOvercurrent and overvoltage protection, watch the LEDS switch")
     tenma.set_overcurrent_protection(True)
     sleep(0.5)
     tenma.set_overcurrent_protection(False)
@@ -315,14 +320,14 @@ def main():
     sleep(0.5)
     tenma.set_overvoltage_protection(False)
 
-    print('\nSpeed test')
+    print("\nSpeed test")
     t0 = time()
     for _ in range(10):
         value = tenma.get_voltage()
         now = time()
-        print('Voltage:', value, 'read speed', now - t0, end=' ')
+        print("Voltage:", value, "read speed", now - t0, end=" ")
         t0 = now
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

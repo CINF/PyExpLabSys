@@ -3,8 +3,9 @@ import smbus
 
 
 class SparkFunQuadRelay:
-    """Driver for the QWIIC SparkFun Quad Relay """
-    def __init__(self, address=0x6d):
+    """Driver for the QWIIC SparkFun Quad Relay"""
+
+    def __init__(self, address=0x6D):
         # Get I2C bus
         self.bus = smbus.SMBus(1)
         self.device_address = address
@@ -23,7 +24,7 @@ class SparkFunQuadRelay:
         return reply > 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     relay = SparkFunQuadRelay()
 
     relay.set_relay(4, False)

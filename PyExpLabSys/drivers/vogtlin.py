@@ -21,21 +21,21 @@ import minimalmodbus
 
 
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
-
 DEFAULT_COM_KWARGS = {
-    'BAUDRATE': 9600,
-    'BYTESIZE': 8,
-    'STOPBITS': 2,
-    'PARITY': serial.PARITY_NONE,
+    "BAUDRATE": 9600,
+    "BYTESIZE": 8,
+    "STOPBITS": 2,
+    "PARITY": serial.PARITY_NONE,
 }
 
 
 def process_string(value):
     """Strip a few non-ascii characters from string"""
-    return value.strip('\x00\x16')
+    return value.strip("\x00\x16")
 
 
 def convert_version(value):
@@ -45,7 +45,7 @@ def convert_version(value):
     value = value % 256
     version = value // 16
     subversion = value % 16
-    return '{}.{}.{}'.format(type_, version, subversion)
+    return "{}.{}.{}".format(type_, version, subversion)
 
 
 class RedFlowMeter(object):
@@ -55,26 +55,25 @@ class RedFlowMeter(object):
     # name: (minimalmodbus_method, conversion_function), method_args...)
     # The command is generate from pages 1.14 and 1.15 from the manual
     command_map = {
-        'flow': (('read_float', None), 0x00),
-        'temperature': (('read_float', None), 0x02),
-        'address': (('read_register', None), 0x0013),
-        'serial': (('read_long', None), 0x001e),
-        'hardware_version': (('read_register', convert_version), 0x0020),
-        'software_version': (('read_register', convert_version), 0x0021),
-        'type_code_1': (('read_string', process_string), 0x0023, 4),
-        'type_code_2h': (('read_string', process_string), 0x1004, 4),
-        'lut_select': (('read_register', None), 0x4139),
-        'range': (('read_float', None), 0x6020),
-        'fluid_name': (('read_string', process_string), 0x6042, 4),
-        'unit': (('read_string', process_string), 0x6046, 4),
-        'control_function': (('read_register', None), 0x000e),
+        "flow": (("read_float", None), 0x00),
+        "temperature": (("read_float", None), 0x02),
+        "address": (("read_register", None), 0x0013),
+        "serial": (("read_long", None), 0x001E),
+        "hardware_version": (("read_register", convert_version), 0x0020),
+        "software_version": (("read_register", convert_version), 0x0021),
+        "type_code_1": (("read_string", process_string), 0x0023, 4),
+        "type_code_2h": (("read_string", process_string), 0x1004, 4),
+        "lut_select": (("read_register", None), 0x4139),
+        "range": (("read_float", None), 0x6020),
+        "fluid_name": (("read_string", process_string), 0x6042, 4),
+        "unit": (("read_string", process_string), 0x6046, 4),
+        "control_function": (("read_register", None), 0x000E),
     }
     # The command map for set operations consists of
     # name: (minimalmodbus_method, conversion_function, address)
     command_map_set = {
-        'setpoint_gas_flow': ('write_float', None, 0x0006),
+        "setpoint_gas_flow": ("write_float", None, 0x0006),
     }
-
 
     def __init__(self, port, slave_address, **serial_com_kwargs):
         """Initialize driver
@@ -100,7 +99,7 @@ class RedFlowMeter(object):
 
     def _ensure_waittime(self):
         """Ensure waittime"""
-        waittime = 0.004 / 9600 * self.serial_com_kwargs['BAUDRATE']
+        waittime = 0.004 / 9600 * self.serial_com_kwargs["BAUDRATE"]
         time_to_sleep = waittime - (time() - self._last_call)
         if time_to_sleep > 0:
             sleep(time_to_sleep)
@@ -137,16 +136,28 @@ class RedFlowMeter(object):
                     value = conversion_function(value)
                 break
             except IOError as e:
-                print("I/O error({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                print(
+                    "I/O error({}): {}. Trying to retrieve data again..".format(
+                        retry_number, e
+                    )
+                )
                 sleep(0.5)
                 continue
             except ValueError as e:
-                print("ValueError({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                print(
+                    "ValueError({}): {}. Trying to retrieve data again..".format(
+                        retry_number, e
+                    )
+                )
                 sleep(0.5)
                 continue
         else:
-            raise RuntimeError('Could not retrieve data in\
-                                       {} retries'.format(self.number_of_retries))
+            raise RuntimeError(
+                "Could not retrieve data in\
+                                       {} retries".format(
+                    self.number_of_retries
+                )
+            )
         # Set last call time
         self._last_call = time()
 
@@ -192,11 +203,11 @@ class RedFlowMeter(object):
 
     def read_flow(self):
         """Return the current flow (alias for read_value('flow')"""
-        return self.read_value('flow')
+        return self.read_value("flow")
 
     def read_temperature(self):
         """Return the current temperature"""
-        return self.read_value('temperature')
+        return self.read_value("temperature")
 
     def set_address(self, address):
         """Set the modbus address
@@ -208,20 +219,21 @@ class RedFlowMeter(object):
             ValueError: On invalid address
         """
         if not (isinstance(address, int) and address in range(1, 248)):
-            msg = 'Invalid address: {}. Must be in range 1-247'
+            msg = "Invalid address: {}. Must be in range 1-247"
             raise ValueError(msg.format(address))
         self.instrument.address = address
 
 
 def main():
     # COM4, address 2 and 247
-    flow_meter = RedFlowMeter('COM8', 42)
+    flow_meter = RedFlowMeter("COM8", 42)
     from pprint import pprint
+
     pprint(flow_meter.read_all())
-    flow_meter.write_value('setpoint_gas_flow', 0.0)
-    #flow_meter.set_address(247)
-    #pprint(flow_meter.read_all())
+    flow_meter.write_value("setpoint_gas_flow", 0.0)
+    # flow_meter.set_address(247)
+    # pprint(flow_meter.read_all())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -89,6 +89,7 @@ from __future__ import print_function
 from xml.etree import ElementTree as ET
 import codecs
 import logging
+
 _LOG = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 _LOG.addHandler(logging.NullHandler())
@@ -96,20 +97,23 @@ import numpy as np
 import six
 from PyExpLabSys.thirdparty.cached_property import cached_property
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 if six.PY3:
     long = int
 
 
-UNHANDLED_XML_COMPONENTS = 'An unhandled XML component \'{}\' was found when '\
-                           'parsing a \'{}\''
+UNHANDLED_XML_COMPONENTS = "An unhandled XML component '{}' was found when " "parsing a '{}'"
 # Used in the conversion of elements with type information
 XML_TYPES = {
-    'string': six.text_type, 'ulong': long, 'double': float, 'boolean': bool,
-    'long': long,
+    "string": six.text_type,
+    "ulong": long,
+    "double": float,
+    "boolean": bool,
+    "long": long,
 }
-ARRAY_TYPES = {'ulong': 'uint64', 'double': 'double'}
+ARRAY_TYPES = {"ulong": "uint64", "double": "double"}
 EXCEPTION_ON_UNHANDLED = True
 
 
@@ -164,35 +168,31 @@ def simple_convert(element):
     if element.text is None:
         out = None
     # parse array
-    elif '\n' in element.text and element.tag in ARRAY_TYPES.keys():
-        out = np.fromstring(element.text, dtype=ARRAY_TYPES[element.tag],
-                            sep='\n')
+    elif "\n" in element.text and element.tag in ARRAY_TYPES.keys():
+        out = np.fromstring(element.text, dtype=ARRAY_TYPES[element.tag], sep="\n")
     # parse simple type
     elif element.tag in XML_TYPES.keys():
         out = XML_TYPES[element.tag](element.text)
     # parse struct
-    elif element.tag == 'struct':
-        out = {e.attrib['name']: simple_convert(e) for e in element}
+    elif element.tag == "struct":
+        out = {e.attrib["name"]: simple_convert(e) for e in element}
     # parse sequence
-    elif element.tag == 'sequence':
+    elif element.tag == "sequence":
         out = [simple_convert(e) for e in element]
     # parse any
-    elif element.tag == 'any':
+    elif element.tag == "any":
         if len(element) == 0:
             out = None
         elif len(element) == 1:
             out = simple_convert(element[0])
         else:
-            raise ValueError(
-                'Unexpected number of \'any\' children {}'.format(len(element))
-            )
+            raise ValueError("Unexpected number of 'any' children {}".format(len(element)))
     # parse enum
-    elif element.tag == 'enum':
+    elif element.tag == "enum":
         out = element.text
     # I don't know what to do
     else:
-        message = 'Unknown tag type {} with value:\n{}'.format(
-            element.tag, element.text)
+        message = "Unknown tag type {} with value:\n{}".format(element.tag, element.text)
         if EXCEPTION_ON_UNHANDLED:
             raise ValueError(message)
         _LOG.warning(message)
@@ -213,22 +213,23 @@ class SpecsFile(list):
         super(SpecsFile, self).__init__()
         self.filepath = filepath
         if encoding:
-            file_ = codecs.open(filepath, mode='r', encoding=encoding)
+            file_ = codecs.open(filepath, mode="r", encoding=encoding)
             content = file_.read()
-            root = ET.fromstring(content.encode('utf-8'))
+            root = ET.fromstring(content.encode("utf-8"))
         else:
             try:
                 root = ET.parse(filepath).getroot()
             except ET.ParseError as exception:
-                print('#####\nParsing of the XML file failed. Possibly the '
-                      'XML is mal-formed or you need to supply the encoding '
-                      'of the XML file.\n\n###Traceback:')
+                print(
+                    "#####\nParsing of the XML file failed. Possibly the "
+                    "XML is mal-formed or you need to supply the encoding "
+                    "of the XML file.\n\n###Traceback:"
+                )
                 raise
 
-        _reg_group_seq = root.find('sequence[@type_name=\'RegionGroupSeq\']')
-        for element in _reg_group_seq.findall(
-                'struct[@type_name=\'RegionGroup\']'):
-            _LOG.debug('Found region group: {}'.format(element))
+        _reg_group_seq = root.find("sequence[@type_name='RegionGroupSeq']")
+        for element in _reg_group_seq.findall("struct[@type_name='RegionGroup']"):
+            _LOG.debug("Found region group: {}".format(element))
             self.append(RegionGroup(element))
             _reg_group_seq.remove(element)
 
@@ -236,7 +237,7 @@ class SpecsFile(list):
         # group sequence
         if len(_reg_group_seq) > 0:
             message = UNHANDLED_XML_COMPONENTS.format(
-                _reg_group_seq[0], 'region group sequence'
+                _reg_group_seq[0], "region group sequence"
             )
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
@@ -245,9 +246,7 @@ class SpecsFile(list):
 
         # Check that there are no unhandled XML elements in the root
         if len(root) > 0:
-            message = UNHANDLED_XML_COMPONENTS.format(
-                root[0], 'file'
-            )
+            message = UNHANDLED_XML_COMPONENTS.format(root[0], "file")
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
             _LOG.warning(message)
@@ -287,15 +286,14 @@ class SpecsFile(list):
 
     def __repr__(self):
         """Returns class representation"""
-        return '<{}(filename=\'{}\')>'.format(self.__class__.__name__,
-                                              self.filepath)
+        return "<{}(filename='{}')>".format(self.__class__.__name__, self.filepath)
 
     def __str__(self):
         """Returns str representation"""
         out = self.__repr__()
         for region_group in self:
-            for line in region_group.__str__().split('\n'):
-                out += '\n    ' + line
+            for line in region_group.__str__().split("\n"):
+                out += "\n    " + line
         return out
 
     @property
@@ -314,10 +312,10 @@ class SpecsFile(list):
         """
         methods = set()
         for region in self.regions_iter:
-            methods.add(region.region['analysis_method'])
+            methods.add(region.region["analysis_method"])
 
         if len(methods) > 1:
-            message = 'More than one analysis methods is used inside this file'
+            message = "More than one analysis methods is used inside this file"
             raise ValueError(message)
 
         return methods.pop()
@@ -344,20 +342,19 @@ class RegionGroup(list):
         super(RegionGroup, self).__init__()
 
         # Get name, find a string tag with attribute 'name' with value 'name'
-        self.name = xml.findtext('string[@name=\'name\']')
-        xml.remove(xml.find('string[@name=\'name\']'))
+        self.name = xml.findtext("string[@name='name']")
+        xml.remove(xml.find("string[@name='name']"))
 
-        _region_data_seq = xml.find('sequence[@type_name=\'RegionDataSeq\']')
-        for element in _region_data_seq.findall(
-                'struct[@type_name=\'RegionData\']'):
-            _LOG.debug('Found region: {}'.format(element))
+        _region_data_seq = xml.find("sequence[@type_name='RegionDataSeq']")
+        for element in _region_data_seq.findall("struct[@type_name='RegionData']"):
+            _LOG.debug("Found region: {}".format(element))
             self.append(Region(element))
             _region_data_seq.remove(element)
         # Check that there we nothing else than regions in the region data
         # sequence
         if len(_region_data_seq) > 0:
             message = UNHANDLED_XML_COMPONENTS.format(
-                _region_data_seq[0], 'region data sequence in region group'
+                _region_data_seq[0], "region data sequence in region group"
             )
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
@@ -366,15 +363,13 @@ class RegionGroup(list):
         xml.remove(_region_data_seq)
 
         # Parse parameters
-        _params = xml.find('sequence[@type_name=\'ParameterSeq\']')
+        _params = xml.find("sequence[@type_name='ParameterSeq']")
         self.parameters = simple_convert(_params)
         xml.remove(_params)
 
         # Check if there are any unhandled XML components
         if len(xml) > 0:
-            message = UNHANDLED_XML_COMPONENTS.format(
-                xml[0], 'region group'
-            )
+            message = UNHANDLED_XML_COMPONENTS.format(xml[0], "region group")
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
             else:
@@ -382,13 +377,13 @@ class RegionGroup(list):
 
     def __repr__(self):
         """Returns class representation"""
-        return '<{}(name=\'{}\')>'.format(self.__class__.__name__, self.name)
+        return "<{}(name='{}')>".format(self.__class__.__name__, self.name)
 
     def __str__(self):
         """Return the class str representation"""
         out = self.__repr__()
         for region in self:
-            out += '\n    ' + region.__str__()
+            out += "\n    " + region.__str__()
         return out
 
 
@@ -408,10 +403,19 @@ class Region(object):
 
     """
 
-    information_names = ['name', 'region', 'mcd_head', 'mcd_tail',
-                         'analyzer_info', 'source_info', 'remote_info',
-                         'cycles', 'compact_cycles', 'transmission',
-                         'parameters']
+    information_names = [
+        "name",
+        "region",
+        "mcd_head",
+        "mcd_tail",
+        "analyzer_info",
+        "source_info",
+        "remote_info",
+        "cycles",
+        "compact_cycles",
+        "transmission",
+        "parameters",
+    ]
 
     def __init__(self, xml):
         """Parse the XML and initialize internal variables
@@ -423,7 +427,7 @@ class Region(object):
         # Parse information items
         self.info = {}
         for name in self.information_names:
-            element = xml.find('*[@name=\'{}\']'.format(name))
+            element = xml.find("*[@name='{}']".format(name))
             self.info[name] = simple_convert(element)
             # Dynamically create attributes for all the items
             setattr(self, name, self.info[name])
@@ -431,9 +435,7 @@ class Region(object):
 
         # Check if there are any unhandled XML components
         if len(xml) > 0:
-            message = UNHANDLED_XML_COMPONENTS.format(
-                xml[0], 'region group'
-            )
+            message = UNHANDLED_XML_COMPONENTS.format(xml[0], "region group")
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
             else:
@@ -441,34 +443,39 @@ class Region(object):
 
     def __repr__(self):
         """Returns class representation"""
-        return '<{}(name=\'{}\')>'.format(
-            self.__class__.__name__, self.name,
-            )
+        return "<{}(name='{}')>".format(
+            self.__class__.__name__,
+            self.name,
+        )
 
     @cached_property
     def x(self):  # pylint: disable=invalid-name
         """Returns the kinetic energy x-values as a Numpy array"""
         # Calculate the x-values
-        start = self.region['kinetic_energy']
-        end = start + (self.region['values_per_curve'] - 1) *\
-              self.region['scan_delta']
-        data = np.linspace(start, end, self.region['values_per_curve'])
-        _LOG.debug('Creating x values from {} to {} in {} steps'.format(
-            start, end, self.region['values_per_curve']))
+        start = self.region["kinetic_energy"]
+        end = start + (self.region["values_per_curve"] - 1) * self.region["scan_delta"]
+        data = np.linspace(start, end, self.region["values_per_curve"])
+        _LOG.debug(
+            "Creating x values from {} to {} in {} steps".format(
+                start, end, self.region["values_per_curve"]
+            )
+        )
         return data
 
     @cached_property
     def x_be(self):
         """Returns the binding energy x-values as a Numpy array"""
-        if self.region['analysis_method'] != 'XPS':
-            message = "Analysis_method is {}".format(
-                self.region['analysis_method'])
+        if self.region["analysis_method"] != "XPS":
+            message = "Analysis_method is {}".format(self.region["analysis_method"])
             raise NotXPSException(message)
 
         # Calculate the x binding energy values
-        data = self.region['excitation_energy'] - self.x
-        _LOG.debug('Creating x_be values from {} to {} in {} steps'.format(
-            data.min(), data.max(), data.size))
+        data = self.region["excitation_energy"] - self.x
+        _LOG.debug(
+            "Creating x_be values from {} to {} in {} steps".format(
+                data.min(), data.max(), data.size
+            )
+        )
         return data
 
     @property
@@ -488,7 +495,7 @@ class Region(object):
         or use :py:attr:`iter_scans`, which do just that.
         """
         for cycle in self.cycles:
-            yield (scan['counts'] for scan in cycle['scans'])
+            yield (scan["counts"] for scan in cycle["scans"])
 
     @property
     def iter_scans(self):
@@ -506,17 +513,17 @@ class Region(object):
         """Returns the average counts as a Numpy array"""
         vstack = np.vstack(self.iter_scans)
         data = vstack.mean(axis=0)
-        _LOG.debug('Creating {} y_avg_counts values from {} scans'.format(
-            data.size, vstack.shape[0]
-        ))
+        _LOG.debug(
+            "Creating {} y_avg_counts values from {} scans".format(data.size, vstack.shape[0])
+        )
         return data
 
     @cached_property
     def y_avg_cps(self):
         """Returns the average counts per second as a Numpy array"""
         try:
-            data = self.y_avg_counts / self.region['dwell_time']
-            _LOG.debug('Creating {} y_avg_cps values'.format(data.size))
+            data = self.y_avg_counts / self.region["dwell_time"]
+            _LOG.debug("Creating {} y_avg_cps values".format(data.size))
         except TypeError:
             data = None
         return data
@@ -525,10 +532,11 @@ class Region(object):
     def unix_timestamp(self):
         """Returns the unix timestamp of the first cycle"""
         for cycle in self.cycles:
-            return cycle.get('time')
+            return cycle.get("time")
         return None
 
 
 class NotXPSException(Exception):
     """Exception for trying to interpret non-XPS data as XPS data"""
+
     pass

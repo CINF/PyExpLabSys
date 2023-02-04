@@ -4,6 +4,10 @@
 from pathlib import Path
 from shutil import rmtree, which
 from invoke import task
+try:
+    from rich import print as rprint
+except ImportError:
+    rprint = print
 
 THIS_DIR = Path(__file__).parent
 
@@ -38,7 +42,6 @@ CLEAN_PATTERNS = ("__pycache__", "*.pyc", "*.pyo", ".mypy_cache", "build")
 
 
 @task(
-    aliases=["c"],
     help={
         "dryrun": (
             "Only display the files and folders that would be deleted by the "
@@ -77,11 +80,53 @@ clean.__doc__ = clean.__doc__.format(", ".join(CLEAN_PATTERNS))
 def lint(context):
     """Run linting tool on all of PyExpLabSys"""
     with context.cd(THIS_DIR):
-        context.run("pylint PyExpLabSys")
+        result = context.run("pylint PyExpLabSys")
+        if result.return_code == 0:
+            rprint("[bold green]Files linted. No errors.")
+    return result.return_code
 
 
 @task(aliases=["pytest", "t"])
 def test(context):
     """Run non-equipment dependent tests"""
     with context.cd(THIS_DIR):
-        context.run("pytest --color yes tests/unittests/ tests/functional_test/")
+        result = context.run("pytest --color yes tests/unittests/ tests/functional_test/")
+        if result.return_code == 0:
+            rprint("[bold green]All tests passed")
+    return result.return_code
+
+
+@task(aliases=["deps", "d"])
+def dependencies(context):
+    """Install normal and development dependencies"""
+    context.run("python -m pip install --upgrade pip")
+    context.run("pip install --upgrade -r requirements.txt")
+    context.run("pip install --upgrade -r requirements-dev.txt")
+
+
+@task(aliases=["black", "f", "b"])
+def format(context):
+    """Run all source code through the code formatter"""
+    with context.cd(THIS_DIR):
+        context.run("black PyExpLabSys")
+
+@task(aliases=["check_black", "cf", "cb"])
+def check_format(context):
+    """Check that the code has already been run through the code formatter"""
+    with context.cd(THIS_DIR):
+        result = context.run("black --check PyExpLabSys")
+        if result.return_code == 0:
+            rprint("[bold green]Code format checked. No issues.")
+    return result.return_code
+
+@task(aliases=["check", "c"])
+def checks(context):
+    """Check the code with flake8 and mypy"""
+    combined_return_code = check_format(context)
+    combined_return_code += lint(context)
+    combined_return_code += test(context)
+    if combined_return_code == 0:
+        print()
+        print(r"+----------+")
+        print(r"| All good |")
+        print(r"+----------+")

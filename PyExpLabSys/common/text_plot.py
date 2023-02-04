@@ -126,7 +126,7 @@ class CursesAsciiPlot(object):
         """
         data = self.ascii_plotter.plot(*args, **kwargs)
         self.win.clear()
-        for line_num, line in enumerate(data.split('\n')):
+        for line_num, line in enumerate(data.split("\n")):
             self.win.addstr(line_num, 0, line)
         self.win.refresh()
 
@@ -134,8 +134,15 @@ class CursesAsciiPlot(object):
 class AsciiPlot(object):
     """An Ascii Plot"""
 
-    def __init__(self, title=None, xlabel=None, ylabel=None, logscale=False,
-                 size=(80, 24), debug=False):
+    def __init__(
+        self,
+        title=None,
+        xlabel=None,
+        ylabel=None,
+        logscale=False,
+        size=(80, 24),
+        debug=False,
+    ):
         """Initialize local varibles
 
         Args:
@@ -151,24 +158,24 @@ class AsciiPlot(object):
         self.debug = debug
 
         # Open a process for gnuplot
-        self.process = Popen(['gnuplot'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
+        self.process = Popen(["gnuplot"], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
         self.read = self.process.stdout.read
 
         # Setup ascii output and size
         self.write("set term dumb {} {}\n".format(*size))
 
         # Set title and labels
-        for string, name in ((title, 'title'), (xlabel, 'xlabel'), (ylabel, 'ylabel')):
+        for string, name in ((title, "title"), (xlabel, "xlabel"), (ylabel, "ylabel")):
             if string:
                 string = string.replace('"', "'")
-                self.write("set {} \"{}\"\n".format(name, string))
+                self.write('set {} "{}"\n'.format(name, string))
 
         # Set log scale if required
         if logscale:
             self.write("set logscale y\n")
 
-        self.write("set out\n")        
-        
+        self.write("set out\n")
+
     def write(self, string):
         r"""Write string to gnuplot
 
@@ -177,8 +184,8 @@ class AsciiPlot(object):
         if self.debug:
             print(repr(string))
         self.process.stdin.write(string.encode())
-        
-    def plot(self, x, y, style='lines', legend=""):
+
+    def plot(self, x, y, style="lines", legend=""):
         """Plot data
 
         Args:
@@ -188,18 +195,18 @@ class AsciiPlot(object):
             legend (str): The legend of the data (leave to empty string to skip)
         """
         # Header for sending data to gnuplot inline
-        self.write("plot \"-\" with lines title \"{}\"\n".format(legend))
+        self.write('plot "-" with lines title "{}"\n'.format(legend))
 
         # Create data string and send
-        data = '\n'.join(["%s %s" % pair for pair in zip(x, y)])
-        self.write(data + '\n')
+        data = "\n".join(["%s %s" % pair for pair in zip(x, y)])
+        self.write(data + "\n")
         self.write("e\n")  # Terminate column
 
         # The first char is a form feed
         self.read(1)
-        out = self.read(self.size[0] * self.size[1]).decode('ascii')
-        while out[-1] != '\n':
-            out += self.read(1).decode('ascii')
+        out = self.read(self.size[0] * self.size[1]).decode("ascii")
+        while out[-1] != "\n":
+            out += self.read(1).decode("ascii")
         return out
 
 
@@ -221,7 +228,9 @@ if __name__ == "__main__":
     try:
         # Create the Curses Ascii Plotter
         ap = CursesAsciiPlot(
-            win, title="Log of sine of time", xlabel="Time [s]",
+            win,
+            title="Log of sine of time",
+            xlabel="Time [s]",
             logscale=True,
         )
 
@@ -229,7 +238,7 @@ if __name__ == "__main__":
         while True:
             stdscr.clear()
             t0 = time.time() - t_start
-            stdscr.addstr(1, 3, 'T0: {:.2f}       '.format(t0))
+            stdscr.addstr(1, 3, "T0: {:.2f}       ".format(t0))
             stdscr.refresh()
             x = np.linspace(t0, t0 + 10)
             y = np.sin(x) + 1.1

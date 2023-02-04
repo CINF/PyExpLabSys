@@ -14,19 +14,21 @@ try:
     import MySQLdb
 except ImportError:
     import pymysql as MySQLdb
+
     MySQLdb.install_as_MySQLdb()
 
 from ..settings import Settings
+
 SETTINGS = Settings()
 
 # Used for check of valid, un-escaped column names, to prevent injection
-COLUMN_NAME = re.compile(r'^[0-9a-zA-Z$_]*$')
+COLUMN_NAME = re.compile(r"^[0-9a-zA-Z$_]*$")
 # namedtuple used for custom column formatting, see MeasurementSaver.__init__
-CustomColumn = namedtuple('CustomColumn', ['value', 'format_string'])
+CustomColumn = namedtuple("CustomColumn", ["value", "format_string"])
 
 # Loging object for the DataSetSaver (DSS) shortened, because it will be
 # written a lot
-DSS_LOG = logging.getLogger(__name__ + '.MeasurementSaver')
+DSS_LOG = logging.getLogger(__name__ + ".MeasurementSaver")
 DSS_LOG.addHandler(logging.NullHandler())
 
 
@@ -47,8 +49,14 @@ class DataSetSaver(object):
 
     """
 
-    def __init__(self, measurements_table, xy_values_table, username, password,
-                 measurement_specs=None):
+    def __init__(
+        self,
+        measurements_table,
+        xy_values_table,
+        username,
+        password,
+        measurement_specs=None,
+    ):
         """Initialize local parameters
 
         Args:
@@ -94,9 +102,12 @@ class DataSetSaver(object):
 
         """
         DSS_LOG.info(
-            '__init__ with measurement_table=%s, xy_values_table=%s, '
-            'username=%s, password=*****, measurement_specs: %s',
-            measurements_table, xy_values_table, username, measurement_specs,
+            "__init__ with measurement_table=%s, xy_values_table=%s, "
+            "username=%s, password=*****, measurement_specs: %s",
+            measurements_table,
+            xy_values_table,
+            username,
+            measurement_specs,
         )
 
         # Initialize instance variables
@@ -105,13 +116,13 @@ class DataSetSaver(object):
         self.sql_saver = SqlSaver(username, password)
 
         # Initialize queries
-        query = 'INSERT INTO {} ({{}}) values ({{}})'
+        query = "INSERT INTO {} ({{}}) values ({{}})"
         self.insert_measurement_query = query.format(measurements_table)
-        query = 'INSERT INTO {} (measurement, x, y) values (%s, %s, %s)'
+        query = "INSERT INTO {} (measurement, x, y) values (%s, %s, %s)"
         self.insert_point_query = query.format(xy_values_table)
-        query = 'INSERT INTO {} (measurement, x, y) values {{}}'
+        query = "INSERT INTO {} (measurement, x, y) values {{}}"
         self.insert_batch_query = query.format(xy_values_table)
-        query = 'SELECT DISTINCT {{}} from {}'
+        query = "SELECT DISTINCT {{}} from {}"
         self.select_distict_query = query.format(measurements_table)
 
         # Init local database connection
@@ -119,7 +130,7 @@ class DataSetSaver(object):
             host=socket.gethostbyname(SETTINGS.sql_server_host),
             user=username,
             passwd=password,
-            db=SETTINGS.sql_database
+            db=SETTINGS.sql_database,
         )
         self.cursor = self.connection.cursor()
 
@@ -141,15 +152,14 @@ class DataSetSaver(object):
             metadata (dict): The dictionary that holds the information for the
                 measurements table. See :meth:`__init__` for details.
         """
-        DSS_LOG.info('Add measurement codenamed: \'%s\' with metadata: %s',
-                     codename, metadata)
+        DSS_LOG.info("Add measurement codenamed: '%s' with metadata: %s", codename, metadata)
         # Collect column names, values and format strings, a format string is a SQL
         # value placeholder including processing like e.g: %s or FROM_UNIXTIME(%s)
         column_names, values, value_format_strings = [], [], []
         for column_name, value in metadata.items():
             if not COLUMN_NAME.match(column_name):
-                msg = 'Invalid column name: \'{}\'. Only column names using a-z, '
-                msg += 'A-Z, 0-9 and \'_\' and \'$\' are allowed'
+                msg = "Invalid column name: '{}'. Only column names using a-z, "
+                msg += "A-Z, 0-9 and '_' and '$' are allowed"
                 raise ValueError(msg.format(column_name))
 
             if isinstance(value, CustomColumn):
@@ -158,23 +168,22 @@ class DataSetSaver(object):
                 real_value, value_format_string = value
             else:
                 # Else, that value is just a value with default place holder
-                real_value, value_format_string = value, '%s'
+                real_value, value_format_string = value, "%s"
 
-            column_names.append('`' + column_name + '`')
+            column_names.append("`" + column_name + "`")
             values.append(real_value)
             value_format_strings.append(value_format_string)
 
         # Form the column string e.g: 'name, time, type'
-        column_string = ', '.join(column_names)
+        column_string = ", ".join(column_names)
         # Form the value marker string e.g: '%s, FROM_UNIXTIME(%s), %s'
-        value_marker_string = ', '.join(value_format_strings)
-        query = self.insert_measurement_query.format(
-            column_string, value_marker_string)
+        value_marker_string = ", ".join(value_format_strings)
+        query = self.insert_measurement_query.format(column_string, value_marker_string)
 
         # Make the insert and save the measurement_table id for use in saving data
         self.cursor.execute(query, values)
         self.measurement_ids[codename] = self.cursor.lastrowid
-        DSS_LOG.debug('Measurement codenamed: \'%s\' added', codename)
+        DSS_LOG.debug("Measurement codenamed: '%s' added", codename)
 
     def save_point(self, codename, point):
         """Save a point for a specific codename
@@ -183,11 +192,11 @@ class DataSetSaver(object):
             codename (str): The codename for the measurement to add the point to
             point (sequence): A sequence of x, y
         """
-        DSS_LOG.debug('For codename \'%s\' save point: %s', codename, point)
+        DSS_LOG.debug("For codename '%s' save point: %s", codename, point)
         try:
             query_args = [self.measurement_ids[codename]]
         except KeyError:
-            message = 'No entry in measurements_ids for codename: \'{}\''
+            message = "No entry in measurements_ids for codename: '{}'"
             raise ValueError(message.format(codename))
 
         # The query expects 3 values; measurement_id, x, y
@@ -211,17 +220,21 @@ class DataSetSaver(object):
            safe and that if it is changed by the user, expect problems if exceeding
            the lower 10000ths.
         """
-        DSS_LOG.debug('For codename \'%s\' save %s points in batches of %s',
-                      codename, len(x_values), batchsize)
+        DSS_LOG.debug(
+            "For codename '%s' save %s points in batches of %s",
+            codename,
+            len(x_values),
+            batchsize,
+        )
 
         # Check lengths and get measurement_id
         if len(x_values) != len(y_values):
-            msg = 'Number of x and y values must be the same. Values are {} and {}'
+            msg = "Number of x and y values must be the same. Values are {} and {}"
             raise ValueError(msg.format(len(x_values), len(y_values)))
         try:
             measurement_id = self.measurement_ids[codename]
         except KeyError:
-            message = 'No entry in measurements_ids for codename: \'{}\''
+            message = "No entry in measurements_ids for codename: '{}'"
             raise ValueError(message.format(codename))
 
         # Gather values in batches of batchsize, start enumerate from 1, to make
@@ -235,7 +248,7 @@ class DataSetSaver(object):
 
             # Save a batch (> should not be necessary)
             if number_of_values >= batchsize:
-                value_marker_string = ', '.join(['(%s, %s, %s)'] * number_of_values)
+                value_marker_string = ", ".join(["(%s, %s, %s)"] * number_of_values)
                 query = self.insert_batch_query.format(value_marker_string)
                 self.sql_saver.enqueue_query(query, values)
                 values = []
@@ -243,7 +256,7 @@ class DataSetSaver(object):
 
         # Save the remaining number of points (smaller than the batchsize)
         if number_of_values > 0:
-            value_marker_string = ', '.join(['(%s, %s, %s)'] * number_of_values)
+            value_marker_string = ", ".join(["(%s, %s, %s)"] * number_of_values)
             query = self.insert_batch_query.format(value_marker_string)
             self.sql_saver.enqueue_query(query, values)
 
@@ -274,11 +287,11 @@ class DataSetSaver(object):
         And shut down the underlying :class:`.SqlSaver`
         instance nicely.
         """
-        DSS_LOG.info('stop called')
+        DSS_LOG.info("stop called")
         self.cursor.close()
         self.connection.close()
         self.sql_saver.stop()
-        DSS_LOG.debug('stopped')
+        DSS_LOG.debug("stopped")
 
     def wait_for_queue_to_empty(self):
         """Wait for the query queue in the SqlSaver to empty
@@ -289,7 +302,7 @@ class DataSetSaver(object):
         self.sql_saver.wait_for_queue_to_empty()
 
 
-CDS_LOG = logging.getLogger(__name__ + '.ContinuousDataSaver')
+CDS_LOG = logging.getLogger(__name__ + ".ContinuousDataSaver")
 CDS_LOG.addHandler(logging.NullHandler())
 
 
@@ -320,8 +333,11 @@ class ContinuousDataSaver(object):
 
         """
         CDS_LOG.info(
-            '__init__ with continuous_data_table=%s, username=%s, password=*****, '
-            'measurement_codenames=%s', continuous_data_table, username, measurement_codenames,
+            "__init__ with continuous_data_table=%s, username=%s, password=*****, "
+            "measurement_codenames=%s",
+            continuous_data_table,
+            username,
+            measurement_codenames,
         )
 
         # Initialize instance variables
@@ -335,7 +351,7 @@ class ContinuousDataSaver(object):
             host=socket.gethostbyname(SETTINGS.sql_server_host),
             user=username,
             passwd=password,
-            db=SETTINGS.sql_database
+            db=SETTINGS.sql_database,
         )
         self.cursor = self.connection.cursor()
 
@@ -355,13 +371,15 @@ class ContinuousDataSaver(object):
             for contionuous measurements NOT codenames that can be userdefined
 
         """
-        CDS_LOG.info('Add measurements for codename \'%s\'', codename)
-        query = 'SELECT id FROM dateplots_descriptions WHERE codename=\'{}\''
+        CDS_LOG.info("Add measurements for codename '%s'", codename)
+        query = "SELECT id FROM dateplots_descriptions WHERE codename='{}'"
         self.cursor.execute(query.format(codename))
         results = self.cursor.fetchall()
         if len(results) != 1:
-            message = 'Measurement code name \'{}\' does not have exactly one entry in '\
-                      'dateplots_descriptions'.format(codename)
+            message = (
+                "Measurement code name '{}' does not have exactly one entry in "
+                "dateplots_descriptions".format(codename)
+            )
             CDS_LOG.critical(message)
             raise ValueError(message)
         self.codename_translation[codename] = results[0][0]
@@ -377,8 +395,9 @@ class ContinuousDataSaver(object):
             float: The Unixtime used
         """
         unixtime = time.time()
-        CDS_LOG.debug('Adding timestamp %s to value %s for codename %s', unixtime, value,
-                      codename)
+        CDS_LOG.debug(
+            "Adding timestamp %s to value %s for codename %s", unixtime, value, codename
+        )
         self.save_point(codename, (unixtime, value))
         return unixtime
 
@@ -392,19 +411,19 @@ class ContinuousDataSaver(object):
         try:
             unixtime, value = point
         except ValueError:
-            message = '\'point\' must be a iterable with 2 values, got {}'.format(point)
+            message = "'point' must be a iterable with 2 values, got {}".format(point)
             raise ValueError(message)
 
         # Save the point
-        CDS_LOG.debug('Save point (%s, %s) for codename: %s', unixtime, value, codename)
+        CDS_LOG.debug("Save point (%s, %s) for codename: %s", unixtime, value, codename)
         measurement_number = self.codename_translation[codename]
-        query = 'INSERT INTO {} (type, time, value) VALUES (%s, FROM_UNIXTIME(%s), %s);'
+        query = "INSERT INTO {} (type, time, value) VALUES (%s, FROM_UNIXTIME(%s), %s);"
         query = query.format(self.continuous_data_table)
         self.sql_saver.enqueue_query(query, (measurement_number, unixtime, value))
 
     def start(self):
         """Starts the underlying :class:`.SqlSaver`"""
-        CDS_LOG.info('start called')
+        CDS_LOG.info("start called")
         self.sql_saver.start()
 
     def stop(self):
@@ -413,12 +432,12 @@ class ContinuousDataSaver(object):
         And shut down the underlying :class:`.SqlSaver`
         instance nicely.
         """
-        CDS_LOG.info('stop called')
+        CDS_LOG.info("stop called")
         self.sql_saver.stop()
-        CDS_LOG.debug('stop finished')
+        CDS_LOG.debug("stop finished")
 
 
-SQL_SAVER_LOG = logging.getLogger(__name__ + '.SqlSaver')
+SQL_SAVER_LOG = logging.getLogger(__name__ + ".SqlSaver")
 SQL_SAVER_LOG.addHandler(logging.NullHandler())
 
 
@@ -450,10 +469,11 @@ class SqlSaver(threading.Thread):
                 :py:class:`Queue.Queue` object will be used.
         """
 
-        SQL_SAVER_LOG.info('Init with username: %s, password: ***** and queue: %s',
-                           username, queue)
+        SQL_SAVER_LOG.info(
+            "Init with username: %s, password: ***** and queue: %s", username, queue
+        )
         super(SqlSaver, self).__init__()
-        #threading.Thread.__init__(self)
+        # threading.Thread.__init__(self)
         self.daemon = True
 
         # Initialize internal variables
@@ -470,27 +490,30 @@ class SqlSaver(threading.Thread):
             self.queue = queue
 
         # Initialize database connection
-        SQL_SAVER_LOG.debug('Open connection to MySQL database')
+        SQL_SAVER_LOG.debug("Open connection to MySQL database")
         self.connection = MySQLdb.connect(
             host=socket.gethostbyname(SETTINGS.sql_server_host),
             user=username,
             passwd=password,
-            db=SETTINGS.sql_database
+            db=SETTINGS.sql_database,
         )
         self.cursor = self.connection.cursor()
-        SQL_SAVER_LOG.debug('Connection opened, init done')
+        SQL_SAVER_LOG.debug("Connection opened, init done")
 
     def stop(self):
         """Add stop word to queue to exit the loop when the queue is empty"""
-        SQL_SAVER_LOG.info('stop called. Wait for %s elements remaining in the queue to '
-                           'be sent to the database', self.queue.qsize())
-        self.queue.put(('STOP', None))
+        SQL_SAVER_LOG.info(
+            "stop called. Wait for %s elements remaining in the queue to "
+            "be sent to the database",
+            self.queue.qsize(),
+        )
+        self.queue.put(("STOP", None))
         self._stop_called = True
         # Make sure to wait untill it is closed down to return, otherwise we are going to
         # tear down the environment around it
         while self.is_alive():
             time.sleep(10**-5)
-        SQL_SAVER_LOG.debug('stopped')
+        SQL_SAVER_LOG.debug("stopped")
 
     def enqueue_query(self, query, query_args=None):
         """Enqueue a qeury and arguments
@@ -501,13 +524,14 @@ class SqlSaver(threading.Thread):
                 to be formatted into the query. ``query`` and ``query_args`` in combination
                 are the arguments to cursor.execute.
         """
-        SQL_SAVER_LOG.debug('Enqueue query\n\'%.70s...\'\nwith args: %.60s...', query,
-                            query_args)
+        SQL_SAVER_LOG.debug(
+            "Enqueue query\n'%.70s...'\nwith args: %.60s...", query, query_args
+        )
         self.queue.put((query, query_args))
 
     def run(self):
         """Execute SQL inserts from the queue until stopped"""
-        SQL_SAVER_LOG.info('run started')
+        SQL_SAVER_LOG.info("run started")
         while True:
             start = time.time()
             query, args = self.queue.get()
@@ -516,11 +540,11 @@ class SqlSaver(threading.Thread):
             # if not the user os waiting without information and may think that the
             # process hangs
             if self._stop_called:
-                SQL_SAVER_LOG.info('Dequeued element, %s remaining', self.queue.qsize())
+                SQL_SAVER_LOG.info("Dequeued element, %s remaining", self.queue.qsize())
             else:
-                SQL_SAVER_LOG.debug('Dequeued element, %s remaining', self.queue.qsize())
+                SQL_SAVER_LOG.debug("Dequeued element, %s remaining", self.queue.qsize())
 
-            if query == 'STOP': # Magic key-word to stop Sql Saver
+            if query == "STOP":  # Magic key-word to stop Sql Saver
                 break
 
             success = False
@@ -528,13 +552,14 @@ class SqlSaver(threading.Thread):
                 try:
                     self.cursor.execute(query, args=args)
                     success = True
-                    SQL_SAVER_LOG.debug('Executed query\n\'%.70s\'\nwith args: %.60s', query,
-                                        args)
+                    SQL_SAVER_LOG.debug(
+                        "Executed query\n'%.70s'\nwith args: %.60s", query, args
+                    )
                 # Naming exceptions is a bit tricky here, since we import different
                 # sql-libraries at runtime, not all exceptions are available and we
                 # end up with a NameError instead. Catching all should be ok here.
-                except Exception as e: # Failed to perfom commit
-                    msg = 'Executing a query raised an error: {}'.format(e)
+                except Exception as e:  # Failed to perfom commit
+                    msg = "Executing a query raised an error: {}".format(e)
                     SQL_SAVER_LOG.error(msg)
                     time.sleep(5)
                     try:
@@ -542,10 +567,10 @@ class SqlSaver(threading.Thread):
                             host=socket.gethostbyname(SETTINGS.sql_server_host),
                             user=self.username,
                             passwd=self.password,
-                            db=SETTINGS.sql_database
+                            db=SETTINGS.sql_database,
                         )
                         self.cursor = self.connection.cursor()
-                    except Exception: # Failed to re-connect
+                    except Exception:  # Failed to re-connect
                         pass
 
             self.connection.commit()
@@ -553,7 +578,7 @@ class SqlSaver(threading.Thread):
             self.commit_time = time.time() - start
 
         self.connection.close()
-        SQL_SAVER_LOG.debug('run stopped')
+        SQL_SAVER_LOG.debug("run stopped")
 
     def wait_for_queue_to_empty(self):
         """Wait for the queue to empty
@@ -568,43 +593,50 @@ class SqlSaver(threading.Thread):
 def run_module():
     """Run the module to perform elementary functional test"""
     import numpy
-    print('Test DataSetSaver.\nInit and start.')
-    data_set_saver = DataSetSaver('measurements_dummy', 'xy_values_dummy', 'dummy', 'dummy')
+
+    print("Test DataSetSaver.\nInit and start.")
+    data_set_saver = DataSetSaver("measurements_dummy", "xy_values_dummy", "dummy", "dummy")
     data_set_saver.start()
-    print('Make 2 data sets. Save data as mass spectra')
-    metadata = {'type': 4, 'comment': 'Test sine1', 'sem_voltage': 47, 'mass_label': 'Sine',
-                'preamp_range': -9}
-    data_set_saver.add_measurement('sine1', metadata)
-    metadata['comment'] = 'Test sine2'
-    data_set_saver.add_measurement('sine2', metadata)
+    print("Make 2 data sets. Save data as mass spectra")
+    metadata = {
+        "type": 4,
+        "comment": "Test sine1",
+        "sem_voltage": 47,
+        "mass_label": "Sine",
+        "preamp_range": -9,
+    }
+    data_set_saver.add_measurement("sine1", metadata)
+    metadata["comment"] = "Test sine2"
+    data_set_saver.add_measurement("sine2", metadata)
     # Make measurement
     x = numpy.arange(0, 3, 0.03)
     y = numpy.sin(x)
     # Save all at once
-    data_set_saver.save_points_batch('sine1', x, y)
+    data_set_saver.save_points_batch("sine1", x, y)
     print('Saved "sine1" as a batch')
     # Save point by point
     for xpoint, ypoint in zip(x, y):
-        data_set_saver.save_point('sine2', (xpoint, ypoint + 0.3))
+        data_set_saver.save_point("sine2", (xpoint, ypoint + 0.3))
     print('Saved "sine2" as single points')
     data_set_saver.stop()
-    print('Stop DataSetSaver\n')
+    print("Stop DataSetSaver\n")
 
-    print('Test ContinuousDataSaver.\nInit and start')
-    continuous_data_saver = ContinuousDataSaver('dateplots_dummy', 'dummy', 'dummy')
+    print("Test ContinuousDataSaver.\nInit and start")
+    continuous_data_saver = ContinuousDataSaver("dateplots_dummy", "dummy", "dummy")
     continuous_data_saver.start()
     print('Use dateplots "sine1" and "sine2"')
-    continuous_data_saver.add_continuous_measurement('dummy_sine_one')
-    continuous_data_saver.add_continuous_measurement('dummy_sine_two')
-    print('Save 10 points for each, 0.1 s apart (will take 1s)')
+    continuous_data_saver.add_continuous_measurement("dummy_sine_one")
+    continuous_data_saver.add_continuous_measurement("dummy_sine_two")
+    print("Save 10 points for each, 0.1 s apart (will take 1s)")
     for _ in range(10):
-        continuous_data_saver.save_point_now('dummy_sine_one', numpy.sin(time.time()))
-        continuous_data_saver.save_point_now('dummy_sine_two',
-                                             numpy.sin(time.time() + numpy.pi))
+        continuous_data_saver.save_point_now("dummy_sine_one", numpy.sin(time.time()))
+        continuous_data_saver.save_point_now(
+            "dummy_sine_two", numpy.sin(time.time() + numpy.pi)
+        )
         time.sleep(0.1)
     continuous_data_saver.stop()
-    print('Stop ContinuousDataSaver')
+    print("Stop ContinuousDataSaver")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_module()
