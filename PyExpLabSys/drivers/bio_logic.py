@@ -313,14 +313,7 @@ class GeneralPotentiostat(object):  # pylint: disable=too-many-public-methods
         p_channels = cast(c_channels, POINTER(c_uint8))
 
         ret = self._eclib.BL_LoadFirmware(
-            self._id,
-            p_channels,
-            p_results,
-            len(channels),
-            False,
-            force_reload,
-            None,
-            None,
+            self._id, p_channels, p_results, len(channels), False, force_reload, None, None
         )
         self.check_eclib_return_code(ret)
         return list(c_results)
@@ -1169,18 +1162,10 @@ class CV(Technique):
             TechniqueArgument("Average_over_dE", "bool", average_over_dE, "in", [True, False]),
             TechniqueArgument("N_Cycles", "integer", N_cycles, ">=", 0),
             TechniqueArgument(
-                "Begin_measuring_I",
-                "single",
-                begin_measuring_I,
-                "in_float_range",
-                (0.0, 1.0),
+                "Begin_measuring_I", "single", begin_measuring_I, "in_float_range", (0.0, 1.0)
             ),
             TechniqueArgument(
-                "End_measuring_I",
-                "single",
-                end_measuring_I,
-                "in_float_range",
-                (0.0, 1.0),
+                "End_measuring_I", "single", end_measuring_I, "in_float_range", (0.0, 1.0)
             ),
             TechniqueArgument("I_Range", I_RANGES, I_range, "in", I_RANGES.values()),
             TechniqueArgument("E_Range", E_RANGES, E_range, "in", E_RANGES.values()),
@@ -1308,18 +1293,10 @@ class CVA(Technique):
             TechniqueArgument("Average_over_dE", "bool", average_over_dE, "in", [True, False]),
             TechniqueArgument("N_Cycles", "integer", N_cycles, ">=", 0),
             TechniqueArgument(
-                "Begin_measuring_I",
-                "single",
-                begin_measuring_I,
-                "in_float_range",
-                (0.0, 1.0),
+                "Begin_measuring_I", "single", begin_measuring_I, "in_float_range", (0.0, 1.0)
             ),
             TechniqueArgument(
-                "End_measuring_I",
-                "single",
-                end_measuring_I,
-                "in_float_range",
-                (0.0, 1.0),
+                "End_measuring_I", "single", end_measuring_I, "in_float_range", (0.0, 1.0)
             ),
             TechniqueArgument(
                 "vs_initial_step", "[bool]", vs_initial_step, "in", [True, False]

@@ -324,17 +324,19 @@ class Vortex(Instrument):
         # detector and the register numbers below are for detector 1
         reg_shift = 20 * (detector_number - 1)
         reg = {}
-        reg["enabled"] = 109 + reg_shift  # pylint: disable=bad-whitespace
-        reg["type"] = 110 + reg_shift  # pylint: disable=bad-whitespace
-        reg["level1"] = 113 + reg_shift  # pylint: disable=bad-whitespace
-        reg["transition1"] = 114 + reg_shift  # pylint: disable=bad-whitespace
-        reg["level2"] = 115 + reg_shift  # pylint: disable=bad-whitespace
-        reg["transition2"] = 116 + reg_shift  # pylint: disable=bad-whitespace
-        reg["level3"] = 117 + reg_shift  # pylint: disable=bad-whitespace
-        reg["transition3"] = 118 + reg_shift  # pylint: disable=bad-whitespace
-        reg["unit"] = 121 + reg_shift  # pylint: disable=bad-whitespace
-        reg["range"] = 122 + reg_shift  # pylint: disable=bad-whitespace
-        reg["identity"] = 125 + reg_shift  # pylint: disable=bad-whitespace
+        # fmt: off
+        reg['enabled']     = 109 + reg_shift  # pylint: disable=bad-whitespace
+        reg['type']        = 110 + reg_shift  # pylint: disable=bad-whitespace
+        reg['level1']      = 113 + reg_shift  # pylint: disable=bad-whitespace
+        reg['transition1'] = 114 + reg_shift  # pylint: disable=bad-whitespace
+        reg['level2']      = 115 + reg_shift  # pylint: disable=bad-whitespace
+        reg['transition2'] = 116 + reg_shift  # pylint: disable=bad-whitespace
+        reg['level3']      = 117 + reg_shift  # pylint: disable=bad-whitespace
+        reg['transition3'] = 118 + reg_shift  # pylint: disable=bad-whitespace
+        reg['unit']        = 121 + reg_shift  # pylint: disable=bad-whitespace
+        reg['range']       = 122 + reg_shift  # pylint: disable=bad-whitespace
+        reg['identity']    = 125 + reg_shift  # pylint: disable=bad-whitespace
+        # fmt: on
 
         values = {"number": detector_number}
         # Read if the detector is enabled
@@ -594,8 +596,7 @@ def main():
     print()
     print("Number of installed detectors      :", vortex.get_number_installed_detectors())
     print(
-        "Number of installed digital outputs:",
-        vortex.get_number_installed_digital_outputs(),
+        "Number of installed digital outputs:", vortex.get_number_installed_digital_outputs()
     )
     print()
     for detector_number in range(1, 9):

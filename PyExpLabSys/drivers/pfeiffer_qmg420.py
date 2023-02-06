@@ -11,22 +11,24 @@ LOGGER.addHandler(logging.NullHandler())
 class qmg_420:
     def speeds(self, n):
         speeds = {}
-        speeds[0] = 0.0005
-        speeds[1] = 0.001
-        speeds[2] = 0.002
-        speeds[3] = 0.005
-        speeds[4] = 0.01
-        speeds[5] = 0.02
-        speeds[6] = 0.05
-        speeds[7] = 0.1
-        speeds[8] = 0.2
-        speeds[9] = 0.5
+        # fmt: off
+        speeds[0]  = 0.0005
+        speeds[1]  = 0.001
+        speeds[2]  = 0.002
+        speeds[3]  = 0.005
+        speeds[4]  = 0.01
+        speeds[5]  = 0.02
+        speeds[6]  = 0.05
+        speeds[7]  = 0.1
+        speeds[8]  = 0.2
+        speeds[9]  = 0.5
         speeds[10] = 1
         speeds[11] = 2
         speeds[12] = 5
         speeds[13] = 10
         speeds[14] = 20
         speeds[15] = 60
+        # fmt: on
         return speeds[n]
 
     def ranges(self, index, reverse=False):
