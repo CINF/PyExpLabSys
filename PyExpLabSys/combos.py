@@ -16,9 +16,18 @@ class LiveContinuousLogger(object):
 
     """
 
-    def __init__(self, name, codenames, continuous_data_table, username, password,
-                 time_criteria=None, absolute_criteria=None, relative_criteria=None,
-                 live_server_kwargs=None):
+    def __init__(
+        self,
+        name,
+        codenames,
+        continuous_data_table,
+        username,
+        password,
+        time_criteria=None,
+        absolute_criteria=None,
+        relative_criteria=None,
+        live_server_kwargs=None,
+    ):
         """Initialize local data
 
         Args:
@@ -47,11 +56,11 @@ class LiveContinuousLogger(object):
         # Initialize local variables
         self.name = name
         self.codenames = set(codenames)  # It should be a set anyway
-        
+
         # Update and check criteria:
-        self.time_criteria = self._init_criteria(time_criteria, 'time')
-        self.absolute_criteria = self._init_criteria(absolute_criteria, 'absolute')
-        self.relative_criteria = self._init_criteria(relative_criteria, 'relative')
+        self.time_criteria = self._init_criteria(time_criteria, "time")
+        self.absolute_criteria = self._init_criteria(absolute_criteria, "absolute")
+        self.relative_criteria = self._init_criteria(relative_criteria, "relative")
 
         # Init last times and values (non-existing key will trigger save)
         self.last_times = {}
@@ -62,7 +71,9 @@ class LiveContinuousLogger(object):
             live_server_kwargs = {}
         self.live_socket = LiveSocket(name, codenames, **live_server_kwargs)
         self.continuous_data_saver = ContinuousDataSaver(
-            continuous_data_table, username, password,
+            continuous_data_table,
+            username,
+            password,
             measurement_codenames=codenames,
         )
 
@@ -83,7 +94,7 @@ class LiveContinuousLogger(object):
         # If not a dictionary, assumed to be int or float
         if not isinstance(criteria, dict):
             if not criteria > 0:
-                error_message = 'The criterium for {} is expected to be positive. {} is not.'
+                error_message = "The criterium for {} is expected to be positive. {} is not."
                 raise ValueError(error_message.format(criteria_name, criteria))
             # Return dict with the passed in single value for all keys
             return {codename: criteria for codename in self.codenames}
@@ -91,9 +102,10 @@ class LiveContinuousLogger(object):
             # Check that criteria contains exactly one entry for each codename. Note
             # self.codenames is a set
             if not set(criteria.keys()) == self.codenames:
-                error_message = \
-                    'There is not a {} criteria in the criteria dict {} for every '\
-                    'codename: {}'.format(criteria_name, criteria, self.codenames)
+                error_message = (
+                    "There is not a {} criteria in the criteria dict {} for every "
+                    "codename: {}".format(criteria_name, criteria, self.codenames)
+                )
                 raise ValueError(error_message)
             return criteria
 
@@ -101,7 +113,7 @@ class LiveContinuousLogger(object):
         """Start the underlying :class:`.LiveSocket` and :class:`.ContinuousDataSaver`"""
         self.live_socket.start()
         self.continuous_data_saver.start()
-        
+
     def stop(self):
         """Stop the underlying :class:`.LiveSocket` and :class:`.ContinuousDataSaver`"""
         self.live_socket.stop()
@@ -205,7 +217,6 @@ class LiveContinuousLogger(object):
 
         return False
 
-        
     def _update_last_information(self, codename, point):
         """Update the information about last logged point"""
         current_time, current_value = point

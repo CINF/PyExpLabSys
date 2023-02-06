@@ -1,0 +1,13 @@
+[tool.black]
+line-length = 95
+target-version = ['py37']
+# 'extend-exclude' excludes files or directories in addition to the defaults
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+(
+  PyExpLabSys/common/massspec/test.py
+  | PyExpLabSys/apps/picture_logbook.py
+  | PyExpLabSys/apps/rampreader.py
+)
+'''

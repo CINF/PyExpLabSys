@@ -4,13 +4,13 @@ from typing import Optional
 
 
 class TdkLambdaZ(object):
-    def __init__(self, device: str = '/dev/ttyACM0'):
+    def __init__(self, device: str = "/dev/ttyACM0"):
         self.ser = serial.Serial(device, 9600, stopbits=1, timeout=2)
 
     def _comm(self, command: str) -> str:
-        command = command + '\r'
-        self.ser.write(command.encode('ascii'))
-        return_string = ''.encode('ascii')
+        command = command + "\r"
+        self.ser.write(command.encode("ascii"))
+        return_string = "".encode("ascii")
         while True:
             next_char = self.ser.read(1)
             if ord(next_char) == 13:
@@ -40,7 +40,7 @@ class TdkLambdaZ(object):
         self.current(current)
 
     def test_connection(self):
-        reply = self._comm('ADR 01')
+        reply = self._comm("ADR 01")
         print(reply)
 
     def remote_state(self, local: bool = False, remote: bool = False) -> str:
@@ -53,14 +53,14 @@ class TdkLambdaZ(object):
         if local and remote:
             pass
         elif local:
-            command = 'RMT LOC'
+            command = "RMT LOC"
         elif remote:
-            command = 'RMT REM'
+            command = "RMT REM"
         # Also a Local Lockout mode exists, this is not implemented
         if command is not None:
             self._comm(command)
 
-        reply = self._comm('RMT?')
+        reply = self._comm("RMT?")
         return reply
 
     def _read_float(self, command: str) -> float:
@@ -81,23 +81,23 @@ class TdkLambdaZ(object):
 
     def voltage(self, value: Optional[float] = None) -> float:
         if value is not None:
-            command = 'PV {:.3f}'.format(value)
+            command = "PV {:.3f}".format(value)
             print(self._comm(command))
-        actual_voltage = self._read_float('MV?')
+        actual_voltage = self._read_float("MV?")
         return actual_voltage
 
     def voltage_protection(self, value: Optional[float] = None) -> float:
         if value is not None:
-            command = 'OVP {:.3f}'.format(value)
+            command = "OVP {:.3f}".format(value)
             print(self._comm(command))
-        actual_protection_voltage = self._read_float('OVP?')
+        actual_protection_voltage = self._read_float("OVP?")
         return actual_protection_voltage
 
     def current(self, value: Optional[float] = None) -> float:
         if value is not None:
-            command = 'PC {:.3f}'.format(value)
+            command = "PC {:.3f}".format(value)
             print(self._comm(command))
-        actual_current = self._read_float('MC?')
+        actual_current = self._read_float("MC?")
         return actual_current
 
     def output_state(self, on: bool = False, off: bool = False) -> bool:
@@ -105,23 +105,23 @@ class TdkLambdaZ(object):
         if on and off:
             pass
         elif on:
-            command = 'OUT ON'
+            command = "OUT ON"
         elif off:
-            command = 'OUT OFF'
+            command = "OUT OFF"
 
         if command is not None:
             self._comm(command)
-        reply = self._comm('OUT?')
-        state = reply == 'ON'
+        reply = self._comm("OUT?")
+        state = reply == "ON"
         return state
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     tdk = TdkLambdaZ()
     tdk.test_connection()
-    print('Remote state: {}'.format(tdk.remote_state(remote=True)))
-    print('Output state: {}'.format(tdk.output_state(on=True)))
-    print('Voltage proction level: {}'.format(tdk.voltage_protection(5)))
+    print("Remote state: {}".format(tdk.remote_state(remote=True)))
+    print("Output state: {}".format(tdk.output_state(on=True)))
+    print("Voltage proction level: {}".format(tdk.voltage_protection(5)))
     print()
 
     print(tdk.current(0.2))

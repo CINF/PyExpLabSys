@@ -8,12 +8,13 @@ import threading
 
 from PyExpLabSys.common.value_logger import ValueLogger
 from PyExpLabSys.common.database_saver import ContinuousDataSaver
+
 # from PyExpLabSys.common.sockets import DateDataPullSocket
 # from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.drivers.edwards_nxds import EdwardsNxds
 
 HOSTNAME = socket.gethostname()
-machine_path = pathlib.Path.home() / 'machines' / HOSTNAME
+machine_path = pathlib.Path.home() / "machines" / HOSTNAME
 sys.path.append(str(machine_path))
 
 # try:
@@ -28,22 +29,23 @@ import settings  # pylint: disable=wrong-import-position, import-error
 
 
 class PumpReader(threading.Thread):
-    """ Read pump parameters """
+    """Read pump parameters"""
+
     def __init__(self, port):
         threading.Thread.__init__(self)
-        port = '/dev/serial/by-id/' + port
+        port = "/dev/serial/by-id/" + port
         self.pump = EdwardsNxds(port)
         self.values = {}
-        self.values['temperature'] = -1
-        self.values['controller_temperature'] = -1
-        self.values['rotational_speed'] = -1
-        self.values['run_hours'] = -1
-        self.values['controller_run_hours'] = -1
-        self.values['time_to_service'] = -1
+        self.values["temperature"] = -1
+        self.values["controller_temperature"] = -1
+        self.values["rotational_speed"] = -1
+        self.values["run_hours"] = -1
+        self.values["controller_run_hours"] = -1
+        self.values["time_to_service"] = -1
         self.quit = False
 
     def value(self, channel):
-        """ Return the value of the reader """
+        """Return the value of the reader"""
         value = self.values[channel]
         return value
 
@@ -54,29 +56,37 @@ class PumpReader(threading.Thread):
             try:
                 temperatures = self.pump.read_pump_temperature()
                 controller_status = self.pump.pump_controller_status()
-                self.values['temperature'] = temperatures['pump']
-                self.values['controller_temperature'] = temperatures['controller']
-                self.values['rotational_speed'] = self.pump.read_pump_status()['rotational_speed']
-                self.values['run_hours'] = self.pump.read_run_hours()
-                self.values['controller_run_hours'] = controller_status['controller_run_time']
-                self.values['time_to_service'] = controller_status['time_to_service']
+                self.values["temperature"] = temperatures["pump"]
+                self.values["controller_temperature"] = temperatures["controller"]
+                self.values["rotational_speed"] = self.pump.read_pump_status()[
+                    "rotational_speed"
+                ]
+                self.values["run_hours"] = self.pump.read_run_hours()
+                self.values["controller_run_hours"] = controller_status["controller_run_time"]
+                self.values["time_to_service"] = controller_status["time_to_service"]
             except OSError:
-                print('Error reading from pump')
+                print("Error reading from pump")
                 time.sleep(2)
-                self.values['temperature'] = -1
-                self.values['controller_temperature'] = -1
-                self.values['rotational_speed'] = -1
-                self.values['run_hours'] = -1
-                self.values['controller_run_hours'] = -1
-                self.values['time_to_service'] = -1
+                self.values["temperature"] = -1
+                self.values["controller_temperature"] = -1
+                self.values["rotational_speed"] = -1
+                self.values["run_hours"] = -1
+                self.values["controller_run_hours"] = -1
+                self.values["time_to_service"] = -1
 
 
 def main():
-    """ Main function """
+    """Main function"""
     pumpreaders = {}
     loggers = {}
-    channels = ['temperature', 'controller_temperature', 'run_hours', 'rotational_speed',
-                'controller_run_hours', 'time_to_service']
+    channels = [
+        "temperature",
+        "controller_temperature",
+        "run_hours",
+        "rotational_speed",
+        "controller_run_hours",
+        "time_to_service",
+    ]
     codenames = []
     for port, codename in settings.channels.items():
         pumpreaders[port] = PumpReader(port)
@@ -85,9 +95,10 @@ def main():
         pumpreaders[port].loggers = {}
 
         for channel in channels:
-            codenames.append(codename + '_' + channel)  # Build the list of codenames
-            loggers[port + channel] = ValueLogger(pumpreaders[port], comp_val=0.9,
-                                                  channel=channel, maximumtime=600)
+            codenames.append(codename + "_" + channel)  # Build the list of codenames
+            loggers[port + channel] = ValueLogger(
+                pumpreaders[port], comp_val=0.9, channel=channel, maximumtime=600
+            )
             loggers[port + channel].start()
 
     # socket = DateDataPullSocket('Pump Reader', codenames, timeouts=2.0)
@@ -95,10 +106,12 @@ def main():
     # live_socket = LiveSocket('Pump Reader',  codenames)
     # live_socket.start()
 
-    db_logger = ContinuousDataSaver(continuous_data_table=settings.table,
-                                    username=credentials.user,
-                                    password=credentials.passwd,
-                                    measurement_codenames=codenames)
+    db_logger = ContinuousDataSaver(
+        continuous_data_table=settings.table,
+        username=credentials.user,
+        password=credentials.passwd,
+        measurement_codenames=codenames,
+    )
     db_logger.start()
 
     time.sleep(10)
@@ -111,17 +124,17 @@ def main():
                 if loggers[port + channel].is_alive is False:
                     alive = False
 
-                codename = base_codename + '_' + channel
+                codename = base_codename + "_" + channel
                 value = loggers[port + channel].read_value()
                 # socket.set_point_now(codename, value)
                 # live_socket.set_point_now(codename, value)
                 if loggers[port + channel].read_trigged():
-                    print(port + ' ' + channel + ': ' + str(value))
+                    print(port + " " + channel + ": " + str(value))
                     db_logger.save_point_now(codename, value)
                     loggers[port + channel].clear_trigged()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     while True:
         try:
             main()

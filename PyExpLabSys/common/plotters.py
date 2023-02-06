@@ -12,9 +12,17 @@ import numpy
 class DataPlotter(object):
     """This class provides a data plotter for continuous data"""
 
-    def __init__(self, left_plotlist, right_plotlist=None, left_log=False,
-                 right_log=False, auto_update=True, backend='qwt', parent=None,
-                 **kwargs):
+    def __init__(
+        self,
+        left_plotlist,
+        right_plotlist=None,
+        left_log=False,
+        right_log=False,
+        auto_update=True,
+        backend="qwt",
+        parent=None,
+        **kwargs,
+    ):
         """Initialize the plotting backend, data and local setting
 
         :param left_plotlist: Codenames for the plots that should go on the
@@ -86,17 +94,18 @@ class DataPlotter(object):
         # Check legend
         message = message or self._init_check_legends_plots(all_plots, kwargs)
         # Backend
-        if backend not in ['qwt']:
-            message = 'Backend must be \'qwt\''
+        if backend not in ["qwt"]:
+            message = "Backend must be 'qwt'"
         if message is not None:
             raise ValueError(message)
 
         # Initiate the backend
-        if backend == 'qwt':
+        if backend == "qwt":
             from PyExpLabSys.common.plotters_backend_qwt import QwtPlot
-            self._plot = QwtPlot(parent, left_plotlist, right_plotlist,
-                                 left_log, right_log,
-                                 **kwargs)
+
+            self._plot = QwtPlot(
+                parent, left_plotlist, right_plotlist, left_log, right_log, **kwargs
+            )
 
         # Initiate the data
         self._data = {}
@@ -110,19 +119,24 @@ class DataPlotter(object):
         """Check input related to the left curves"""
         message = None
         if not len(left_plotlist) > 0:
-            message = 'At least one item in left_plotlist is required'
+            message = "At least one item in left_plotlist is required"
         # Check number of left labels and colors
-        for kwarg in ['left_labels', 'left_colors']:
-            if kwargs.get(kwarg) is not None and\
-                    len(left_plotlist) != len(kwargs.get(kwarg)):
-                message = 'There must be as many items in \'{}\' as there '\
-                    'are left plots'.format(kwarg)
+        for kwarg in ["left_labels", "left_colors"]:
+            if kwargs.get(kwarg) is not None and len(left_plotlist) != len(kwargs.get(kwarg)):
+                message = (
+                    "There must be as many items in '{}' as there "
+                    "are left plots".format(kwarg)
+                )
         # Check left thickness if it is a list
-        if kwargs.get('left_thickness') is not None and\
-                isinstance(kwargs['left_thickness'], collections.Iterable) and\
-                len(left_plotlist) != len(kwargs['left_thickness']):
-            message = '\'left_thickness\' must either be an int or a iterable'\
-                ' with as many ints as there are left plots'
+        if (
+            kwargs.get("left_thickness") is not None
+            and isinstance(kwargs["left_thickness"], collections.Iterable)
+            and len(left_plotlist) != len(kwargs["left_thickness"])
+        ):
+            message = (
+                "'left_thickness' must either be an int or a iterable"
+                " with as many ints as there are left plots"
+            )
         return message
 
     @staticmethod
@@ -130,30 +144,40 @@ class DataPlotter(object):
         """Check input related to the right curves"""
         message = None
         if right_plotlist is not None:
-            for kwarg in ['right_labels', 'right_colors']:
-                if kwargs.get(kwarg) is not None and\
-                        len(right_plotlist) != len(kwargs.get(kwarg)):
-                    message = 'There must be as many items in \'{}\' as '\
-                        'there are right plots'.format(kwarg)
-            if kwargs.get('right_thickness') is not None and\
-                isinstance(kwargs['right_thickness'], collections.Iterable)\
-                    and len(right_plotlist) != len(kwargs['right_thickness']):
-                message = '\'right_thickness\' must either be an int or a'\
-                          ' iterable with as many ints as there are left plots'
+            for kwarg in ["right_labels", "right_colors"]:
+                if kwargs.get(kwarg) is not None and len(right_plotlist) != len(
+                    kwargs.get(kwarg)
+                ):
+                    message = (
+                        "There must be as many items in '{}' as "
+                        "there are right plots".format(kwarg)
+                    )
+            if (
+                kwargs.get("right_thickness") is not None
+                and isinstance(kwargs["right_thickness"], collections.Iterable)
+                and len(right_plotlist) != len(kwargs["right_thickness"])
+            ):
+                message = (
+                    "'right_thickness' must either be an int or a"
+                    " iterable with as many ints as there are left plots"
+                )
         return message
 
     @staticmethod
     def _init_check_legends_plots(all_plots, kwargs):
         """Check legend name and for duplicate plot names"""
         message = None
-        if kwargs.get('legend') is not None and not kwargs['legend'] in\
-                ['left', 'right', 'bottom', 'top']:
-            message = 'legend must be one of: \'left\', \'right\', '\
-                '\'bottom\', \'top\''
+        if kwargs.get("legend") is not None and not kwargs["legend"] in [
+            "left",
+            "right",
+            "bottom",
+            "top",
+        ]:
+            message = "legend must be one of: 'left', 'right', " "'bottom', 'top'"
         # Check for duplicate plot names
         for plot in all_plots:
             if all_plots.count(plot) > 1:
-                message = 'Duplicate codename {} not allowed'.format(plot)
+                message = "Duplicate codename {} not allowed".format(plot)
         return message
 
     def add_point(self, plot, point, update=None):
@@ -193,9 +217,18 @@ class DataPlotter(object):
 class ContinuousPlotter(object):
     """This class provides a data plotter for continuous data"""
 
-    def __init__(self, left_plotlist, right_plotlist=None, left_log=False,
-                 right_log=False, timespan=600, preload=60, auto_update=True,
-                 backend='none', **kwargs):
+    def __init__(
+        self,
+        left_plotlist,
+        right_plotlist=None,
+        left_log=False,
+        right_log=False,
+        timespan=600,
+        preload=60,
+        auto_update=True,
+        backend="none",
+        **kwargs,
+    ):
         """Initialize the plotting backend, data and local setting
 
         :param left_plotlist: Codenames for the plots that should go on the
@@ -232,23 +265,26 @@ class ContinuousPlotter(object):
         # Input checks
         message = None
         if not len(left_plotlist) > 0:
-            message = 'At least one item in left_plotlist is required'
-        if kwargs.get('left_labels') is not None and\
-                len(left_plotlist) != len(kwargs.get('left_labels')):
-            message = 'There must be as many left labels as there are plots'
-        if right_plotlist is not None and\
-                kwargs.get('right_labels') is not None and\
-                len(right_plotlist) != len(kwargs.get('right_labels')):
-            message = 'There must be as many right labels as there are plots'
+            message = "At least one item in left_plotlist is required"
+        if kwargs.get("left_labels") is not None and len(left_plotlist) != len(
+            kwargs.get("left_labels")
+        ):
+            message = "There must be as many left labels as there are plots"
+        if (
+            right_plotlist is not None
+            and kwargs.get("right_labels") is not None
+            and len(right_plotlist) != len(kwargs.get("right_labels"))
+        ):
+            message = "There must be as many right labels as there are plots"
         if timespan < 1:
-            message = 'timespan must be positive'
+            message = "timespan must be positive"
         if preload < 0:
-            message = 'preload must be positive or 0'
-        if backend not in ['none']:
-            message = 'Backend must be \'none\''
+            message = "preload must be positive or 0"
+        if backend not in ["none"]:
+            message = "Backend must be 'none'"
         for plot in all_plots:
             if all_plots.count(plot) > 1:
-                message = 'Duplicate codename {} not allowed'.format(plot)
+                message = "Duplicate codename {} not allowed".format(plot)
         if message is not None:
             raise ValueError(message)
 
@@ -269,7 +305,7 @@ class ContinuousPlotter(object):
         self.start = time.time()
         self.end = self.start + timespan
 
-        message = 'No plotter for continuous data implemented'
+        message = "No plotter for continuous data implemented"
         raise NotImplementedError(message)
 
     def add_point_now(self, plot, value, update=None):

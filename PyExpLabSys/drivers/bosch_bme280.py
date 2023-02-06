@@ -1,5 +1,6 @@
 import time
 import smbus
+
 # from ctypes import c_short
 # from ctypes import c_byte
 # from ctypes import c_ubyte
@@ -11,6 +12,7 @@ class BoschBME280(object):
     Hint for implementation found at
     http://forum.arduino.cc/index.php?topic=285116.0
     """
+
     def __init__(self):
         self.bus = smbus.SMBus(1)
         self.device_address = 0x77
@@ -19,21 +21,21 @@ class BoschBME280(object):
         # oversample_hum = 0b00000011 # Oversampling x 4
         # oversample_hum = 0b00000100 # Oversampling x 8
         oversample_hum = 0b00000101  # Oversampling x 16
-        self.bus.write_byte_data(self.device_address, 0xf2, oversample_hum)
+        self.bus.write_byte_data(self.device_address, 0xF2, oversample_hum)
 
         # Oversample setting - same as above
         oversample_temp = 0b00000101
         oversample_pres = 0b00000101
         mode = 0b11  # Normal mode
         control = oversample_temp << 5 | oversample_pres << 2 | mode
-        self.bus.write_byte_data(self.device_address, 0xf4, control)
+        self.bus.write_byte_data(self.device_address, 0xF4, control)
 
         # 0b111: 20ms, 0b010:  125ms, 0b011: 250ms,  0b101: 1000ms
         standby = 0b111
 
         filter_set = 0b0  # off - 0b001: 2, 0b100: 16
         config = standby << 5 | filter_set << 2
-        self.bus.write_byte_data(self.device_address, 0xf5, config)
+        self.bus.write_byte_data(self.device_address, 0xF5, config)
         self._read_calibration()
 
     def _read_calibration(self):
@@ -42,10 +44,10 @@ class BoschBME280(object):
         cal1 = self.bus.read_i2c_block_data(self.device_address, 0x88, 24)
 
         self.T = {}
-        self.T['1'] = cal1[1] * 256 + cal1[0]
+        self.T["1"] = cal1[1] * 256 + cal1[0]
         # Principally these are signed, consider check
-        self.T['2'] = cal1[3] * 256 + cal1[2]
-        self.T['3'] = cal1[5] * 256 + cal1[4]
+        self.T["2"] = cal1[3] * 256 + cal1[2]
+        self.T["3"] = cal1[5] * 256 + cal1[4]
 
         self.P = {}
         self.P[1] = cal1[7] * 256 + cal1[6]
@@ -74,11 +76,14 @@ class BoschBME280(object):
         self.H[6] = cal3[6]
 
     def _calculate_temperature(self, temp_raw):
-        var1 = (temp_raw / 16384 - self.T['1'] / 1024) * self.T['2']
+        var1 = (temp_raw / 16384 - self.T["1"] / 1024) * self.T["2"]
         # Simplify!
         var2 = (
-            (temp_raw / 16 - self.T['1']) * (temp_raw / 16 - self.T['1'])
-        ) / 4096 * self.T['3'] / 2**14
+            ((temp_raw / 16 - self.T["1"]) * (temp_raw / 16 - self.T["1"]))
+            / 4096
+            * self.T["3"]
+            / 2**14
+        )
 
         t_fine = var1 + var2
         # Which is correct?!?
@@ -90,10 +95,11 @@ class BoschBME280(object):
     def _calculate_pressure(self, pres_raw, t_fine):
         v1 = t_fine / 2.0 - 64000.0
         v2 = (((v1 / 4.0) * (v1 / 4.0)) / 2048) * self.P[6]
-        v2 += ((v1 * self.P[5]) * 2.0)
+        v2 += (v1 * self.P[5]) * 2.0
         v2 = (v2 / 4.0) + (self.P[4] * 65536.0)
-        v1 = (((self.P[3] * (((v1 / 4.0) * (v1 / 4.0)) / 8192)) / 8) +
-              ((self.P[2] * v1) / 2.0)) / 262144
+        v1 = (
+            ((self.P[3] * (((v1 / 4.0) * (v1 / 4.0)) / 8192)) / 8) + ((self.P[2] * v1) / 2.0)
+        ) / 262144
         v1 = ((32768 + v1) * self.P[1]) / 32768
 
         if v1 == 0:
@@ -112,9 +118,11 @@ class BoschBME280(object):
 
     def _calculate_humidity(self, hum_raw, t_fine):
         humidity = t_fine - 76800.0
-        humidity = ((hum_raw - (self.H[4] * 64.0 + self.H[5] / 2**14 * humidity)) *
-                    (self.H[2] / 2**16 * (1.0 + self.H[6] / 2**26 * humidity *
-                                          (1.0 + self.H[3] / 2**26 * humidity))))
+        humidity = (hum_raw - (self.H[4] * 64.0 + self.H[5] / 2**14 * humidity)) * (
+            self.H[2]
+            / 2**16
+            * (1.0 + self.H[6] / 2**26 * humidity * (1.0 + self.H[3] / 2**26 * humidity))
+        )
         humidity = humidity * (1.0 - self.H[1] * humidity / 2**19)
         if humidity > 100:
             humidity = 100
@@ -123,13 +131,12 @@ class BoschBME280(object):
         return humidity
 
     def _read_ids(self):
-        (nr, version) = self.bus.read_i2c_block_data(
-            self.device_address, 0xD0, 2)
+        (nr, version) = self.bus.read_i2c_block_data(self.device_address, 0xD0, 2)
         # time.sleep(0.1)
-        return {'id_number:': nr, 'version': version}
+        return {"id_number:": nr, "version": version}
 
     def measuring(self):
-        data = self.bus.read_i2c_block_data(self.device_address, 0xf3, 1)
+        data = self.bus.read_i2c_block_data(self.device_address, 0xF3, 1)
         measure_bit = data[0] >> 3
         return measure_bit
 
@@ -139,7 +146,7 @@ class BoschBME280(object):
         while self.measuring():
             time.sleep(0.01)
 
-        data = self.bus.read_i2c_block_data(self.device_address, 0xf7, 8)
+        data = self.bus.read_i2c_block_data(self.device_address, 0xF7, 8)
         pres_raw = data[0] * 4096 + data[1] * 16 + data[2] // 16
         temp_raw = data[3] * 4096 + data[4] * 16 + data[5] // 16
         hum_raw = data[6] * 256 + data[7]
@@ -149,24 +156,20 @@ class BoschBME280(object):
         humidity = self._calculate_humidity(hum_raw, t_fine)
 
         return_dict = {
-            'temperature': temperature,
-            'humidity': humidity,
-            'air_pressure': air_pressure
+            "temperature": temperature,
+            "humidity": humidity,
+            "air_pressure": air_pressure,
         }
         return return_dict
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     BOSCH = BoschBME280()
 
     t = time.time()
     iterations = 20
     for i in range(0, iterations):
         values = BOSCH.read_all_values()
-        msg = 'Temperature: {:.2f}C, Pressure: {:.2f}Pa, Humidity: {:.2f}%'
-        print(msg.format(
-            values['temperature'],
-            values['air_pressure'],
-            values['humidity'])
-        )
-    print('Time pr iteration: {:.3f}s'.format((time.time() - t) / iterations))
+        msg = "Temperature: {:.2f}C, Pressure: {:.2f}Pa, Humidity: {:.2f}%"
+        print(msg.format(values["temperature"], values["air_pressure"], values["humidity"]))
+    print("Time pr iteration: {:.3f}s".format((time.time() - t) / iterations))

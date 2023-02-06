@@ -3,8 +3,8 @@ import time
 
 
 class AsairAht20(object):
-    """ Class for reading pressure and temperature from Omron D6F-PH series
-    Ranging not implemented for all models """
+    """Class for reading pressure and temperature from Omron D6F-PH series
+    Ranging not implemented for all models"""
 
     def __init__(self):
         self.bus = smbus.SMBus(1)
@@ -18,14 +18,14 @@ class AsairAht20(object):
         return response
 
     def init_device(self):
-        """ Sensor needs to be initiated after power up """
+        """Sensor needs to be initiated after power up"""
         # Reset sensor:
-        self.bus.write_byte(self.device_address, 0xba)
+        self.bus.write_byte(self.device_address, 0xBA)
         time.sleep(0.03)
 
         # Calibrate sensor:
         init_command = [0x08, 0x00]
-        self.bus.write_i2c_block_data(self.device_address, 0xbe, init_command)
+        self.bus.write_i2c_block_data(self.device_address, 0xBE, init_command)
 
         calibrated = False
         while not calibrated:
@@ -36,9 +36,9 @@ class AsairAht20(object):
         return True
 
     def read_value(self):
-        """ Read a value from the sensor """
+        """Read a value from the sensor"""
         read_command = [0x33, 0x00]
-        self.bus.write_i2c_block_data(self.device_address, 0xac, read_command)
+        self.bus.write_i2c_block_data(self.device_address, 0xAC, read_command)
         time.sleep(0.1)
         value = self.bus.read_i2c_block_data(self.device_address, 0x00, 6)
         # msg = 'State: {}, hex: {}, bin: {}'
@@ -60,7 +60,7 @@ class AsairAht20(object):
         return humidity_cal, temperature_cal
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     ASAIR = AsairAht20()
     humidity, temperature = ASAIR.read_value()
-    print('Temperature: {:.2f}C, Humidity: {:.2f}%'.format(temperature, humidity))
+    print("Temperature: {:.2f}C, Humidity: {:.2f}%".format(temperature, humidity))

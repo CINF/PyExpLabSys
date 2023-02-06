@@ -7,10 +7,13 @@ import PyExpLabSys.drivers.stahl_hv_400 as stahl_hv_400
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
+
 class CursesTui(threading.Thread):
-    """ Text user interface for ion optics control """
+    """Text user interface for ion optics control"""
+
     def __init__(self, ioc_class):
         threading.Thread.__init__(self)
         self.start_time = time.time()
@@ -25,23 +28,23 @@ class CursesTui(threading.Thread):
 
     def run(self):
         while not self.quit:
-            self.screen.addstr(2, 2, 'Running')
-            val = self.ioc.status['temperature']
+            self.screen.addstr(2, 2, "Running")
+            val = self.ioc.status["temperature"]
             self.screen.addstr(3, 2, "Device Temeperature: {0:.2f}C  ".format(val))
-            if self.ioc.status['output_error'] is False:
+            if self.ioc.status["output_error"] is False:
                 self.screen.addstr(4, 2, "All channels ok ")
             else:
                 self.screen.addstr(4, 2, "Error in channel")
 
-            self.screen.addstr(7, 13, 'Set voltage')
-            self.screen.addstr(7, 27, 'Measured')
-            self.screen.addstr(7, 38, 'Status')
+            self.screen.addstr(7, 13, "Set voltage")
+            self.screen.addstr(7, 27, "Measured")
+            self.screen.addstr(7, 38, "Status")
             for i in range(0, len(self.ioc.lenses)):
                 lens = self.ioc.lenses[i]
                 ch_string = "Channel " + str(i + 1) + ":  {0: >9.2f}V   {1: >7.1f}V     {2}  "
                 set_v = self.ioc.set_voltages[lens]
                 actual_v = self.ioc.actual_voltages[lens]
-                status = self.ioc.status['channel_status'][i+1]
+                status = self.ioc.status["channel_status"][i + 1]
                 self.screen.addstr(8 + i, 2, ch_string.format(set_v, actual_v, status))
 
             val = self.ioc.pushsocket.queue.qsize()
@@ -51,7 +54,7 @@ class CursesTui(threading.Thread):
             self.screen.addstr(17, 2, "Run time: {0:.0f}s".format(val))
 
             key_pressed = self.screen.getch()
-            if key_pressed == ord('q'):
+            if key_pressed == ord("q"):
                 self.ioc.quit = True
                 self.quit = True
 
@@ -60,7 +63,7 @@ class CursesTui(threading.Thread):
         self.stop()
 
     def stop(self):
-        """ Clean up console """
+        """Clean up console"""
         curses.nocbreak()
         self.screen.keypad(0)
         curses.echo()
@@ -68,13 +71,14 @@ class CursesTui(threading.Thread):
 
 
 class IonOpticsControl(threading.Thread):
-    """ Main optics control """
+    """Main optics control"""
+
     def __init__(self, port, name, lenses):
         threading.Thread.__init__(self)
-        name = name + '_ion_optics'
+        name = name + "_ion_optics"
         self.pullsocket = DateDataPullSocket(name, lenses, timeouts=20.0)
         self.pullsocket.start()
-        self.pushsocket = DataPushSocket(name, action='enqueue')
+        self.pushsocket = DataPushSocket(name, action="enqueue")
         self.pushsocket.start()
         self.ion_optics = stahl_hv_400.StahlHV400(port)
         self.lenses = lenses
@@ -84,27 +88,27 @@ class IonOpticsControl(threading.Thread):
             self.set_voltages[lens] = 0
             self.actual_voltages[lens] = 0
         self.status = {}
-        self.status['channel_status'] = {}
-        for i in range(1, len(self.lenses)+1):
-            self.status['channel_status'][i] = False
-        self.status['temperature'] = None
-        self.status['output_error'] = None
+        self.status["channel_status"] = {}
+        for i in range(1, len(self.lenses) + 1):
+            self.status["channel_status"][i] = False
+        self.status["temperature"] = None
+        self.status["output_error"] = None
         self.quit = False
 
     def run(self):
         current_lens = 1
         while not self.quit:
-            self.status['temperature'] = self.ion_optics.read_temperature()
-            if self.status['temperature'] > 50:
+            self.status["temperature"] = self.ion_optics.read_temperature()
+            if self.status["temperature"] > 50:
                 for lens in self.lenses:
                     self.set_voltages[lens] = 0
 
-            self.status['channel_status'] = self.ion_optics.check_channel_status()
-            self.status['output_error'] = False in self.status['channel_status']
+            self.status["channel_status"] = self.ion_optics.check_channel_status()
+            self.status["output_error"] = False in self.status["channel_status"]
 
             actual_voltage = self.ion_optics.query_voltage(current_lens)
-            self.actual_voltages[self.lenses[current_lens-1]] = actual_voltage
-            self.pullsocket.set_point_now(self.lenses[current_lens-1], actual_voltage)
+            self.actual_voltages[self.lenses[current_lens - 1]] = actual_voltage
+            self.pullsocket.set_point_now(self.lenses[current_lens - 1], actual_voltage)
 
             if current_lens == len(self.lenses):
                 current_lens = 1

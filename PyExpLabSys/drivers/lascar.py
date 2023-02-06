@@ -18,6 +18,7 @@ which is used to calculate the relative humidity as:
 from __future__ import division, print_function
 
 import struct
+
 try:
     import hid
 except (ImportError, AttributeError):
@@ -32,11 +33,11 @@ class ElUsbRt(object):
     def __init__(self, device_path=None):
         if device_path is None:
             for dev in hid.enumerate():
-                if dev['product_string'] == 'EL USB RT':
-                    path = dev['path']
+                if dev["product_string"] == "EL USB RT":
+                    path = dev["path"]
 
         if path is None:
-            message = 'No path give and unable to find it'
+            message = "No path give and unable to find it"
             raise ValueError(message)
 
         self.dev = hid.Device(path=path)
@@ -49,24 +50,24 @@ class ElUsbRt(object):
         out = {}
         while len(out) < 2:
             string = self.dev.read(8)
-            if string.startswith('\x03'):
-                frac, = struct.unpack('H', string[1:])
-                out['temperature'] = -200 + frac * 0.1
-            elif string.startswith('\x02'):
-                frac, = struct.unpack('B', string[1:])
-                out['humidity'] = frac * 0.5
+            if string.startswith("\x03"):
+                (frac,) = struct.unpack("H", string[1:])
+                out["temperature"] = -200 + frac * 0.1
+            elif string.startswith("\x02"):
+                (frac,) = struct.unpack("B", string[1:])
+                out["humidity"] = frac * 0.5
         return out
 
     def get_temperature(self):
         """Returns the temperature  (in celcius, float)"""
         while True:
             string = self.dev.read(8)
-            if string.startswith('\x03'):
-                frac, = struct.unpack('H', string[1:])
+            if string.startswith("\x03"):
+                (frac,) = struct.unpack("H", string[1:])
                 return -200 + frac * 0.1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     DEV = ElUsbRt()
     while True:
         print(DEV.get_temperature())

@@ -1,4 +1,3 @@
-
 """Driver for the Epimax PVCi process vacuum controller
 
 There are three controllers share the same kind of communication:
@@ -51,6 +50,7 @@ import minimalmodbus
 # in the program running using it, since minimal modbus is missing a few corners in the
 # conversion to Python 2 and 3 support
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
@@ -58,7 +58,9 @@ python2_and_3(__file__)
 ###############
 
 minimalmodbus.TIMEOUT = 1
-minimalmodbus.FLOAT_ENDIANNESS = '<'
+minimalmodbus.FLOAT_ENDIANNESS = "<"
+
+
 class PVCCommon(minimalmodbus.Instrument):
     """Common base for the PVCX, PVCi and PVCiDuo devices
 
@@ -100,59 +102,71 @@ class PVCCommon(minimalmodbus.Instrument):
         # function that converts those 4 bytes to the desired value.
         self.fields = {
             # Group 1
-            'global_id': (0x00, 'string', None),
-            'firmware_version': (0x02, bytes_to_firmware_version, None),
+            "global_id": (0x00, "string", None),
+            "firmware_version": (0x02, bytes_to_firmware_version, None),
             # Group 2
-            'unit_name': (0x10, 'string', None),
-            'user_id': (0x12, 'string', None),
+            "unit_name": (0x10, "string", None),
+            "user_id": (0x12, "string", None),
             # Group 5
-            'slot_a_id': (0x42, bytes_to_slot_id, None),
-            'slot_b_id': (0x44, bytes_to_slot_id, None),
-            'bakeout_flags': (0x48, bytes_to_bakeout_flags, None),
+            "slot_a_id": (0x42, bytes_to_slot_id, None),
+            "slot_b_id": (0x44, bytes_to_slot_id, None),
+            "bakeout_flags": (0x48, bytes_to_bakeout_flags, None),
             # Group 9
-            'trip_1_7_status': (0x80, partial(bytes_to_status, status_type='trip'), None),
-            'digital_input_1_2_status': (0x82,
-                                         partial(bytes_to_status, status_type='digital_input'),
-                                         None),
+            "trip_1_7_status": (
+                0x80,
+                partial(bytes_to_status, status_type="trip"),
+                None,
+            ),
+            "digital_input_1_2_status": (
+                0x82,
+                partial(bytes_to_status, status_type="digital_input"),
+                None,
+            ),
             # Group 10
-            'ion_gauge_1_pressure': (0x9A, 'float', 'selected_unit'),
+            "ion_gauge_1_pressure": (0x9A, "float", "selected_unit"),
             # Group 14
-            'bake_out_temp_1': (0xD0, 'float', 'C'),
-            'bake_out_temp_2': (0xD2, 'float', 'C'),
-            'bake_out_temp_3': (0xD4, 'float', 'C'),
-            'bake_out_temp_4': (0xD6, 'float', 'C'),
-            'bake_out_temp_5': (0xD8, 'float', 'C'),
-            'bake_out_temp_6': (0xDA, 'float', 'C'),
-            'bake_out_temp_hysteresis': (0xDC, 'float', 'C'),
-            'ion_gauge_1_pressure_trip': (0xDE, 'float', 'selected_unit'),
+            "bake_out_temp_1": (0xD0, "float", "C"),
+            "bake_out_temp_2": (0xD2, "float", "C"),
+            "bake_out_temp_3": (0xD4, "float", "C"),
+            "bake_out_temp_4": (0xD6, "float", "C"),
+            "bake_out_temp_5": (0xD8, "float", "C"),
+            "bake_out_temp_6": (0xDA, "float", "C"),
+            "bake_out_temp_hysteresis": (0xDC, "float", "C"),
+            "ion_gauge_1_pressure_trip": (0xDE, "float", "selected_unit"),
             # Group 15
-            'bake_out_time_1': (0xE0, 'float', 'h'),
-            'bake_out_time_2': (0xE2, 'float', 'h'),
-            'bake_out_time_3': (0xE4, 'float', 'h'),
-            'bake_out_time_4': (0xE6, 'float', 'h'),
-            'bake_out_time_5': (0xE8, 'float', 'h'),
-            'bake_out_time_6': (0xEA, 'float', 'h'),
-            'bake_out_setpoint': (0xEC, 'float', 'C'),
-            'remaining_bake_out_time': (0xEE, 'float', 'h'),
+            "bake_out_time_1": (0xE0, "float", "h"),
+            "bake_out_time_2": (0xE2, "float", "h"),
+            "bake_out_time_3": (0xE4, "float", "h"),
+            "bake_out_time_4": (0xE6, "float", "h"),
+            "bake_out_time_5": (0xE8, "float", "h"),
+            "bake_out_time_6": (0xEA, "float", "h"),
+            "bake_out_setpoint": (0xEC, "float", "C"),
+            "remaining_bake_out_time": (0xEE, "float", "h"),
         }
 
         if check_hardware_version:
             # Check that this is the correct hardware
-            ids = self.get_fields(['global_id', 'firmware_version'])
-            if ids['firmware_version'][0] != self.firmware_name or\
-               ids['global_id'] != self.global_id:
-                message = ('This driver class \'{}\' indicates that this hardware should '
-                           'have global_id: \'{}\' and firmware name: \'{}\'. However, '
-                           'the values are: \'{}\' and \'{}\'. This driver is not meant '
-                           'for this hardware. To run anyway, set '
-                           'check_hardware_version=False in __init__')
+            ids = self.get_fields(["global_id", "firmware_version"])
+            if (
+                ids["firmware_version"][0] != self.firmware_name
+                or ids["global_id"] != self.global_id
+            ):
+                message = (
+                    "This driver class '{}' indicates that this hardware should "
+                    "have global_id: '{}' and firmware name: '{}'. However, "
+                    "the values are: '{}' and '{}'. This driver is not meant "
+                    "for this hardware. To run anyway, set "
+                    "check_hardware_version=False in __init__"
+                )
                 raise ValueError(
                     message.format(
-                        self.__class__.__name__, self.global_id, self.firmware_name,
-                        ids['global_id'], ids['firmware_version'][0]
+                        self.__class__.__name__,
+                        self.global_id,
+                        self.firmware_name,
+                        ids["global_id"],
+                        ids["firmware_version"][0],
                     )
                 )
-
 
     def close(self):
         """Close the serial connection"""
@@ -170,11 +184,11 @@ class PVCCommon(minimalmodbus.Instrument):
         """
         raw_value = self.read_string(
             registeraddress=register_start,
-            numberOfRegisters=count//2,
+            numberOfRegisters=count // 2,
             functioncode=23,
         )
         if sys.version_info.major >= 3:
-            value = raw_value.encode('latin1')
+            value = raw_value.encode("latin1")
         else:
             value = raw_value
         return value
@@ -194,9 +208,9 @@ class PVCCommon(minimalmodbus.Instrument):
 
         """
         address, type_or_convertion_function, _ = self.fields[field_name]
-        if type_or_convertion_function == 'string':
+        if type_or_convertion_function == "string":
             value = self.read_string(address, 2, 23)
-        elif type_or_convertion_function == 'float':
+        elif type_or_convertion_function == "float":
             value = self.read_float(
                 registeraddress=address,
                 functioncode=23,
@@ -206,7 +220,7 @@ class PVCCommon(minimalmodbus.Instrument):
             value = type_or_convertion_function(raw)
         return value
 
-    def get_fields(self, fields='common'):
+    def get_fields(self, fields="common"):
         """Return a dict with fields and values for a list of fields
 
         This method is specifically for getting multiple values in the shortest
@@ -223,15 +237,15 @@ class PVCCommon(minimalmodbus.Instrument):
             dict: Field name to value mapping
         """
         # Update and check fields
-        if fields == 'common':
+        if fields == "common":
             # Form a list of the keys whose address is between 0x80 and 0x9E
             fields = [key for key, value in self.fields.items() if 0x80 <= value[0] <= 0x9E]
-        elif fields == 'all':
+        elif fields == "all":
             fields = self.fields.keys()
         else:
             for field in fields:
                 if field not in self.fields:
-                    message = 'Field name {} is not valid'.format(field)
+                    message = "Field name {} is not valid".format(field)
                     raise KeyError(message)
 
         data = {field: self.get_field(field) for field in fields}
@@ -242,8 +256,9 @@ class PVCCommon(minimalmodbus.Instrument):
         if attrname in self.fields:
             return self.get_field(attrname)
         else:
-            message = '\'{}\' object has no attribute {}'.format(self.__class__.__name__,
-                                                                 attrname)
+            message = "'{}' object has no attribute {}".format(
+                self.__class__.__name__, attrname
+            )
             raise AttributeError(message)
 
 
@@ -256,27 +271,32 @@ class PVCi(PVCCommon):
     """
 
     # Used in the __init__ of PVCCommon to check for the correct hardware version
-    global_id = 'PVCi'
-    firmware_name = 'PVCi'
+    global_id = "PVCi"
+    firmware_name = "PVCi"
 
     def __init__(self, *args, **kwargs):
         """For specification for __init__ arguments, see :meth:`PVCCommon.__init__`"""
 
         super(PVCi, self).__init__(*args, **kwargs)
         # Update the common field definitions with those specific to the PVCi
-        self.fields.update({
-            'ion_gauge_1_status': (0x88,
-                                   partial(ion_gauge_status, controller_type='pvci'),
-                                   None),
-            'slot_a_value_1': (0x90, 'float', None),
-            'slot_a_value_2': (0x92, 'float', None),
-            'slot_b_value_1': (0x94, 'float', None),
-            'slot_b_value_2': (0x96, 'float', None),
-        })
+        self.fields.update(
+            {
+                "ion_gauge_1_status": (
+                    0x88,
+                    partial(ion_gauge_status, controller_type="pvci"),
+                    None,
+                ),
+                "slot_a_value_1": (0x90, "float", None),
+                "slot_a_value_2": (0x92, "float", None),
+                "slot_b_value_1": (0x94, "float", None),
+                "slot_b_value_2": (0x96, "float", None),
+            }
+        )
 
 
 ### Convertion Functions ###
 ############################
+
 
 def bytes_to_firmware_version(bytes_):
     """Convert 4 bytes to firmware type and version"""
@@ -292,7 +312,7 @@ def bytes_to_firmware_version(bytes_):
     unit_type = UNIT_TYPE[unit_code]
 
     # The last two are integer major and minor parts of the version
-    version = '{}.{}'.format(*bytes_as_ints[2:])
+    version = "{}.{}".format(*bytes_as_ints[2:])
     return unit_type, version
 
 
@@ -305,20 +325,20 @@ def bytes_to_string(bytes_, valid_chars=None):
             will be filtered out.
     """
     if valid_chars:
-        bytes_ = b''.join(c for c in bytes_ if valid_chars[0] <= ord(c) <= valid_chars[1])
-    return bytes_.decode('ascii')
+        bytes_ = b"".join(c for c in bytes_ if valid_chars[0] <= ord(c) <= valid_chars[1])
+    return bytes_.decode("ascii")
 
 
 def bytes_to_float(bytes_):
     """Convert 2 16 bit registers to a float"""
-    return unpack('<f', bytes_)[0]
+    return unpack("<f", bytes_)[0]
 
 
 def bytes_to_slot_id(bytes_):
     """Convert 4 bytes to the slot ID"""
 
     id_byte = bytes_[::-1][3]
-    raise_if_not_set(byte_to_bits(id_byte), 0, 'slot_id_a')
+    raise_if_not_set(byte_to_bits(id_byte), 0, "slot_id_a")
     try:
         id_int = ord(id_byte)
     except TypeError:
@@ -327,16 +347,14 @@ def bytes_to_slot_id(bytes_):
     slot_id = SLOT_IDS[id_int % 128]
     if slot_id == SLOT_IDS[5]:
         if ord(bytes_[::-1][1]) == 0:
-            slot_id += ', log'
+            slot_id += ", log"
         else:
-            slot_id += ', lin'
+            slot_id += ", lin"
     return slot_id
 
 
 def bytes_to_status(bytes_, status_type):
-    """Convert bytes to trip and digital input statuses
-
-    """
+    """Convert bytes to trip and digital input statuses"""
     # The 4 bits for a state is contained i 4 bytes, gather them up into one list
     all_states = []
     for byte_ in bytes_:
@@ -351,30 +369,32 @@ def bytes_to_status(bytes_, status_type):
         # Translate the state bits, if none is set, default to off
         if sum(state_bits[:3]) > 1:
             all_state_strings = []
-            for bit_num, bit_meaning in enumerate(['on', 'inhibit', 'override']):
+            for bit_num, bit_meaning in enumerate(["on", "inhibit", "override"]):
                 if state_bits[bit_num]:
                     all_state_strings.append(bit_meaning)
-            states[status_type + str(state_num)] = ', '.join(all_state_strings)
+            states[status_type + str(state_num)] = ", ".join(all_state_strings)
         else:
-            states[status_type + str(state_num)] = 'off'
+            states[status_type + str(state_num)] = "off"
 
     return states
 
 
-def byte_to_bits(byte, ):
+def byte_to_bits(
+    byte,
+):
     """Convert a byte to a list of bits"""
     try:
         byte_in = ord(byte)
     except TypeError:
         byte_in = byte
-    bits = [b == '1' for b in bin(byte_in)[2:].zfill(8)]
+    bits = [b == "1" for b in bin(byte_in)[2:].zfill(8)]
     return bits
 
 
 def raise_if_not_set(bits, index, parameter):
     """Raise a ValueError if bit is not set"""
     if not bits[index]:
-        message = 'Bad \'{}\'. Expected bit {} to be set, got bits {}'
+        message = "Bad '{}'. Expected bit {} to be set, got bits {}"
         raise ValueError(message.format(parameter, index, bits))
 
 
@@ -387,36 +407,36 @@ def ion_gauge_status(bytes_, controller_type=None):
     bits = byte_to_bits(next(bytes_))
     for bit_, state in zip(bits, ALL_PVC_IONGAUGE_MODES):
         if bit_:
-            status['status'] = state
+            status["status"] = state
 
     # Filemant type and number
     bits = byte_to_bits(next(bytes_))
-    if controller_type == 'pvci':
-        raise_if_not_set(bits, 0, 'filament type')
-        status['filemant_type'] = 'tungsten' if bits[3] else 'iridium'
-    raise_if_not_set(bits, 4, 'filemant number')
-    status['filament_number'] = int(bits[7]) + 1
+    if controller_type == "pvci":
+        raise_if_not_set(bits, 0, "filament type")
+        status["filemant_type"] = "tungsten" if bits[3] else "iridium"
+    raise_if_not_set(bits, 4, "filemant number")
+    status["filament_number"] = int(bits[7]) + 1
 
     # Measurement error and pressure trend
     bits = byte_to_bits(next(bytes_))
-    raise_if_not_set(bits, 0, 'measurement error')
-    status['measurement_error'] = 'electrometer input below min. limit' if bits[1] else 'none'
+    raise_if_not_set(bits, 0, "measurement error")
+    status["measurement_error"] = "electrometer input below min. limit" if bits[1] else "none"
 
-    raise_if_not_set(bits, 4, 'ion gauge trend')
-    status['ion_gauge_trend'] = 'none'
-    for bit_number, value in zip([7, 6], ['rising', 'falling']):
+    raise_if_not_set(bits, 4, "ion gauge trend")
+    status["ion_gauge_trend"] = "none"
+    for bit_number, value in zip([7, 6], ["rising", "falling"]):
         if bits[bit_number]:
-            status['ion_gauge_trend'] = value
+            status["ion_gauge_trend"] = value
 
     # Current ion gauge emission/degas setting
-    if controller_type == 'pvci':
+    if controller_type == "pvci":
         byte = next(bytes_)
         bits = byte_to_bits(byte)
-        raise_if_not_set(bits, 0, 'ion gauge emission/degas setting')
-        status_dict = {'mode': 'manual'}
-        for bit_number, value in zip([1, 3], ['autoemission', 'quick degas']):
+        raise_if_not_set(bits, 0, "ion gauge emission/degas setting")
+        status_dict = {"mode": "manual"}
+        for bit_number, value in zip([1, 3], ["autoemission", "quick degas"]):
             if bits[bit_number]:
-                status_dict['mode'] = value
+                status_dict["mode"] = value
 
         # The current/power is given by an integer formed by the last 4 bits
         try:
@@ -424,17 +444,17 @@ def ion_gauge_status(bytes_, controller_type=None):
         except TypeError:
             byte_as_int = byte
         current_int = byte_as_int % 16
-        status_dict['emission'] = PVCI_ION_GAUGE_STATUSSES[current_int]
-        status['ion_gauge_emission_setting'] = status_dict
+        status_dict["emission"] = PVCI_ION_GAUGE_STATUSSES[current_int]
+        status["ion_gauge_emission_setting"] = status_dict
     else:
-        raise NotImplementedError('Only controller type pvci is implement for gauge status')
+        raise NotImplementedError("Only controller type pvci is implement for gauge status")
 
     # Only return if there are no bytes left, else raise
     try:
         next(bytes_)
     except StopIteration:
         return status
-    raise ValueError('Too many bytes for gauge status')
+    raise ValueError("Too many bytes for gauge status")
 
 
 def bytes_to_bakeout_flags(bytes_):
@@ -444,7 +464,7 @@ def bytes_to_bakeout_flags(bytes_):
 
     # Degas at end of bake
     bits = byte_to_bits(next(bytes_))
-    status['degas_at_end_of_bake'] = bits[7]
+    status["degas_at_end_of_bake"] = bits[7]
 
     # Middle two bytes not implemented
     next(bytes_)
@@ -456,9 +476,9 @@ def bytes_to_bakeout_flags(bytes_):
     for bit_number, flag in BAKEOUT_FLAGS.items():
         if bits[bit_number]:
             status_flags.append(flag)
-    #if len(status_flags) == 0:
+    # if len(status_flags) == 0:
     #    status_flags.append('off')
-    status['status_flags'] = status_flags
+    status["status_flags"] = status_flags
 
     return status
 
@@ -467,52 +487,58 @@ def bytes_to_bakeout_flags(bytes_):
 #################
 
 ALL_PVC_IONGAUGE_MODES = [
-    'normal', 'fan_fail', 'digital_input_fail', 'over_pressure_fail',  # bits 0-3
-    'emmision_failed', 'interlock_trip', 'emmission_trip',  # bits 4-6
-    'filament_overcurrent_trip']  # bit 7
+    "normal",
+    "fan_fail",
+    "digital_input_fail",
+    "over_pressure_fail",  # bits 0-3
+    "emmision_failed",
+    "interlock_trip",
+    "emmission_trip",  # bits 4-6
+    "filament_overcurrent_trip",
+]  # bit 7
 
 
 PVCI_ION_GAUGE_STATUSSES = {
-    0x0: 'OFF',
-    0x1: 'IGS_EM_100uA',
-    0x2: 'IGS_EM_200uA',
-    0x3: 'IGS_EM_500uA',
-    0x4: 'IGS_EM_1mA',
-    0x5: 'IGS_EM_2mA',
-    0x6: 'IGS_EM_5mA',
-    0x7: 'IGS_EM_10mA',
-    0x8: 'IGS_EM_1W',
-    0x9: 'IGS_EM_2W',
-    0xA: 'IGS_EM_3W',
-    0xB: 'IGS_EM_6W',
-    0xC: 'IGS_EM_12W',
-    0xD: 'IGS_EM_20W',
-    0xE: 'IGS_EM_30W',
+    0x0: "OFF",
+    0x1: "IGS_EM_100uA",
+    0x2: "IGS_EM_200uA",
+    0x3: "IGS_EM_500uA",
+    0x4: "IGS_EM_1mA",
+    0x5: "IGS_EM_2mA",
+    0x6: "IGS_EM_5mA",
+    0x7: "IGS_EM_10mA",
+    0x8: "IGS_EM_1W",
+    0x9: "IGS_EM_2W",
+    0xA: "IGS_EM_3W",
+    0xB: "IGS_EM_6W",
+    0xC: "IGS_EM_12W",
+    0xD: "IGS_EM_20W",
+    0xE: "IGS_EM_30W",
 }
 
 
 BAKEOUT_FLAGS = {
-    7: 'bake-out started',
-    6: 'bake-out is inhibited by assigned digital inputs',
-    5: 'bake-out is inhibited by ion gauge pressure',
-    4: 'bake-out is suspended',
-    3: 'bake-out output is on',
+    7: "bake-out started",
+    6: "bake-out is inhibited by assigned digital inputs",
+    5: "bake-out is inhibited by ion gauge pressure",
+    4: "bake-out is suspended",
+    3: "bake-out output is on",
 }
 
 
 UNIT_TYPE = {
-    (0x45, 0x58): 'PVCX',
-    (0x45, 0x44): 'PVCi',
-    (0x45, 0x32): 'PVCiDuo',
+    (0x45, 0x58): "PVCX",
+    (0x45, 0x44): "PVCi",
+    (0x45, 0x32): "PVCiDuo",
 }
 
 SLOT_IDS = {
-    0: 'empty',
-    1: 'ion gauge (internally set)',
-    2: 'V module, VG pirani gauge head',
-    3: 'K module, type K thermocouple',
-    4: 'E module, M and Thyracont Pirani gauge head',
-    5: 'U module, universal input range',
+    0: "empty",
+    1: "ion gauge (internally set)",
+    2: "V module, VG pirani gauge head",
+    3: "K module, type K thermocouple",
+    4: "E module, M and Thyracont Pirani gauge head",
+    5: "U module, universal input range",
 }
 
 
@@ -526,15 +552,16 @@ def run_module():
 
     """
     import logging
+
     logging.basicConfig()
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
     # '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0'
-    #pvci = PVCi('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
-    pvci = PVCi('/dev/ttyUSB0')
+    # pvci = PVCi('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
+    pvci = PVCi("/dev/ttyUSB0")
     from pprint import pprint
 
-    pprint(pvci.get_fields('all'))
+    pprint(pvci.get_fields("all"))
 
     # Continuous
     try:
@@ -542,12 +569,14 @@ def run_module():
             print(pvci.ion_gauge_1_status)
             for _ in range(20):
                 print(
-                    'Pressure {:.2e}  Setpoint: {:.2f}  Actual temp: {:.2f}'.format(
-                        pvci.ion_gauge_1_pressure, pvci.bake_out_setpoint, pvci.slot_b_value_1
+                    "Pressure {:.2e}  Setpoint: {:.2f}  Actual temp: {:.2f}".format(
+                        pvci.ion_gauge_1_pressure,
+                        pvci.bake_out_setpoint,
+                        pvci.slot_b_value_1,
                     )
                 )
     except KeyboardInterrupt:
-        print('closing')
+        print("closing")
 
 
 if __name__ == "__main__":

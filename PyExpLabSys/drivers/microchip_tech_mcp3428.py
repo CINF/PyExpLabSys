@@ -8,12 +8,12 @@ import fcntl
 
 
 class I2C:
-    """ File based i2c.
+    """File based i2c.
     Code adapted from: https://www.raspberrypi.org/forums/viewtopic.php?t=134997"""
 
     def __init__(self, device, bus):
-        self.file_read = io.open("/dev/i2c-"+str(bus), "rb", buffering=0)
-        self.file_write = io.open("/dev/i2c-"+str(bus), "wb", buffering=0)
+        self.file_read = io.open("/dev/i2c-" + str(bus), "rb", buffering=0)
+        self.file_write = io.open("/dev/i2c-" + str(bus), "wb", buffering=0)
 
         i2c_slave = 0x0703
         # set device address
@@ -21,22 +21,22 @@ class I2C:
         fcntl.ioctl(self.file_write, i2c_slave, device)
 
     def write(self, values):
-        """ Write a value to i2c port """
+        """Write a value to i2c port"""
         self.file_write.write(bytearray(values))
 
     def read(self, number_of_bytes):
-        """ Read value from i2c port"""
+        """Read value from i2c port"""
         value_bytes = self.file_read.read(number_of_bytes)
         return list(value_bytes)
 
     def close(self):
-        """ Close the device """
+        """Close the device"""
         self.file_write.close()
         self.file_read.close()
 
 
 class MCP3428(object):
-    """ Class for reading voltage from MCP3428
+    """Class for reading voltage from MCP3428
     For some reason this chip works only partly with smbus, hence the
     use of file based i2c.
     """
@@ -49,14 +49,13 @@ class MCP3428(object):
     def __del__(self):
         self.bus.close()
 
-    def read_sample(self, channel: int = 1, gain: int = 1,
-                    resolution: int = 12) -> float:
-        """ Read a single sample """
+    def read_sample(self, channel: int = 1, gain: int = 1, resolution: int = 12) -> float:
+        """Read a single sample"""
         command_byte = (
-            self.resolution(resolution) |
-            0x00 |  # One shot measuremet, use 0x10 for continous mode
-            self.gain(gain) |
-            self.channel(channel)
+            self.resolution(resolution)
+            | 0x00
+            | self.gain(gain)  # One shot measuremet, use 0x10 for continous mode
+            | self.channel(channel)
         )
         command_byte = command_byte | 0x80  # start conversion
         self.bus.write([command_byte])
@@ -73,15 +72,15 @@ class MCP3428(object):
         # print('Execution time: {:.2f}ms'.format(meas_time * 1000))
 
         raw_value = data[0] * 256 + data[1]
-        if raw_value > (2**(resolution - 1) - 1):
+        if raw_value > (2 ** (resolution - 1) - 1):
             raw_value = raw_value - 2**resolution
         # print('Raw sensor value: {}'.format(raw_value))
-        bit_size = self.voltage_ref / (2**(resolution - 1) * gain)
+        bit_size = self.voltage_ref / (2 ** (resolution - 1) * gain)
         voltage = raw_value * bit_size
         return voltage
 
     def gain(self, gain: int = 1) -> int:
-        """ Return the command code to set gain """
+        """Return the command code to set gain"""
         gain_val = 0x00
         if gain == 1:
             gain_val = 0x00
@@ -94,7 +93,7 @@ class MCP3428(object):
         return gain_val
 
     def resolution(self, resolution: int = 12) -> int:
-        """ Return the command code to set resolution """
+        """Return the command code to set resolution"""
         resolution_val = 0x00
         if resolution == 12:
             resolution_val = 0x00
@@ -105,7 +104,7 @@ class MCP3428(object):
         return resolution_val
 
     def channel(self, channel: int = 1) -> int:
-        """ Return the command code to set channel """
+        """Return the command code to set channel"""
         channel_val = 0x00
         if channel == 1:
             channel_val = 0x00
@@ -119,7 +118,7 @@ class MCP3428(object):
         return channel_val
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     MCP = MCP3428(address_index=4)
     print(MCP.read_sample(channel=1, gain=1, resolution=16) * (3.3 + 2.2) / 2.2)
     print(MCP.read_sample(channel=2, gain=1, resolution=16) * (3.3 + 2.2) / 2.2)

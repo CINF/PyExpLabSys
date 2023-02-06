@@ -2,19 +2,21 @@
 import time
 import os
 from PyExpLabSys.common.supported_versions import python2_and_3
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 python2_and_3(__file__)
 if on_rtd:
     pass
 else:
     import smbus
 
+
 class MMA7660FC(object):
-    """ Class for reading accelerometer output """
+    """Class for reading accelerometer output"""
 
     def __init__(self):
         self.bus = smbus.SMBus(1)
-        self.device_address = 0x4c
+        self.device_address = 0x4C
         # Turn on the device through MODE register (7)
         self.bus.write_byte_data(self.device_address, 0x07, 0x01)
         # Number of samples pr seconds, registor 8
@@ -23,7 +25,7 @@ class MMA7660FC(object):
         time.sleep(0.5)
 
     def read_values(self):
-        """ Read a value from the sensor """
+        """Read a value from the sensor"""
 
         data = self.bus.read_i2c_block_data(0x4C, 0x00, 5)
         x_value = data[0] & 0x3F
@@ -41,9 +43,10 @@ class MMA7660FC(object):
             z_value = z_value - 64
         z_value = z_value * 1.5 / 32
 
-        return(x_value, y_value, z_value)
+        return (x_value, y_value, z_value)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     MMA = MMA7660FC()
     for i in range(0, 20):
         time.sleep(0.05)

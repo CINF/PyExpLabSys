@@ -4,6 +4,7 @@ import glob
 import evdev
 import threading
 import time
+
 try:
     import Queue
 except ImportError:
@@ -20,7 +21,7 @@ def detect_barcode_device():
         str: The Barcode Scanner device path
     """
     barcode_device = None
-    for device_string in glob.glob('/dev/input/event*'):
+    for device_string in glob.glob("/dev/input/event*"):
         try:
             tmp_dev = evdev.InputDevice(device_string)
         except OSError:
@@ -29,7 +30,7 @@ def detect_barcode_device():
             device_description = str(tmp_dev)
             tmp_dev.close()
 
-        if 'Barcode Reader' in device_description:
+        if "Barcode Reader" in device_description:
             barcode_device = device_string
             break
 
@@ -45,14 +46,14 @@ class BlockingBarcodeReader(object):
 
     def read_barcode(self):
         """Wait for a barcode and return it"""
-        out = ''
+        out = ""
         for event in self.dev.read_loop():
             if event.type == evdev.ecodes.EV_KEY:
                 # Save the event temporarily to introspect it
                 data = evdev.categorize(event)
                 if data.keystate == 1:  # Down events only
-                    key_lookup = SCANCODES.get(data.scancode, '?')
-                    if key_lookup == 'CRLF':
+                    key_lookup = SCANCODES.get(data.scancode, "?")
+                    if key_lookup == "CRLF":
                         break
                     else:
                         out += key_lookup
@@ -74,16 +75,16 @@ class ThreadedBarcodeReader(threading.Thread):
 
     def run(self):
         """The threaded run method"""
-        read_so_far = ''
+        read_so_far = ""
         for event in self.dev.read_loop():
             if event.type == evdev.ecodes.EV_KEY:
                 # Save the event temporarily to introspect it
                 data = evdev.categorize(event)
                 if data.keystate == 1:  # Down events only
-                    key_lookup = SCANCODES.get(data.scancode, '?')
-                    if key_lookup == 'CRLF':
+                    key_lookup = SCANCODES.get(data.scancode, "?")
+                    if key_lookup == "CRLF":
                         self._barcode_queue.put(read_so_far)
-                        read_so_far = ''
+                        read_so_far = ""
                     else:
                         read_so_far += key_lookup
 
@@ -123,26 +124,74 @@ class ThreadedBarcodeReader(threading.Thread):
 
 SCANCODES = {
     # Scancode: ASCIICode
-    0: None, 1: u'ESC', 2: u'1', 3: u'2', 4: u'3', 5: u'4', 6: u'5', 7: u'6',
-    8: u'7', 9: u'8', 10: u'9', 11: u'0', 12: u'-', 13: u'=', 14: u'BKSP',
-    15: u'TAB', 16: u'Q', 17: u'W', 18: u'E', 19: u'R', 20: u'T', 21: u'Y',
-    22: u'U', 23: u'I', 24: u'O', 25: u'P', 26: u'[', 27: u']', 28: u'CRLF',
-    29: u'LCTRL', 30: u'A', 31: u'S', 32: u'D', 33: u'F', 34: u'G', 35: u'H',
-    36: u'J', 37: u'K', 38: u'L', 39: u';', 40: u'"', 41: u'`', 42: u'LSHFT',
-    43: u'\\', 44: u'Z', 45: u'X', 46: u'C', 47: u'V', 48: u'B', 49: u'N',
-    50: u'M', 51: u',', 52: u'.', 53: u'/', 54: u'RSHFT', 56: u'LALT',
-    100: u'RALT'
+    0: None,
+    1: "ESC",
+    2: "1",
+    3: "2",
+    4: "3",
+    5: "4",
+    6: "5",
+    7: "6",
+    8: "7",
+    9: "8",
+    10: "9",
+    11: "0",
+    12: "-",
+    13: "=",
+    14: "BKSP",
+    15: "TAB",
+    16: "Q",
+    17: "W",
+    18: "E",
+    19: "R",
+    20: "T",
+    21: "Y",
+    22: "U",
+    23: "I",
+    24: "O",
+    25: "P",
+    26: "[",
+    27: "]",
+    28: "CRLF",
+    29: "LCTRL",
+    30: "A",
+    31: "S",
+    32: "D",
+    33: "F",
+    34: "G",
+    35: "H",
+    36: "J",
+    37: "K",
+    38: "L",
+    39: ";",
+    40: '"',
+    41: "`",
+    42: "LSHFT",
+    43: "\\",
+    44: "Z",
+    45: "X",
+    46: "C",
+    47: "V",
+    48: "B",
+    49: "N",
+    50: "M",
+    51: ",",
+    52: ".",
+    53: "/",
+    54: "RSHFT",
+    56: "LALT",
+    100: "RALT",
 }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     dev_ = detect_barcode_device()
     print(dev_)
     tbs = ThreadedBarcodeReader(dev_)
     tbs.start()
     try:
         while True:
-            print('Last barcode: {}'.format(tbs.last_barcode_in_queue))
+            print("Last barcode: {}".format(tbs.last_barcode_in_queue))
             time.sleep(1)
     except KeyboardInterrupt:
         tbs.close()

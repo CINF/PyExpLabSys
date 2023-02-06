@@ -36,14 +36,14 @@ class ChemitecS411(object):
                     self.comm = self._setup_comm(address, tty=tty)
                     try:
                         value = self.comm.read_float(2, functioncode=4)
-                        msg = 'Found instrument at {}, temperature is {:.1f}C'
+                        msg = "Found instrument at {}, temperature is {:.1f}C"
                         print(msg.format(address, value))
                         success = True
                         break
                     except minimalmodbus.NoResponseError:
                         pass
                 if not success:
-                    print('No instrument found at {}'.format(address))
+                    print("No instrument found at {}".format(address))
 
     def _setup_comm(self, instrument_address, tty):
         comm = minimalmodbus.Instrument(tty, instrument_address)
@@ -57,7 +57,7 @@ class ChemitecS411(object):
                 stopbits=1,
                 timeout=0.05,
                 write_timeout=2.0,
-                direction_pin=self.gpio_dir_pin
+                direction_pin=self.gpio_dir_pin,
             )
             comm.serial = dir_serial
 
@@ -82,7 +82,7 @@ class ChemitecS411(object):
                 error_count += 1
                 if error_count > 1000:
                     if keep_trying:
-                        print('Error: {}'.format(error_count))
+                        print("Error: {}".format(error_count))
                     else:
                         break
         return value
@@ -90,9 +90,7 @@ class ChemitecS411(object):
     def _write(self, value, registeraddress):
         try:
             self.comm.write_register(
-                value=value,
-                registeraddress=registeraddress,
-                functioncode=6
+                value=value, registeraddress=registeraddress, functioncode=6
             )
         except minimalmodbus.NoResponseError:
             pass  # This exception is always raised after write
@@ -112,12 +110,7 @@ class ChemitecS411(object):
         return filter_code
 
     def read_range(self):
-        ranges = {
-            0: '0-20',
-            1: '0-200',
-            2: '0-2000',
-            3: '0-20000'
-        }
+        ranges = {0: "0-20", 1: "0-200", 2: "0-2000", 3: "0-20000"}
         range_val = self._read(5)
         # print('Range: {}'.format(ranges[range_val]))
         return_val = (range_val, ranges[range_val])
@@ -127,10 +120,12 @@ class ChemitecS411(object):
         """
         Returns the serial number of the unit.
         """
-        serial_nr = '{}{}{}{}'.format(self._read(9, code=3),
-                                      self._read(10, code=3),
-                                      self._read(11, code=3),
-                                      self._read(12, code=3))
+        serial_nr = "{}{}{}{}".format(
+            self._read(9, code=3),
+            self._read(10, code=3),
+            self._read(11, code=3),
+            self._read(12, code=3),
+        )
         return serial_nr
 
     def set_instrument_address(self, instrument_address):
@@ -162,11 +157,7 @@ class ChemitecS411(object):
         """
         # Todo: check range is valid
         try:
-            self.comm.write_register(
-                value=range_value,
-                registeraddress=5,
-                functioncode=6
-            )
+            self.comm.write_register(value=range_value, registeraddress=5, functioncode=6)
         except minimalmodbus.NoResponseError:
             pass  # This exception is always raised
         time.sleep(1)
@@ -203,22 +194,22 @@ class ChemitecS411(object):
         implemented.
         """
         calibrations = {
-            'manual_temperature': self._read(8, code=4, floatread=True),
-            'temperature_offset': self._read(10, code=4, floatread=True),
-            'cal2_val_user': self._read(12, code=4, floatread=True),
-            'cal2_mis_user':  self._read(14, code=4, floatread=True),
-            'cal2_val_default': self._read(16, code=4, floatread=True),
-            'cal2_mis_default': self._read(18, code=4, floatread=True)
+            "manual_temperature": self._read(8, code=4, floatread=True),
+            "temperature_offset": self._read(10, code=4, floatread=True),
+            "cal2_val_user": self._read(12, code=4, floatread=True),
+            "cal2_mis_user": self._read(14, code=4, floatread=True),
+            "cal2_val_default": self._read(16, code=4, floatread=True),
+            "cal2_mis_default": self._read(18, code=4, floatread=True),
         }
         return calibrations
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # s411 = ChemitecS411(instrument_address=0, tty='/dev/serial1')
     # s411 = ChemitecS411(instrument_address=0, tty='/dev/ttyUSB0')
     # exit()
     # s411 = ChemitecS411(instrument_address=15, tty='/dev/ttyUSB0')
-    s411 = ChemitecS411(instrument_address=15, tty='/dev/serial1', gpio_dir_pin=13)
+    s411 = ChemitecS411(instrument_address=15, tty="/dev/serial1", gpio_dir_pin=13)
 
     print(s411.read_serial())
     print(s411.read_firmware_version())
@@ -235,5 +226,5 @@ if __name__ == '__main__':
     time.sleep(2)
     conductivity = s411.read_conductivity()
     temperature = s411.read_temperature()
-    msg = 'Range is: {}, Value is: {}, temperature is: {}'
+    msg = "Range is: {}, Value is: {}, temperature is: {}"
     print(msg.format(range_val[1], conductivity, temperature))
