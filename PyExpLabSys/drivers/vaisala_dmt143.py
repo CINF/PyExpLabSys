@@ -14,6 +14,8 @@ class VaisalaDMT143():
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS
         )
+        self.comm(chr(27))  # stop continous output
+        self.comm('FORM /')  # Standard output format
 
     def comm(self, command):
         """
@@ -79,11 +81,11 @@ class VaisalaDMT143():
         split_values = raw_value.split(' ')
         dew_point = float(split_values[2])
         dew_point_atm = float(split_values[6])
-        vol_conc = float(split_values[9])
+        vol_conc = float(split_values[10])
         return_dict = {
-            'dew_point': dew_point,
+            'dew_point': dew_point,  # C
             'dew_point_atm': dew_point_atm,
-            'vol_conc': vol_conc
+            'vol_conc': vol_conc  # ppm
         }
         return return_dict
 
@@ -100,8 +102,9 @@ def main():
     if current_errors:
         print('Error! ' + current_errors)
 
-    # print(dmt.device_information())
-    print(dmt.water_level())
+    print(dmt.device_information())
+    for i in range(0, 10):
+        print(dmt.water_level())
 
 
 if __name__ == '__main__':
