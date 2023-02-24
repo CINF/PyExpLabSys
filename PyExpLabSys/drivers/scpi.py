@@ -8,8 +8,10 @@ try:
     import usbtmc
 except ImportError:
     usbtmc = None
-from PyExpLabSys.common.supported_versions import python2_and_3
-python2_and_3(__file__)
+try:
+    import Gpib
+except ImportError:
+    Gpib = None
 
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
@@ -18,8 +20,8 @@ LOGGER.addHandler(logging.NullHandler())
 
 class SCPI(object):
     """ Driver for scpi communication """
-    def __init__(self, interface, device='', tcp_port=5025, hostname='', baudrate=9600,
-                 visa_string='', line_ending='\r'):
+    def __init__(self, interface, device='', tcp_port=5025, hostname='',
+                 baudrate=9600, visa_string='', gpib_address=None, line_ending='\r'):
         self.device = device
         self.line_ending = line_ending
         self.interface = interface
@@ -27,14 +29,18 @@ class SCPI(object):
             self.comm_dev = open(self.device, 'w')
             self.comm_dev.close()
         if self.interface == 'serial':
-            self.comm_dev = serial.Serial(self.device, baudrate, timeout=2, xonxoff=True)
+            self.comm_dev = serial.Serial(self.device, baudrate,
+                                          timeout=2, xonxoff=True)
         if self.interface == 'lan':
             self.comm_dev = telnetlib.Telnet(hostname, tcp_port)
         if self.interface == 'usbtmc':
             if usbtmc is None:
                 exit('usbtmc is not availalbe')
             self.comm_dev = usbtmc.Instrument(visa_string)
-
+        if self.interface == 'gpib':
+            if Gpib is None:
+                exit('gpib is not availalbe')
+            self.comm_dev = Gpib.Gpib(0, pad=gpib_address)
 
     def scpi_comm(self, command, expect_return=False):
         """ Implements actual communication with SCPI instrument """
@@ -57,8 +63,6 @@ class SCPI(object):
                 return_string = ''.encode('ascii')
                 while True:
                     next_char = self.comm_dev.read(1)
-                    #print(ord(next_char))
-                    #print(ord(self.line_ending))
                     if ord(next_char) == ord(self.line_ending):
                         break
                     return_string += next_char
@@ -71,7 +75,6 @@ class SCPI(object):
                 return_string = self.comm_dev.read_until(chr(10).encode('ascii'),
                                                          2).decode()
             LOGGER.info('Return string length: ' + str(len(return_string)))
-            #time.sleep(0.025)
             LOGGER.info('lan_time for coomand ' + command_text.strip() +
                         ': ' + str(time.time() - lan_time))
 
@@ -81,6 +84,11 @@ class SCPI(object):
             else:
                 self.comm_dev.write(command_text)
                 return_string = 'command_text'
+
+        if self.interface == 'gpib':
+            self.comm_dev.write(command_text)
+            if (command.find('?') > -1) or expect_return:
+                return_string = self.comm_dev.read().strip().decode()
         return return_string
 
     def read_software_version(self):
