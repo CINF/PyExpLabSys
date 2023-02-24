@@ -14,21 +14,32 @@ class VaisalaDMT143():
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS
         )
-        self.comm(chr(27))  # stop continous output
-        self.comm('FORM /')  # Standard output format
+        self._init_device()
 
-    def comm(self, command):
+    def _init_device(self):
+        self.comm(chr(27))  # stop continuous output
+        # Set predictable output format;
+        # dew_point; atm dew_point; vol_conc; status; addres; time since started
+        self.comm('FORM 3.6 Tdf ";" 3.6 Tdfa ";" 6.5 H2O ";" STAT ";" ADDR ";" TIME \\n')
+
+    def comm(self, command: str, single_line: bool = False) -> str:
         """
         Handle actual serial communication with instrument.
         """
         actual_command = (command + '\r').encode('ascii')
-        self.serial.write(actual_command)
-        time.sleep(1)
-        in_waiting = self.serial.inWaiting()
-        reply = self.serial.read(in_waiting).decode()
+        try:
+            self.serial.write(actual_command)
+            if single_line:
+                reply = self.serial.readline().decode()
+            else:
+                time.sleep(1)
+                in_waiting = self.serial.inWaiting()
+                reply = self.serial.read(in_waiting).decode()
+        except OSError:
+            reply = None
         return reply
 
-    def device_information(self):
+    def device_information(self) -> dict:
         """
         Return information about the device.
         """
@@ -39,9 +50,6 @@ class VaisalaDMT143():
         model = info[0].strip()
         serial_nr = info[1].split(' ')[-1].strip()
         pressure = info[13].split(' ')[-2].strip()
-
-        # for item in info:
-        #    print(item.strip())
 
         info_dict = {
             'model': model,
@@ -75,13 +83,15 @@ class VaisalaDMT143():
         The actual measurements from the device.
         """
         command = 'SEND'
-        raw_value = self.comm(command)
-        # One could consider to use the FORMAT command
-        # to make the output less cryptic...
-        split_values = raw_value.split(' ')
-        dew_point = float(split_values[2])
-        dew_point_atm = float(split_values[6])
-        vol_conc = float(split_values[10])
+        raw_value = self.comm(command, single_line=True)
+        if raw_value is None:
+            return
+        split_values = raw_value.split(';')
+        # print(split_values)
+
+        dew_point = float(split_values[0])
+        dew_point_atm = float(split_values[1])
+        vol_conc = float(split_values[2])
         return_dict = {
             'dew_point': dew_point,  # C
             'dew_point_atm': dew_point_atm,
@@ -97,7 +107,6 @@ def main():
     port = '/dev/ttyUSB0'
     dmt = VaisalaDMT143(port=port)
 
-    # print(dmt.set_reference_pressure(1))
     current_errors = dmt.current_errors()
     if current_errors:
         print('Error! ' + current_errors)
