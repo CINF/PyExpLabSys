@@ -8,7 +8,10 @@ class SR830(SCPI):
     Simple driver for SRS SR830
     """
 
-    def __init__(self, interface, gpib_address=None):
+    def __init__(self, interface, gpib_address=None, device=None):
+        if interface == 'serial':
+            SCPI.__init__(self, interface=interface, device=device)
+            time.sleep(0.2)
         if interface == 'gpib':
             SCPI.__init__(self, interface=interface,
                           gpib_address=gpib_address, line_ending='\n')
@@ -84,8 +87,11 @@ class SR830(SCPI):
 
 
 if __name__ == '__main__':
-    LockIn = SR830('gpib', 8)
-    LockIn.sensitivity()
+    # LockIn = SR830('gpib', 8)
+    # LockIn.sensitivity()
+
+    LockIn = SR830('serial', device='/dev/ttyUSB1')
+    print(LockIn.read_software_version())
 
     exit()
 
