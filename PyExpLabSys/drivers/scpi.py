@@ -51,7 +51,7 @@ class SCPI(object):
             time.sleep(0.02)
             self.comm_dev.close()
             time.sleep(0.05)
-            if command.find('?') > -1:
+            if '?' in command:
                 self.comm_dev = open(self.device, 'r')
                 return_string = self.comm_dev.readline()
                 self.comm_dev.close()
