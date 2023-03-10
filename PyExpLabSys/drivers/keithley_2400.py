@@ -32,7 +32,7 @@ class Keithley2400(SCPI):
     def set_current_measure_range(self, current_range=None):
         """ Set the current measurement range """
         # TODO!
-        pass
+        raise NotImplementedError
 
     def set_integration_time(self, nplc: float = None):
         """
