@@ -23,6 +23,8 @@ class SR830(SCPI):
         Configures the reference frequency to be externally generated,
         the trigger can take the values sine, rising and falling.
         """
+        # Todo: Returning False in an if-structure is not good practice
+        # consider clean this up!
         if trigger == 'sine':
             param = 0
         elif trigger == 'rising':
