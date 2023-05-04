@@ -9,7 +9,7 @@ The cronjob is set up to log to /var/log/syslog under the tag: cinfautostart
 
 from __future__ import print_function
 
-from os import path, chdir
+import pathlib
 from time import sleep
 import socket
 import subprocess
@@ -45,11 +45,12 @@ def find_config(args):
     else:
         machine = socket.gethostname()
 
-    config_path = path.join(
-        path.expanduser('~'), 'PyExpLabSys', 'machines',
-        machine, 'AUTOSTART.xml'
-    )
-    return config_path
+    # External machines folder takes priority - even if empty
+    config_path = pathlib.Path.home() / 'machines' / machine
+    if not config_path.exists():
+        print("External machines folder not found. Defaulting to internal..")
+        config_path = pathlib.Path.home() / 'PyExpLabSys' / 'machines' / machine
+    return config_path / 'AUTOSTART.xml'
 
 
 def screen_cmd(command, window=None, screen_cmd_base=None, call=None):
@@ -73,8 +74,7 @@ def main():
     config_file_path = find_config(args)
 
     # Change current working directory to config dir
-    config_dir = path.dirname(config_file_path)
-    chdir(config_dir)
+    pathlib.os.chdir(config_file_path.parent)
 
     # Parse XML config file
     etree_object = XML.parse(config_file_path)
