@@ -1,4 +1,4 @@
-from inficon_sqm160 import InficonSQM160
+from PyExpLabSys.drivers.inficon_sqm160 import InficonSQM160
 
 
 class InficonSQC310(InficonSQM160):
