@@ -1,13 +1,13 @@
 """ Driver for Inficon SQM160 QCM controller """
-from __future__ import print_function
 import serial
 import time
 
+
 class InficonSQM160(object):
     """ Driver for Inficon SQM160 QCM controller """
-    def __init__(self, port='/dev/ttyUSB0'):
+    def __init__(self, port='/dev/ttyUSB0', baudrate=9600):
         self.serial = serial.Serial(port=port,
-                                    baudrate=9600,
+                                    baudrate=baudrate,
                                     timeout=2,
                                     bytesize=serial.EIGHTBITS,
                                     xonxoff=True)
@@ -15,8 +15,8 @@ class InficonSQM160(object):
     def comm(self, command):
         """ Implements actual communication with device """
         length = chr(len(command) + 34)
-        crc = self.crc_calc(length + command)
-        command = '!' + length + command + crc[0] + crc[1]
+        crc = self.crc_calc((length + command).encode())
+        command = '!' + length + command + chr(crc[0]) + chr(crc[1])
         command_bytes = bytearray()
         for i in range(0, len(command)):
             command_bytes.append(ord(command[i]))
@@ -42,7 +42,7 @@ class InficonSQM160(object):
         """ Calculate crc value of command """
         command_string = []
         for i in range(0, len(input_string)):
-            command_string.append(ord(input_string[i]))
+            command_string.append(input_string[i])
         crc = int('3fff', 16)
         mask = int('2001', 16)
         for command in command_string:
@@ -53,8 +53,8 @@ class InficonSQM160(object):
                 if old_crc % 2 == 1:
                     crc = crc ^ mask
         crc1_mask = int('1111111', 2)
-        crc1 = chr((crc & crc1_mask) + 34)
-        crc2 = chr((crc >> 7) + 34)
+        crc1 = (crc & crc1_mask) + 34
+        crc2 = (crc >> 7) + 34
         return(crc1, crc2)
 
     def show_version(self):
@@ -95,12 +95,12 @@ class InficonSQM160(object):
         life = float(value_string)
         return life
 
+
 if __name__ == "__main__":
-    INFICON = InficonSQM160()
-    print(INFICON.show_version())
+    INFICON = InficonSQM160(baudrate=19200)
+    print('Controler version: ', INFICON.show_version())
 
-    print(INFICON.rate(1))
-    print(INFICON.thickness(1))
-    print(INFICON.frequency(1))
-    print(INFICON.crystal_life(1))
-
+    print('Rate channel 1: ', INFICON.rate(1))
+    print('Thinkness channel 1: ', INFICON.thickness(1))
+    print('Frequency channel 1: ', INFICON.frequency(1))
+    print('Crystal life channel 1: ', INFICON.crystal_life(1))
