@@ -45,9 +45,13 @@ import json
 import queue
 import logging
 import six
+
+import redis
+
 from .utilities import call_spec_string
 from .system_status import SystemStatus
 from ..settings import Settings
+
 
 # Instantiate module logger
 LOGGER = logging.getLogger(__name__)
@@ -345,6 +349,10 @@ class CommonDataPullSocket(threading.Thread):
         # Init local data
         self.port = port
 
+        self.redis = None
+        if SETTINGS.redis_host is not None:
+            self.redis = redis.Redis(host=SETTINGS.redis_host, port=6379, password=SETTINGS.redis_pass)
+
         # Check for existing servers on this port
         if port in DATA:
             message = 'A UDP server already exists on port: {}'.format(port)
@@ -486,6 +494,9 @@ class DataPullSocket(CommonDataPullSocket):
                 value is used to evaluate if the point is new enough if
                 timeouts are set.
         """
+        if self.redis is not None:
+            self.redis.set(codename, point)
+
         DATA[self.port]['data'][codename] = tuple(point)
         if timestamp is None:
             timestamp = time.time()
@@ -552,6 +563,9 @@ class DateDataPullSocket(CommonDataPullSocket):
             point (iterable): Current point as a list (or tuple) of 2 floats:
                 [x, y]
         """
+        if self.redis is not None:
+            self.redis.set(codename, json.dumps(point))
+
         DATA[self.port]['data'][codename] = tuple(point)
         DDPULLSLOG.debug('Point %s for \'%s\' set', tuple(point), codename)
         # Poke if required
