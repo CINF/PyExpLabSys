@@ -36,30 +36,18 @@ Presently the module contains the following socket servers:
  etc. It can be a good place to look if, to get a behind the scenes look at
  what is happening.
 """
-
-from __future__ import print_function, unicode_literals
-
 import sys
 import threading
 import socket
-try:
-    import SocketServer
-except ImportError:
-    # SocketServer was renamed in Python3
-    import socketserver as SocketServer
+import socketserver
 import time
 import json
-try:
-    import Queue
-except ImportError:
-    # Queue was renamed to queue in Python 3
-    import queue as Queue
+import queue
 import logging
 import six
 from .utilities import call_spec_string
 from .system_status import SystemStatus
 from ..settings import Settings
-from .supported_versions import python2_and_3
 
 # Instantiate module logger
 LOGGER = logging.getLogger(__name__)
@@ -68,9 +56,6 @@ LOGGER.addHandler(logging.NullHandler())
 
 # Instantiate a global system status object
 SYSTEM_STATUS = SystemStatus()
-
-# Indicate Python 2/3
-python2_and_3(__file__)
 
 # Instantiate settings object
 SETTINGS = Settings()
@@ -117,7 +102,7 @@ def socket_server_status():
 
 PULLUHLOG = logging.getLogger(__name__ + '.PullUDPHandler')
 PULLUHLOG.addHandler(logging.NullHandler())
-class PullUDPHandler(SocketServer.BaseRequestHandler):
+class PullUDPHandler(socketserver.BaseRequestHandler):
     """Request handler for the :class:`.DateDataPullSocket` and
     :class:`.DateDataPullSocket` socket servers. The commands this request
     handler understands are documented in the :meth:`.handle` method.
@@ -345,7 +330,7 @@ class CommonDataPullSocket(threading.Thread):
                 same order.
             init_timeouts (bool): Whether timeouts should be instantiated in
                 the :data:`.DATA` module variable
-            handler_class (Sub-class of SocketServer.BaseRequestHandler): The
+            handler_class (Sub-class of socketserver.BaseRequestHandler): The
                 UDP handler to use in the server
             check_activity (bool): Whether the socket server should monitor
                 activity. What detemines activity is described in the derived
@@ -411,7 +396,7 @@ class CommonDataPullSocket(threading.Thread):
 
         # Setup server
         try:
-            self.server = SocketServer.UDPServer(('', port), handler_class)
+            self.server = socketserver.UDPServer(('', port), handler_class)
         except socket.error as error:
             if error.errno == 98:
                 # See custom exception message to understand this
@@ -576,7 +561,7 @@ class DateDataPullSocket(CommonDataPullSocket):
 
 PUSHUHLOG = logging.getLogger(__name__ + '.PushUDPHandler')
 PUSHUHLOG.addHandler(logging.NullHandler())
-class PushUDPHandler(SocketServer.BaseRequestHandler):
+class PushUDPHandler(socketserver.BaseRequestHandler):
     """This class handles the UDP requests for the :class:`.DataPushSocket`"""
 
     def handle(self):
@@ -944,7 +929,7 @@ class DataPushSocket(threading.Thread):
     """
 
     # pylint: disable=too-many-branches
-    def __init__(self, name, port=8500, action='store_last', queue=None,
+    def __init__(self, name, port=8500, action='store_last', data_queue=None,
                  callback=None, return_format='json', check_activity=False,
                  activity_timeout=900):
         """Initializes the DataPushSocket
@@ -976,9 +961,9 @@ class DataPushSocket(threading.Thread):
                    called and the result will be returned, provided it has a
                    str representation. The return value format can be set with
                    ``return_format``
-            queue (Queue.Queue): If action is 'enqueue' and this value is set,
+            data_queue (queue.Queue): If action is 'enqueue' and this value is set,
                 it will be used as the data queue instead the default which is
-                a new :py:class:`Queue.Queue` instance without any further
+                a new :py:class:`queue.Queue` instance without any further
                 configuration.
             callback (callable): A callable that will be called on incoming
                 data. The callable should accept a single argument that is the
@@ -1016,8 +1001,8 @@ class DataPushSocket(threading.Thread):
         self.action = action
 
         # Raise exception on invalid argument combinations
-        if queue is not None and action != 'enqueue':
-            message = 'The \'queue\' argument can only be used when the '\
+        if data_queue is not None and action != 'enqueue':
+            message = 'The \'data_queue\' argument can only be used when the '\
                 'action is \'enqueue\''
             raise ValueError(message)
         if callback is not None and action not in\
@@ -1049,12 +1034,12 @@ class DataPushSocket(threading.Thread):
         if action == 'store_last':
             pass
         elif action == 'enqueue':
-            if queue is None:
-                content['queue'] = Queue.Queue()
+            if data_queue is None:
+                content['queue'] = queue.Queue()
             else:
-                content['queue'] = queue
+                content['queue'] = data_queue
         elif action == 'callback_async':
-            content['queue'] = Queue.Queue()
+            content['queue'] = queue.Queue()
             self._callback_thread = CallBackThread(content['queue'], callback)
         elif action == 'callback_direct':
             content['callback'] = callback
@@ -1066,7 +1051,7 @@ class DataPushSocket(threading.Thread):
 
         # Setup server
         try:
-            self.server = SocketServer.UDPServer(('', port), PushUDPHandler)
+            self.server = socketserver.UDPServer(('', port), PushUDPHandler)
         except socket.error as error:
             if error.errno == 98:
                 # See custom exception message to understand this
@@ -1091,7 +1076,7 @@ class DataPushSocket(threading.Thread):
         """Stops the UDP socket server
 
         .. note:: Closing the server **and** deleting the
-            :py:class:`SocketServer.UDPServer` socket instance is necessary to
+            :py:class:`socketserver.UDPServer` socket instance is necessary to
             free up the port for other usage
         """
         DPUSHSLOG.debug('DPS: Stop requested')
@@ -1175,7 +1160,7 @@ class CallBackThread(threading.Thread):
         """Initialize the local variables
 
         Args:
-            queue (Queue.Queue): The queue that queues up the arguments for the
+            queue (queue.Queue): The queue that queues up the arguments for the
                 callback function
             callback (callable): The callable that will be called when there
                 are items in the queue
@@ -1202,7 +1187,7 @@ class CallBackThread(threading.Thread):
                 item = self.queue.get(True, 1)
                 self.callback(item)
                 CBTLOG.debug('CBT: Callback called with arg: %s', item)
-            except Queue.Empty:
+            except queue.Empty:
                 pass
         CBTLOG.info('CBT: Run stopped')
 
@@ -1224,8 +1209,8 @@ class PortStillReserved(Exception):
             'level networking components. If it is required to open and '\
             'close socket servers fast on the same ports, this behavior can '\
             'be changed by invoking:'\
-            '\n    import SocketServer'\
-            '\n    SocketServer.UDPServer.allow_reuse_address = True'\
+            '\n    import socketserver'\
+            '\n    socketserver.UDPServer.allow_reuse_address = True'\
             '\nbefore instantiation.'
         super(PortStillReserved, self).__init__(message)
 
