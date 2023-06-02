@@ -21,7 +21,7 @@ apt2="python3-pip python3-numpy"
 declare -a apt3=("libpython3-dev" "python3-dev" "libmysqlclient-dev" "libmariadbclient-dev")
 
 # packages to be installed by pip
-pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient"
+pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient redis"
 # Put packages into this array, whose installation sometimes fail
 declare -a pip3problempackages=("pylint")
 
