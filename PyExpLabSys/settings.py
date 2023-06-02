@@ -126,6 +126,8 @@ class Settings(object):
             'common_sql_reader_password': None,
             'common_liveserver_host': None,
             'common_liveserver_port': None,
+            'redis_host': None,
+            'redis_pass': None,
             'util_log_warning_email': None,
             'util_log_error_email': None,
             'util_log_mail_host': None,
