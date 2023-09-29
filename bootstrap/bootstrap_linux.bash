@@ -27,7 +27,7 @@ declare -a pip3problempackages=("pylint")
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
 bashrc_addition='
-export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin
+export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin:$HOME/machines/bin
 export PYTHONPATH=$PYTHONPATH:$HOME/PyExpLabSys:$HOME/machines
 stty -ixon
 
