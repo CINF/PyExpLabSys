@@ -8,35 +8,29 @@
 
 # apt install packages line 1, general packages
 #
-# NOTE: python3 is not installed on lite raspbian image by default!!
-apt1="openssh-server emacs graphviz screen python3 i2c-tools vim-nox"
+apt1="openssh-server emacs graphviz screen i2c-tools vim-nox"
 
 # apt install packages line 2, python extensions
 #
 # NOTE: This line used to contain colorama, but it is a dependency of
 # pip, so it will be installed anyway
-apt2="python3-pip python3-numpy"
+apt2="python3-pip python3-numpy black"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
-declare -a apt3=("libpython3-dev" "python3-dev" "libmysqlclient-dev" "libmariadbclient-dev")
+declare -a apt3=("libpython3-dev" "python3-dev")
 
 # packages to be installed by pip
 pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient"
 # Put packages into this array, whose installation sometimes fail
-declare -a pip3problempackages=("pylint")
+declare -a pip3problempackages=("")
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
 bashrc_addition='
 export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin
-export PYTHONPATH=$HOME/PyExpLabSys
+export PYTHONPATH=$PYTHONPATH:$HOME/PyExpLabSys:$HOME/machines
 stty -ixon
 
-machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME
-if [ -d $machine_dir ]; then
-    echo "Entering machine dir: $machine_dir"
-    cd $machine_dir
-fi
 machine_dir=$HOME/machines/$HOSTNAME
 if [ -d $machine_dir ]; then
     echo "Entering machine dir: $machine_dir"
@@ -56,7 +50,6 @@ alias sagdu=\"sudo apt-get dist-upgrade\"
 alias ll=\"ls -lh\"
 alias df=\"df -h\"
 alias emacs-nolint=\"emacs -q --load ~/PyExpLabSys/bootstrap/.emacs-simple\"
-alias python=\"/usr/bin/python3\"
 
 alias a=\"cd ~/PyExpLabSys/PyExpLabSys/apps\"
 alias c=\"cd ~/PyExpLabSys/PyExpLabSys/common\"
@@ -68,7 +61,7 @@ alias s=\"screen -x\"
 "
 
 # Usage string, edit if adding another section to the script
-usage="This is the CINF Linux bootstrap script
+usage="This is the PyExpLabSys Linux bootstrap script
 
     USAGE: bootstrap_linux.bash SECTION
 
@@ -156,7 +149,7 @@ if [ $1 == "bash" ] || [ $1 == "all" ];then
 	# there and otherwise add it
 	grep "pistatus" ~/.bashrc > /dev/null
 	if [ $? -ne 0 ];then
-	    echo 'machine_dir=$HOME/PyExpLabSys/machines/$HOSTNAME' >> ~/.bashrc
+	    echo 'machine_dir=$HOME/machines/$HOSTNAME' >> ~/.bashrc
 	    echo 'if [ -d $machine_dir ]; then' >> ~/.bashrc
 	    echo '    echo "Entering machine dir: $machine_dir"' >> ~/.bashrc
 	    echo '    cd $machine_dir' >> ~/.bashrc
@@ -257,9 +250,6 @@ if [ $1 == "pip" ] || [ $1 == "all" ];then
     echo
     # Test if pip3 is there
     PIPEXECUTABLE=`which pip3`
-    if [ $? -ne 0 ];then
-	PIPEXECUTABLE=`which pip-3.2`
-    fi
 
     if [ $? -eq 0 ];then
 	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
@@ -279,7 +269,7 @@ fi
 # Setup autostart cronjob
 if [ $1 == "autostart" ] || [ $1 == "all" ];then
     echo
-    echobold "===> SETTINGS UP AUTOSTART CRONJOB"
+    echobold "===> SETTING UP AUTOSTART CRONJOB"
 
     # Form path of autostart script
     thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -473,9 +463,9 @@ fi
 # Print message about resetting bash after bash modifications
 if [ $reset_bash == "YES" ];then
     echo
-    echobold "##> NOTE! ~/PyExpLabSys/bin has been added to PATH, which means"
-    echobold "##> that the user specific rgit, kgit and agit commands for "
-    echobold "##> Robert, Kenneth and Anders can be used."
+    echobold "##> NOTE! ~/PyExpLabSys/bin and ~/machines/bin has been added to"
+    echobold "##> PATH, which means that common scripts like pistatus.py can"
+    echobold "##> be used directly."
     echobold "##>"
     echobold "##> NOTE! Your bash environment has been modified."
     echobold "##> Run: \"source ~/.bashrc\" to make the changes take effect."
