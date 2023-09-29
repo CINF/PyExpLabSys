@@ -1,7 +1,0 @@
-<autostart>
-  <name>RASPPI25AUTOSTART</name> <!-- no spaces -->
-  <session>
-    <command>python2 monitor.py</command>
-    <name>FEAL pressure logging</name>
-  </session>
-</autostart>

@@ -1,8 +1,0 @@
-<autostart>
-  <name>RASPPI63_AUTOSTART</name> <!-- no spaces -->
-  <session>
-    <startdelay>5</startdelay>
-    <command>python3 datalogger.py</command>
-    <name>Temperature logger small office</name>
-  </session>
-</autostart>

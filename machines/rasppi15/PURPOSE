@@ -1,4 +1,0 @@
-id: rasppi15
-purpose: Logs gas alarm levels from both alarms in B312
-
-This Rasberry Pi is responsible for logging the outputs from both (CO/H2 and H2S) Vortex gas alarm centrals in building 312.

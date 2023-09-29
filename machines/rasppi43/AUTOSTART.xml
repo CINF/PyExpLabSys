@@ -1,8 +1,0 @@
-<autostart>
-  <name>RASPPI43_AUTOSTART</name> <!-- no spaces -->
-  <session>
-    <startdelay>1</startdelay>
-    <command>python3 data_logger.py</command>
-    <name>Data Logger</name>
-  </session>
-</autostart>

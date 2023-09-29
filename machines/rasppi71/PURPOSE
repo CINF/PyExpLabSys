@@ -1,4 +1,0 @@
-id: thetaprobe
-purpose: PCVi; ion- and pirani gauge pressure and TC bakeout temp
-
-This raspberry pi is used to communicate with the PVCi unit on the Thetaprobe. The PVCi unit provides pressure from the ion and pirani gauge and from a thermo couple and controlls the bakeout sequence.

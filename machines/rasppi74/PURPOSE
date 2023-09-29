@@ -1,4 +1,0 @@
-id: TOF
-purpose: Voltage control
-
-Interfaces the +/-400V voltage supply for the lenses + readout of TOF voltage supply.

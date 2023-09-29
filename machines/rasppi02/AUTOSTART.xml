@@ -1,8 +1,0 @@
-<autostart>
-  <name>RASPPI02_AUTOSTART</name> <!-- no spaces -->
-  <session>
-    <startdelay>15</startdelay>
-    <command>python3 /home/pi/PyExpLabSys/machines/rasppi02/current_loop_logger.py</command>
-    <name>Current Loop Logger</name>
-  </session>
-</autostart>
