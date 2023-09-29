@@ -32,9 +32,10 @@ The project is hosted on `Github
 levels.
 
 PyExpLabSys is an attempt to share the Python code produced at the
-SurfCat section at the Technical University of Denmark (DTU). As such,
-the development is driven by the needs of the department, which means
-that different components have different levels of maturity.
+SurfCat and Nanomade sections at the Technical University of Denmark
+(DTU). As such, the development is driven by the needs of the
+department, which means that different components have different
+levels of maturity.
 
 Support
 -------
