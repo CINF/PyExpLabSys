@@ -21,8 +21,8 @@ import minimalmodbus
 
 
 from PyExpLabSys.common.supported_versions import python2_and_3
-python2_and_3(__file__)
 
+python2_and_3(__file__)
 
 
 DEFAULT_COM_KWARGS = {
@@ -58,7 +58,7 @@ class RedFlowMeter(object):
         'flow': (('read_float', None), 0x00),
         'temperature': (('read_float', None), 0x02),
         'address': (('read_register', None), 0x0013),
-        'serial': (('read_long', None), 0x001e),
+        'serial': (('read_long', None), 0x001E),
         'hardware_version': (('read_register', convert_version), 0x0020),
         'software_version': (('read_register', convert_version), 0x0021),
         'type_code_1': (('read_string', process_string), 0x0023, 4),
@@ -67,14 +67,13 @@ class RedFlowMeter(object):
         'range': (('read_float', None), 0x6020),
         'fluid_name': (('read_string', process_string), 0x6042, 4),
         'unit': (('read_string', process_string), 0x6046, 4),
-        'control_function': (('read_register', None), 0x000e),
+        'control_function': (('read_register', None), 0x000E),
     }
     # The command map for set operations consists of
     # name: (minimalmodbus_method, conversion_function, address)
     command_map_set = {
         'setpoint_gas_flow': ('write_float', None, 0x0006),
     }
-
 
     def __init__(self, port, slave_address, **serial_com_kwargs):
         """Initialize driver
@@ -137,16 +136,28 @@ class RedFlowMeter(object):
                     value = conversion_function(value)
                 break
             except IOError as e:
-                print("I/O error({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                print(
+                    "I/O error({}): {}. Trying to retrieve data again..".format(
+                        retry_number, e
+                    )
+                )
                 sleep(0.5)
                 continue
             except ValueError as e:
-                print("ValueError({}): {}. Trying to retrieve data again..".format(retry_number, e))
+                print(
+                    "ValueError({}): {}. Trying to retrieve data again..".format(
+                        retry_number, e
+                    )
+                )
                 sleep(0.5)
                 continue
         else:
-            raise RuntimeError('Could not retrieve data in\
-                                       {} retries'.format(self.number_of_retries))
+            raise RuntimeError(
+                'Could not retrieve data in\
+                                       {} retries'.format(
+                    self.number_of_retries
+                )
+            )
         # Set last call time
         self._last_call = time()
 
@@ -217,10 +228,11 @@ def main():
     # COM4, address 2 and 247
     flow_meter = RedFlowMeter('COM8', 42)
     from pprint import pprint
+
     pprint(flow_meter.read_all())
     flow_meter.write_value('setpoint_gas_flow', 0.0)
-    #flow_meter.set_address(247)
-    #pprint(flow_meter.read_all())
+    # flow_meter.set_address(247)
+    # pprint(flow_meter.read_all())
 
 
 if __name__ == '__main__':

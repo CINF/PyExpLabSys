@@ -38,59 +38,58 @@ ERRORCODES = {
     'E13': 'invalid N-value',
     'E14': 'register is write only',
     'E15': 'string too long',
-    'E16': 'wrong checksum'
-    }
+    'E16': 'wrong checksum',
+}
 
 
 class FUGNTN140Driver(object):
     """Driver for fug NTN 140 power supply
 
-        **Methods**
+    **Methods**
 
-        * **Private**
+    * **Private**
 
-          * __init__
-          * _check_answer
-          * _flush_answer
-          * _get_answer
-          * _write_register
-          * _read_register
+      * __init__
+      * _check_answer
+      * _flush_answer
+      * _get_answer
+      * _write_register
+      * _read_register
 
-        * **Public**
+    * **Public**
 
-          * reset()
-          * stop()
-          * is_on()
-          * output(state=True/False)
-          * get_state()
-          * identification_string()
-          * ---
-          * set_voltage(value)
-          * get_voltage()
-          * monitor_voltage()
-          * ramp_voltage(value, program=0)
-          * ramp_voltage_running()
-          * ---
-          * set_current(value)
-          * get_current()
-          * monitor_current()
-          * ramp_current(value, program=0)
-          * ramp_current_running()
+      * reset()
+      * stop()
+      * is_on()
+      * output(state=True/False)
+      * get_state()
+      * identification_string()
+      * ---
+      * set_voltage(value)
+      * get_voltage()
+      * monitor_voltage()
+      * ramp_voltage(value, program=0)
+      * ramp_voltage_running()
+      * ---
+      * set_current(value)
+      * get_current()
+      * monitor_current()
+      * ramp_current(value, program=0)
+      * ramp_current_running()
 
     """
 
-
     def __init__(  # pylint: disable=too-many-arguments
-            self,
-            port='/dev/ttyUSB0',
-            baudrate=9600,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            device_reset=True,
-            V_max=6.5,
-            I_max=10,
-        ):
+        self,
+        port='/dev/ttyUSB0',
+        baudrate=9600,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS,
+        device_reset=True,
+        V_max=6.5,
+        I_max=10,
+    ):
         """Initialize object variables
 
         For settings port, baudrate, parity, stopbits, bytesize, see
@@ -208,7 +207,7 @@ class FUGNTN140Driver(object):
     # Output interpreters
     def is_on(self):
         """Checks if output is ON (>DON)
-            Returns True if ON
+        Returns True if ON
         """
 
         return self._read_register('DON', bool)
@@ -295,8 +294,8 @@ class FUGNTN140Driver(object):
 
     def ramp_voltage_running(self):
         """Return status of voltage ramp.
-                True: still ramping
-                False: ramp complete
+        True: still ramping
+        False: ramp complete
         """
 
         return self._read_register('S0S', bool)
@@ -338,8 +337,8 @@ class FUGNTN140Driver(object):
 
     def ramp_current_running(self):
         """Return status of current ramp.
-                True: still ramping
-                False: ramp complete
+        True: still ramping
+        False: ramp complete
         """
 
         return self._read_register('S1S', bool)
@@ -353,9 +352,15 @@ class FUGNTN140Driver(object):
         bytes_ = self.ser.read(36)
         bytes_ = bytes_[3:-1].decode()
         # Byte 01
-        voltage = int.from_bytes(bytes.fromhex(bytes_[0:4]), byteorder='little')/65535*12.5
+        voltage = (
+            int.from_bytes(bytes.fromhex(bytes_[0:4]), byteorder='little')
+            / 65535
+            * 12.5
+        )
         # Byte 23
-        current = int.from_bytes(bytes.fromhex(bytes_[4:8]), byteorder='little')/65535*8
+        current = (
+            int.from_bytes(bytes.fromhex(bytes_[4:8]), byteorder='little') / 65535 * 8
+        )
         if ret is True:
             return voltage, current
         # Byte 4
@@ -363,9 +368,21 @@ class FUGNTN140Driver(object):
         byte = bytes.fromhex(bytes_[8:10])
         bits = bin(int.from_bytes(byte, byteorder='big'))[2:].zfill(2)
         print(bits)
-        print('Power supply is {}digitally controlled'.format('not ' if bits[-1] == '0' else ''))
-        print('Power supply is {}analogue controlled'.format('not ' if bits[-2] == '0' else ''))
-        print('Power supply is {}in calibration mode'.format('not ' if bits[-3] == '0' else ''))
+        print(
+            'Power supply is {}digitally controlled'.format(
+                'not ' if bits[-1] == '0' else ''
+            )
+        )
+        print(
+            'Power supply is {}analogue controlled'.format(
+                'not ' if bits[-2] == '0' else ''
+            )
+        )
+        print(
+            'Power supply is {}in calibration mode'.format(
+                'not ' if bits[-3] == '0' else ''
+            )
+        )
         print('X-STAT: {}'.format(bits[-4]))
         print('3-REG: {}'.format(bits[-5]))
         print('Output is {}'.format('ON' if bits[-6] == '1' else 'OFF'))
@@ -383,9 +400,17 @@ class FUGNTN140Driver(object):
         byte = bytes.fromhex(bytes_[10:12])
         bits = bin(int.from_bytes(byte, byteorder='big'))[2:].zfill(8)
         print(bits)
-        print('Polarity of voltage: {}'.format('positive' if bits[-1] == '0' else 'negative'))
-        print('Polarity of current: {}'.format('positive' if bits[-2] == '0' else 'negative'))
-        
+        print(
+            'Polarity of voltage: {}'.format(
+                'positive' if bits[-1] == '0' else 'negative'
+            )
+        )
+        print(
+            'Polarity of current: {}'.format(
+                'positive' if bits[-2] == '0' else 'negative'
+            )
+        )
+
         print()
         # UNUSED 6789
         # Byte 10 11 12 13
@@ -397,9 +422,9 @@ class FUGNTN140Driver(object):
         code = int.from_bytes(byte, byteorder='big')
         print('Last error code: {}\n'.format(code))
         print('{:6.4} V  -  {:6.4} A   '.format(voltage, current))
-        #while self.ser.inWaiting() > 0:
+        # while self.ser.inWaiting() > 0:
         #    bytes_.append(self.ser.read(1))
-        #bytes_.append(self.ser.read(32)
+        # bytes_.append(self.ser.read(32)
         print('Command time: {} s'.format(time.time() - t0))
         return bytes_
 
@@ -409,9 +434,12 @@ class FUGNTN140Driver(object):
         V = self.monitor_voltage()
         I = self.monitor_current()
         state = self.get_state()
-        deltat = time.time()-t
-        print('{:8.2f} s ; {:>6.2f} W ; {:>8.4} V ; {:>8.4} A ; {:4.3f} s ; {}'.format(
-            t-t0, V*I, V, I, deltat, state))
+        deltat = time.time() - t
+        print(
+            '{:8.2f} s ; {:>6.2f} W ; {:>8.4} V ; {:>8.4} A ; {:4.3f} s ; {}'.format(
+                t - t0, V * I, V, I, deltat, state
+            )
+        )
 
 
 def test():

@@ -20,7 +20,7 @@ class NXP_PCF8593(object):
         # print(alarm_status, bin(alarm_status)[2:].zfill(8))
         wanted_alarm = 0b00000010
         self.bus.write_byte_data(self.device_address, 0x08, enable_counter)
-        
+
     def read_counter(self):
         data = self.bus.read_i2c_block_data(self.device_address, 0x01, 3)
         # print(data)
@@ -41,7 +41,7 @@ class NXP_PCF8593(object):
             high_digit = int(hex(data[2])[2:])
         except ValueError:
             high_digit = 0
-        count = high_digit * 10**4 + middle_digit * 10** 2 + low_digit
+        count = high_digit * 10 ** 4 + middle_digit * 10 ** 2 + low_digit
         return count
 
 

@@ -1,16 +1,18 @@
-
 """ Driver for MKS g-series flow controller """
 from __future__ import print_function
 import time
 import logging
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
-class MksGSeries():
+
+class MksGSeries:
     """ Driver for G-series flow controllers from MKS """
+
     def __init__(self, port='/dev/ttyUSB0'):
         # TODO: Auto-check all possible baud-rates
         self.ser = serial.Serial(port, 9600)
@@ -49,7 +51,7 @@ class MksGSeries():
             LOGGER.warning('No such device')
         else:
             if reply[-3:] == self.checksum(reply[1:-3], reply=True):
-                reply = reply[6:-3] # Cut away master address and checksum
+                reply = reply[6:-3]  # Cut away master address and checksum
             else:
                 LOGGER.error('Checksum error in reply')
                 reply = ''
@@ -130,8 +132,9 @@ class MksGSeries():
         command = 'SN?'
         return self.comm(command, addr)
 
+
 if __name__ == '__main__':
     MKS = MksGSeries()
     print(MKS.read_serial_number(1))
     print(MKS.read_full_scale_range(1))
-#print(MKS.set_device_address(254,005))
+# print(MKS.set_device_address(254,005))

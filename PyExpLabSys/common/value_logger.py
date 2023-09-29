@@ -3,14 +3,25 @@
 import threading
 import time
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
+
 class ValueLogger(threading.Thread):
-    """ Reads continuously updated values and decides
-    whether it is time to log a new point """
-    def __init__(self, value_reader, maximumtime=600, low_comp=None,
-                 comp_type='lin', comp_val=1, channel=None,
-                 pre_trig=None, pre_trig_value=0.1):
+    """Reads continuously updated values and decides
+    whether it is time to log a new point"""
+
+    def __init__(
+        self,
+        value_reader,
+        maximumtime=600,
+        low_comp=None,
+        comp_type='lin',
+        comp_val=1,
+        channel=None,
+        pre_trig=None,
+        pre_trig_value=0.1,
+    ):
         threading.Thread.__init__(self)
         self.daemon = True
         self.valuereader = value_reader
@@ -30,7 +41,7 @@ class ValueLogger(threading.Thread):
         # "Fancy" algorithm
         self.saved_points = []
         self.pre_trig = pre_trig
-        #self.pre_trig_value = pre_trig_value * comp_val
+        # self.pre_trig_value = pre_trig_value * comp_val
         self.compare['low val'] = pre_trig_value * comp_val
         self.pre_trig_queue = []
         self.low_time = self.maximumtime * pre_trig_value
@@ -52,7 +63,7 @@ class ValueLogger(threading.Thread):
 
     def run(self):
         error_count = 0
-        #previous_point = None
+        # previous_point = None
 
         while not self.status['quit']:
             time.sleep(1)
@@ -60,22 +71,22 @@ class ValueLogger(threading.Thread):
                 self.value = self.valuereader.value()
             else:
                 self.value = self.valuereader.value(self.channel)
-            time_trigged = ((time.time() - self.last['time'])
-                            > self.maximumtime)
-            pre_time_trigged = ((time.time() - self.last['time'])
-                            > self.low_time)
+            time_trigged = (time.time() - self.last['time']) > self.maximumtime
+            pre_time_trigged = (time.time() - self.last['time']) > self.low_time
 
             try:
                 if self.compare['type'] == 'lin':
-                    val_trigged = not (self.last['val'] - self.compare['val']
-                                       < self.value
-                                       < self.last['val'] + self.compare['val'])
+                    val_trigged = not (
+                        self.last['val'] - self.compare['val']
+                        < self.value
+                        < self.last['val'] + self.compare['val']
+                    )
                 if self.compare['type'] == 'log':
-                    val_trigged = not (self.last['val'] *
-                                       (1 - self.compare['val'])
-                                       < self.value
-                                       < self.last['val'] *
-                                       (1 + self.compare['val']))
+                    val_trigged = not (
+                        self.last['val'] * (1 - self.compare['val'])
+                        < self.value
+                        < self.last['val'] * (1 + self.compare['val'])
+                    )
                 error_count = 0
             except (UnboundLocalError, TypeError):
                 # Happens when value is not yet ready from reader
@@ -98,15 +109,17 @@ class ValueLogger(threading.Thread):
                     for i in range(len(self.pre_trig_queue) - 1, -1, -1):
                         t_i, y_i = self.pre_trig_queue[i]
                         if self.compare['type'] == 'lin':
-                            low_val_trigged = not (self.last['val'] - self.compare['low val']
-                                    < self.value
-                                    < self.last['val'] + self.compare['low val'])
+                            low_val_trigged = not (
+                                self.last['val'] - self.compare['low val']
+                                < self.value
+                                < self.last['val'] + self.compare['low val']
+                            )
                         if self.compare['type'] == 'log':
-                            low_val_trigged = not (self.last['val'] *
-                                       (1 - self.compare['low val'])
-                                       < self.value
-                                       < self.last['val'] *
-                                       (1 + self.compare['low val']))
+                            low_val_trigged = not (
+                                self.last['val'] * (1 - self.compare['low val'])
+                                < self.value
+                                < self.last['val'] * (1 + self.compare['low val'])
+                            )
                         if low_val_trigged:
                             # Save extra point
                             self.saved_points.append((t_i, y_i))
@@ -115,7 +128,7 @@ class ValueLogger(threading.Thread):
                 self.last['val'] = self.value
                 self.saved_points.append((self.last['time'], self.last['val']))
                 self.pre_trig_queue = []
-                #if val_trigged:
+                # if val_trigged:
                 #    try:
                 #        pre_time, pre_val = previous_point
                 #        if pre_val is not None:
@@ -131,7 +144,7 @@ class ValueLogger(threading.Thread):
                 self.pre_trig_queue = []
             else:
                 self.pre_trig_queue.append((time.time(), self.value))
-            #previous_point = (time.time(), self.value)
+            # previous_point = (time.time(), self.value)
 
 
 class LoggingCriteriumChecker(object):
@@ -140,8 +153,14 @@ class LoggingCriteriumChecker(object):
 
     """
 
-    def __init__(self, codenames=(()), types=(()), criteria=(()), time_outs=None,
-                 low_compare_values=None):
+    def __init__(
+        self,
+        codenames=(()),
+        types=(()),
+        criteria=(()),
+        time_outs=None,
+        low_compare_values=None,
+    ):
         """Initialize the logging criterium checker
 
         .. note:: If given, codenames, types and criteria must be sequences with the same
@@ -163,11 +182,15 @@ class LoggingCriteriumChecker(object):
         if len(criteria) != len(codenames):
             error_message = 'The must be exactly as many criteria as codenames'
         if low_compare_values is not None and len(low_compare_values) != len(codenames):
-            error_message = 'If low_compare_values is given, it must contain as many '\
-                            'values as there are codenames'
+            error_message = (
+                'If low_compare_values is given, it must contain as many '
+                'values as there are codenames'
+            )
         if time_outs is not None and len(time_outs) != len(codenames):
-            error_message = 'If time_outs is given, it must contain as many '\
-                            'values as there are codenames'
+            error_message = (
+                'If time_outs is given, it must contain as many '
+                'values as there are codenames'
+            )
         if error_message is not None:
             raise ValueError(error_message)
 
@@ -180,9 +203,9 @@ class LoggingCriteriumChecker(object):
         self.last_values = {}
         self.last_time = {}
         self.measurements = {}
-        for codename, type_, criterium, time_out, low_compare in zip(codenames, types,
-                                                                     criteria, time_outs,
-                                                                     low_compare_values):
+        for codename, type_, criterium, time_out, low_compare in zip(
+            codenames, types, criteria, time_outs, low_compare_values
+        ):
             self.add_measurement(codename, type_, criterium, time_out, low_compare)
 
     @property
@@ -190,10 +213,14 @@ class LoggingCriteriumChecker(object):
         """Return the codenames"""
         return list(self.measurements.keys())
 
-    def add_measurement(self, codename, type_, criterium, time_out=600, low_compare=None):
+    def add_measurement(
+        self, codename, type_, criterium, time_out=600, low_compare=None
+    ):
         """Add a measurement channel"""
         self.measurements[codename] = {
-            'type': type_, 'criterium': criterium, 'low_compare': low_compare,
+            'type': type_,
+            'criterium': criterium,
+            'low_compare': low_compare,
             'time_out': time_out,
         }
         # Unix timestamp
@@ -226,7 +253,10 @@ class LoggingCriteriumChecker(object):
             return True
 
         # Check if below lower compare value
-        if measurement['low_compare'] is not None and value < measurement['low_compare']:
+        if (
+            measurement['low_compare'] is not None
+            and value < measurement['low_compare']
+        ):
             return False
 
         # Compare

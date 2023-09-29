@@ -1,5 +1,6 @@
 """ Driver for TSL45315 Digital Ambient Light Sensor """
 import os
+
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     pass
@@ -7,23 +8,20 @@ else:
     import smbus
 import time
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
 class TSL45315(object):
-    """ Class for reading pressure and temperature from
-    TSL45315 Digital Ambient Light Sensor """
+    """Class for reading pressure and temperature from
+    TSL45315 Digital Ambient Light Sensor"""
 
     def __init__(self, integration_time=0):
         # Integration times:
         # 0: 400ms
         # 1: 200ms
         # 2: 100ms
-        integration_times = {
-            0: 0.4,
-            1: 0.2,
-            2: 0.1
-        }
+        integration_times = {0: 0.4, 1: 0.2, 2: 0.1}
         self.integration_time = integration_times[integration_time]
         self.multiplier = 0.4 / self.integration_time
         print(self.multiplier)

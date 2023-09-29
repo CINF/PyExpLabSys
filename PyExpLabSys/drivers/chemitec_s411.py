@@ -57,7 +57,7 @@ class ChemitecS411(object):
                 stopbits=1,
                 timeout=0.05,
                 write_timeout=2.0,
-                direction_pin=self.gpio_dir_pin
+                direction_pin=self.gpio_dir_pin,
             )
             comm.serial = dir_serial
 
@@ -90,9 +90,7 @@ class ChemitecS411(object):
     def _write(self, value, registeraddress):
         try:
             self.comm.write_register(
-                value=value,
-                registeraddress=registeraddress,
-                functioncode=6
+                value=value, registeraddress=registeraddress, functioncode=6
             )
         except minimalmodbus.NoResponseError:
             pass  # This exception is always raised after write
@@ -112,12 +110,7 @@ class ChemitecS411(object):
         return filter_code
 
     def read_range(self):
-        ranges = {
-            0: '0-20',
-            1: '0-200',
-            2: '0-2000',
-            3: '0-20000'
-        }
+        ranges = {0: '0-20', 1: '0-200', 2: '0-2000', 3: '0-20000'}
         range_val = self._read(5)
         # print('Range: {}'.format(ranges[range_val]))
         return_val = (range_val, ranges[range_val])
@@ -127,10 +120,12 @@ class ChemitecS411(object):
         """
         Returns the serial number of the unit.
         """
-        serial_nr = '{}{}{}{}'.format(self._read(9, code=3),
-                                      self._read(10, code=3),
-                                      self._read(11, code=3),
-                                      self._read(12, code=3))
+        serial_nr = '{}{}{}{}'.format(
+            self._read(9, code=3),
+            self._read(10, code=3),
+            self._read(11, code=3),
+            self._read(12, code=3),
+        )
         return serial_nr
 
     def set_instrument_address(self, instrument_address):
@@ -163,9 +158,7 @@ class ChemitecS411(object):
         # Todo: check range is valid
         try:
             self.comm.write_register(
-                value=range_value,
-                registeraddress=5,
-                functioncode=6
+                value=range_value, registeraddress=5, functioncode=6
             )
         except minimalmodbus.NoResponseError:
             pass  # This exception is always raised
@@ -206,9 +199,9 @@ class ChemitecS411(object):
             'manual_temperature': self._read(8, code=4, floatread=True),
             'temperature_offset': self._read(10, code=4, floatread=True),
             'cal2_val_user': self._read(12, code=4, floatread=True),
-            'cal2_mis_user':  self._read(14, code=4, floatread=True),
+            'cal2_mis_user': self._read(14, code=4, floatread=True),
             'cal2_val_default': self._read(16, code=4, floatread=True),
-            'cal2_mis_default': self._read(18, code=4, floatread=True)
+            'cal2_mis_default': self._read(18, code=4, floatread=True),
         }
         return calibrations
 

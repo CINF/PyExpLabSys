@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 # pylint: disable=invalid-name, no-name-in-module, broad-except
 
 """A general stepped program runner
@@ -32,6 +32,7 @@ from time import strftime, time
 import traceback
 import types
 from functools import partial
+
 try:
     import Queue
 except ImportError:
@@ -39,9 +40,15 @@ except ImportError:
 
 from PyQt4.QtCore import Qt, QTimer, QCoreApplication
 from PyQt4.QtGui import (
-    QApplication, QCompleter, QLineEdit, QStringListModel, QWidget, QLabel,
+    QApplication,
+    QCompleter,
+    QLineEdit,
+    QStringListModel,
+    QWidget,
+    QLabel,
 )
 from PyQt4 import uic
+
 NO_FOCUS = Qt.FocusPolicy(0)
 
 # Python 2-3 hacks
@@ -57,15 +64,19 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
     help_texts = {
         'start': 'Start the stepped program',
         'stop': 'Stop the stepped program',
-        'quit': ('Quit the stepped program. \n'
-                 'This will ask the core program to stop if\nit "can_stop", wait for it \n'
-                 'to do so and quit the main GUI \n'),
+        'quit': (
+            'Quit the stepped program. \n'
+            'This will ask the core program to stop if\nit "can_stop", wait for it \n'
+            'to do so and quit the main GUI \n'
+        ),
         'help': 'Display this help',
-        'edit': ('Edit the parameters for a single step. \n'
-                 'The format of the command is: \n'
-                 '    edit step_number field=value \n'
-                 'e.g: \n'
-                 '    edit 1 duration=3600'),
+        'edit': (
+            'Edit the parameters for a single step. \n'
+            'The format of the command is: \n'
+            '    edit step_number field=value \n'
+            'e.g: \n'
+            '    edit 1 duration=3600'
+        ),
     }
 
     def __init__(self, core, window_title="Stepped Program Runner"):
@@ -98,8 +109,8 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
         except AttributeError:
             pass
 
-        #self.status_widgets = {}
-        #self.status_formatters = {}
+        # self.status_widgets = {}
+        # self.status_formatters = {}
         self.status_defs = {}
         self._init_ui()
         self.process_update_timer = QTimer()
@@ -111,8 +122,9 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
 
     def _init_ui(self):
         """Setup the UI"""
-        uifile = path.join(path.dirname(path.realpath(__file__)),
-                           'stepped_program_runner.ui')
+        uifile = path.join(
+            path.dirname(path.realpath(__file__)), 'stepped_program_runner.ui'
+        )
         uic.loadUi(uifile, self)
 
         # Setup command line completion
@@ -132,7 +144,9 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
         status.resizeColumnsToContents()
 
         # HACK to make the table expand to fit the contents, there MUST be a better way
-        height = (status.cellWidget(0, 0).size().height() + 14) * (status.rowCount() + 1)
+        height = (status.cellWidget(0, 0).size().height() + 14) * (
+            status.rowCount() + 1
+        )
         status.setMinimumHeight(height)
 
         # Setup step list
@@ -205,8 +219,10 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
 
                 widget.setText(to_set)
         except Exception:
-            text = ('An unknown error accoured during updating of the status table\n'
-                    'It had the following traceback\n' + traceback.format_exc())
+            text = (
+                'An unknown error accoured during updating of the status table\n'
+                'It had the following traceback\n' + traceback.format_exc()
+            )
             self.append_text(text, text_type='error')
 
     def process_command(self, command):
@@ -223,8 +239,10 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
             try:
                 self.core.command(splitted_command[0], args)
             except Exception:
-                text = ('An error occoured during the execution of the command\n'
-                        'It had the following traceback\n' + traceback.format_exc())
+                text = (
+                    'An error occoured during the execution of the command\n'
+                    'It had the following traceback\n' + traceback.format_exc()
+                )
                 self.append_text(text, text_type='error')
         else:
             self.append_text('Unknown command: ' + command, start='\n')
@@ -254,9 +272,11 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
 
     def help_text(self):
         """Form and display help"""
-        help_ = ('The stepped program runner is a command driver GUI front for a '
-                 'stepped program.\n\n'
-                 'For this program the following commands have been configured:\n')
+        help_ = (
+            'The stepped program runner is a command driver GUI front for a '
+            'stepped program.\n\n'
+            'For this program the following commands have been configured:\n'
+        )
         for action in self.actions:
             lines = self.help_texts[action].split('\n')
             help_ += '{: <16}{}\n'.format(action, lines[0])
@@ -293,7 +313,6 @@ class SteppedProgramRunner(QWidget):  # pylint: disable=too-many-instance-attrib
         self.process_quit(first_call=True)
 
 
-
 class LineEdit(QLineEdit):
     """Cursom QLineEdit with tab completion"""
 
@@ -303,7 +322,7 @@ class LineEdit(QLineEdit):
         self.setCompleter(self.completer)
         self.model = QStringListModel()
         self.completer.setModel(self.model)
-        #get_data(model)
+        # get_data(model)
         self.completions = None
         self.parent = parent
 
@@ -324,13 +343,12 @@ class LineEdit(QLineEdit):
                 self.setText('')
             event.accept()
         else:
-            QLineEdit.keyPressEvent(self, event)            
+            QLineEdit.keyPressEvent(self, event)
 
     def set_completions(self, completions):
         """Set completions"""
         self.completions = completions
         self.model.setStringList(completions)
-
 
 
 if __name__ == "__main__":

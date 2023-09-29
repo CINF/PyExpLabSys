@@ -5,15 +5,18 @@ import time
 from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import LiveSocket
+
 try:
     from ABE_ADCDACPi import ADCDACPi
 except ImportError:
     # Newer versions of ABElectronics Python code import from this location
     from ADCDACPi import ADCDACPi
 
+
 class AnalogMFC(object):
-    """ Driver for controling an analog MFC (or PC) with
-    an AB Electronics ADCDAC """
+    """Driver for controling an analog MFC (or PC) with
+    an AB Electronics ADCDAC"""
+
     def __init__(self, channel, fullrange, voltagespan):
         self.channel = channel
         self.fullrange = fullrange
@@ -24,16 +27,16 @@ class AnalogMFC(object):
     def read_flow(self):
         """ Read the flow (or pressure) value """
         value = 0
-        for _ in range(0, 10): # Average to minimiza noise
+        for _ in range(0, 10):  # Average to minimiza noise
             value += self.daq.read_adc_voltage(1, 1)
         value = value / 10
-        #print('Value: ' + str(value))
+        # print('Value: ' + str(value))
         flow = value * self.fullrange / self.voltagespan
         return flow
 
     def set_flow(self, flow):
         """ Set the wanted flow (or pressure) """
-        voltage = flow *  self.voltagespan / self.fullrange
+        voltage = flow * self.voltagespan / self.fullrange
         print('Voltage: ' + str(voltage))
         self.daq.set_dac_voltage(1, voltage)
         return voltage
@@ -41,6 +44,7 @@ class AnalogMFC(object):
 
 class FlowControl(threading.Thread):
     """ Keep updated values of the current flow or pressure """
+
     def __init__(self, mfcs, name):
         threading.Thread.__init__(self)
         self.daemon = True
@@ -51,8 +55,9 @@ class FlowControl(threading.Thread):
         for device in devices:
             self.values[device] = None
 
-        self.pullsocket = DateDataPullSocket(name + '_analog_control', devices,
-                                             timeouts=[3.0] * len(devices))
+        self.pullsocket = DateDataPullSocket(
+            name + '_analog_control', devices, timeouts=[3.0] * len(devices)
+        )
         self.pullsocket.start()
 
         self.pushsocket = DataPushSocket(name + '_analog_pc_control', action='enqueue')

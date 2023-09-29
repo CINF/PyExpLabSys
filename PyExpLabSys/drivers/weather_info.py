@@ -1,4 +1,3 @@
-
 """Weather info driver"""
 
 import time
@@ -16,7 +15,7 @@ except ImportError:
 
 def _virtual_temperature(temperature, dew_point, pressure):
     abs_temp = temperature + 273.15
-    tmp1 = 10 ** (7.5*dew_point / (237.7 + dew_point))
+    tmp1 = 10 ** (7.5 * dew_point / (237.7 + dew_point))
     tmp2 = tmp1 / (0.01 * pressure)  # Unit should be hPa, but we use Pa
     tv = abs_temp / (1 - (0.379 * 6.11 * tmp2))
     return tv
@@ -27,9 +26,12 @@ def dew_point_and_abs_humidity(temperature, humidity, pressure):
     Calculates dew point and absolute humidity given atmospheric conditions.
     """
     atmos_params = {
-        'RH': humidity, 'RH_unit': 'fraction',
-        'T': temperature, 'T_unit': 'degC',
-        'p': pressure, 'p_unit': 'Pa'
+        'RH': humidity,
+        'RH_unit': 'fraction',
+        'T': temperature,
+        'T_unit': 'degC',
+        'p': pressure,
+        'p_unit': 'Pa',
     }
 
     dew_point = atmos.calculate('Td', Td_unit='degC', **atmos_params)
@@ -38,7 +40,7 @@ def dew_point_and_abs_humidity(temperature, humidity, pressure):
     # print('Calculated absolute humidity: {:.1f}g/m3'.format(absolute_humidity))
     data = {
         'dew_point': dew_point,  # degree C
-        'absolute_humidity': absolute_humidity  # g/m3
+        'absolute_humidity': absolute_humidity,  # g/m3
     }
     return data
 
@@ -53,10 +55,13 @@ def equaivalent_humidity(outside_temp, outside_hum, inside_temp, pressure):
     # heated to inside temp
     tv = _virtual_temperature(inside_temp, dew_and_abs['dew_point'], pressure)
     atmos_params = {
-        'AH': dew_and_abs['absolute_humidity'], 'AH_unit': 'g/meter**3',
-        'Tv': tv, 'Tv_unit': 'K',
-        'p': pressure, 'p_unit': 'Pa',
-        'debug': True
+        'AH': dew_and_abs['absolute_humidity'],
+        'AH_unit': 'g/meter**3',
+        'Tv': tv,
+        'Tv_unit': 'K',
+        'p': pressure,
+        'p_unit': 'Pa',
+        'debug': True,
     }
 
     # Humidity is returned as percentage
@@ -65,7 +70,6 @@ def equaivalent_humidity(outside_temp, outside_hum, inside_temp, pressure):
 
 
 class WheatherInformation(object):
-
     def __init__(self, x_pos, y_pos, **kwargs):
         self.kwargs = kwargs
         self.x_pos = x_pos
@@ -86,7 +90,7 @@ class WheatherInformation(object):
             'sunset': None,
             'uv_index': None,
             'visibility': None,
-            'cloud_percentage': None
+            'cloud_percentage': None,
         }
 
     def dk_dmi(self):
@@ -95,7 +99,7 @@ class WheatherInformation(object):
             'south': self.y_pos - 0.25,
             'north': self.y_pos + 0.25,
             'west': self.x_pos - 0.25,
-            'east': self.x_pos + 0.25
+            'east': self.x_pos + 0.25,
         }
         url = 'https://www.dmi.dk/NinJo2DmiDk/ninjo2dmidk'
         error = 0
@@ -130,7 +134,8 @@ class WheatherInformation(object):
             return
         dmi_time_field = data[pri_list[0]]['time'][0:12]
         self.weather_data['time'] = datetime.datetime.strptime(
-            dmi_time_field, '%Y%m%d%H%M')
+            dmi_time_field, '%Y%m%d%H%M'
+        )
 
         # List of genral values mapped to (key, unit-scale)
         value_map = {
@@ -147,10 +152,7 @@ class WheatherInformation(object):
             dmi_values = data[pri_list[dmi_site]]['values']
             for global_key, dmi_key in value_map.items():
                 dmi_value = dmi_values.get(dmi_key[0])
-                if (
-                        self.weather_data[global_key] is None and
-                        dmi_value is not None
-                ):
+                if self.weather_data[global_key] is None and dmi_value is not None:
                     self.weather_data[global_key] = dmi_value * dmi_key[1]
 
     def global_openweather(self):
@@ -158,7 +160,7 @@ class WheatherInformation(object):
             'lat': self.y_pos,
             'lon': self.x_pos,
             'units': 'metric',
-            'appid': self.kwargs['open_weather_appid']
+            'appid': self.kwargs['open_weather_appid'],
         }
 
         # 'dew_point': 'dew_point'
@@ -174,7 +176,7 @@ class WheatherInformation(object):
             'sunset': ('sunset', 1),
             'uv_index': ('uvi', 1),
             'visibility': ('visibility', 1),
-            'cloud_percentage': ('clouds', 1)
+            'cloud_percentage': ('clouds', 1),
         }
         url = 'https://api.openweathermap.org/data/2.5/onecall'
         # This code is used twice, refactor (and do it right, so
@@ -204,26 +206,17 @@ class WheatherInformation(object):
 
         for global_key, openweather_key in value_map.items():
             value = current.get(openweather_key[0])
-            if (
-                    self.weather_data[global_key] is None and
-                    value is not None
-            ):
+            if self.weather_data[global_key] is None and value is not None:
                 self.weather_data[global_key] = value * openweather_key[1]
 
 
 if __name__ == '__main__':
-    dmi_prio = {
-        0: '06186',
-        1: '06180'
-    }
+    dmi_prio = {0: '06186', 1: '06180'}
 
     appid = ''
 
     vejr = WheatherInformation(
-        y_pos=55.660105,
-        x_pos=12.589183,
-        dmi_prio=dmi_prio,
-        open_weather_appid=appid
+        y_pos=55.660105, x_pos=12.589183, dmi_prio=dmi_prio, open_weather_appid=appid
     )
     vejr.dk_dmi()
     print(vejr.weather_data)
@@ -232,7 +225,7 @@ if __name__ == '__main__':
         outside_temp=vejr.weather_data['temperature'],
         outside_hum=vejr.weather_data['humidity'],
         pressure=vejr.weather_data['pressure'],
-        inside_temp=24
+        inside_temp=24,
     )
     print(indoor_hum)
 

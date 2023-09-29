@@ -4,6 +4,7 @@ import time
 import logging
 import telnetlib
 import serial
+
 try:
     import usbtmc
 except ImportError:
@@ -20,8 +21,18 @@ LOGGER.addHandler(logging.NullHandler())
 
 class SCPI(object):
     """ Driver for scpi communication """
-    def __init__(self, interface, device='', tcp_port=5025, hostname='',
-                 baudrate=9600, visa_string='', gpib_address=None, line_ending='\r'):
+
+    def __init__(
+        self,
+        interface,
+        device='',
+        tcp_port=5025,
+        hostname='',
+        baudrate=9600,
+        visa_string='',
+        gpib_address=None,
+        line_ending='\r',
+    ):
         self.device = device
         self.line_ending = line_ending
         self.interface = interface
@@ -29,8 +40,9 @@ class SCPI(object):
             self.comm_dev = open(self.device, 'w')
             self.comm_dev.close()
         if self.interface == 'serial':
-            self.comm_dev = serial.Serial(self.device, baudrate,
-                                          timeout=2, xonxoff=True)
+            self.comm_dev = serial.Serial(
+                self.device, baudrate, timeout=2, xonxoff=True
+            )
         if self.interface == 'lan':
             self.comm_dev = telnetlib.Telnet(hostname, tcp_port)
         if self.interface == 'usbtmc':
@@ -72,11 +84,16 @@ class SCPI(object):
             lan_time = time.time()
             self.comm_dev.write(command_text.encode('ascii'))
             if (command.find('?') > -1) or (expect_return is True):
-                return_string = self.comm_dev.read_until(chr(10).encode('ascii'),
-                                                         2).decode()
+                return_string = self.comm_dev.read_until(
+                    chr(10).encode('ascii'), 2
+                ).decode()
             LOGGER.info('Return string length: ' + str(len(return_string)))
-            LOGGER.info('lan_time for coomand ' + command_text.strip() +
-                        ': ' + str(time.time() - lan_time))
+            LOGGER.info(
+                'lan_time for coomand '
+                + command_text.strip()
+                + ': '
+                + str(time.time() - lan_time)
+            )
 
         if self.interface == 'usbtmc':
             if command.find('?') > -1:

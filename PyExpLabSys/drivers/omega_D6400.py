@@ -4,14 +4,17 @@ import time
 import logging
 import minimalmodbus
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
 
+
 class OmegaD6400(object):
     """ Driver for Omega D6400 daq card """
+
     def __init__(self, address=1, port='/dev/ttyUSB0'):
         self.instrument = minimalmodbus.Instrument(port, address)
         self.instrument.serial.baudrate = 9600
@@ -27,8 +30,11 @@ class OmegaD6400(object):
 
         for i in range(1, 8):
             print(i)
-            self.update_range_and_function(i, fullrange=self.ranges[i]['fullrange'],
-                                           action=self.ranges[i]['action'])
+            self.update_range_and_function(
+                i,
+                fullrange=self.ranges[i]['fullrange'],
+                action=self.ranges[i]['action'],
+            )
             print('!')
 
     def comm(self, command, value=None):
@@ -65,14 +71,13 @@ class OmegaD6400(object):
             value = num_value / scale
         if self.ranges[channel]['action'] == 'tc':
             scale = 1.0 * 2 ** 16 / 1400
-            value = (reply/scale) - 150
+            value = (reply / scale) - 150
         return value
 
     def read_address(self):
         """ Read the RS485 address of the device """
         old_address = self.comm(0)
         return old_address
-
 
     def write_enable(self):
         """ Enable changes to setup values """
@@ -81,8 +86,7 @@ class OmegaD6400(object):
         return True
 
     def range_codes(self, fullrange=0, action=None):
-        """ Returns the code corresponding to a given range
-        """
+        """Returns the code corresponding to a given range"""
         codes = {}
         codes['tc'] = {}
         codes['tc']['J'] = 21
@@ -120,6 +124,7 @@ class OmegaD6400(object):
             self.ranges[channel]['action'] = action
             self.ranges[channel]['fullrange'] = fullrange
         return self.comm(95 + channel)
+
 
 if __name__ == '__main__':
     OMEGA = OmegaD6400(1, port='/dev/ttyUSB0')

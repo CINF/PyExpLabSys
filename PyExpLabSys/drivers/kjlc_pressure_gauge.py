@@ -2,17 +2,25 @@
 import serial
 import time
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 KJLC = None
+
 
 class KJLC300(object):
     """ Class implements a KJLC interface """
 
     def __init__(self, port):
-        self.connection = serial.Serial(port, baudrate=1200, bytesize=8,
-                                        parity='N', stopbits=1, timeout=1,
-                                        writeTimeout=1)
+        self.connection = serial.Serial(
+            port,
+            baudrate=1200,
+            bytesize=8,
+            parity='N',
+            stopbits=1,
+            timeout=1,
+            writeTimeout=1,
+        )
 
     def close(self):
         """ Closes connection """
@@ -39,8 +47,7 @@ class KJLC300(object):
         return out
 
     def _format_output(self, string):
-        """ Strip *, the adress and a space from the beginning and a CR from the
+        """Strip *, the adress and a space from the beginning and a CR from the
         end
         """
         return string[4:-1]
-

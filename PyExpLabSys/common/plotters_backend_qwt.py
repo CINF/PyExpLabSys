@@ -7,20 +7,26 @@ import collections
 import os
 
 import numpy as np
+
 try:
     from PyQt4 import Qt, QtGui, QtCore
     import PyQt4.Qwt5 as Qwt
 except ImportError:
     # If we are building docs for read the docs, make fake version else re-raise
     import sys
+
     if os.environ.get('READTHEDOCS', None) == 'True' or 'sphinx' in sys.modules:
+
         class Qwt:
             QwtPlot = list
+
     else:
         raise
 
+
 class Colors:
     """Class that gives plot colors"""
+
     def __init__(self):
         self.current = -1
         self.predefined = []
@@ -43,9 +49,16 @@ class Colors:
 
 class QwtPlot(Qwt.QwtPlot):
     """Class that represents a Qwt plot"""
-    def __init__(self, parent, left_plotlist, right_plotlist=None,
-                 left_log=False, right_log=False,
-                 **kwargs):
+
+    def __init__(
+        self,
+        parent,
+        left_plotlist,
+        right_plotlist=None,
+        left_log=False,
+        right_log=False,
+        **kwargs
+    ):
         """Initialize the plot and local setting
 
         :param parent: The parent GUI object, then that should be supplied here
@@ -136,16 +149,23 @@ class QwtPlot(Qwt.QwtPlot):
             message = 'At least one item in left_plotlist is required'
         # Check number of left labels and colors
         for kwarg in ['left_labels', 'left_colors']:
-            if kwargs.get(kwarg) is not None and\
-                    len(left_plotlist) != len(kwargs.get(kwarg)):
-                message = 'There must be as many items in \'{}\' as there '\
+            if kwargs.get(kwarg) is not None and len(left_plotlist) != len(
+                kwargs.get(kwarg)
+            ):
+                message = (
+                    'There must be as many items in \'{}\' as there '
                     'are left plots'.format(kwarg)
+                )
         # Check left thickness if it is a list
-        if kwargs.get('left_thickness') is not None and\
-                isinstance(kwargs['left_thickness'], collections.Iterable) and\
-                len(left_plotlist) != len(kwargs['left_thickness']):
-            message = '\'left_thickness\' must either be an int or a iterable'\
+        if (
+            kwargs.get('left_thickness') is not None
+            and isinstance(kwargs['left_thickness'], collections.Iterable)
+            and len(left_plotlist) != len(kwargs['left_thickness'])
+        ):
+            message = (
+                '\'left_thickness\' must either be an int or a iterable'
                 ' with as many ints as there are left plots'
+            )
         return message
 
     @staticmethod
@@ -154,25 +174,37 @@ class QwtPlot(Qwt.QwtPlot):
         message = None
         if right_plotlist is not None:
             for kwarg in ['right_labels', 'right_colors']:
-                if kwargs.get(kwarg) is not None and\
-                        len(right_plotlist) != len(kwargs.get(kwarg)):
-                    message = 'There must be as many items in \'{}\' as '\
+                if kwargs.get(kwarg) is not None and len(right_plotlist) != len(
+                    kwargs.get(kwarg)
+                ):
+                    message = (
+                        'There must be as many items in \'{}\' as '
                         'there are right plots'.format(kwarg)
-            if kwargs.get('right_thickness') is not None and\
-                isinstance(kwargs['right_thickness'], collections.Iterable)\
-                    and len(right_plotlist) != len(kwargs['right_thickness']):
-                message = '\'right_thickness\' must either be an int or a'\
-                          ' iterable with as many ints as there are left plots'
+                    )
+            if (
+                kwargs.get('right_thickness') is not None
+                and isinstance(kwargs['right_thickness'], collections.Iterable)
+                and len(right_plotlist) != len(kwargs['right_thickness'])
+            ):
+                message = (
+                    '\'right_thickness\' must either be an int or a'
+                    ' iterable with as many ints as there are left plots'
+                )
         return message
 
     @staticmethod
     def _init_check_legends_plots(all_plots, kwargs):
         """Check legend name and for duplicate plot names"""
         message = None
-        if kwargs.get('legend') is not None and not kwargs['legend'] in\
-                ['left', 'right', 'bottom', 'top']:
-            message = 'legend must be one of: \'left\', \'right\', '\
-                '\'bottom\', \'top\''
+        if kwargs.get('legend') is not None and not kwargs['legend'] in [
+            'left',
+            'right',
+            'bottom',
+            'top',
+        ]:
+            message = (
+                'legend must be one of: \'left\', \'right\', ' '\'bottom\', \'top\''
+            )
         # Check for duplicate plot names
         for plot in all_plots:
             if all_plots.count(plot) > 1:
@@ -182,8 +214,7 @@ class QwtPlot(Qwt.QwtPlot):
     def _init_background(self, kwargs):
         """Init the background color of the graph"""
         if kwargs.get('background_color') is not None:
-            self.setCanvasBackground(
-                QtGui.QColor(kwargs['background_color']))
+            self.setCanvasBackground(QtGui.QColor(kwargs['background_color']))
 
     def _init_left_curves(self, left_plotlist, kwargs):
         """Init the curves on the left axis"""
@@ -251,23 +282,19 @@ class QwtPlot(Qwt.QwtPlot):
         """Init the title, axis labels and legends"""
         if kwargs.get('legend') is not None:
             legend_name = kwargs['legend'].title() + 'Legend'
-            self.insertLegend(Qwt.QwtLegend(),
-                              getattr(Qwt.QwtPlot, legend_name))
+            self.insertLegend(Qwt.QwtLegend(), getattr(Qwt.QwtPlot, legend_name))
         if kwargs.get('title') is not None:
             self.setTitle(kwargs['title'])
         if kwargs.get('xaxis_label') is not None:
             self.setAxisTitle(Qwt.QwtPlot.xBottom, kwargs['xaxis_label'])
         if kwargs.get('yaxis_left_label') is not None:
-            self.setAxisTitle(Qwt.QwtPlot.yLeft,
-                              kwargs['yaxis_left_label'])
-        if kwargs.get('yaxis_right_label') is not None and \
-                right_plotlist is not None:
-            self.setAxisTitle(Qwt.QwtPlot.yRight,
-                              kwargs['yaxis_right_label'])
+            self.setAxisTitle(Qwt.QwtPlot.yLeft, kwargs['yaxis_left_label'])
+        if kwargs.get('yaxis_right_label') is not None and right_plotlist is not None:
+            self.setAxisTitle(Qwt.QwtPlot.yRight, kwargs['yaxis_right_label'])
 
     def update(self, data):
         """Update the plot with new values and possibly move the xaxis
-        
+
         :param data: The data to plot. Should be a dict, where keys are plot
             code names and values are data series as an iterable of (x, y)
             iterables. E.g. {'plot1': [(1, 1), (2, 2)]}
@@ -276,6 +303,5 @@ class QwtPlot(Qwt.QwtPlot):
         for key, dataseries in data.items():
             if len(dataseries) > 0:
                 values_array = np.array(dataseries)
-                self._curves[key].setData(values_array[:, 0],
-                                          values_array[:, 1])
+                self._curves[key].setData(values_array[:, 0], values_array[:, 1])
         self.replot()

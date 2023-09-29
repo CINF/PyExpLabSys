@@ -4,6 +4,7 @@ import serial
 import time
 import logging
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
@@ -12,16 +13,17 @@ python2_and_3(__file__)
 # Legal values for units
 UNITS = ['ABS', 'CENT', 'FHRN', 'MDC', 'DC']
 
-class SRS_SR630():
+
+class SRS_SR630:
     """ Driver for Standford Research Systems, Model SR630 """
 
     def __init__(self, port):
         self.ser = serial.Serial(port, 9600, timeout=2)
-        #print self.f
-        #self.f.xonxoff = True
-        #self.f.rtscts = False
-        #self.f.dsrdtr = False
-        #print self.f
+        # print self.f
+        # self.f.xonxoff = True
+        # self.f.rtscts = False
+        # self.f.dsrdtr = False
+        # print self.f
         time.sleep(0.1)
 
     def comm(self, command):
@@ -55,7 +57,7 @@ class SRS_SR630():
             return False
         command = 'UNIT ' + str(channel) + ',' + unit
         self.comm(command)
-        time.sleep(0.2) # Need a bit of time to return correct unit
+        time.sleep(0.2)  # Need a bit of time to return correct unit
         return True
 
     def tc_types(self):
@@ -78,7 +80,7 @@ class SRS_SR630():
     def read_serial_number(self):
         """ Return the serial number of the device """
         return self.comm('*IDN?')
-    
+
     def read_channel(self, channel):
         """ Read the actual value of a channel """
         command = 'CHAN?'
@@ -93,6 +95,7 @@ class SRS_SR630():
             value = self.comm(command)
         return float(value)
 
+
 if __name__ == '__main__':
     SRS = SRS_SR630('/dev/ttyUSB0')
     print(SRS.read_serial_number())
@@ -101,4 +104,4 @@ if __name__ == '__main__':
     print(str(SRS.read_channel(2)))
     print(SRS.read_open_status())
     print(SRS.tc_types())
-    #print(SRS.config_analog_channel(1, follow_temperature=False, value=0.2))
+    # print(SRS.config_analog_channel(1, follow_temperature=False, value=0.2))

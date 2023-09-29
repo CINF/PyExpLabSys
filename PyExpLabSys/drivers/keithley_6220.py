@@ -10,11 +10,17 @@ class Keithley6220(SCPI):
     double check if you have a 6220.
     """
 
-    def __init__(self, interface, hostname='', device='',
-                 baudrate=19200, gpib_address=None):
+    def __init__(
+        self, interface, hostname='', device='', baudrate=19200, gpib_address=None
+    ):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device,
-                          baudrate=baudrate, line_ending='\r')
+            SCPI.__init__(
+                self,
+                interface=interface,
+                device=device,
+                baudrate=baudrate,
+                line_ending='\r',
+            )
             self.comm_dev.timeout = 2
             # self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
@@ -34,7 +40,7 @@ class Keithley6220(SCPI):
             ('STATUS:QUESTIONABLE:EVENT?', 8): 'Questionable Calibration',
             ('STATUS:MEASUREMENT:EVENT?', 2): 'Internal temperature too high',
             ('STATUS:MEASUREMENT:EVENT?', 3): 'Voltage complicance',
-            ('*ESR?', 4): 'Setpoint out of current range'
+            ('*ESR?', 4): 'Setpoint out of current range',
         }
         if msg is None:
             msg = command
@@ -73,7 +79,7 @@ class Keithley6220(SCPI):
             # 'STATUS:MEASUREMENT:CONDITION?': 'Measurement Condition Register',
             '*STB?': 'Status Byte Register',
             'STATUS:MEASUREMENT:EVENT?': 'Measurement Event Register',
-            'STATUS:QUESTIONABLE:EVENT?': 'Questionable Event Register'
+            'STATUS:QUESTIONABLE:EVENT?': 'Questionable Event Register',
         }
         for command, message in registers.items():
             status_ok = status_ok & self._check_register(command, message)

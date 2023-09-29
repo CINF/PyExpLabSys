@@ -18,14 +18,16 @@ PY3_CHECK = VERSION.major == PY3_MIN_VERSION[0] and VERSION.minor >= PY3_MIN_VER
 PY2_OR_3_CHECK = PY2_CHECK or PY3_CHECK
 
 # Warnings texts
-WARNING2OR3 = ('\n'
+WARNING2OR3 = (
+    '\n'
     '========================================================================\n'
     '# The module: \'{filepath}\'\n'
     '# only supports Python {0}.{1} or above in the Python {0} series.\n'
     '# Your milages may vary!!!\n'
     '========================================================================\n'
 )
-WARNING2AND3 = ('\n'
+WARNING2AND3 = (
+    '\n'
     '========================================================================\n'
     '# The module: \'{filepath}\'\n'
     '# only supports Python {0}.{1} or above in the Python {0} series\n'
@@ -62,7 +64,9 @@ def python2_and_3(filepath):
     if PY2_OR_3_CHECK:
         return
     if not DOCRUN:
-        warnings.warn(WARNING2AND3.format(*PY2_MIN_VERSION + PY3_MIN_VERSION, filepath=filepath))
+        warnings.warn(
+            WARNING2AND3.format(*PY2_MIN_VERSION + PY3_MIN_VERSION, filepath=filepath)
+        )
 
 
 # Mark this file as being Python 2 and 3 compatible

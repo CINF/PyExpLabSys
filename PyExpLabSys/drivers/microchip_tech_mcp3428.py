@@ -8,12 +8,12 @@ import fcntl
 
 
 class I2C:
-    """ File based i2c.
+    """File based i2c.
     Code adapted from: https://www.raspberrypi.org/forums/viewtopic.php?t=134997"""
 
     def __init__(self, device, bus):
-        self.file_read = io.open("/dev/i2c-"+str(bus), "rb", buffering=0)
-        self.file_write = io.open("/dev/i2c-"+str(bus), "wb", buffering=0)
+        self.file_read = io.open("/dev/i2c-" + str(bus), "rb", buffering=0)
+        self.file_write = io.open("/dev/i2c-" + str(bus), "wb", buffering=0)
 
         i2c_slave = 0x0703
         # set device address
@@ -36,7 +36,7 @@ class I2C:
 
 
 class MCP3428(object):
-    """ Class for reading voltage from MCP3428
+    """Class for reading voltage from MCP3428
     For some reason this chip works only partly with smbus, hence the
     use of file based i2c.
     """
@@ -49,14 +49,15 @@ class MCP3428(object):
     def __del__(self):
         self.bus.close()
 
-    def read_sample(self, channel: int = 1, gain: int = 1,
-                    resolution: int = 12) -> float:
+    def read_sample(
+        self, channel: int = 1, gain: int = 1, resolution: int = 12
+    ) -> float:
         """ Read a single sample """
         command_byte = (
-            self.resolution(resolution) |
-            0x00 |  # One shot measuremet, use 0x10 for continous mode
-            self.gain(gain) |
-            self.channel(channel)
+            self.resolution(resolution)
+            | 0x00
+            | self.gain(gain)  # One shot measuremet, use 0x10 for continous mode
+            | self.channel(channel)
         )
         command_byte = command_byte | 0x80  # start conversion
         self.bus.write([command_byte])
@@ -73,10 +74,10 @@ class MCP3428(object):
         # print('Execution time: {:.2f}ms'.format(meas_time * 1000))
 
         raw_value = data[0] * 256 + data[1]
-        if raw_value > (2**(resolution - 1) - 1):
-            raw_value = raw_value - 2**resolution
+        if raw_value > (2 ** (resolution - 1) - 1):
+            raw_value = raw_value - 2 ** resolution
         # print('Raw sensor value: {}'.format(raw_value))
-        bit_size = self.voltage_ref / (2**(resolution - 1) * gain)
+        bit_size = self.voltage_ref / (2 ** (resolution - 1) * gain)
         voltage = raw_value * bit_size
         return voltage
 

@@ -1,13 +1,16 @@
 """ PID calculator """
 import logging
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
+
 class PID(object):
     """ PID calculator """
+
     def __init__(self, pid_p=0.15, pid_i=0.0025, pid_d=0, p_max=54, p_min=0):
         LOGGER.debug('Starting PID')
         self.setpoint = -9999

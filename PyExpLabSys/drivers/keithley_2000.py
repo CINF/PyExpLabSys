@@ -7,11 +7,17 @@ class Keithley2000(SCPI):
     Simple driver for Keithley 2000 DMM
     """
 
-    def __init__(self, interface, hostname='', device='',
-                 baudrate=9600, gpib_address=None):
+    def __init__(
+        self, interface, hostname='', device='', baudrate=9600, gpib_address=None
+    ):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device,
-                          baudrate=baudrate, line_ending='\n')
+            SCPI.__init__(
+                self,
+                interface=interface,
+                device=device,
+                baudrate=baudrate,
+                line_ending='\n',
+            )
             self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
@@ -89,7 +95,7 @@ class Keithley2000(SCPI):
     def measurement_available(self):
         meas_event = int(self.scpi_comm('STATUS:MEASUREMENT:EVENT?'))
         mav_bit = 5
-        mav = (meas_event & 2**mav_bit) == 2**mav_bit
+        mav = (meas_event & 2 ** mav_bit) == 2 ** mav_bit
         return mav
 
 

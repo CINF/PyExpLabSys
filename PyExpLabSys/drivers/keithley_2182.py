@@ -9,11 +9,17 @@ class Keithley2182(SCPI):
     double check if you have a 2182.
     """
 
-    def __init__(self, interface, hostname='', device='',
-                 baudrate=9600, gpib_address=None):
+    def __init__(
+        self, interface, hostname='', device='', baudrate=9600, gpib_address=None
+    ):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device,
-                          baudrate=baudrate, line_ending='\n')
+            SCPI.__init__(
+                self,
+                interface=interface,
+                device=device,
+                baudrate=baudrate,
+                line_ending='\n',
+            )
             self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False

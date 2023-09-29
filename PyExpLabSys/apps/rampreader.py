@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
 
-class RampReader():
+
+class RampReader:
     def __init__(self, filename='temp_ramp.txt'):
         file = open(filename, 'r')
         lines = file.readlines()
@@ -29,7 +30,7 @@ class RampReader():
                 ramp = row[2].lower() == 'ramp'
             except IndexError:
                 ramp = False
-            if param == 'time': #New time step, store the old values
+            if param == 'time':  # New time step, store the old values
                 params.append(current_values.copy())
                 new_time = current_values['time'][0] + value
                 current_values['time'] = (new_time, False)
@@ -39,21 +40,19 @@ class RampReader():
         self.params = sorted(params, key=itemgetter('time'))
         print self.params
 
-
     def remove_lines_and_comments(self, lines):
         """ Remove all empty lines and comments from file """
 
-        #Mark empty lines and comments
+        # Mark empty lines and comments
         for i in range(0, len(lines)):
-            if lines[i][0] in ['\n','#']:
+            if lines[i][0] in ['\n', '#']:
                 lines[i] = ''
-            lines[i] = lines[i].strip() #Remove LF, CR and spaces from all lines
+            lines[i] = lines[i].strip()  # Remove LF, CR and spaces from all lines
 
-        #Remove all empty lines, including the ones just marked as empty
+        # Remove all empty lines, including the ones just marked as empty
         for i in range(0, lines.count('')):
             lines.remove('')
         return lines
-
 
     def get_value(self, time, key):
         old_param = self.params[0]
@@ -62,7 +61,9 @@ class RampReader():
                 if param[key][1]:
                     dt1 = time - old_param['time'][0]
                     dt2 = param['time'][0] - time
-                    time_span = ((param['time'][0] - time) + (time - old_param['time'][0]))
+                    time_span = (param['time'][0] - time) + (
+                        time - old_param['time'][0]
+                    )
                     return (param[key][0] * dt1 + old_param[key][0] * dt2) / time_span
                 else:
                     return old_param[key][0]
@@ -85,22 +86,23 @@ class RampReader():
         fig = plt.figure()
         axis = fig.add_subplot(1, 1, 1)
         axis2 = axis.twinx()
-        
-        plot_lines = axis2.plot(time_range, plots['temp'], linestyle='-', label = 'Temp', color='k')
+
+        plot_lines = axis2.plot(
+            time_range, plots['temp'], linestyle='-', label='Temp', color='k'
+        )
         for key in keys:
             plot_lines += axis.plot(time_range, plots[key], linestyle='-', label=key)
-        
+
         labels = [l.get_label() for l in plot_lines]
         axis.legend(plot_lines, labels)
-        
+
         axis.set_ylabel('Value')
-        #axis2.set_ylabel('Temperature')
+        # axis2.set_ylabel('Temperature')
         axis.set_xlabel('Time')
-        #axis.legend(loc='upper left')
+        # axis.legend(loc='upper left')
         plt.show()
 
 
-
 reader = RampReader()
-print('----')
-print(reader.plot_file())
+print ('----')
+print (reader.plot_file())

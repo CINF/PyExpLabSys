@@ -10,6 +10,7 @@ class PowerWalker(object):
     https://networkupstools.org/protocols/megatec.html
     Apparantly, for the available model, none of the control works.
     """
+
     def comm(self, command, start_byte):
         raise NotImplementedError
 
@@ -18,7 +19,7 @@ class PowerWalker(object):
         information = {
             'company': reply[0:15].strip(),
             'model': reply[16:26].strip(),
-            'version': reply[27:].strip()
+            'version': reply[27:].strip(),
         }
         return information
 
@@ -41,8 +42,8 @@ class PowerWalker(object):
             # print('Reply: {}'.format(reply))
             values = reply.split(' ')
             try:
-                assert(len(values) == 8)
-                assert(len(values[7]) == 8)
+                assert len(values) == 8
+                assert len(values[7]) == 8
                 errors = -1
             except AssertionError:
                 errors += 1
@@ -63,12 +64,12 @@ class PowerWalker(object):
             4: 'UPS Failed',
             5: 'Bypass/Boost or Buck Active',
             6: 'Battery Low',
-            7: 'Utility Fail'
+            7: 'Utility Fail',
         }
 
         status_string = values[7]
         for i in range(0, 8):
-            bit_value = (status_string[-1 - i] == '1')
+            bit_value = status_string[-1 - i] == '1'
             if bit_value:
                 ups_status.append(status_description[i])
 
@@ -140,7 +141,7 @@ class PowerWalkerSerial(PowerWalker):
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
-            timeout=1
+            timeout=1,
         )
 
     def comm(self, command, start_byte):

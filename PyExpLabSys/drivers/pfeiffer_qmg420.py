@@ -7,20 +7,20 @@ LOGGER = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 LOGGER.addHandler(logging.NullHandler())
 
-class qmg_420():
 
+class qmg_420:
     def speeds(self, n):
         speeds = {}
-        speeds[0]  = 0.0005
-        speeds[1]  = 0.001
-        speeds[2]  = 0.002
-        speeds[3]  = 0.005
-        speeds[4]  = 0.01
-        speeds[5]  = 0.02
-        speeds[6]  = 0.05
-        speeds[7]  = 0.1
-        speeds[8]  = 0.2
-        speeds[9]  = 0.5
+        speeds[0] = 0.0005
+        speeds[1] = 0.001
+        speeds[2] = 0.002
+        speeds[3] = 0.005
+        speeds[4] = 0.01
+        speeds[5] = 0.02
+        speeds[6] = 0.05
+        speeds[7] = 0.1
+        speeds[8] = 0.2
+        speeds[9] = 0.5
         speeds[10] = 1
         speeds[11] = 2
         speeds[12] = 5
@@ -29,7 +29,7 @@ class qmg_420():
         speeds[15] = 60
         return speeds[n]
 
-    def ranges(self, index, reverse = False):
+    def ranges(self, index, reverse=False):
         """ Return the physical range of a returned index """
         range_values = [0] * 8
         range_values[0] = -5
@@ -51,14 +51,14 @@ class qmg_420():
         else:
             return range_values[int(index)]
 
-    def __init__(self, switch_range = False):
+    def __init__(self, switch_range=False):
         self.f = serial.Serial('/dev/ttyUSB0', 9600)
         self.switch_9_and_11 = switch_range
         self.type = '420'
         self.communication_mode(computer_control=True)
 
     def comm(self, command):
-        """ Communicates with Baltzers/Pferiffer Mass Spectrometer
+        """Communicates with Baltzers/Pferiffer Mass Spectrometer
 
         Implements the low-level protocol for RS-232 communication with the
         instrument. High-level protocol can be implemented using this as a
@@ -68,25 +68,41 @@ class qmg_420():
         LOGGER.debug("Command in progress: " + command)
 
         waiting = self.f.inWaiting()
-        if waiting > 0: #Skip characters that are currently waiting in line
+        if waiting > 0:  # Skip characters that are currently waiting in line
             debug_info = self.f.read(waiting)
-            LOGGER.debug("Elements not read: " + str(waiting) + 
-                          ": Contains: " + debug_info)            
+            LOGGER.debug(
+                "Elements not read: " + str(waiting) + ": Contains: " + debug_info
+            )
 
-        commands_without_reply = ['SEM', 'EMI', 'SEV', 'OPM', 'CHA',
-                                  'CHM', 'SPE', 'FIR', 'WID','RUN',
-                                  'STP', 'RAN', 'CHA', 'SYN', 'CYC',
-                                  'STA', 'DET', 'CTR']
+        commands_without_reply = [
+            'SEM',
+            'EMI',
+            'SEV',
+            'OPM',
+            'CHA',
+            'CHM',
+            'SPE',
+            'FIR',
+            'WID',
+            'RUN',
+            'STP',
+            'RAN',
+            'CHA',
+            'SYN',
+            'CYC',
+            'STA',
+            'DET',
+            'CTR',
+        ]
         self.f.write(command + '\r')
         mem = command.split(' ')[0]
         if not mem in commands_without_reply:
             ret_string = self.f.readline()
         else:
             ret_string = ""
-        ret_string = ret_string.replace('\n','')
-        ret_string = ret_string.replace('\r','')
+        ret_string = ret_string.replace('\n', '')
+        ret_string = ret_string.replace('\r', '')
         return ret_string
-
 
     def status(self, command, index):
         status = self.comm(command)
@@ -103,12 +119,12 @@ class qmg_420():
         if voltage > -1:
             self.comm('SEM ' + str(voltage))
             ret_string = self.status('RDE', 4)
-        else: #NOT IMPLEMENTED
+        else:  # NOT IMPLEMENTED
             ret_string = self.status('RDE', 4)
 
         sem_voltage = int(ret_string)
 
-        if turn_off ^ turn_on: #Only accept self-consistent sem-changes
+        if turn_off ^ turn_on:  # Only accept self-consistent sem-changes
             if turn_off:
                 self.comm('SEV 0')
             if turn_on:
@@ -124,7 +140,6 @@ class qmg_420():
             self.comm('SPE ' + str(speed))
         return self.speeds(speed)
 
-
     def emission_status(self, current=-1, turn_off=False, turn_on=False):
         """ Get or set the emission status. """
         emission_current = -1
@@ -138,10 +153,8 @@ class qmg_420():
         filament_on = ret_string == '1'
         return emission_current, filament_on
 
-
     def detector_status(self, SEM=False, faraday_cup=False):
-       return 'Not possible on this model'
-
+        return 'Not possible on this model'
 
     def read_voltages(self):
         """ Read the voltages on the lens system """
@@ -150,7 +163,6 @@ class qmg_420():
     def set_channel(self, channel):
         """ Set the active measurement channel """
         self.comm('CHA ' + str(channel))
-
 
     def read_sem_voltage(self):
         """ Read the selected SEM voltage """
@@ -174,11 +186,11 @@ class qmg_420():
 
     def mass_time(self, ns):
         """ Configure instrument for mass time """
-        self.comm('OPM 1') #0, single. 1, multi
-        #self.comm('CTR ,0') #Trigger mode, 0=auto trigger
-        self.comm('CYC 1') #Number of repetitions
-        #self.comm('CBE ,1') #First measurement channel in multi mode
-        #self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
+        self.comm('OPM 1')  # 0, single. 1, multi
+        # self.comm('CTR ,0') #Trigger mode, 0=auto trigger
+        self.comm('CYC 1')  # Number of repetitions
+        # self.comm('CBE ,1') #First measurement channel in multi mode
+        # self.comm('CEN ,' + str(ns)) #Last measurement channel in multi mod
 
     def start_measurement(self):
         self.comm('RUN')
@@ -244,12 +256,12 @@ class qmg_420():
         if enable == "no":
             self.comm('STA 0')
 
-        #Default values, not currently choosable from function parameters
-        #self.comm('DSE ,0')  #Use default SEM voltage
-        #self.comm('DTY ,1')  #Use SEM for ion detection
-        self.comm('CHM 2')  #Single mass measurement (opposed to mass-scan)
-        #self.comm('CHM 3')  #peak processor
-        #self.comm('MRE ,15') #Peak resolution
+        # Default values, not currently choosable from function parameters
+        # self.comm('DSE ,0')  #Use default SEM voltage
+        # self.comm('DTY ,1')  #Use SEM for ion detection
+        self.comm('CHM 2')  # Single mass measurement (opposed to mass-scan)
+        # self.comm('CHM 3')  #peak processor
+        # self.comm('MRE ,15') #Peak resolution
 
     def mass_scan(self, first_mass, scan_width, amp_range=-7):
         self.comm('CHA 0')
@@ -259,7 +271,6 @@ class qmg_420():
         self.comm('SPE ' + str(10))
         range_index = self.ranges(amp_range, reverse=True)
         self.comm('RAN ' + str(range_index))
-        self.comm('CHM 0') # Mass scan, to enable FIR filter, set value to 1
+        self.comm('CHM 0')  # Mass scan, to enable FIR filter, set value to 1
         self.comm('STA 1')
-        self.comm('DET 1') # Use SEM for ion detection
-
+        self.comm('DET 1')  # Use SEM for ion detection

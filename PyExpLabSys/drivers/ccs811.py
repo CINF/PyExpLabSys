@@ -8,9 +8,10 @@ class CCS811(object):
     Class for reading approximate values of eCO2 TVOC
     from a CC811 environmental sensor
     """
+
     def __init__(self):
         self.bus = smbus.SMBus(1)
-        self.device_address = 0x5a
+        self.device_address = 0x5A
         self.status = {}
         self.status['error'] = []
 
@@ -19,7 +20,7 @@ class CCS811(object):
             'TVOC': -1,
             'current': -1,
             'voltage': -1,
-            'resistance': -1
+            'resistance': -1,
         }
 
         if not self.verify_id():
@@ -104,8 +105,9 @@ class CCS811(object):
         raw_bits = bin(data[6])[2:].zfill(8) + bin(data[7])[2:].zfill(8)
         self.data['current'] = int(raw_bits[0:6], 2)
         self.data['voltage'] = int(raw_bits[6:16], 2) * 1.65 / 1023
-        self.data['resistance'] = int(1000000 * self.data['voltage'] /
-                                      self.data['current'])
+        self.data['resistance'] = int(
+            1000000 * self.data['voltage'] / self.data['current']
+        )
         return self.data
 
     def set_environmental_data(self, humidity, temperature):
@@ -115,7 +117,7 @@ class CCS811(object):
         """
         humidity_byte = ''
         for i in range(0, 16):
-            bit_val = 64.0 / 2**i
+            bit_val = 64.0 / 2 ** i
             if humidity > bit_val:
                 humidity_byte += '1'
                 humidity -= bit_val
@@ -126,7 +128,7 @@ class CCS811(object):
 
         temperature_byte = ''
         for i in range(0, 16):
-            bit_val = 64.0 / 2**i
+            bit_val = 64.0 / 2 ** i
             if temperature + 25 > bit_val:
                 temperature_byte += '1'
                 temperature -= bit_val
@@ -139,11 +141,12 @@ class CCS811(object):
         self.bus.wri2te_block_data(self.device_address, 0x05, env_data)
         time.sleep(0.5)
 
+
 if __name__ == '__main__':
     sensor = CCS811()
 
     time.sleep(5)
-    
+
     for i in range(0, 2000):
         time.sleep(0.1)
         status = sensor.update_status()

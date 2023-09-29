@@ -3,9 +3,10 @@ import requests
 
 
 class NetioPowerBox(object):
-    """ Driver For Netio PowerBOX
+    """Driver For Netio PowerBOX
     - this driver has been tested on model 4KF
     """
+
     def __init__(self, ip: str):
         self.url = 'http://{}/netio.json'.format(ip)
         self.device_info = self._read_device_info()
@@ -26,7 +27,7 @@ class NetioPowerBox(object):
             'mac': agent['MAC'],
             'sn': agent['SerialNumber'],
             'uptime': agent['Uptime'],
-            'outputs': agent['NumOutputs']
+            'outputs': agent['NumOutputs'],
         }
         return device_info
 
@@ -46,14 +47,7 @@ class NetioPowerBox(object):
             action = 1
         else:
             action = 0
-        payload = {
-            'Outputs': [
-                {
-                    'ID': output,
-                    'Action': action
-                }
-            ]
-        }
+        payload = {'Outputs': [{'ID': output, 'Action': action}]}
         r = requests.post(self.url, data=json.dumps(payload), auth=self.auth)
         success = r.status_code == 200
         return success

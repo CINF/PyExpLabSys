@@ -18,7 +18,7 @@ class MCP9808(object):
         time.sleep(1)
 
         data = self.bus.read_i2c_block_data(self.device_address, 0x05, 2)
-        temp_temp = ((data[0] & 0x1f) * 256) + data[1]
+        temp_temp = ((data[0] & 0x1F) * 256) + data[1]
         temp = temp_temp * 0.0625  # Scale
         return temp
 

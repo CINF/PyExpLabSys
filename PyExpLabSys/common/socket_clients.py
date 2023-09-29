@@ -18,7 +18,14 @@ class DateDataPullClient(object):
     codenames and name are available as attributes
     """
 
-    def __init__(self, host, expected_socket_name, port=9000, exception_on_old_data=True, timeout=None):
+    def __init__(
+        self,
+        host,
+        expected_socket_name,
+        port=9000,
+        exception_on_old_data=True,
+        timeout=None,
+    ):
         """Initialize the DateDataPullClient object"""
         self.exception_on_old_data = exception_on_old_data
         self.socket_ = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -30,13 +37,14 @@ class DateDataPullClient(object):
         self.name = self._communicate('name')
         if self.name != expected_socket_name:
             msg = 'The name of the socket at {} was not "{}" as expected, but "{}"'
-            raise ValueError(msg.format(self.host_port, expected_socket_name, self.name))
+            raise ValueError(
+                msg.format(self.host_port, expected_socket_name, self.name)
+            )
 
         # Read codenames
         codenames_json = self._communicate('codenames_json')
         self.codenames = json.loads(codenames_json)
         self.codenames_set = set(self.codenames)
-        
 
     def _communicate(self, command):
         """Encode, send and decode a command for a socket"""
@@ -49,14 +57,14 @@ class DateDataPullClient(object):
             if len(chunk) < CHUNK_SIZE:
                 break
         return received.decode('utf-8')
-    
+
     def get_field(self, fieldname):
         """Return field by name"""
         # Check for valud fieldname
         if fieldname not in self.codenames_set:
             msg = 'Unknown fieldnames, valid fields are: {}'.format(self.codenames)
             raise ValueError(msg)
-    
+
         data_json = self._communicate('{}#json'.format(fieldname))
         data = json.loads(data_json)
         if data == OLD_DATA and self.exception_on_old_data:
@@ -84,7 +92,6 @@ class DateDataPullClient(object):
 
         msg = "{} object has no attribute '{}'".format(self.__class__.__name__, name)
         raise AttributeError(msg)
-        
 
 
 def module_demo():
@@ -107,6 +114,7 @@ def module_demo():
     print(date_data_pull_client.new)
 
     from pprint import pprint
+
     pprint(date_data_pull_client.get_status())
 
 

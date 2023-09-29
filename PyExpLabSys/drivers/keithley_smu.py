@@ -4,15 +4,22 @@ import time
 import logging
 from PyExpLabSys.drivers.scpi import SCPI
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
+
 
 class KeithleySMU(SCPI):
     """ Simple driver for Keithley SMU """
 
     def __init__(self, interface, hostname='', device='', baudrate=9600):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device,
-                          baudrate=baudrate, line_ending='\n')
+            SCPI.__init__(
+                self,
+                interface=interface,
+                device=device,
+                baudrate=baudrate,
+                line_ending='\n',
+            )
             self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
@@ -73,53 +80,79 @@ class KeithleySMU(SCPI):
         return voltage
 
     def set_source_function(self, function, channel=1):
-        scpi_string = ('smu' +  self.channel_names[channel] + '.source.func = ' +
-                       self.channel_names[channel] + '.OUTPUT_')
+        scpi_string = (
+            'smu'
+            + self.channel_names[channel]
+            + '.source.func = '
+            + self.channel_names[channel]
+            + '.OUTPUT_'
+        )
         if function in ('i', 'I'):
             self.scpi_comm(scpi_string + 'DC_AMPS')
             print('Source function: Current')
         if function in ('v', 'V'):
-            print('Source function: Voltage')    
+            print('Source function: Voltage')
             self.scpi_comm(scpi_string + 'DC_VOLTS')
 
     def set_current_limit(self, current, channel=1):
         """ Set the desired current limit """
-        self.scpi_comm('smu' + self.channel_names[channel] +
-                       '.source.limiti = ' + str(current))
+        self.scpi_comm(
+            'smu' + self.channel_names[channel] + '.source.limiti = ' + str(current)
+        )
 
     def set_voltage(self, voltage, channel=1):
         """ Set the desired voltage """
-        self.scpi_comm('smu' + self.channel_names[channel] +
-                       '.source.levelv = ' + str(voltage))
+        self.scpi_comm(
+            'smu' + self.channel_names[channel] + '.source.levelv = ' + str(voltage)
+        )
 
     def set_voltage_limit(self, voltage, channel=1):
         """ Set the desired voltate limit """
-        self.scpi_comm('smu' + self.channel_names[channel] +
-                       '.source.limitv = ' + str(voltage))
+        self.scpi_comm(
+            'smu' + self.channel_names[channel] + '.source.limitv = ' + str(voltage)
+        )
 
     def set_current(self, current, channel=1):
         """ Set the desired current """
-        self.scpi_comm('smu' + self.channel_names[channel] +
-                       '.source.leveli = ' + str(current))
+        self.scpi_comm(
+            'smu' + self.channel_names[channel] + '.source.leveli = ' + str(current)
+        )
 
     def iv_scan(self, v_from, v_to, steps, settle_time, channel=1):
         """ Perform iv_scan """
         ch_name = 'smu' + self.channel_names[channel]
-        self.scpi_comm('SweepVLinMeasureI('+ ch_name + ', ' +
-                       str(v_from) + ', ' +
-                       str(v_to) + ', ' +
-                       str(settle_time) + ', ' +
-                       str(steps) + ')')
-        readings = (self.scpi_comm('printbuffer(1, ' + str(steps) + ', ' + ch_name +
-                                   '.nvbuffer1.readings)', True))
-        sourcevalues = (self.scpi_comm('printbuffer(1, ' + str(steps) + ', ' + ch_name +
-                                       '.nvbuffer1.sourcevalues)', True))
+        self.scpi_comm(
+            'SweepVLinMeasureI('
+            + ch_name
+            + ', '
+            + str(v_from)
+            + ', '
+            + str(v_to)
+            + ', '
+            + str(settle_time)
+            + ', '
+            + str(steps)
+            + ')'
+        )
+        readings = self.scpi_comm(
+            'printbuffer(1, ' + str(steps) + ', ' + ch_name + '.nvbuffer1.readings)',
+            True,
+        )
+        sourcevalues = self.scpi_comm(
+            'printbuffer(1, '
+            + str(steps)
+            + ', '
+            + ch_name
+            + '.nvbuffer1.sourcevalues)',
+            True,
+        )
         readings = readings.split(',')
         sourcevalues = sourcevalues.split(',')
         for i in range(0, steps):
             readings[i] = float(readings[i])
             sourcevalues[i] = float(sourcevalues[i])
         return (sourcevalues, readings)
+
 
 if __name__ == '__main__':
     PORT = '/dev/ttyUSB0'
@@ -131,27 +164,26 @@ if __name__ == '__main__':
     print(SMU.read_voltage(1))
     print(SMU.read_software_version())
 
-    #print(SMU)
-    #SMU.set_source_function('i')
-    #SMU.output_state(True)
-    #time.sleep(1)
-    #SMU.set_voltage(0.00)
-    #time.sleep(1)
-    #print(SMU.set_voltage_limit(1))
-    #time.sleep(1)
-    #SMU.set_current(0.0)
-    #time.sleep(3)
-    #print('Voltage: ' + str(SMU.read_voltage()))
-    #print('Current: ' + str(SMU.read_current()))
-    #print('-')
-    #time.sleep(1)
-    #SMU.output_state(False)
+    # print(SMU)
+    # SMU.set_source_function('i')
+    # SMU.output_state(True)
+    # time.sleep(1)
+    # SMU.set_voltage(0.00)
+    # time.sleep(1)
+    # print(SMU.set_voltage_limit(1))
+    # time.sleep(1)
+    # SMU.set_current(0.0)
+    # time.sleep(3)
+    # print('Voltage: ' + str(SMU.read_voltage()))
+    # print('Current: ' + str(SMU.read_current()))
+    # print('-')
+    # time.sleep(1)
+    # SMU.output_state(False)
 
-    #print(SMU.read_software_version())
-    #print('-')
-    #print(SMU.read_current())
-    #print('-')
-    #print(SMU.read_voltage())
-    #print('-')
-    #print(SMU.iv_scan(v_from=-1.1, v_to=0, steps=10, settle_time=0))
-
+    # print(SMU.read_software_version())
+    # print('-')
+    # print(SMU.read_current())
+    # print('-')
+    # print(SMU.read_voltage())
+    # print('-')
+    # print(SMU.iv_scan(v_from=-1.1, v_to=0, steps=10, settle_time=0))

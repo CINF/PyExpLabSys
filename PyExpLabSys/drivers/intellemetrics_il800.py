@@ -1,8 +1,10 @@
 """ Driver for IL800 deposition controller """
 import serial
 
+
 class IL800(object):
     """ Driver for IL800 depostition controller """
+
     def __init__(self, port):
         self.serial = serial.Serial(port, 9600, timeout=3, xonxoff=False, rtscts=True)
 
@@ -10,7 +12,7 @@ class IL800(object):
         """ Communicate with instrument """
         self.serial.write(command + '\r')
         status = self.serial.read(2)
-        if status[0] == '0': #Everything ok
+        if status[0] == '0':  # Everything ok
             ret_value = ' '
             while not ret_value[-1] == '\r':
                 ret_value += self.serial.read()
@@ -30,6 +32,7 @@ class IL800(object):
         """ Return the qrystal frequency in Hz """
         thickness = self.comm('CHKXTAL')
         return float(thickness)
+
 
 if __name__ == '__main__':
     IL800_UNIT = IL800('/dev/ttyUSB1')

@@ -3,6 +3,7 @@ from PyExpLabSys.drivers.inficon_sqm160 import InficonSQM160
 
 class InficonSQC310(InficonSQM160):
     """ Driver for Inficon SQC310 QCM controller """
+
     def __init__(self, port='/dev/ttyUSB0'):
         super().__init__(baudrate=19200)
 
@@ -11,7 +12,7 @@ class InficonSQC310(InficonSQM160):
         command = 'PA' + str(channel)
         value_string = self.comm(command)
         values_raw = value_string.split(b' ')
-        active = (values_raw[0] == b'1')
+        active = values_raw[0] == b'1'
         frequency = float(values_raw[1])
         life = float(values_raw[2])
         return active, frequency, life

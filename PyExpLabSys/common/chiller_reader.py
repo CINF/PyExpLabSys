@@ -4,10 +4,13 @@ import threading
 import time
 import PyExpLabSys.drivers.polyscience_4100 as polyscience_4100
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
+
 
 class ChillerReader(threading.Thread):
     """ Reader class that will monitor a polyscience chiller """
+
     def __init__(self, serial_port):
         threading.Thread.__init__(self)
         self.chiller = polyscience_4100.Polyscience4100(serial_port)

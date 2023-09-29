@@ -5,28 +5,31 @@ import time
 import logging
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
+
 class DataQ(object):
     """ driver for the DataQ Instrument """
+
     def __init__(self, port):
         self.serial = serial.Serial(port)
-        self.set_float_mode() # This is currently the only implemented mode
+        self.set_float_mode()  # This is currently the only implemented mode
         self.scan_list_counter = 0
         self.stop_measurement()
         self.scanning = False
         self.reset_scan_list()
         self.scan_list = []
         time.sleep(1)
-        self.serial.read(self.serial.inWaiting()) # Clear the read-buffer
+        self.serial.read(self.serial.inWaiting())  # Clear the read-buffer
 
     def comm(self, command):
         """ comm function """
-        end_char = '\r' # carriage return
-        command = command  + end_char
+        end_char = '\r'  # carriage return
+        command = command + end_char
         command = command.encode()
         self.serial.write(command)
         return_string = b''
@@ -71,15 +74,15 @@ class DataQ(object):
         """ Read the newest measurents """
         if not self.scanning:
             return False
-        #data = self.serial.read(self.serial.inWaiting())
+        # data = self.serial.read(self.serial.inWaiting())
         data_start = '   '
         while data_start != b'sc ':
             data_start = self.serial.read(3)
         scan_data = b' '
-        try: # Python 2
+        try:  # Python 2
             ord(scan_data[-1])
             end_char = '\r'
-        except TypeError: #Python 3
+        except TypeError:  # Python 3
             end_char = 13
         while scan_data[-1] != end_char:
             scan_data += self.serial.read(1)
@@ -101,8 +104,8 @@ class DataQ(object):
         return res
 
     def add_channel(self, channel):
-        """ Adds a channel to scan slist.
-        So far only analog channels are accepted """
+        """Adds a channel to scan slist.
+        So far only analog channels are accepted"""
         command = 'slist ' + str(self.scan_list_counter) + ' x000' + str(channel - 1)
         # TODO: This is a VERY rudementary treatment of the scan-list...
         self.scan_list_counter = self.scan_list_counter + 1
@@ -155,6 +158,7 @@ class DataQ(object):
         res = self.comm(command)
         return res
      """
+
 
 if __name__ == '__main__':
     DATAQ = DataQ('/dev/ttyACM0')

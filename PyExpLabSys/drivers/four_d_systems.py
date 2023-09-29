@@ -36,11 +36,30 @@ PyExpLabSys/test/integration_tests/test_four_d_systems.py
 """
 
 from __future__ import division, print_function, unicode_literals
+
 # Forces imports of backports of python 3 functionality into python 2.7 with the
 # python-future module
 from builtins import (  # pylint: disable=redefined-builtin, unused-import
-    bytes, dict, int, list, object, range, str, ascii, chr, hex, input, next, oct, open,
-    pow, round, super, filter, map, zip
+    bytes,
+    dict,
+    int,
+    list,
+    object,
+    range,
+    str,
+    ascii,
+    chr,
+    hex,
+    input,
+    next,
+    oct,
+    open,
+    pow,
+    round,
+    super,
+    filter,
+    map,
+    zip,
 )
 
 from time import sleep
@@ -54,6 +73,7 @@ except ImportError:
     Image = None
 
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 # TODO: Implement proper logging
@@ -65,36 +85,118 @@ TEXT_PROPERTY_TO_COMMAND = {
     'inverse': b'\xFF\xDC',
     'italic': b'\xFF\xDD',
     'opacity': b'\xFF\xDF',
-    'underline': b'\xFF\xDB'
+    'underline': b'\xFF\xDB',
 }
 SCREEN_MODES = ['landscape', 'landscape reverse', 'portrait', 'portrait reverse']
 GRAPHICS_PARAMETERS = [
-    'x_max', 'y_max', 'last_object_left', 'last_object_top', 'last_object_right',
+    'x_max',
+    'y_max',
+    'last_object_left',
+    'last_object_top',
+    'last_object_right',
     'last_object_bottom',
 ]
 TOUCH_STATES = ['enable', 'disable', 'default']
 TOUCH_STATUSSES = ['invalid/notouch', 'press', 'release', 'moving']
 LATIN_DICT = {
-    u"¡": u"!", u"¢": u"c", u"£": u"L", u"¤": u"o", u"¥": u"Y",
-    u"¦": u"|", u"§": u"S", u"¨": u"`", u"©": u"c", u"ª": u"a",
-    u"«": u"<<", u"¬": u"-", u"­": u"-", u"®": u"R", u"¯": u"-",
-    u"°": u"o", u"±": u"+-", u"²": u"2", u"³": u"3", u"´": u"'",
-    u"µ": u"u", u"¶": u"P", u"·": u".", u"¸": u",", u"¹": u"1",
-    u"º": u"o", u"»": u">>", u"¼": u"1/4", u"½": u"1/2", u"¾": u"3/4",
-    u"¿": u"?", u"À": u"A", u"Á": u"A", u"Â": u"A", u"Ã": u"A",
-    u"Ä": u"A", u"Å": u"Aa", u"Æ": u"Ae", u"Ç": u"C", u"È": u"E",
-    u"É": u"E", u"Ê": u"E", u"Ë": u"E", u"Ì": u"I", u"Í": u"I",
-    u"Î": u"I", u"Ï": u"I", u"Ð": u"D", u"Ñ": u"N", u"Ò": u"O",
-    u"Ó": u"O", u"Ô": u"O", u"Õ": u"O", u"Ö": u"O", u"×": u"*",
-    u"Ø": u"Oe", u"Ù": u"U", u"Ú": u"U", u"Û": u"U", u"Ü": u"U",
-    u"Ý": u"Y", u"Þ": u"p", u"ß": u"b", u"à": u"a", u"á": u"a",
-    u"â": u"a", u"ã": u"a", u"ä": u"a", u"å": u"aa", u"æ": u"ae",
-    u"ç": u"c", u"è": u"e", u"é": u"e", u"ê": u"e", u"ë": u"e",
-    u"ì": u"i", u"í": u"i", u"î": u"i", u"ï": u"i", u"ð": u"d",
-    u"ñ": u"n", u"ò": u"o", u"ó": u"o", u"ô": u"o", u"õ": u"o",
-    u"ö": u"o", u"÷": u"/", u"ø": u"oe", u"ù": u"u", u"ú": u"u",
-    u"û": u"u", u"ü": u"u", u"ý": u"y", u"þ": u"p", u"ÿ": u"y",
-    u"’": u"'", u"č": u"c", u"ž": u"z"
+    u"¡": u"!",
+    u"¢": u"c",
+    u"£": u"L",
+    u"¤": u"o",
+    u"¥": u"Y",
+    u"¦": u"|",
+    u"§": u"S",
+    u"¨": u"`",
+    u"©": u"c",
+    u"ª": u"a",
+    u"«": u"<<",
+    u"¬": u"-",
+    u"­": u"-",
+    u"®": u"R",
+    u"¯": u"-",
+    u"°": u"o",
+    u"±": u"+-",
+    u"²": u"2",
+    u"³": u"3",
+    u"´": u"'",
+    u"µ": u"u",
+    u"¶": u"P",
+    u"·": u".",
+    u"¸": u",",
+    u"¹": u"1",
+    u"º": u"o",
+    u"»": u">>",
+    u"¼": u"1/4",
+    u"½": u"1/2",
+    u"¾": u"3/4",
+    u"¿": u"?",
+    u"À": u"A",
+    u"Á": u"A",
+    u"Â": u"A",
+    u"Ã": u"A",
+    u"Ä": u"A",
+    u"Å": u"Aa",
+    u"Æ": u"Ae",
+    u"Ç": u"C",
+    u"È": u"E",
+    u"É": u"E",
+    u"Ê": u"E",
+    u"Ë": u"E",
+    u"Ì": u"I",
+    u"Í": u"I",
+    u"Î": u"I",
+    u"Ï": u"I",
+    u"Ð": u"D",
+    u"Ñ": u"N",
+    u"Ò": u"O",
+    u"Ó": u"O",
+    u"Ô": u"O",
+    u"Õ": u"O",
+    u"Ö": u"O",
+    u"×": u"*",
+    u"Ø": u"Oe",
+    u"Ù": u"U",
+    u"Ú": u"U",
+    u"Û": u"U",
+    u"Ü": u"U",
+    u"Ý": u"Y",
+    u"Þ": u"p",
+    u"ß": u"b",
+    u"à": u"a",
+    u"á": u"a",
+    u"â": u"a",
+    u"ã": u"a",
+    u"ä": u"a",
+    u"å": u"aa",
+    u"æ": u"ae",
+    u"ç": u"c",
+    u"è": u"e",
+    u"é": u"e",
+    u"ê": u"e",
+    u"ë": u"e",
+    u"ì": u"i",
+    u"í": u"i",
+    u"î": u"i",
+    u"ï": u"i",
+    u"ð": u"d",
+    u"ñ": u"n",
+    u"ò": u"o",
+    u"ó": u"o",
+    u"ô": u"o",
+    u"õ": u"o",
+    u"ö": u"o",
+    u"÷": u"/",
+    u"ø": u"oe",
+    u"ù": u"u",
+    u"ú": u"u",
+    u"û": u"u",
+    u"ü": u"u",
+    u"ý": u"y",
+    u"þ": u"p",
+    u"ÿ": u"y",
+    u"’": u"'",
+    u"č": u"c",
+    u"ž": u"z",
 }
 BAUD_RATES = {
     110: 0,
@@ -189,7 +291,7 @@ def to_gci(image, resize=None):
     x, y = image.size
     # Get pixels as 1 byte color components (0-255), convert to 0.0-1.0 float color
     # components and finally convert to Picaso's 16 bit color format
-    colors = [PicasoCommon._to_16_bit_rgb([x/255 for x in p]) for p in pixels]
+    colors = [PicasoCommon._to_16_bit_rgb([x / 255 for x in p]) for p in pixels]
     # NOTE: There is an error in the spec I found online:
     # https://forum.4dsystems.com.au/forum/forum-aa/faq-frequently-asked-questions/faq/
     # 2290-graphics-composer-and-the-display-modules
@@ -213,8 +315,7 @@ class PicasoCommon(object):
             the serial communication
     """
 
-    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600,
-                 debug=False):
+    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600, debug=False):
         """Initialize the driver
 
         The serial device and the baudrate are configurable, as described
@@ -246,8 +347,9 @@ class PicasoCommon(object):
         """Close the serial communication"""
         self.serial.close()
 
-    def _send_command(self, command, reply_length=0, output_as_bytes=False,
-                      reply_is_string=False):
+    def _send_command(
+        self, command, reply_length=0, output_as_bytes=False, reply_is_string=False
+    ):
         """Send a command and return status and reply
 
         Args:
@@ -273,7 +375,7 @@ class PicasoCommon(object):
 
         # Special case for baud rate change
         command_as_bytes = bytes(command)
-        if command_as_bytes[0: 2] == b'\x00\x26':
+        if command_as_bytes[0:2] == b'\x00\x26':
             baudrate_index = int.from_bytes(command_as_bytes[2:], byteorder='big')
             baudrate = {v: k for k, v in BAUD_RATES.items()}[baudrate_index]
             sleep(1)
@@ -290,8 +392,9 @@ class PicasoCommon(object):
         # First check if it succeded
         acknowledge_as_byte = self.serial.read(1)
         if acknowledge_as_byte != b'\x06':
-            message = 'The command \'{}\' failed with code: {}'.format(command,
-                                                                       acknowledge_as_byte)
+            message = 'The command \'{}\' failed with code: {}'.format(
+                command, acknowledge_as_byte
+            )
             raise PicasoException(message, exception_type='failed')
 
         # The read reply is any
@@ -310,16 +413,21 @@ class PicasoCommon(object):
         if self.debug:
             in_waiting = self.serial.inWaiting()
             if in_waiting != 0:
-                message = 'Wrong reply length. There are still {0} bytes '\
-                          'left waiting on the serial port'.format(in_waiting)
+                message = (
+                    'Wrong reply length. There are still {0} bytes '
+                    'left waiting on the serial port'.format(in_waiting)
+                )
                 raise PicasoException(message, exception_type='bytes_still_waiting')
 
         # Return appropriate value
         if reply_length > 0:
             if len(reply_raw) != reply_length:
-                message = 'The reply length {0} bytes, did not match the '\
-                          'requested reply length {1} bytes'.format(
-                              len(reply_raw) - 1, reply_length)
+                message = (
+                    'The reply length {0} bytes, did not match the '
+                    'requested reply length {1} bytes'.format(
+                        len(reply_raw) - 1, reply_length
+                    )
+                )
                 raise PicasoException(message, exception_type='unexpected_reply')
 
         reply = None
@@ -345,13 +453,13 @@ class PicasoCommon(object):
         # 5 bits for red and blue and 6 for green
         if isinstance(color, str):
             # Convert e.g. '#ffffff' to [1.0, 1.0, 1.0]
-            color = [int(color[n: n+2], base=16) / 255 for n in range(1, 6, 2)]
+            color = [int(color[n : n + 2], base=16) / 255 for n in range(1, 6, 2)]
 
         # '0001100011001001'
         #  |-r-||--g-||-b-|
-        bitstring = '{:05b}{:06b}{:05b}'.format(int(color[0] * 31),
-                                                int(color[1] * 63),
-                                                int(color[2] * 31))
+        bitstring = '{:05b}{:06b}{:05b}'.format(
+            int(color[0] * 31), int(color[1] * 63), int(color[2] * 31)
+        )
         # Turn the bit string into an integer and return
         return int(bitstring, 2)
 
@@ -374,7 +482,7 @@ class PicasoCommon(object):
         # Extract the r, g and b parts from the bitstring
         for start, end in ((0, 5), (5, 11), (11, 16)):
             # Convert to absolute int value
-            as_int = int(bitstring[start: end], 2)
+            as_int = int(bitstring[start:end], 2)
             # Convert to relative float (0.0 - 1.0)
             as_float = as_int / (2 ** (end - start) - 1)
             out.append(as_float)
@@ -591,8 +699,9 @@ class PicasoCommon(object):
             ValueError: If ``attribute`` is unknown
         """
         if attribute not in TEXT_PROPERTY_TO_COMMAND:
-            message = 'Attribute \'{0}\' unknown. Valid attributes are {1}'\
-                .format(attribute, TEXT_PROPERTY_TO_COMMAND.keys())
+            message = 'Attribute \'{0}\' unknown. Valid attributes are {1}'.format(
+                attribute, TEXT_PROPERTY_TO_COMMAND.keys()
+            )
             raise ValueError(message)
         status = b'\x00\x01' if status else b'\x00\x00'
         command = TEXT_PROPERTY_TO_COMMAND[attribute] + status
@@ -635,7 +744,9 @@ class PicasoCommon(object):
         Raises:
             PicasoException: If the command fails
         """
-        command = b'\xFF\xC5' + to_words(top_left, bottom_right, self._to_16_bit_rgb(color))
+        command = b'\xFF\xC5' + to_words(
+            top_left, bottom_right, self._to_16_bit_rgb(color)
+        )
         self._send_command(command)
 
     # Sub-section .6
@@ -651,7 +762,9 @@ class PicasoCommon(object):
         Raises:
             PicasoException: If the command fails
         """
-        command = b'\xFF\xC4' + to_words(top_left, bottom_right, self._to_16_bit_rgb(color))
+        command = b'\xFF\xC4' + to_words(
+            top_left, bottom_right, self._to_16_bit_rgb(color)
+        )
         self._send_command(command)
 
     # Sub-section .14
@@ -796,7 +909,7 @@ class PicasoCommon(object):
         """
         successes = []
         for position in range(0, len(blocks), 512):
-            block = blocks[position: position + 512]
+            block = blocks[position : position + 512]
             successes.append(self.write_sector(block))
         return all(successes)
 
@@ -931,8 +1044,7 @@ class PicasouLCD28PTU(PicasoCommon):
     documentation for :py:class:`PicasoCommon`
     """
 
-    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600,
-                 debug=False):
+    def __init__(self, serial_device='/dev/ttyUSB0', baudrate=9600, debug=False):
         super(PicasouLCD28PTU, self).__init__(serial_device, baudrate)
 
 
@@ -951,10 +1063,18 @@ class PicasoException(Exception):
 class Button(object):
     """Class that represents a button to use in the interface"""
 
-    def __init__(self, picaso, top_left, bottom_right, text,
-                 text_justify='center', left_justify_indent=None,
-                 text_color='#000000', inactive_color='#B2B2B2',
-                 active_color='#979797'):
+    def __init__(
+        self,
+        picaso,
+        top_left,
+        bottom_right,
+        text,
+        text_justify='center',
+        left_justify_indent=None,
+        text_color='#000000',
+        inactive_color='#B2B2B2',
+        active_color='#979797',
+    ):
         self.picaso = picaso
         self.text = text
         self.text_justify = text_justify
@@ -983,13 +1103,11 @@ class Button(object):
         """Draw button with either its active or inactive background color"""
         # Draw rectangle
         color = self.active_color if active else self.inactive_color
-        self.picaso.draw_filled_rectangle(self.top_left, self.bottom_right,
-                                          color)
+        self.picaso.draw_filled_rectangle(self.top_left, self.bottom_right, color)
 
         # Calculate text origin y-coordinate by creating splitting remaining
         # vertical space or default to top of button
-        origin_y = (self.button_height - self.char_height) // 2 +\
-                   self.top_left[1]
+        origin_y = (self.button_height - self.char_height) // 2 + self.top_left[1]
         origin_y = max(origin_y, self.top_left[1])
 
         # Calculate text origin x-coordinate dependent on justification
@@ -1006,8 +1124,7 @@ class Button(object):
 
         # Set text background and foreground color and write text
         self.picaso.move_origin(origin_x, origin_y)
-        old_foreground_color = self.picaso.text_foreground_color(
-            self.text_color)
+        old_foreground_color = self.picaso.text_foreground_color(self.text_color)
         old_background_color = self.picaso.text_background_color(color)
         self.picaso.put_string(self.text)
         # Restore colors

@@ -5,12 +5,15 @@ import time
 
 class InficonSQM160(object):
     """ Driver for Inficon SQM160 QCM controller """
+
     def __init__(self, port='/dev/ttyUSB0', baudrate=9600):
-        self.serial = serial.Serial(port=port,
-                                    baudrate=baudrate,
-                                    timeout=2,
-                                    bytesize=serial.EIGHTBITS,
-                                    xonxoff=True)
+        self.serial = serial.Serial(
+            port=port,
+            baudrate=baudrate,
+            timeout=2,
+            bytesize=serial.EIGHTBITS,
+            xonxoff=True,
+        )
 
     def comm(self, command):
         """ Implements actual communication with device """
@@ -27,7 +30,7 @@ class InficonSQM160(object):
             reply = self.serial.read(self.serial.inWaiting())
             crc = self.crc_calc(reply[1:-2])
             try:
-                crc_ok = (reply[-2] == crc[0] and reply[-1] == crc[1])
+                crc_ok = reply[-2] == crc[0] and reply[-1] == crc[1]
             except IndexError:
                 crc_ok = False
             if crc_ok:
@@ -55,7 +58,7 @@ class InficonSQM160(object):
         crc1_mask = int('1111111', 2)
         crc1 = (crc & crc1_mask) + 34
         crc2 = (crc >> 7) + 34
-        return(crc1, crc2)
+        return (crc1, crc2)
 
     def show_version(self):
         """ Read the firmware version """

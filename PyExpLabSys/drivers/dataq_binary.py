@@ -94,6 +94,7 @@ import serial
 import numpy
 
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
@@ -102,6 +103,7 @@ python2_and_3(__file__)
 
 class BufferOverflow(Exception):
     """Custom exception to indicate a buffer overflow"""
+
     pass
 
 
@@ -122,8 +124,14 @@ class DataQBinary(object):
     }
     #: Supported LED colors along with the code number
     led_colors = {
-        'black': 0, 'blue': 1, 'green': 2, 'cyan': 3,
-        'red': 4, 'magenta': 5, 'yellow': 6, 'white': 7,
+        'black': 0,
+        'blue': 1,
+        'green': 2,
+        'cyan': 3,
+        'red': 4,
+        'magenta': 5,
+        'yellow': 6,
+        'white': 7,
     }
     #: Buffer overflow size, may be overwritte in sub classes
     buffer_overflow_size = 4095
@@ -170,7 +178,7 @@ class DataQBinary(object):
     def _comm(self, arg, read_reply_policy='read'):
         """Execute command and return reply"""
         # Form command and send
-        command = (arg + self.end_char)
+        command = arg + self.end_char
         self.serial.write(command.encode())
         LOGGER.debug("cmd: %s", command)
         if read_reply_policy == 'dont_read':
@@ -195,7 +203,6 @@ class DataQBinary(object):
 
         # And finally end_char when we return the result
         return return_string.strip(self.end_char)
-
 
     def info(self, info_name='all'):
         """Return information about the device
@@ -377,11 +384,14 @@ class DataQBinary(object):
         bytes_read = self.serial.read(waiting)
         # ... check for buffer overflow
         if len(bytes_read) == self.buffer_overflow_size:
-            msg = ("Buffer flowed over. Adjust sampling parameters and restart "
-                   "measurement.")
+            msg = (
+                "Buffer flowed over. Adjust sampling parameters and restart "
+                "measurement."
+            )
             raise BufferOverflow(msg)
         buffer_message = '{}/{} bytes'.format(
-            len(bytes_read), self.buffer_overflow_size,
+            len(bytes_read),
+            self.buffer_overflow_size,
         )
 
         # Parse and interpret the data
@@ -435,6 +445,7 @@ class DataQBinary(object):
 
 class DI1110(DataQBinary):
     """FIXME"""
+
     buffer_overflow_size = 4095
 
 
@@ -454,9 +465,10 @@ def module_test():
 
     dataq.led_color('red')
     # Start measurement
-    #dataq.start()
-    #sleep(0.1)
+    # dataq.start()
+    # sleep(0.1)
     from pprint import pprint
+
     try:
         while True:
             dataq.start()
@@ -469,7 +481,6 @@ def module_test():
     else:
         dataq.stop()
     dataq.clear_buffer()
-
 
 
 if __name__ == '__main__':

@@ -27,6 +27,7 @@ from functools import wraps
 from serial import Serial
 
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Mark this module as supporting both Python 2 and 3
 python2_and_3(__file__)
 
@@ -55,8 +56,12 @@ class TenmaBase(Serial):
                 command, to make sure that the device is ready for another one. Defaults
                 to 0.1, but quick tests suggest that 0.05 might be enough.
         """
-        LOG.info('%s init on device: %s, sleep_after_command=%s', self.__class__.__name__,
-                 device, sleep_after_command)
+        LOG.info(
+            '%s init on device: %s, sleep_after_command=%s',
+            self.__class__.__name__,
+            device,
+            sleep_after_command,
+        )
         super(TenmaBase, self).__init__(device)
         self.sleep_after_command = sleep_after_command
 
@@ -194,7 +199,7 @@ class TenmaBase(Serial):
             'lock_on': status_bitstring[5] == '1',
             'output_on': status_bitstring[6] == '1',
         }
-        tracking_bits = status_bitstring[2: 4]
+        tracking_bits = status_bitstring[2:4]
         tracking_translation = {'00': 'Independent', '01': 'Series', '11': 'Parallel'}
         status['tracking_status'] = tracking_translation[tracking_bits]
         return status

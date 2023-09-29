@@ -11,8 +11,10 @@ def execute_on_exception(name_of_shutdown_method):
             object as the decorated method) to call if the decorated methods
             raises an exception
     """
+
     def decorator(method):
         """The decorator for the method"""
+
         @functools.wraps(method)
         def new_method(*args, **kwargs):
             """Decorated method"""
@@ -27,5 +29,7 @@ def execute_on_exception(name_of_shutdown_method):
                 # Re-raise for good measure
                 raise
             return out
+
         return new_method
+
     return decorator

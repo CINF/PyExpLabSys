@@ -16,7 +16,7 @@ MEASUREMENT_STATUS = {
     3: 'Sensor error',
     4: 'Sensor off (IKR, PKR, IMR, PBR)',
     5: 'No sensor (output: 5,2.0000E-2 [mbar])',
-    6: 'Identification error'
+    6: 'Identification error',
 }
 GAUGE_IDS = {
     'TPR': 'Pirani Gauge or Pirani Capacitive gauge',
@@ -27,7 +27,7 @@ GAUGE_IDS = {
     'IMR': 'Pirani / High Pressure Gauge',
     'CMR': 'Linear gauge',
     'noSEn': 'no SEnsor',
-    'noid': 'no identifier'
+    'noid': 'no identifier',
 }
 PRESSURE_UNITS = {0: 'mbar/bar', 1: 'Torr', 2: 'Pascal'}
 
@@ -102,8 +102,9 @@ class TPG26x(object):
             message = 'Serial communication returned negative acknowledge'
             raise IOError(message)
         elif response != self._cr_lf(self.ACK):
-            message = 'Serial communication returned unknown response:\n{}'\
-                ''.format(repr(response))
+            message = 'Serial communication returned unknown response:\n{}' ''.format(
+                repr(response)
+            )
             raise IOError(message)
 
     def _get_data(self):
@@ -167,8 +168,12 @@ class TPG26x(object):
         value1 = float(reply.split(',')[1])
         status_code2 = int(reply.split(',')[2])
         value2 = float(reply.split(',')[3])
-        return (value1, (status_code1, MEASUREMENT_STATUS[status_code1]),
-                value2, (status_code2, MEASUREMENT_STATUS[status_code2]))
+        return (
+            value1,
+            (status_code1, MEASUREMENT_STATUS[status_code1]),
+            value2,
+            (status_code2, MEASUREMENT_STATUS[status_code2]),
+        )
 
     def gauge_identification(self):
         """Return the gauge identication
@@ -219,7 +224,7 @@ class TPG262(TPG26x):
             of the possible value. The default value is '/dev/ttyUSB0'.
         :type port: str or int
         :param baudrate: 9600, 19200, 38400 where 9600 is the default
-        :type baudrate: int        
+        :type baudrate: int
         """
         super(TPG262, self).__init__(port=port, baudrate=baudrate)
 

@@ -19,13 +19,13 @@ import threading
 
 # pylint: disable=invalid-name,too-few-public-methods
 class cached_property(object):
-    """ A property that is only computed once per instance and then replaces
-        itself with an ordinary attribute. Deleting the attribute resets the
-        property.
+    """A property that is only computed once per instance and then replaces
+    itself with an ordinary attribute. Deleting the attribute resets the
+    property.
 
-        Source: https://github.com/bottlepy/bottle/commit/
-                fa7733e075da0d790d809aa3d2f53071897e6f76
-        """
+    Source: https://github.com/bottlepy/bottle/commit/
+            fa7733e075da0d790d809aa3d2f53071897e6f76
+    """
 
     def __init__(self, func):
         self.__doc__ = getattr(func, '__doc__')
@@ -40,9 +40,10 @@ class cached_property(object):
 
 # pylint: disable=invalid-name,too-few-public-methods
 class threaded_cached_property(cached_property):
-    """ A cached_property version for use in environments where multiple
-        threads might concurrently try to access the property.
-        """
+    """A cached_property version for use in environments where multiple
+    threads might concurrently try to access the property.
+    """
+
     def __init__(self, func):
         super(threaded_cached_property, self).__init__(func)
         self.lock = threading.RLock()

@@ -15,18 +15,21 @@ from collections import namedtuple
 from io import BytesIO
 from PyExpLabSys.thirdparty import olefile
 from PyExpLabSys.thirdparty.cached_property import cached_property
+
 olefile.KEEP_UNICODE_NAMES = True
 import numpy as np
 
 import logging
+
 _LOG = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 _LOG.addHandler(logging.NullHandler())
 
 
 # Named tuples
-SP_AXES = namedtuple('SpaceAxes',
-                     'num_points start step axis_type linear symbol unit label')
+SP_AXES = namedtuple(
+    'SpaceAxes', 'num_points start step axis_type linear symbol unit label'
+)
 DA_AXES = namedtuple('DataAxes', 'start end numaxis unknown')
 
 # Translation of space axes type numbers to type strings
@@ -66,8 +69,10 @@ SPACE_AXES_DEFAULTS = {
 
 FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
 ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
+
+
 def camel_to_underscore(string):
-    """ Convert camelcase to lowercase and underscore
+    """Convert camelcase to lowercase and underscore
     Recipy from http://stackoverflow.com/a/1176023
     """
     string = FIRST_CAP_RE.sub(r'\1_\2', string)
@@ -76,16 +81,19 @@ def camel_to_underscore(string):
 
 class UnexpectedStructure(Exception):
     """Exception used if a parse fails due to an unexpected structure"""
+
     pass
 
 
 class UnableToParse(Exception):
     """Exception used if unable to parse a part"""
+
     pass
 
 
 class NotXPSException(Exception):
     """Exception for trying to interpret non-XPS data as XPS data"""
+
     pass
 
 
@@ -129,8 +137,9 @@ class VGDFile(object):
         # Conver TXFN coefficient names
         if 'NumberOfTXFNCoeffs' in properties:
             for index in range(properties['NumberOfTXFNCoeffs']):
-                properties['NumberOfTXFNCoeffs_{}'.format(index)] =\
-                    properties.pop(100000 + index)
+                properties['NumberOfTXFNCoeffs_{}'.format(index)] = properties.pop(
+                    100000 + index
+                )
         return properties
 
     @cached_property
@@ -142,11 +151,9 @@ class VGDFile(object):
 
     @property
     def supported_data(self):
-        """Returns a boolean that confirms whether this data type is supported
-        """
+        """Returns a boolean that confirms whether this data type is supported"""
         support = {}
-        for attr in ['space_axes', 'data_axes', 'data_back_markers',
-                     'overlay_markers']:
+        for attr in ['space_axes', 'data_axes', 'data_back_markers', 'overlay_markers']:
             try:
                 getattr(self, attr)
                 support[attr] = True
@@ -161,7 +168,10 @@ class VGDFile(object):
         raw = self.olefile.openstream('VGSpaceAxes').read()
         raw_bio = BytesIO(raw)
 
-        type_, num_axis, = struct.unpack('<2I', raw_bio.read(8))
+        (
+            type_,
+            num_axis,
+        ) = struct.unpack('<2I', raw_bio.read(8))
         # It is unknown, what this type refers to
         if type_ != 131072:
             raise Exception('Unknown space axes data structure type {}'.format(type_))
@@ -181,7 +191,7 @@ class VGDFile(object):
                 for ax in axes:
                     if ax['type'] is None:
                         ax['type'] = 'ETCHTIME'
-                        self._update_space_axis_defaults(ax)   
+                        self._update_space_axis_defaults(ax)
             # Elif POSITION is there, types are X and Y
             elif 'POSITION' in types:
                 position_types = ['Y', 'X']  # Popped from the end
@@ -210,7 +220,7 @@ class VGDFile(object):
         axis = {}
         # First 3 bstrs, label, symbol, unit
         for name in ['label', 'symbol', 'unit']:
-            chars, = struct.unpack('<I', raw_bio.read(4))
+            (chars,) = struct.unpack('<I', raw_bio.read(4))
             bstr = raw_bio.read(chars)
 
             # If there is no string, don't add it to the dictionary
@@ -221,16 +231,20 @@ class VGDFile(object):
             axis[name] = bstr.decode('UTF-16LE')[:-1]
 
         # Read the 3 floats, points, start and width
-        axis.update(dict(zip(
-            ['points', 'start', 'width'],
-            struct.unpack('<Idd', raw_bio.read(20))
-        )))
+        axis.update(
+            dict(
+                zip(
+                    ['points', 'start', 'width'],
+                    struct.unpack('<Idd', raw_bio.read(20)),
+                )
+            )
+        )
 
         # Read whether the axis is linear and the type
         axis['linear'] = bool(struct.unpack('<b', raw_bio.read(1))[0])
 
         if axis['linear']:
-            axis_type, = struct.unpack('<I', raw_bio.read(4))
+            (axis_type,) = struct.unpack('<I', raw_bio.read(4))
             axis['type'] = SPACE_AXES_TYPES.get(axis_type)
             self._update_space_axis_defaults(axis)
         else:
@@ -240,12 +254,12 @@ class VGDFile(object):
         # bytes
         if not axis['linear']:
             # Read values
-            values = struct.unpack('<{}d'.format(axis['points']),
-                                   raw_bio.read(8 * (axis['points'])))
+            values = struct.unpack(
+                '<{}d'.format(axis['points']), raw_bio.read(8 * (axis['points']))
+            )
             raw_bio.read(4)
 
         return axis
-        
 
     @staticmethod
     def _update_space_axis_defaults(axis):
@@ -280,15 +294,15 @@ class VGDFile(object):
         if len(raw) != 32:
             raise UnableToParse('Back Marker. Bad length')
 
-        #space_axes = self.space_axes
-        #if len(space_axes) != 1:
+        # space_axes = self.space_axes
+        # if len(space_axes) != 1:
         #    raise UnableToParse("Data back marker, cannot read space axes")
-        #print(space_axes[0])
-        #end = space_axes[0].num_points
+        # print(space_axes[0])
+        # end = space_axes[0].num_points
 
         parsed = struct.unpack('<8I', raw)
 
-        #if parsed != (131072, 1, end, end, 1, end, 1, end):
+        # if parsed != (131072, 1, end, end, 1, end, 1, end):
         #    raise UnableToParse('Data back marker, bad parsing')
         return parsed
 
@@ -302,7 +316,6 @@ class VGDFile(object):
             return raw
         else:
             return None
-
 
         # '\x00\x00\x01\x00\x00\x00\x00\x00'
         return raw
@@ -326,10 +339,9 @@ class VGDFile(object):
 
         print(axis)
         stop = axis.start + (axis.num_points - 1) * axis.step
-        x, retstep = np.linspace(start=axis.start,
-                                 stop=stop,
-                                 num=axis.num_points,
-                                 retstep=True)
+        x, retstep = np.linspace(
+            start=axis.start, stop=stop, num=axis.num_points, retstep=True
+        )
 
         if not np.isclose(axis.step, retstep):
             raise UnableToParse("X axis, bad return step")
@@ -362,7 +374,7 @@ class VGDFile(object):
 
 
 def avg_date(string):
-    """ Parse a AVG date. It is on the form
+    """Parse a AVG date. It is on the form
     'DD/MM/YYYY   HH:MM:SS'
     without any padding of the day or month number but with zero padding of
     of the time elements.
@@ -394,7 +406,7 @@ class AVGFile(object):
         'VT_I4': int,
         'VT_I2': int,
         'VT_R4': float,
-        'VT_BOOL': avg_bool
+        'VT_BOOL': avg_bool,
     }
 
     def __init__(self, filepath):
@@ -416,7 +428,7 @@ class AVGFile(object):
     def file_format(self):
         """Returns the AVG file format number"""
         # The format line looks like this:
-        #$FORMAT=4
+        # $FORMAT=4
         format_line = self._find_line("$FORMAT=")
         return int(line.split("=")[1])
 

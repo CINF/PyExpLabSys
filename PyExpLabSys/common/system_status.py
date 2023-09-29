@@ -10,6 +10,7 @@ import re
 import sys
 import socket
 import codecs
+
 try:
     import fcntl
 except ImportError:
@@ -17,6 +18,7 @@ except ImportError:
 import struct
 import threading
 import subprocess
+
 try:
     import resource
 except ImportError:
@@ -66,10 +68,12 @@ RPI_TEMP_RE = re.compile(r"temp=([0-9\.]*)'C")
 
 def works_on(platform):
     """Return a decorator that attaches a _works_on (platform) attribute to methods"""
+
     def decorator(function):
         """Decorate a method with a _works_on attribute"""
         function._works_on = platform  # pylint: disable=protected-access
         return function
+
     return decorator
 
 
@@ -122,15 +126,13 @@ class SystemStatus(object):
         # .git and a FETCH_HEAD in a hopefullt crossplatform manner, result:
         # /home/pi/PyExpLabSys/PyExpLabSys/common/../../.git/FETCH_HEAD
         fetch_head_file = os.path.join(
-            os.path.dirname(__file__),
-            *[os.path.pardir] * 2 + ['.git', 'FETCH_HEAD']
+            os.path.dirname(__file__), *[os.path.pardir] * 2 + ['.git', 'FETCH_HEAD']
         )
         # Check for last change
         if os.access(fetch_head_file, os.F_OK):
             return os.path.getmtime(fetch_head_file)
         else:
             return None
-
 
     @staticmethod
     @works_on('all')
@@ -188,12 +190,11 @@ class SystemStatus(object):
     @staticmethod
     @works_on('linux2')
     def filesystem_usage():
-        """Return the total and free number of bytes in the current filesystem
-        """
+        """Return the total and free number of bytes in the current filesystem"""
         statvfs = os.statvfs(__file__)
         status = {
             'total_bytes': statvfs.f_frsize * statvfs.f_blocks,
-            'free_bytes': statvfs.f_frsize * statvfs.f_bfree
+            'free_bytes': statvfs.f_frsize * statvfs.f_bfree,
         }
         return status
 
@@ -202,10 +203,8 @@ class SystemStatus(object):
     def max_python_mem_usage_bytes():
         """Returns the python memory usage"""
         pagesize = resource.getpagesize()
-        this_process = resource.getrusage(
-            resource.RUSAGE_SELF).ru_maxrss
-        children = resource.getrusage(
-            resource.RUSAGE_CHILDREN).ru_maxrss
+        this_process = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        children = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
         return (this_process + children) * pagesize
 
     @staticmethod
@@ -217,8 +216,8 @@ class SystemStatus(object):
             # Get the IP of servcinf-sql
             sql_ip = socket.gethostbyname('servcinf-sql.fysik.dtu.dk')
             # Get the route for the servcinf-sql ip, it will look like one of these:
-            #10.54.6.26 dev eth0  src 10.54.6.43 \    cache
-            #130.225.86.27 via 10.54.6.1 dev eth0  src 10.54.6.43 \    cache
+            # 10.54.6.26 dev eth0  src 10.54.6.43 \    cache
+            # 130.225.86.27 via 10.54.6.1 dev eth0  src 10.54.6.43 \    cache
             interface_string = subprocess.check_output(
                 ['ip', '-o', 'route', 'get', sql_ip]
             ).split()
@@ -244,7 +243,7 @@ class SystemStatus(object):
             for line in file_:
                 if line.startswith('Revision'):
                     # The line looks like this:
-                    #Revision         : 0002
+                    # Revision         : 0002
                     revision = line.strip().split(': ')[1]
                     break
             else:
@@ -260,7 +259,7 @@ class SystemStatus(object):
             for line in file_:
                 if line.startswith('VERSION='):
                     # The line looks like this:
-                    #VERSION="9 (Stretch)"
+                    # VERSION="9 (Stretch)"
                     version = line.strip().split("=")[1].strip('"')
                     return version
             else:
@@ -270,15 +269,16 @@ class SystemStatus(object):
     @works_on('linux2')
     def rpi_temperature():
         """Return the temperature of a Raspberry Pi"""
-        #Firmware bug in Broadcom chip craches raspberry pi when reading temperature
-        #and using i2c at the same time
+        # Firmware bug in Broadcom chip craches raspberry pi when reading temperature
+        # and using i2c at the same time
         if os.path.exists('/dev/i2c-0') or os.path.exists('/dev/i2c-1'):
             return None
         # Get temperature string
         if os.path.exists('/sys/class/thermal/thermal_zone0/temp'):
             try:
-                temp_str = subprocess.check_output(['cat',
-                                                    '/sys/class/thermal/thermal_zone0/temp'])
+                temp_str = subprocess.check_output(
+                    ['cat', '/sys/class/thermal/thermal_zone0/temp']
+                )
             except OSError:
                 return None
         else:
@@ -309,8 +309,13 @@ class SystemStatus(object):
         self._cache['purpose'] = purpose
 
         # Read the purpose file
-        filepath = path.join(path.expanduser('~'), 'PyExpLabSys', 'machines',
-                             self._machinename, 'PURPOSE')
+        filepath = path.join(
+            path.expanduser('~'),
+            'PyExpLabSys',
+            'machines',
+            self._machinename,
+            'PURPOSE',
+        )
         try:
             with codecs.open(filepath, encoding='utf-8') as file_:
                 purpose_lines = file_.readlines()
@@ -325,8 +330,10 @@ class SystemStatus(object):
 
             # If there is id:, insist that there is also purpose: and parse it
             if not purpose_lines[1].startswith('purpose:'):
-                message = ('With the new style purpose file (where first line starts '
-                           'with "id:", the second line must start with "purpose:"')
+                message = (
+                    'With the new style purpose file (where first line starts '
+                    'with "id:", the second line must start with "purpose:"'
+                )
                 raise ValueError(message)
             purpose['purpose'] = purpose_lines[1].split(':', 1)[1].strip()
             purpose['long_description'] = ''.join(purpose_lines[2:]).strip()
@@ -347,5 +354,6 @@ class SystemStatus(object):
 
 if __name__ == '__main__':
     from pprint import pprint
+
     SYSTEM_STATUS = SystemStatus()
     pprint(SYSTEM_STATUS.complete_status())

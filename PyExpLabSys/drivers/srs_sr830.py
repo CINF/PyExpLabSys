@@ -13,8 +13,9 @@ class SR830(SCPI):
             SCPI.__init__(self, interface=interface, device=device)
             time.sleep(0.2)
         if interface == 'gpib':
-            SCPI.__init__(self, interface=interface,
-                          gpib_address=gpib_address, line_ending='\n')
+            SCPI.__init__(
+                self, interface=interface, gpib_address=gpib_address, line_ending='\n'
+            )
             self.comm_dev.clear()
             time.sleep(0.2)
 

@@ -8,17 +8,20 @@ import threading
 import wiringpi as wp
 from PyExpLabSys.common.value_logger import LoggingCriteriumChecker
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
+
 
 class ValveControl(threading.Thread):
     """ Keeps status of all valves """
+
     def __init__(self, valves, pullsocket, pushsocket, db_saver=None, codenames=None):
         """Initialize local properties
 
         Args:
-            valves (): 
-            pullsocket (): 
-            pushsocket (): 
+            valves ():
+            pullsocket ():
+            pushsocket ():
             db_saver (:class:`.ContinuousDataSaver`): (Optional) If db_saver and
                 codenames is given, valves states will be logged as continuous values
             codenames (list): (Optional) Iterable of codenames for the valve
@@ -37,7 +40,7 @@ class ValveControl(threading.Thread):
         self.pushsocket = pushsocket
         self.running = True
         self.valves = valves
-        
+
         self.db_saver = db_saver
         self.codenames = codenames
         if codenames is not None:

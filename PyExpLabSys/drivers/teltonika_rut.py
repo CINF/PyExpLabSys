@@ -11,14 +11,8 @@ class TeltonikaRut(object):
         self.session = self.init_session()
 
     def _comm(self, params):
-        payload = {
-            'jsonrpc': '2.0',
-            'id': 1,
-            'method': 'call'
-        }
-        payload.update(
-            {'params': [self.session] + params}
-        )
+        payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'call'}
+        payload.update({'params': [self.session] + params})
         url = 'http://{}/ubus'.format(self.ip)
         r = requests.post(url, data=json.dumps(payload))
         reply = r.json()
@@ -37,9 +31,9 @@ class TeltonikaRut(object):
         """
         send_command = '{} {}'.format(phone_number, text)
         params = [
-            'file', 'exec', {
-                'command': 'gsmctl', 'params': ['-S', '--send', send_command]
-            }
+            'file',
+            'exec',
+            {'command': 'gsmctl', 'params': ['-S', '--send', send_command]},
         ]
         reply = self._comm(params)
         reply_text = reply[1]['stdout']
@@ -49,17 +43,13 @@ class TeltonikaRut(object):
         """
         Obtain signal strength
         """
-        params = [
-            'file', 'exec', {'command': 'gsmctl', 'params': ["-q"]}
-        ]
+        params = ['file', 'exec', {'command': 'gsmctl', 'params': ["-q"]}]
         reply = self._comm(params)
         rssi = int(reply[1]['stdout'])
         return rssi
 
     def cell_information(self):
-        params = [
-            'file', 'exec', {'command': 'gsmctl', 'params': ["--serving"]}
-        ]
+        params = ['file', 'exec', {'command': 'gsmctl', 'params': ["--serving"]}]
         reply = self._comm(params)
         info = reply[1]['stdout']
 
@@ -69,8 +59,8 @@ class TeltonikaRut(object):
             cell_info = {
                 'mcc': data[1],
                 'mnc': data[2],
-                'lac':  int(data[9], 16),
-                'cell_id': int(data[3], 16)
+                'lac': int(data[9], 16),
+                'cell_id': int(data[3], 16),
             }
 
         elif info.find('GSM') > 0:
@@ -80,15 +70,10 @@ class TeltonikaRut(object):
                 'mcc': data[0],
                 'mnc': data[1],
                 'lac': int(data[2], 16),
-                'cell_id': int(data[3], 16)
+                'cell_id': int(data[3], 16),
             }
         else:  # Unsupported network, or no SIM at all
-            cell_info = {
-                'mcc': 0,
-                'mnc': 0,
-                'lac': 0,
-                'cell_id': 0
-            }
+            cell_info = {'mcc': 0, 'mnc': 0, 'lac': 0, 'cell_id': 0}
         # print('Lac: {}, Lac dec: {}'.format(lac, int(lac, 16)))
         return cell_info
 
