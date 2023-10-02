@@ -1,4 +1,3 @@
-
 """Web app for the magnificient bakeout app"""
 
 import json
@@ -21,8 +20,7 @@ SOCKET = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 HOSTNAME = os.environ["MACHINE"]
 LOG.info("Using hostname: %s", HOSTNAME)
 sys.path.append('/home/pi/PyExpLabSys/machines/' + HOSTNAME)
-import settings # pylint: disable=wrong-import-position, import-error
-
+import settings  # pylint: disable=wrong-import-position, import-error
 
 
 SETTINGS_DEFAULTS = {
@@ -49,21 +47,32 @@ def frontpage(debug=''):
 
     row_elements = [
         # Rows of id prefix, row title and element
-        ('state{}', 'Current state', '<div class="circle" id="diode{channel_number}"></div>'),
+        (
+            'state{}',
+            'Current state',
+            '<div class="circle" id="diode{channel_number}"></div>',
+        ),
         ('current_value{}', 'Current setpoint', 'N/A'),
-        ('requested_value{}', 'Change setpoint',
-         '<input onchange="setChannel({channel_number})" id="input{channel_number}" '
-         'type="number" step="0.05" min="0" max="1">'),
+        (
+            'requested_value{}',
+            'Change setpoint',
+            '<input onchange="setChannel({channel_number})" id="input{channel_number}" '
+            'type="number" step="0.05" min="0" max="1">',
+        ),
     ]
 
-    return render_template('frontpage.html', row_elements=row_elements, json_input=json_input)
+    return render_template(
+        'frontpage.html', row_elements=row_elements, json_input=json_input
+    )
 
 
 @app.route('/set/<request_parameters_string>')
 def set_channel(request_parameters_string):
     """Page to set parameters on the bakeout box"""
     LOG.debug("set request: %s", request_parameters_string)
-    SOCKET.sendto(b"json_wn#" + request_parameters_string.encode('ascii'), (HOSTNAME, 8500))
+    SOCKET.sendto(
+        b"json_wn#" + request_parameters_string.encode('ascii'), (HOSTNAME, 8500)
+    )
     reply = SOCKET.recv(1024)
     LOG.debug("for set request got reply: %s", reply)
     # We return just the channel name

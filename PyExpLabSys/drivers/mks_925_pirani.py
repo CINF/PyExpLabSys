@@ -4,13 +4,16 @@ import time
 import logging
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
+
 class Mks925(object):
     """ Driver for MKS 925 micro pirani """
+
     def __init__(self, port):
         self.ser = serial.Serial(port, 9600, timeout=2)
         time.sleep(0.1)
@@ -45,7 +48,7 @@ class Mks925(object):
         signal = self.comm(command)
         return signal
 
-    def change_unit(self, unit): #STRING: TORR, PASCAL, MBAR
+    def change_unit(self, unit):  # STRING: TORR, PASCAL, MBAR
         """ Change the unit of the return value """
         command = 'U!' + unit
         signal = self.comm(command)
@@ -58,9 +61,10 @@ class Mks925(object):
         signal = signal[7:-3]
         return signal
 
+
 if __name__ == '__main__':
     MKS = Mks925('/dev/ttyUSB1')
-    #print MKS.set_comm_speed(9600)
+    # print MKS.set_comm_speed(9600)
     print(MKS.change_unit('MBAR'))
     print("Pressure: " + str(MKS.read_pressure()))
     print('Serial: ' + str(MKS.read_serial()))

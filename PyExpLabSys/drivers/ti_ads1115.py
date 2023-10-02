@@ -6,16 +6,17 @@ class TI_ADS11x5(object):
     """
     TI11x5 analog in
     """
+
     def __init__(self):
         self.bus = smbus.SMBus(1)
         self.device_address = 0x49
         self.pga = {
-            2/3: 0x0000,
-            1:   0x0200,
-            2:   0x0400,
-            4:   0x0600,
-            8:   0x0800,
-            16:  0x0A00
+            2 / 3: 0x0000,
+            1: 0x0200,
+            2: 0x0400,
+            4: 0x0600,
+            8: 0x0800,
+            16: 0x0A00,
         }
 
     def read_sample(self, pga=1):
@@ -36,7 +37,7 @@ class TI_ADS11x5(object):
         raw = 1.0 * (data[0] * 256 + data[1])
         if raw > 32767:
             raw = raw - 65535
-        value = 4.096 * raw / (pga * 2**15)
+        value = 4.096 * raw / (pga * 2 ** 15)
         return value
 
 

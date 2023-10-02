@@ -34,7 +34,7 @@ class PowerView(object):
         msg = '{}shades/{}'.format(self.address, shade_id)
         payload = {"shade": {"motion": "jog"}}
         r = requests.put(msg, json=payload)
-        success = (r.status_code == 200)
+        success = r.status_code == 200
         return success
 
     def hub_info(self):
@@ -80,7 +80,7 @@ class PowerView(object):
         msg = '{}shades/{}?refresh=true'
         r = requests.get(msg.format(self.address, shade_id))
         shade = r.json()
-        assert('shade' in shade)
+        assert 'shade' in shade
         shade = shade['shade']
         name = self._decode_name(shade['name'])
         shade['name'] = name
@@ -99,13 +99,9 @@ class PowerView(object):
             return True
 
         if percent_pos is not None:
-            raw_pos = int(percent_pos / 100.0 * 2**16) - 1
-        assert(0 < raw_pos < 2**16)
-        payload = {
-            'shade': {
-                'positions': {'posKind1': 1, 'position1': raw_pos}
-            }
-        }
+            raw_pos = int(percent_pos / 100.0 * 2 ** 16) - 1
+        assert 0 < raw_pos < 2 ** 16
+        payload = {'shade': {'positions': {'posKind1': 1, 'position1': raw_pos}}}
         msg = '{}shades/{}'.format(self.address, shade_id)
         requests.put(msg, json=payload)
         return True
@@ -124,8 +120,8 @@ class PowerView(object):
                 msg.format(
                     shade['name'],
                     room_name,
-                    100.0 * shade['positions']['position1'] / 2**16,
-                    shade['batteryStrength']
+                    100.0 * shade['positions']['position1'] / 2 ** 16,
+                    shade['batteryStrength'],
                 )
             )
 

@@ -2,6 +2,7 @@
 import time
 import logging
 import serial
+
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 
@@ -25,8 +26,11 @@ class EdwardsNxds(object):
         """ Read identification information """
         return_string = self.comm('?S801')
         pump_type = return_string.split(';')
-        return {'type': pump_type[0], 'software': pump_type[1],
-                'nominal_frequency': pump_type[2]}
+        return {
+            'type': pump_type[0],
+            'software': pump_type[1],
+            'nominal_frequency': pump_type[2],
+        }
 
     def read_pump_temperature(self):
         """ Read Pump Temperature """
@@ -41,8 +45,12 @@ class EdwardsNxds(object):
         return_string = self.comm('?S835')
         service = return_string.split(';')
         serials = service[0].split(' ')
-        return {'Pump SNs': serials[0], 'drive-module SN': serials[1],
-                'PCA SN': serials[2], 'type': service[1].strip()}
+        return {
+            'Pump SNs': serials[0],
+            'drive-module SN': serials[1],
+            'PCA SN': serials[2],
+            'type': service[1].strip(),
+        }
 
     def read_run_hours(self):
         """ Return number of run hours """
@@ -62,11 +70,11 @@ class EdwardsNxds(object):
         """ Convert status word to array of binaries """
         status_word = ''
         for i in range(0, 4):
-            val = (int(word[i], 16))
-            status_word += (bin(val)[2:].zfill(4))
+            val = int(word[i], 16)
+            status_word += bin(val)[2:].zfill(4)
         bin_word = [False] * 16
         for i in range(0, 15):
-            bin_word[i] = (status_word[i] == '1')
+            bin_word[i] = status_word[i] == '1'
         return bin_word
 
     def bearing_service(self):
@@ -83,8 +91,10 @@ class EdwardsNxds(object):
         status = return_string.split(';')
         controller_run_time = int(status[0])
         time_to_service = int(status[1])
-        return {'controller_run_time': controller_run_time,
-                'time_to_service': time_to_service}
+        return {
+            'controller_run_time': controller_run_time,
+            'time_to_service': time_to_service,
+        }
 
     def read_normal_speed_threshold(self):
         """ Read the value for acknowledge the pump as normally running """
@@ -165,8 +175,12 @@ class EdwardsNxds(object):
             faults.append('Overload time out')
         if fault_status[0] is True:
             faults.append('Acceleration time out')
-        return {'rotational_speed': rotational_speed, 'messages': messages,
-                'warnings': warnings, 'faults': faults}
+        return {
+            'rotational_speed': rotational_speed,
+            'messages': messages,
+            'warnings': warnings,
+            'faults': faults,
+        }
 
     def read_service_status(self):
         """ Read the overall status of the pump """

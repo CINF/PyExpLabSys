@@ -1,5 +1,3 @@
-
-
 """Experimental parser for total_chrom files from Perkin-Elmer GC's"""
 
 
@@ -9,6 +7,7 @@ from struct import unpack, calcsize
 from numpy import fromfile
 
 from PyExpLabSys.common.supported_versions import python3_only
+
 python3_only(__file__)
 
 
@@ -20,10 +19,10 @@ TYPE_TRANSLATION = {
 }
 
 
-#FILE_REFERENCE = (
+# FILE_REFERENCE = (
 
 #    FIXME
-#)
+# )
 
 FILE_HEADER = (
     ('signature', 'Uint32'),
@@ -61,7 +60,7 @@ ADHEADER = (
     ('Time and Date Started', 'pnw_date'),
     ('Channel Number', 'int32'),
     ('Operator Initials', 'string'),
-    ('Sequence File Spec', 'string'), #FILE_REFERENCE),
+    ('Sequence File Spec', 'string'),  # FILE_REFERENCE),
     ('Sequence Entry #', 'int32'),
     ('Autosampler name', 'string'),
     ('Rack Number', 'int32'),
@@ -151,25 +150,26 @@ INSTRUMENT_DATA_HEADER = (
 
 INSTRUMENT_METHOD_STRUCTURE = (
     ('instrument_data_header', INSTRUMENT_DATA_HEADER),
-    #('intelligent_interface_parameters', NAIBOXINFO),
-    #('instrument_configuration_parameters', INST_CONFIG),
-    #('real-time_plot_parameters', array<PINFO>),
-    #('link_parameters_array', <LINKPARM_INFO>'),
+    # ('intelligent_interface_parameters', NAIBOXINFO),
+    # ('instrument_configuration_parameters', INST_CONFIG),
+    # ('real-time_plot_parameters', array<PINFO>),
+    # ('link_parameters_array', <LINKPARM_INFO>'),
 )
+
 
 def parse_simple_types(specification, file_):
     """Parse simple types"""
-    #print("PARSE")
+    # print("PARSE")
     output = {}
     for name, type_ in specification:
-        #print("\nPARSE SPEC", name, type_, "AT", file_.tell())
+        # print("\nPARSE SPEC", name, type_, "AT", file_.tell())
         if type_ == 'string':
             size = unpack('>i', file_.read(4))[0]
             format_ = '>{}s'.format(size)
             if size % 4 != 0:
                 format_ += 'x' * (4 - size % 4)
             bytes_ = file_.read(calcsize(format_))
-            #print("Read {} bytes of string".format(len(bytes_)))
+            # print("Read {} bytes of string".format(len(bytes_)))
             value = unpack(format_, bytes_)[0].decode('ascii')
         elif type_ == 'double':
             # Appearently, in this serialization, the two groups of 4
@@ -181,16 +181,16 @@ def parse_simple_types(specification, file_):
             unix_time = unpack('>i', file_.read(4))[0]
 
             # We do not fully understand the time stamp, FIXME
-            #import datetime
-            #print(
+            # import datetime
+            # print(
             #    datetime.datetime.fromtimestamp(
             #        unix_time
             #    ).strftime('%Y-%m-%d %H:%M:%S')
-            #)
+            # )
             timestamp = unpack('>bbhbbbb', file_.read(8))
-            #timestamp = unpack('>hBBBBBB', file_.read(8))
-            #print("TIMESTAMP", timestamp)
-            #file_.read(11)
+            # timestamp = unpack('>hBBBBBB', file_.read(8))
+            # print("TIMESTAMP", timestamp)
+            # file_.read(11)
 
             # Just save unix time for now
             value = unix_time
@@ -200,7 +200,7 @@ def parse_simple_types(specification, file_):
             # struct parseable type
             format_ = TYPE_TRANSLATION[type_]
             value = unpack(format_, file_.read(calcsize(format_)))[0]
-        #print("VALUE IS", repr(value))
+        # print("VALUE IS", repr(value))
         output[name] = value
     return output
 
@@ -235,27 +235,29 @@ class Raw:
             self.ad_header = parse_simple_types(ADHEADER, file_)
 
             # Sequence FIXME
-            #file_.read(8)
-            #print("\n\n\n##############################")
+            # file_.read(8)
+            # print("\n\n\n##############################")
             self.seq_description = parse_simple_types(SEQ_DESCRIPTION, file_)
 
-            #print(file_.tell())
+            # print(file_.tell())
             self.raw_data_points = parse_array('>i4', file_)
 
-            #print("\n\n\n##############################")
-            #self.instrument_method_structure = parse_simple_types(
+            # print("\n\n\n##############################")
+            # self.instrument_method_structure = parse_simple_types(
             #    INSTRUMENT_METHOD_STRUCTURE, file_,
-            #)
-
+            # )
 
 
 def module_demo():
     """Module demon"""
-    filepath = ('/home/kenni/surfcat/setups/307-059-largeCO2MEA/'
-                'GC_parsing/Test8_Carrier=Ar_70mLH2_26mLCO_60C_Att'
-                '=-2_NoRamp.raw')
+    filepath = (
+        '/home/kenni/surfcat/setups/307-059-largeCO2MEA/'
+        'GC_parsing/Test8_Carrier=Ar_70mLH2_26mLCO_60C_Att'
+        '=-2_NoRamp.raw'
+    )
     raw_file = Raw(filepath)
     print(raw_file)
+
 
 if __name__ == '__main__':
     module_demo()

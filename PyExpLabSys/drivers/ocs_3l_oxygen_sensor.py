@@ -30,7 +30,7 @@ class OCS3L(object):
         if len(bool_list) == 7:
             bool_list.append(0)
         for n in range(0, 8):
-            value += bool_list[7 - n] * 2**n
+            value += bool_list[7 - n] * 2 ** n
             # value = value % 256
         return value
 
@@ -108,15 +108,16 @@ class OCS3L(object):
         # These bit-patterns are fixed, errors here would indicate a
         # read error in the bit-banged read.
         sanity_check = (
-            parsed_bytes[8:0:-1] == [0, 0, 0, 1, 0, 1, 1, 0] and
-            parsed_bytes[18:10:-1] == [0, 0, 0, 0, 1, 0, 0, 1] and
-            parsed_bytes[28:20:-1] == [0, 0, 0, 0, 0, 0, 0, 1] and
-            parsed_bytes[58:50:-1] == [0, 0, 0, 0, 0, 0, 0, 0] and
+            parsed_bytes[8:0:-1] == [0, 0, 0, 1, 0, 1, 1, 0]
+            and parsed_bytes[18:10:-1] == [0, 0, 0, 0, 1, 0, 0, 1]
+            and parsed_bytes[28:20:-1] == [0, 0, 0, 0, 0, 0, 0, 1]
+            and parsed_bytes[58:50:-1] == [0, 0, 0, 0, 0, 0, 0, 0]
+            and
             # According to datsheet, this should be 0x63, but turns out
             # to be always 0x00
-            parsed_bytes[68:60:-1] == [0, 0, 0, 0, 0, 0, 0, 0] and
-            parsed_bytes[98:90:-1] == [0, 0, 0, 0, 0, 0, 0, 0] and
-            parsed_bytes[108:100:-1] == [0, 0, 0, 0, 0, 0, 0, 0]
+            parsed_bytes[68:60:-1] == [0, 0, 0, 0, 0, 0, 0, 0]
+            and parsed_bytes[98:90:-1] == [0, 0, 0, 0, 0, 0, 0, 0]
+            and parsed_bytes[108:100:-1] == [0, 0, 0, 0, 0, 0, 0, 0]
         )
         if not sanity_check:
             parsed_bytes = None
@@ -126,7 +127,7 @@ class OCS3L(object):
         concentration_raw = parsed_bytes[38:30:-1] + parsed_bytes[48:40:-1]
         concentration = 0
         for n in range(0, 16):
-            concentration += concentration_raw[15 - n] * 2**n
+            concentration += concentration_raw[15 - n] * 2 ** n
         concentration = concentration / 10.0
         return concentration
 
@@ -134,18 +135,20 @@ class OCS3L(object):
         temperature = 0
         temp_raw = parsed_bytes[78:70:-1] + parsed_bytes[88:80:-1]
         for n in range(0, 16):
-            temperature += temp_raw[15 - n] * 2**n
+            temperature += temp_raw[15 - n] * 2 ** n
         temperature = temperature / 10.0
         return temperature
 
     def _check_full_checksum(self, parsed_bytes):
         expected_checksum = 0
         for val in [
-                0x16, 0x09, 0x01,
-                self._checksum(parsed_bytes[38:30:-1]),
-                self._checksum(parsed_bytes[48:40:-1]),
-                self._checksum(parsed_bytes[78:70:-1]),
-                self._checksum(parsed_bytes[88:80:-1])
+            0x16,
+            0x09,
+            0x01,
+            self._checksum(parsed_bytes[38:30:-1]),
+            self._checksum(parsed_bytes[48:40:-1]),
+            self._checksum(parsed_bytes[78:70:-1]),
+            self._checksum(parsed_bytes[88:80:-1]),
         ]:
             expected_checksum += val
             expected_checksum = expected_checksum % 256
@@ -179,7 +182,7 @@ class OCS3L(object):
 
         # msg = 'Oxygen concentration: {}%, Temperature: {}C. Checksum: {}'
         # print(msg.format(concentration, temperature, checksum))
-        return(concentration, temperature)
+        return (concentration, temperature)
 
 
 if __name__ == '__main__':

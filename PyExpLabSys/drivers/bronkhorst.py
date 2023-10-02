@@ -4,11 +4,13 @@ import time
 import sys
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
 class Bronkhorst(object):
     """ Driver for Bronkhorst flow controllers """
+
     def __init__(self, port, max_flow):
         self.ser = serial.Serial(port, 38400, timeout=2)
         self.max_setting = max_flow
@@ -27,7 +29,7 @@ class Bronkhorst(object):
 
     def read_setpoint(self):
         """ Read the current setpoint """
-        read_setpoint = ':06800401210121\r\n' # Read setpoint
+        read_setpoint = ':06800401210121\r\n'  # Read setpoint
         response = self.comm(read_setpoint)
         response = int(response[11:], 16)
         response = (response / 32000.0) * self.max_setting
@@ -37,7 +39,7 @@ class Bronkhorst(object):
         """ Read the actual flow """
         error = 0
         while error < 10:
-            read_pressure = ':06800401210120\r\n' # Read pressure
+            read_pressure = ':06800401210120\r\n'  # Read pressure
             val = self.comm(read_pressure)
             try:
                 val = val[-6:]
@@ -61,7 +63,7 @@ class Bronkhorst(object):
                 setpoint = '0' + setpoint
         else:
             setpoint = '0000'
-        set_setpoint = ':0680010121' + setpoint + '\r\n' # Set setpoint
+        set_setpoint = ':0680010121' + setpoint + '\r\n'  # Set setpoint
         response = self.comm(set_setpoint)
         response_check = response[5:].strip()
         if response_check == '000005':
@@ -89,12 +91,12 @@ class Bronkhorst(object):
         while error < 10:
             response = self.comm(read_serial)
             response = response[13:-84]
-            if sys.version_info[0] < 3: # Python2
+            if sys.version_info[0] < 3:  # Python2
                 try:
                     response = response.decode('hex')
                 except TypeError:
                     response = ''
-            else: # Python 3
+            else:  # Python 3
                 try:
                     response = bytes.fromhex(response).decode('utf-8')
                 except ValueError:
@@ -112,7 +114,7 @@ class Bronkhorst(object):
         response = response[77:-26]
         try:
             response = bytes.fromhex(response).decode('utf-8')
-        except AttributeError: # Python2
+        except AttributeError:  # Python2
             response = response.decode('hex')
 
         return str(response)
@@ -122,14 +124,14 @@ class Bronkhorst(object):
         read_capacity = ':1A8004F1EC7163006D71660001AE0120CF014DF0017F077101710A\r\n'
         response = self.comm(read_capacity)
         response = response[65:-44]
-        #response = response.decode('hex')
+        # response = response.decode('hex')
         return str(response)
 
 
 if __name__ == '__main__':
     bh = Bronkhorst('/dev/ttyUSB3', 5)
-    #print bh.set_setpoint(1.0)
-    #time.sleep(1)
+    # print bh.set_setpoint(1.0)
+    # time.sleep(1)
     print(bh.read_serial())
     print(bh.read_flow())
     print(bh.read_unit())

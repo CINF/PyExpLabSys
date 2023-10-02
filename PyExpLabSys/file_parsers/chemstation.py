@@ -46,6 +46,7 @@ import numpy
 
 from PyExpLabSys.thirdparty.cached_property import cached_property
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
@@ -83,8 +84,9 @@ class Sequence(object):
         first_injection = self.injections[0]
         self.metadata['sample_name'] = first_injection.metadata['sample_name']
         self.metadata['sequence_start'] = first_injection.metadata['injection_date']
-        self.metadata['sequence_start_timestruct'] = \
-            first_injection.metadata['injection_date_timestruct']
+        self.metadata['sequence_start_timestruct'] = first_injection.metadata[
+            'injection_date_timestruct'
+        ]
         self.metadata['acq_method'] = first_injection.metadata['acq_method']
 
     def _parse(self):
@@ -125,7 +127,7 @@ class Sequence(object):
             column_names = {
                 'peak_name': 'Compound Name',
                 'retention_time': 'Retention Time / min',
-                'area': 'Area'
+                'area': 'Area',
             }
 
         # Initialize the start time and data collection objects
@@ -142,7 +144,9 @@ class Sequence(object):
             for signal, report in injection.reports.items():
                 # Loop over report lines
                 for report_line in report:
-                    label = self._generate_label(data, signal, report_line, column_names)
+                    label = self._generate_label(
+                        data, signal, report_line, column_names
+                    )
                     # If it is a unknown peak, add the area
                     area = report_line[column_names['area']]
                     if label.endswith('?'):
@@ -280,11 +284,15 @@ class Injection(object):
 
         Extract information about: sample name, injection date and sequence start
         """
-        csv_rows = self._read_csv_data(os.path.join(self.injection_dirpath, 'Report00.CSV'))
+        csv_rows = self._read_csv_data(
+            os.path.join(self.injection_dirpath, 'Report00.CSV')
+        )
 
         # Convert names and types
         type_functions = {
-            'number_of_signals': int, 'seq_line': int, 'inj': int,
+            'number_of_signals': int,
+            'seq_line': int,
+            'inj': int,
             'number_of_columns': int,
         }
         for row in csv_rows:  # row is [name, value, other]
@@ -295,7 +303,7 @@ class Injection(object):
                 row[1] = type_functions[name](value)
 
         # Parse first section of metadata
-        row_iter = iter(csv_rows)  # Use an iterator to flexibly move through the 
+        row_iter = iter(csv_rows)  # Use an iterator to flexibly move through the
         for row in row_iter:
             name, value, unit = row
             if name == 'number_of_signals':
@@ -338,7 +346,9 @@ class Injection(object):
         # Add a few extra fields for time structs
         for name in ("injection_date", "results_created"):
             if name in self.metadata:
-                self.metadata[name + '_timestruct'] = self._parse_date(self.metadata[name])
+                self.metadata[name + '_timestruct'] = self._parse_date(
+                    self.metadata[name]
+                )
                 self.metadata[name + '_unixtime'] = time.mktime(
                     self.metadata[name + '_timestruct']
                 )
@@ -404,8 +414,7 @@ def parse_utf16_string(file_, encoding='UTF16'):
     # First read the expected number of CHARACTERS
     string_length = unpack(UINT8, file_.read(1))[0]
     # Then read and decode
-    parsed = unpack(STRING.format(2 * string_length),
-                    file_.read(2 * string_length))
+    parsed = unpack(STRING.format(2 * string_length), file_.read(2 * string_length))
     return parsed[0].decode(encoding)
 
 
@@ -451,7 +460,7 @@ class CHFile(object):
         ('software revision', 3802, 'utf16'),
         ('units', 4172, 'utf16'),
         ('detector', 4213, 'utf16'),
-        ('yscaling', 4732, ENDIAN + 'd')
+        ('yscaling', 4732, ENDIAN + 'd'),
     )
     # The start position of the data
     data_start = 6144
@@ -488,10 +497,14 @@ class CHFile(object):
             elif type_ == 'x-time':
                 self.metadata[name] = unpack(ENDIAN + 'f', file_.read(4))[0] / 60000
             else:
-                self.metadata[name] = unpack(type_, file_.read(struct.calcsize(type_)))[0]
+                self.metadata[name] = unpack(type_, file_.read(struct.calcsize(type_)))[
+                    0
+                ]
 
         # Convert date
-        self.metadata['datetime'] = time.strptime(self.metadata['date'], '%d-%b-%y, %H:%M:%S')
+        self.metadata['datetime'] = time.strptime(
+            self.metadata['date'], '%d-%b-%y, %H:%M:%S'
+        )
 
     def _parse_header_status(self):
         """Print known and unknown parts of the header"""
@@ -518,7 +531,9 @@ class CHFile(object):
             if current_position in knowns:
                 # If we have collected unknown bytes, print them out and reset
                 if unknown_bytes != b'':
-                    print('Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00')))
+                    print(
+                        'Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00'))
+                    )
                     unknown_bytes = b''
                     unknown_start = None
 
@@ -526,20 +541,27 @@ class CHFile(object):
                 print('Known field at {: >4},'.format(current_position), end=' ')
                 name, _, type_ = knowns[current_position]
                 if type_ == 'x-time':
-                    print('x-time, "{: <19}'.format(name + '"'),
-                          unpack(ENDIAN + 'f', file_.read(4))[0] / 60000)
+                    print(
+                        'x-time, "{: <19}'.format(name + '"'),
+                        unpack(ENDIAN + 'f', file_.read(4))[0] / 60000,
+                    )
                 elif type_ == 'utf16':
-                    print(' utf16, "{: <19}'.format(name + '"'),
-                          parse_utf16_string(file_))
+                    print(
+                        ' utf16, "{: <19}'.format(name + '"'), parse_utf16_string(file_)
+                    )
                 else:
                     size = struct.calcsize(type_)
-                    print('{: >6}, "{: <19}'.format(type_, name + '"'),
-                          unpack(type_, file_.read(size))[0])
+                    print(
+                        '{: >6}, "{: <19}'.format(type_, name + '"'),
+                        unpack(type_, file_.read(size))[0],
+                    )
             else:  # We do not know about a data field at this position If we have already
                 # collected 4 zero bytes, assume that we are done with this unkonw field,
                 # print and reset
                 if unknown_bytes[-4:] == b'\x00\x00\x00\x00':
-                    print('Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00')))
+                    print(
+                        'Unknown at', unknown_start, repr(unknown_bytes.rstrip(b'\x00'))
+                    )
                     unknown_bytes = b''
                     unknown_start = None
 
@@ -564,10 +586,14 @@ class CHFile(object):
 
         # Read the data into a numpy array
         file_.seek(self.data_start)
-        return numpy.fromfile(file_, dtype='<d', count=n_points) * self.metadata['yscaling']
+        return (
+            numpy.fromfile(file_, dtype='<d', count=n_points)
+            * self.metadata['yscaling']
+        )
 
     @cached_property
     def times(self):
         """The time values (x-value) for the data set in minutes"""
-        return numpy.linspace(self.metadata['start_time'], self.metadata['end_time'],
-                              len(self.values))
+        return numpy.linspace(
+            self.metadata['start_time'], self.metadata['end_time'], len(self.values)
+        )

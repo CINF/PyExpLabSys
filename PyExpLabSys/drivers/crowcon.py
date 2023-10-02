@@ -45,8 +45,20 @@ python2_and_3(__file__)
 Status = namedtuple('Status', ['code', 'value'])  # pylint: disable=C0103
 DetConfMap = namedtuple(  # pylint: disable=C0103
     'DetectorConfigurationMap',
-    ['number', 'identity', 'enabled', 'type', 'unit', 'range', 'level1', 'transition1',
-     'level2', 'transition2', 'level3', 'transition3',]
+    [
+        'number',
+        'identity',
+        'enabled',
+        'type',
+        'unit',
+        'range',
+        'level1',
+        'transition1',
+        'level2',
+        'transition2',
+        'level3',
+        'transition3',
+    ],
 )
 # pylint: disable=C0103
 DetLev = namedtuple('DetectorLevels', ['number', 'level', 'status', 'inhibit'])
@@ -80,7 +92,9 @@ class Vortex(Instrument):
         modbus they need to be 0 based.
     """
 
-    def __init__(self, serial_device, slave_address, debug=False, cache=True, retries=3):
+    def __init__(
+        self, serial_device, slave_address, debug=False, cache=True, retries=3
+    ):
         """Initialize the driver
 
         Args:
@@ -91,8 +105,11 @@ class Vortex(Instrument):
                 change within the runtime of the program) should be cached
 
         """
-        LOGGER.info('__init__ called, serial device: %s, slave address: %s',
-                    serial_device, slave_address)
+        LOGGER.info(
+            '__init__ called, serial device: %s, slave address: %s',
+            serial_device,
+            slave_address,
+        )
         Instrument.__init__(self, serial_device, slave_address)
         self.serial.baudrate = 9600
         self.serial.stopbits = 2
@@ -126,8 +143,12 @@ class Vortex(Instrument):
                 return Instrument.read_register(self, *args, **kwargs)
             except ValueError as exception:
                 if retry < self.retries:
-                    LOGGER.warning("Communication error in read_register, retrying %s "
-                                   "out of %s times", retry + 1, self.retries)
+                    LOGGER.warning(
+                        "Communication error in read_register, retrying %s "
+                        "out of %s times",
+                        retry + 1,
+                        self.retries,
+                    )
                     continue
                 else:
                     raise exception
@@ -146,8 +167,12 @@ class Vortex(Instrument):
                 return Instrument.read_string(self, *args, **kwargs)
             except ValueError as exception:
                 if retry < self.retries:
-                    LOGGER.warning("Communication error in read_string, retrying %s "
-                                   "out of %s times", retry + 1, self.retries)
+                    LOGGER.warning(
+                        "Communication error in read_string, retrying %s "
+                        "out of %s times",
+                        retry + 1,
+                        self.retries,
+                    )
                     continue
                 else:
                     raise exception
@@ -173,7 +198,9 @@ class Vortex(Instrument):
         """Check for a valid detector number"""
         num_detectors = self.get_number_installed_detectors()
         if detector_number not in range(1, num_detectors + 1):
-            raise ValueError('Only detector numbers 1-{} are valid'.format(num_detectors))
+            raise ValueError(
+                'Only detector numbers 1-{} are valid'.format(num_detectors)
+            )
 
     # System commands, manual section 4.5.1
     def get_type(self):
@@ -273,8 +300,9 @@ class Vortex(Instrument):
         """
         LOGGER.info('get_number_installed_digital_outputs called')
         num_digital_outputs = self.read_register(39)
-        LOGGER.debug('get_number_installed_digital_outputs returned: %s',
-                     num_digital_outputs)
+        LOGGER.debug(
+            'get_number_installed_digital_outputs returned: %s', num_digital_outputs
+        )
         return num_digital_outputs
 
     # Detector configuration commands, manual section e.g 4.5.2
@@ -294,32 +322,35 @@ class Vortex(Instrument):
 
         # Return cached value if cache is True and it has been cached
         if self.cache and detector_number in self.channel_conf:
-            LOGGER.debug('detector_configuration returned cached value: %s',
-                         self.channel_conf[detector_number])
+            LOGGER.debug(
+                'detector_configuration returned cached value: %s',
+                self.channel_conf[detector_number],
+            )
             return self.channel_conf[detector_number]
 
         # The registers for the detectors are shifted by 20 for each
         # detector and the register numbers below are for detector 1
         reg_shift = 20 * (detector_number - 1)
         reg = {}
-        reg['enabled']     = 109 + reg_shift  # pylint: disable=bad-whitespace
-        reg['type']        = 110 + reg_shift  # pylint: disable=bad-whitespace
-        reg['level1']      = 113 + reg_shift  # pylint: disable=bad-whitespace
+        reg['enabled'] = 109 + reg_shift  # pylint: disable=bad-whitespace
+        reg['type'] = 110 + reg_shift  # pylint: disable=bad-whitespace
+        reg['level1'] = 113 + reg_shift  # pylint: disable=bad-whitespace
         reg['transition1'] = 114 + reg_shift  # pylint: disable=bad-whitespace
-        reg['level2']      = 115 + reg_shift  # pylint: disable=bad-whitespace
+        reg['level2'] = 115 + reg_shift  # pylint: disable=bad-whitespace
         reg['transition2'] = 116 + reg_shift  # pylint: disable=bad-whitespace
-        reg['level3']      = 117 + reg_shift  # pylint: disable=bad-whitespace
+        reg['level3'] = 117 + reg_shift  # pylint: disable=bad-whitespace
         reg['transition3'] = 118 + reg_shift  # pylint: disable=bad-whitespace
-        reg['unit']        = 121 + reg_shift  # pylint: disable=bad-whitespace
-        reg['range']       = 122 + reg_shift  # pylint: disable=bad-whitespace
-        reg['identity']    = 125 + reg_shift  # pylint: disable=bad-whitespace
+        reg['unit'] = 121 + reg_shift  # pylint: disable=bad-whitespace
+        reg['range'] = 122 + reg_shift  # pylint: disable=bad-whitespace
+        reg['identity'] = 125 + reg_shift  # pylint: disable=bad-whitespace
 
         values = {'number': detector_number}
         # Read if the detector is enabled
         values['enabled'] = self.read_bool(reg['enabled'])
         # Read the detector type
-        values['type'] = DETECTOR_TYPE.get(self.read_register(reg['type']),
-                                           'Unknown Detector Type')
+        values['type'] = DETECTOR_TYPE.get(
+            self.read_register(reg['type']), 'Unknown Detector Type'
+        )
         # Read the units
         values['unit'] = UNITS.get(self.read_register(reg['unit']), 'Unknown Unit')
         # Read the range and do not allow unknown range
@@ -337,15 +368,19 @@ class Vortex(Instrument):
         for number in range(1, 4):
             level = 'level' + str(number)
             transition = 'transition' + str(number)
-            values[level] = self.read_register(reg[level], numberOfDecimals=3, signed=True)\
-                            * values['range']
+            values[level] = (
+                self.read_register(reg[level], numberOfDecimals=3, signed=True)
+                * values['range']
+            )
             values[transition] = TRANSITION[self.read_bool(reg[transition])]
 
         # Wrap in named tuple
         named_tuple_out = DetConfMap(**values)
 
         if self.cache:
-            LOGGER.debug('detector_configuration save cached value: %s', named_tuple_out)
+            LOGGER.debug(
+                'detector_configuration save cached value: %s', named_tuple_out
+            )
             self.channel_conf[detector_number] = named_tuple_out
 
         LOGGER.debug('detector_configuration return: %s', named_tuple_out)
@@ -373,8 +408,10 @@ class Vortex(Instrument):
 
         # Get the range and read the level
         detector_range = self.detector_configuration(detector_number).range
-        level = self.read_register(2999 + reg_shift, numberOfDecimals=3, signed=True)\
-                * detector_range
+        level = (
+            self.read_register(2999 + reg_shift, numberOfDecimals=3, signed=True)
+            * detector_range
+        )
 
         # Read the status register and form the list of status messages
         status = self.read_register(3000 + reg_shift)
@@ -395,7 +432,6 @@ class Vortex(Instrument):
         detector_levels = DetLev(detector_number, level, status_out, inhibited)
         LOGGER.debug('get_detector_levels return: %s', detector_levels)
         return detector_levels
-
 
     def get_multiple_detector_levels(self, detector_numbers):
         """Get the levels for multiple detectors in one communication call
@@ -429,8 +465,10 @@ class Vortex(Instrument):
             # The level is the 0th register
             level_register = data[reg_shift]
             bytestring = _numToTwoByteString(level_register)
-            level = _twoByteStringToNum(bytestring, numberOfDecimals=3, signed=True)\
-                    * detector_range
+            level = (
+                _twoByteStringToNum(bytestring, numberOfDecimals=3, signed=True)
+                * detector_range
+            )
 
             # Status is the 1st register (0-based)
             status = data[1 + reg_shift]
@@ -541,20 +579,22 @@ def main():
     from pprint import pprint
     from time import time
 
-    #logging.basicConfig(level=logging.DEBUG)
-    #logging.debug('Start')
+    # logging.basicConfig(level=logging.DEBUG)
+    # logging.debug('Start')
 
-    vortex = Vortex('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2, cache=False)
+    vortex = Vortex(
+        '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3G9FE-if00-port0', 2, cache=False
+    )
     vortex.debug = True
 
     while True:
-        vortex.read_bool(109)#detector_configuration(1)
-        #print("####################")
-        #print('Power status :', vortex.get_system_power_status())
-        #vortex.get_detector_levels(1)
+        vortex.read_bool(109)  # detector_configuration(1)
+        # print("####################")
+        # print('Power status :', vortex.get_system_power_status())
+        # vortex.get_detector_levels(1)
 
-    #print('serial version:', serial.__version__)
-    #print('serial module:', serial)
+    # print('serial version:', serial.__version__)
+    # print('serial module:', serial)
 
     print('Type         :', vortex.get_type())
     print('System status:', vortex.get_system_status())
@@ -562,9 +602,13 @@ def main():
     print('Serial number:', vortex.get_serial_number())
     print('System name  :', vortex.get_system_name())
     print()
-    print('Number of installed detectors      :', vortex.get_number_installed_detectors())
-    print('Number of installed digital outputs:',
-          vortex.get_number_installed_digital_outputs())
+    print(
+        'Number of installed detectors      :', vortex.get_number_installed_detectors()
+    )
+    print(
+        'Number of installed digital outputs:',
+        vortex.get_number_installed_digital_outputs(),
+    )
     print()
     for detector_number in range(1, 9):
         print('Detector', detector_number)

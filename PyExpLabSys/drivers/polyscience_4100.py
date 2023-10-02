@@ -2,10 +2,13 @@
 from __future__ import print_function
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
+
 
 class Polyscience4100(object):
     """ Driver for Polyscience 4100 chiller """
+
     def __init__(self, port='/dev/ttyUSB0'):
         self.ser = serial.Serial(port, 9600, timeout=0.5)
         self.max_setpoint = 30
@@ -34,7 +37,7 @@ class Polyscience4100(object):
             string = '0' + string
         assert len(string) == 3
         value = self.comm('SS' + string)
-        success = (value == '!')
+        success = value == '!'
         return success
 
     def turn_unit_on(self, turn_on):
@@ -115,6 +118,7 @@ class Polyscience4100(object):
         if value == '1':
             status = 'On'
         return status
+
 
 if __name__ == '__main__':
     CHILLER = Polyscience4100('/dev/ttyUSB0')

@@ -4,13 +4,16 @@ import threading
 import logging
 import curses
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
+
 class CursesTui(threading.Thread):
     """ Text user interface for heater heating control """
+
     def __init__(self, heating_class):
         threading.Thread.__init__(self)
         self.start_time = time.time()
@@ -43,36 +46,54 @@ class CursesTui(threading.Thread):
             self.screen.addstr(15, 2, "Runetime: {0:.0f}s".format(val))
 
             val = self.heater.values['actual_voltage_1']
-            self.screen.addstr(11, 40, "Actual Voltage 1: {0:.2f}V           ".format(val))
+            self.screen.addstr(
+                11, 40, "Actual Voltage 1: {0:.2f}V           ".format(val)
+            )
             val = self.heater.values['actual_voltage_2']
-            self.screen.addstr(12, 40, "Actual Voltage 2: {0:.2f}V          ".format(val))
+            self.screen.addstr(
+                12, 40, "Actual Voltage 2: {0:.2f}V          ".format(val)
+            )
             val = self.heater.values['actual_current_1'] * 1000
-            self.screen.addstr(13, 40, "Actual Current 1: {0:.0f}mA          ".format(val))
+            self.screen.addstr(
+                13, 40, "Actual Current 1: {0:.0f}mA          ".format(val)
+            )
             val = self.heater.values['actual_current_2'] * 1000
-            self.screen.addstr(14, 40, "Actual Current 2: {0:.0f}mA         ".format(val))
-            power1 = (self.heater.values['actual_voltage_1'] *
-                      self.heater.values['actual_current_1'])
-            self.screen.addstr(15, 40, "Power, heater 1: {0:.3f}W           ".format(power1))
-            power2 = (self.heater.values['actual_voltage_2'] *
-                      self.heater.values['actual_current_2'])
-            
-            self.screen.addstr(16, 40, "Power, heater 2: {0:.3f}W           ".format(power2))
-            self.screen.addstr(17, 40, "Total Power1: {0:.3f}W        ".format(
-                power1 + power2))
+            self.screen.addstr(
+                14, 40, "Actual Current 2: {0:.0f}mA         ".format(val)
+            )
+            power1 = (
+                self.heater.values['actual_voltage_1']
+                * self.heater.values['actual_current_1']
+            )
+            self.screen.addstr(
+                15, 40, "Power, heater 1: {0:.3f}W           ".format(power1)
+            )
+            power2 = (
+                self.heater.values['actual_voltage_2']
+                * self.heater.values['actual_current_2']
+            )
+
+            self.screen.addstr(
+                16, 40, "Power, heater 2: {0:.3f}W           ".format(power2)
+            )
+            self.screen.addstr(
+                17, 40, "Total Power1: {0:.3f}W        ".format(power1 + power2)
+            )
 
             self.screen.addstr(19, 2, "Keys: (i)ncrement, (d)ecrement and (q)uit")
 
-            
             key_val = self.screen.getch()
             if key_val == ord('q'):
                 self.heater.quit = True
                 self.quit = True
             if key_val == ord('i'):
                 self.heater.power_calculator.update_setpoint(
-                    self.heater.power_calculator.values['setpoint'] + 1)
+                    self.heater.power_calculator.values['setpoint'] + 1
+                )
             if key_val == ord('d'):
                 self.heater.power_calculator.update_setpoint(
-                    self.heater.power_calculator.values['setpoint'] - 1)
+                    self.heater.power_calculator.values['setpoint'] - 1
+                )
 
             self.screen.refresh()
             time.sleep(0.2)
@@ -90,6 +111,7 @@ class CursesTui(threading.Thread):
 
 class HeaterClass(threading.Thread):
     """ Do the actual heating """
+
     def __init__(self, power_calculator, pullsocket, power_supply):
         threading.Thread.__init__(self)
         self.power_calculator = power_calculator
@@ -106,7 +128,9 @@ class HeaterClass(threading.Thread):
     def run(self):
         while not self.quit:
             self.values['wanted_voltage'] = self.power_calculator.read_power()
-            self.pullsocket.set_point_now('wanted_voltage', self.values['wanted_voltage'])
+            self.pullsocket.set_point_now(
+                'wanted_voltage', self.values['wanted_voltage']
+            )
             self.power_supply[1].set_voltage(self.values['wanted_voltage'])
             time.sleep(0.1)
             self.power_supply[2].set_voltage(self.values['wanted_voltage'] * 0.5)

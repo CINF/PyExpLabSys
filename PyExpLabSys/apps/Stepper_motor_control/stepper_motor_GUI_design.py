@@ -163,8 +163,9 @@ class stepper_motor_ui(object):
         self.label_26.setObjectName("label_26")
         self.pushButton_6 = QtWidgets.QPushButton(self.tab)
         self.pushButton_6.setGeometry(QtCore.QRect(1070, 10, 81, 41))
-        self.pushButton_6.setStyleSheet("font: 20pt \"MS Shell Dlg 2\";\n"
-"color: rgb(255, 0, 0)")
+        self.pushButton_6.setStyleSheet(
+            "font: 20pt \"MS Shell Dlg 2\";\n" "color: rgb(255, 0, 0)"
+        )
         self.pushButton_6.setObjectName("pushButton_6")
         self.label_27 = QtWidgets.QLabel(self.tab)
         self.label_27.setGeometry(QtCore.QRect(650, 0, 161, 41))
@@ -341,7 +342,9 @@ class stepper_motor_ui(object):
 
     def retranslateUi(self, stepper_motor_GUI):
         _translate = QtCore.QCoreApplication.translate
-        stepper_motor_GUI.setWindowTitle(_translate("stepper_motor_GUI", "stepper_motor_GUI"))
+        stepper_motor_GUI.setWindowTitle(
+            _translate("stepper_motor_GUI", "stepper_motor_GUI")
+        )
         self.label.setText(_translate("stepper_motor_GUI", "Ready Status:"))
         self.label_2.setText(_translate("stepper_motor_GUI", "X:"))
         self.label_3.setText(_translate("stepper_motor_GUI", "Y:"))
@@ -361,8 +364,12 @@ class stepper_motor_ui(object):
         self.pushButton_2.setText(_translate("stepper_motor_GUI", "ISS"))
         self.pushButton_3.setText(_translate("stepper_motor_GUI", "Mg XPS"))
         self.pushButton_4.setText(_translate("stepper_motor_GUI", "HPC"))
-        self.comboBox.setItemText(0, _translate("stepper_motor_GUI", "Relative movement"))
-        self.comboBox.setItemText(1, _translate("stepper_motor_GUI", "Absolute movement"))
+        self.comboBox.setItemText(
+            0, _translate("stepper_motor_GUI", "Relative movement")
+        )
+        self.comboBox.setItemText(
+            1, _translate("stepper_motor_GUI", "Absolute movement")
+        )
         self.comboBox_2.setItemText(0, _translate("stepper_motor_GUI", "X"))
         self.comboBox_2.setItemText(1, _translate("stepper_motor_GUI", "Y"))
         self.comboBox_2.setItemText(2, _translate("stepper_motor_GUI", "Z"))
@@ -380,14 +387,18 @@ class stepper_motor_ui(object):
         self.comboBox_5.setItemText(0, _translate("stepper_motor_GUI", "X"))
         self.comboBox_5.setItemText(1, _translate("stepper_motor_GUI", "Y"))
         self.comboBox_5.setItemText(2, _translate("stepper_motor_GUI", "Z"))
-        self.pushButton_10.setText(_translate("stepper_motor_GUI", "Clear alarm record"))
+        self.pushButton_10.setText(
+            _translate("stepper_motor_GUI", "Clear alarm record")
+        )
         self.pushButton_11.setText(_translate("stepper_motor_GUI", "SIG"))
         self.label_28.setText(_translate("stepper_motor_GUI", "SIG:"))
         self.pushButton_14.setText(_translate("stepper_motor_GUI", "Al XPS"))
         self.pushButton_15.setText(_translate("stepper_motor_GUI", "Baking"))
         self.label_30.setText(_translate("stepper_motor_GUI", "Al XPS:"))
         self.label_32.setText(_translate("stepper_motor_GUI", "Baking:"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("stepper_motor_GUI", "Driver"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab), _translate("stepper_motor_GUI", "Driver")
+        )
         item = self.tableWidget.verticalHeaderItem(0)
         item.setText(_translate("stepper_motor_GUI", "Operating speed [Hz]"))
         item = self.tableWidget.verticalHeaderItem(1)
@@ -411,7 +422,9 @@ class stepper_motor_ui(object):
         item = self.tableWidget.verticalHeaderItem(10)
         item.setText(_translate("stepper_motor_GUI", "ZHOME Starting speed [Hz]"))
         item = self.tableWidget.verticalHeaderItem(11)
-        item.setText(_translate("stepper_motor_GUI", "ZHOME Acceleration/deceleration [HZ/s]"))
+        item.setText(
+            _translate("stepper_motor_GUI", "ZHOME Acceleration/deceleration [HZ/s]")
+        )
         item = self.tableWidget.verticalHeaderItem(12)
         item.setText(_translate("stepper_motor_GUI", "Group ID"))
         item = self.tableWidget.horizontalHeaderItem(0)
@@ -445,4 +458,7 @@ class stepper_motor_ui(object):
         item.setText(_translate("stepper_motor_GUI", "Motor Y"))
         item = self.tableWidget_2.horizontalHeaderItem(2)
         item.setText(_translate("stepper_motor_GUI", "Motor Z"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("stepper_motor_GUI", "Settings"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_2),
+            _translate("stepper_motor_GUI", "Settings"),
+        )

@@ -89,6 +89,7 @@ from __future__ import print_function
 from xml.etree import ElementTree as ET
 import codecs
 import logging
+
 _LOG = logging.getLogger(__name__)
 # Make the logger follow the logging setup from the caller
 _LOG.addHandler(logging.NullHandler())
@@ -96,17 +97,22 @@ import numpy as np
 import six
 from PyExpLabSys.thirdparty.cached_property import cached_property
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 if six.PY3:
     long = int
 
 
-UNHANDLED_XML_COMPONENTS = 'An unhandled XML component \'{}\' was found when '\
-                           'parsing a \'{}\''
+UNHANDLED_XML_COMPONENTS = (
+    'An unhandled XML component \'{}\' was found when ' 'parsing a \'{}\''
+)
 # Used in the conversion of elements with type information
 XML_TYPES = {
-    'string': six.text_type, 'ulong': long, 'double': float, 'boolean': bool,
+    'string': six.text_type,
+    'ulong': long,
+    'double': float,
+    'boolean': bool,
     'long': long,
 }
 ARRAY_TYPES = {'ulong': 'uint64', 'double': 'double'}
@@ -165,8 +171,7 @@ def simple_convert(element):
         out = None
     # parse array
     elif '\n' in element.text and element.tag in ARRAY_TYPES.keys():
-        out = np.fromstring(element.text, dtype=ARRAY_TYPES[element.tag],
-                            sep='\n')
+        out = np.fromstring(element.text, dtype=ARRAY_TYPES[element.tag], sep='\n')
     # parse simple type
     elif element.tag in XML_TYPES.keys():
         out = XML_TYPES[element.tag](element.text)
@@ -192,7 +197,8 @@ def simple_convert(element):
     # I don't know what to do
     else:
         message = 'Unknown tag type {} with value:\n{}'.format(
-            element.tag, element.text)
+            element.tag, element.text
+        )
         if EXCEPTION_ON_UNHANDLED:
             raise ValueError(message)
         _LOG.warning(message)
@@ -220,14 +226,15 @@ class SpecsFile(list):
             try:
                 root = ET.parse(filepath).getroot()
             except ET.ParseError as exception:
-                print('#####\nParsing of the XML file failed. Possibly the '
-                      'XML is mal-formed or you need to supply the encoding '
-                      'of the XML file.\n\n###Traceback:')
+                print(
+                    '#####\nParsing of the XML file failed. Possibly the '
+                    'XML is mal-formed or you need to supply the encoding '
+                    'of the XML file.\n\n###Traceback:'
+                )
                 raise
 
         _reg_group_seq = root.find('sequence[@type_name=\'RegionGroupSeq\']')
-        for element in _reg_group_seq.findall(
-                'struct[@type_name=\'RegionGroup\']'):
+        for element in _reg_group_seq.findall('struct[@type_name=\'RegionGroup\']'):
             _LOG.debug('Found region group: {}'.format(element))
             self.append(RegionGroup(element))
             _reg_group_seq.remove(element)
@@ -245,9 +252,7 @@ class SpecsFile(list):
 
         # Check that there are no unhandled XML elements in the root
         if len(root) > 0:
-            message = UNHANDLED_XML_COMPONENTS.format(
-                root[0], 'file'
-            )
+            message = UNHANDLED_XML_COMPONENTS.format(root[0], 'file')
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
             _LOG.warning(message)
@@ -287,8 +292,7 @@ class SpecsFile(list):
 
     def __repr__(self):
         """Returns class representation"""
-        return '<{}(filename=\'{}\')>'.format(self.__class__.__name__,
-                                              self.filepath)
+        return '<{}(filename=\'{}\')>'.format(self.__class__.__name__, self.filepath)
 
     def __str__(self):
         """Returns str representation"""
@@ -348,8 +352,7 @@ class RegionGroup(list):
         xml.remove(xml.find('string[@name=\'name\']'))
 
         _region_data_seq = xml.find('sequence[@type_name=\'RegionDataSeq\']')
-        for element in _region_data_seq.findall(
-                'struct[@type_name=\'RegionData\']'):
+        for element in _region_data_seq.findall('struct[@type_name=\'RegionData\']'):
             _LOG.debug('Found region: {}'.format(element))
             self.append(Region(element))
             _region_data_seq.remove(element)
@@ -372,9 +375,7 @@ class RegionGroup(list):
 
         # Check if there are any unhandled XML components
         if len(xml) > 0:
-            message = UNHANDLED_XML_COMPONENTS.format(
-                xml[0], 'region group'
-            )
+            message = UNHANDLED_XML_COMPONENTS.format(xml[0], 'region group')
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
             else:
@@ -408,10 +409,19 @@ class Region(object):
 
     """
 
-    information_names = ['name', 'region', 'mcd_head', 'mcd_tail',
-                         'analyzer_info', 'source_info', 'remote_info',
-                         'cycles', 'compact_cycles', 'transmission',
-                         'parameters']
+    information_names = [
+        'name',
+        'region',
+        'mcd_head',
+        'mcd_tail',
+        'analyzer_info',
+        'source_info',
+        'remote_info',
+        'cycles',
+        'compact_cycles',
+        'transmission',
+        'parameters',
+    ]
 
     def __init__(self, xml):
         """Parse the XML and initialize internal variables
@@ -431,9 +441,7 @@ class Region(object):
 
         # Check if there are any unhandled XML components
         if len(xml) > 0:
-            message = UNHANDLED_XML_COMPONENTS.format(
-                xml[0], 'region group'
-            )
+            message = UNHANDLED_XML_COMPONENTS.format(xml[0], 'region group')
             if EXCEPTION_ON_UNHANDLED:
                 raise ValueError(message)
             else:
@@ -442,33 +450,38 @@ class Region(object):
     def __repr__(self):
         """Returns class representation"""
         return '<{}(name=\'{}\')>'.format(
-            self.__class__.__name__, self.name,
-            )
+            self.__class__.__name__,
+            self.name,
+        )
 
     @cached_property
     def x(self):  # pylint: disable=invalid-name
         """Returns the kinetic energy x-values as a Numpy array"""
         # Calculate the x-values
         start = self.region['kinetic_energy']
-        end = start + (self.region['values_per_curve'] - 1) *\
-              self.region['scan_delta']
+        end = start + (self.region['values_per_curve'] - 1) * self.region['scan_delta']
         data = np.linspace(start, end, self.region['values_per_curve'])
-        _LOG.debug('Creating x values from {} to {} in {} steps'.format(
-            start, end, self.region['values_per_curve']))
+        _LOG.debug(
+            'Creating x values from {} to {} in {} steps'.format(
+                start, end, self.region['values_per_curve']
+            )
+        )
         return data
 
     @cached_property
     def x_be(self):
         """Returns the binding energy x-values as a Numpy array"""
         if self.region['analysis_method'] != 'XPS':
-            message = "Analysis_method is {}".format(
-                self.region['analysis_method'])
+            message = "Analysis_method is {}".format(self.region['analysis_method'])
             raise NotXPSException(message)
 
         # Calculate the x binding energy values
         data = self.region['excitation_energy'] - self.x
-        _LOG.debug('Creating x_be values from {} to {} in {} steps'.format(
-            data.min(), data.max(), data.size))
+        _LOG.debug(
+            'Creating x_be values from {} to {} in {} steps'.format(
+                data.min(), data.max(), data.size
+            )
+        )
         return data
 
     @property
@@ -506,9 +519,11 @@ class Region(object):
         """Returns the average counts as a Numpy array"""
         vstack = np.vstack(self.iter_scans)
         data = vstack.mean(axis=0)
-        _LOG.debug('Creating {} y_avg_counts values from {} scans'.format(
-            data.size, vstack.shape[0]
-        ))
+        _LOG.debug(
+            'Creating {} y_avg_counts values from {} scans'.format(
+                data.size, vstack.shape[0]
+            )
+        )
         return data
 
     @cached_property
@@ -531,4 +546,5 @@ class Region(object):
 
 class NotXPSException(Exception):
     """Exception for trying to interpret non-XPS data as XPS data"""
+
     pass

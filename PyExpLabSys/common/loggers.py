@@ -12,12 +12,15 @@ except ImportError:
 import threading
 import time
 import logging
+
 try:
     import MySQLdb
+
     SQL = 'mysqldb'
     ODBC_PROGRAMMING_ERROR = Exception
 except ImportError:
     import pyodbc
+
     SQL = 'pyodbc'
     ODBC_PROGRAMMING_ERROR = pyodbc.ProgrammingError
 
@@ -29,8 +32,11 @@ LOGGER.addHandler(logging.NullHandler())
 
 class NoneResponse:
     """NoneResponse"""
+
     def __init__(self):
         LOGGER.debug('NoneResponse class instantiated')
+
+
 #: Module variable used to indicate a none response, currently is an instance
 #: if NoneResponse
 NONE_RESPONSE = NoneResponse()
@@ -38,6 +44,7 @@ NONE_RESPONSE = NoneResponse()
 
 class InterruptableThread(threading.Thread):
     """Class to run a MySQL query with a time out"""
+
     def __init__(self, cursor, query):
         LOGGER.debug('InterruptableThread.__init__ start')
         threading.Thread.__init__(self)
@@ -58,8 +65,9 @@ class InterruptableThread(threading.Thread):
                 self.result = self.cursor.fetchall()
             except ODBC_PROGRAMMING_ERROR:
                 self.result = None
-        LOGGER.debug('InterruptableThread.run end. Executed query: {}'
-                     ''.format(self.query))
+        LOGGER.debug(
+            'InterruptableThread.run end. Executed query: {}' ''.format(self.query)
+        )
 
 
 def timeout_query(cursor, query, timeout_duration=3):
@@ -86,9 +94,12 @@ def timeout_query(cursor, query, timeout_duration=3):
 
 class StartupException(Exception):
     """Exception raised when the continous logger fails to start up"""
+
     def __init__(self, *args, **kwargs):
-        LOGGER.debug('StartupException instantiated with args, kwargs: {}, {}'
-                     ''.format(str(args), str(kwargs)))
+        LOGGER.debug(
+            'StartupException instantiated with args, kwargs: {}, {}'
+            ''.format(str(args), str(kwargs))
+        )
         super(StartupException, self).__init__(*args, **kwargs)
 
 
@@ -106,8 +117,16 @@ class ContinuousLogger(threading.Thread):
     host = 'servcinf-sql.fysik.dtu.dk'
     database = 'cinfdata'
 
-    def __init__(self, table, username, password, measurement_codenames,
-                 dequeue_timeout=1, reconnect_waittime=60, dsn=None):
+    def __init__(
+        self,
+        table,
+        username,
+        password,
+        measurement_codenames,
+        dequeue_timeout=1,
+        reconnect_waittime=60,
+        dsn=None,
+    ):
         """Initialize the continous logger
 
         Args:
@@ -130,10 +149,12 @@ class ContinuousLogger(threading.Thread):
                 connection or translate the code names
 
         """
-        deprecation_warning = 'DEPRECATION WARNING: The '\
-            'PyExpLabSys.common.loggers.ContinuousLogger class is deprecated. Please '\
-            'instead use the PyExpLabSys.common.database_saver.ContinuousDataSaver class '\
+        deprecation_warning = (
+            'DEPRECATION WARNING: The '
+            'PyExpLabSys.common.loggers.ContinuousLogger class is deprecated. Please '
+            'instead use the PyExpLabSys.common.database_saver.ContinuousDataSaver class '
             'instead.'
+        )
         print(deprecation_warning)
         LOGGER.info('CL: __init__ called')
         # Initialize thread
@@ -142,9 +163,12 @@ class ContinuousLogger(threading.Thread):
         self._stop = False
         LOGGER.debug('CL: thread initialized')
         # Initialize local variables
-        self.mysql = {'table': table, 'username': username,
-                      'password': password,
-                      'dsn': dsn}
+        self.mysql = {
+            'table': table,
+            'username': username,
+            'password': password,
+            'dsn': dsn,
+        }
         self._dequeue_timeout = dequeue_timeout
         self._reconnect_waittime = reconnect_waittime
         self._cursor = None
@@ -164,8 +188,7 @@ class ContinuousLogger(threading.Thread):
             except StartupException:
                 if time.time() - db_connection_starttime > 300:
                     raise
-                LOGGER.debug(
-                    'CL: Database connection not formed, retry in 20 sec')
+                LOGGER.debug('CL: Database connection not formed, retry in 20 sec')
                 time.sleep(20)
         # Get measurement numbers from codenames
         self._init_measurement_numbers(measurement_codenames)
@@ -176,8 +199,10 @@ class ContinuousLogger(threading.Thread):
         try:
             if SQL == 'mysqldb':
                 self._connection = MySQLdb.connect(
-                    host=self.host, user=self.mysql['username'],
-                    passwd=self.mysql['password'], db=self.database
+                    host=self.host,
+                    user=self.mysql['username'],
+                    passwd=self.mysql['password'],
+                    db=self.database,
                 )
             else:
                 connect_string = 'DSN={}'.format(self.mysql['dsn'])
@@ -195,21 +220,28 @@ class ContinuousLogger(threading.Thread):
         """
         LOGGER.debug('CL: init measurements numbers')
         for codename in measurement_codenames:
-            query = 'SELECT id FROM dateplots_descriptions '\
+            query = (
+                'SELECT id FROM dateplots_descriptions '
                 'WHERE codename=\'{}\''.format(codename)
+            )
             LOGGER.debug('CL: Query: ' + query)
             self._cursor.execute(query)
             results = self._cursor.fetchall()
-            LOGGER.debug('CL: query for {} returned {}'
-                         ''.format(codename, str(results)))
+            LOGGER.debug(
+                'CL: query for {} returned {}' ''.format(codename, str(results))
+            )
             if len(results) != 1:
-                message = 'Measurement code name \'{}\' does not have exactly'\
+                message = (
+                    'Measurement code name \'{}\' does not have exactly'
                     ' one entry in dateplots_descriptions'.format(codename)
+                )
                 LOGGER.critical('CL: ' + message)
                 raise StartupException(message)
             self._codename_translation[codename] = results[0][0]
-        LOGGER.info('Codenames translated to measurement numbers: {}'
-                    ''.format(str(self._codename_translation)))
+        LOGGER.info(
+            'Codenames translated to measurement numbers: {}'
+            ''.format(str(self._codename_translation))
+        )
 
     def stop(self):
         """Stop the thread"""
@@ -222,8 +254,7 @@ class ContinuousLogger(threading.Thread):
         """Start the thread. Must be run before points are added."""
         while not self._stop:
             try:
-                point = self.data_queue.get(block=True,
-                                            timeout=self._dequeue_timeout)
+                point = self.data_queue.get(block=True, timeout=self._dequeue_timeout)
                 result = self._send_point(point)
                 LOGGER.info('CL: Point "{}" dequeued and sent'.format(point))
                 if result is False:
@@ -234,8 +265,11 @@ class ContinuousLogger(threading.Thread):
                 pass
         # When we stop the logger
         self._connection.close()
-        LOGGER.info('Database connection closed. Remaining in queue: {}'
-            .format(self.data_queue.qsize()))
+        LOGGER.info(
+            'Database connection closed. Remaining in queue: {}'.format(
+                self.data_queue.qsize()
+            )
+        )
 
     def _send_point(self, point):
         """Send all points in the queue to the data base"""
@@ -290,10 +324,12 @@ class ContinuousLogger(threading.Thread):
             message = '\'point\' must be a iterable with 2 values'
             raise ValueError(message)
         meas_number = self._codename_translation[codename]
-        query = ('INSERT INTO {} (type, time, value) VALUES '
-                 '({}, FROM_UNIXTIME({}), {});')
+        query = (
+            'INSERT INTO {} (type, time, value) VALUES ' '({}, FROM_UNIXTIME({}), {});'
+        )
         query = query.format(self.mysql['table'], meas_number, unixtime, value)
         self.data_queue.put(query)
-        LOGGER.info('CL: Point ({}, {}, {}) added to queue. Queue size: {}'
-                    ''.format(codename, unixtime, value,
-                              self.data_queue.qsize()))
+        LOGGER.info(
+            'CL: Point ({}, {}, {}) added to queue. Queue size: {}'
+            ''.format(codename, unixtime, value, self.data_queue.qsize())
+        )

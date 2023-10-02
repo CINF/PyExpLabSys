@@ -134,8 +134,15 @@ class CursesAsciiPlot(object):
 class AsciiPlot(object):
     """An Ascii Plot"""
 
-    def __init__(self, title=None, xlabel=None, ylabel=None, logscale=False,
-                 size=(80, 24), debug=False):
+    def __init__(
+        self,
+        title=None,
+        xlabel=None,
+        ylabel=None,
+        logscale=False,
+        size=(80, 24),
+        debug=False,
+    ):
         """Initialize local varibles
 
         Args:
@@ -151,7 +158,9 @@ class AsciiPlot(object):
         self.debug = debug
 
         # Open a process for gnuplot
-        self.process = Popen(['gnuplot'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
+        self.process = Popen(
+            ['gnuplot'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0
+        )
         self.read = self.process.stdout.read
 
         # Setup ascii output and size
@@ -167,8 +176,8 @@ class AsciiPlot(object):
         if logscale:
             self.write("set logscale y\n")
 
-        self.write("set out\n")        
-        
+        self.write("set out\n")
+
     def write(self, string):
         r"""Write string to gnuplot
 
@@ -177,7 +186,7 @@ class AsciiPlot(object):
         if self.debug:
             print(repr(string))
         self.process.stdin.write(string.encode())
-        
+
     def plot(self, x, y, style='lines', legend=""):
         """Plot data
 
@@ -221,7 +230,9 @@ if __name__ == "__main__":
     try:
         # Create the Curses Ascii Plotter
         ap = CursesAsciiPlot(
-            win, title="Log of sine of time", xlabel="Time [s]",
+            win,
+            title="Log of sine of time",
+            xlabel="Time [s]",
             logscale=True,
         )
 

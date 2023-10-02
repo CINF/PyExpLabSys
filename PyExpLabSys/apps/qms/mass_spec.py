@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import datetime
+
 try:
     import Queue as queue
 except ImportError:
@@ -19,27 +20,39 @@ from PyExpLabSys.common.sockets import LiveSocket, DateDataPullSocket
 from PyExpLabSys.common.utilities import get_logger
 from PyExpLabSys.common.utilities import activate_library_logging
 from PyExpLabSys.common.supported_versions import python2_and_3
-BASEPATH = os.path.abspath(__file__)[:os.path.abspath(__file__).find('PyExpLabSys')]
+
+BASEPATH = os.path.abspath(__file__)[: os.path.abspath(__file__).find('PyExpLabSys')]
 sys.path.append(BASEPATH + '/PyExpLabSys/machines/' + sys.argv[1])
-import settings # pylint: disable=wrong-import-position
+import settings  # pylint: disable=wrong-import-position
+
 python2_and_3(__file__)
 
-LOGGER = get_logger('Mass Spec', level='warning', file_log=True,
-                    file_name='qms.txt', terminal_log=False,
-                    email_on_warnings=False, email_on_errors=False,
-                    file_max_bytes=104857600, file_backup_count=5)
+LOGGER = get_logger(
+    'Mass Spec',
+    level='warning',
+    file_log=True,
+    file_name='qms.txt',
+    terminal_log=False,
+    email_on_warnings=False,
+    email_on_errors=False,
+    file_max_bytes=104857600,
+    file_backup_count=5,
+)
 
-activate_library_logging('PyExpLabSys.drivers.pfeiffer_qmg422',
-                         logger_to_inherit_from=LOGGER)
-activate_library_logging('PyExpLabSys.apps.qms.qmg_status_output',
-                         logger_to_inherit_from=LOGGER)
-activate_library_logging('PyExpLabSys.apps.qms.qmg_meta_channels',
-                         logger_to_inherit_from=LOGGER)
-activate_library_logging('PyExpLabSys.apps.qms.qms',
-                         logger_to_inherit_from=LOGGER)
+activate_library_logging(
+    'PyExpLabSys.drivers.pfeiffer_qmg422', logger_to_inherit_from=LOGGER
+)
+activate_library_logging(
+    'PyExpLabSys.apps.qms.qmg_status_output', logger_to_inherit_from=LOGGER
+)
+activate_library_logging(
+    'PyExpLabSys.apps.qms.qmg_meta_channels', logger_to_inherit_from=LOGGER
+)
+activate_library_logging('PyExpLabSys.apps.qms.qms', logger_to_inherit_from=LOGGER)
 
 try:
     from local_channels import Local
+
     LOCAL_READER = Local()
     LOCAL_READER.daemon = True
     LOCAL_READER.start()
@@ -49,10 +62,12 @@ except ImportError:
 
 class MassSpec(object):
     """ User interface to mass spec code """
+
     def __init__(self):
         sql_queue = queue.Queue()
-        self.data_saver = database_saver.SqlSaver(settings.username,
-                                                  settings.username, sql_queue)
+        self.data_saver = database_saver.SqlSaver(
+            settings.username, settings.username, sql_queue
+        )
         self.data_saver.start()
         if settings.qmg == '420':
             self.qmg = qmg420.qmg_420(settings.port)
@@ -71,12 +86,18 @@ class MassSpec(object):
         pullsocket = DateDataPullSocket(settings.name + '-mass-spec', ['qms-value'])
         pullsocket.start()
 
-        self.qms = ms.QMS(self.qmg, sql_queue, chamber=settings.chamber,
-                          credentials=settings.username, livesocket=livesocket,
-                          pullsocket=pullsocket)
+        self.qms = ms.QMS(
+            self.qmg,
+            sql_queue,
+            chamber=settings.chamber,
+            credentials=settings.username,
+            livesocket=livesocket,
+            pullsocket=pullsocket,
+        )
         self.qmg.reverse_range = settings.reverse_range
-        self.printer = qmg_status_output.QmsStatusOutput(self.qms,
-                                                         sql_saver_instance=self.data_saver)
+        self.printer = qmg_status_output.QmsStatusOutput(
+            self.qms, sql_saver_instance=self.data_saver
+        )
         self.printer.start()
 
     def sem_and_filament(self, turn_on=False, voltage=1800):
@@ -93,17 +114,30 @@ class MassSpec(object):
         timestamp = datetime.datetime.now()
         channel_list = {}
         channel_list['ms'] = {}
-        channel_list['ms'][0] = {'comment': 'Leak Search', 'autorange':False,
-                                 'mass-scan-interval':999999999}
-        channel_list['ms'][1] = {'masslabel': 'He', 'speed':speed, 'mass':4, 'amp_range':9}
+        channel_list['ms'][0] = {
+            'comment': 'Leak Search',
+            'autorange': False,
+            'mass-scan-interval': 999999999,
+        }
+        channel_list['ms'][1] = {
+            'masslabel': 'He',
+            'speed': speed,
+            'mass': 4,
+            'amp_range': 9,
+        }
         self.qms.mass_time(channel_list['ms'], timestamp, no_save=True)
 
     def mass_time_scan(self, channel_list='channel_list'):
         """ Perform a mass-time scan """
         timestamp = datetime.datetime.now()
-        qms_channel_list = self.qms.read_ms_channel_list(BASEPATH + '/PyExpLabSys/machines/' +
-                                                         sys.argv[1] + '/channel_lists/' +
-                                                         channel_list + '.txt')
+        qms_channel_list = self.qms.read_ms_channel_list(
+            BASEPATH
+            + '/PyExpLabSys/machines/'
+            + sys.argv[1]
+            + '/channel_lists/'
+            + channel_list
+            + '.txt'
+        )
         meta_udp = qmg_meta_channels.MetaChannels(self.qms, timestamp, qms_channel_list)
         meta_udp.daemon = True
         meta_udp.start()
@@ -123,6 +157,7 @@ class MassSpec(object):
             time.sleep(1)
         self.qms.operating_mode = 'Idling'
 
+
 if __name__ == '__main__':
     try:
         # Initialize QMS
@@ -131,16 +166,16 @@ if __name__ == '__main__':
         MS.sleep(10)
 
         # Choose and start measurement(s)
-        #MS.leak_search(speed=8)
+        # MS.leak_search(speed=8)
 
         MS.mass_time_scan()
 
-        #MS.mass_scan(0, 50, 'flow6', amp_range=-11)
-        #MS.mass_scan(0, 50, 'After power line cleanup', amp_range=-11)
+        # MS.mass_scan(0, 50, 'flow6', amp_range=-11)
+        # MS.mass_scan(0, 50, 'After power line cleanup', amp_range=-11)
 
-        #MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
-        #MS.mass_scan(0, 50, 'Background scan -9', amp_range=-9)
-        #MS.mass_scan(0, 50, 'Background scan -7', amp_range=-7)
+        # MS.mass_scan(0, 50, 'Background scan -11', amp_range=-11)
+        # MS.mass_scan(0, 50, 'Background scan -9', amp_range=-9)
+        # MS.mass_scan(0, 50, 'Background scan -7', amp_range=-7)
     except:
         MS.printer.stop()
         raise

@@ -5,18 +5,20 @@ import time
 import logging
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
-class LCL1V5():
+
+class LCL1V5:
     """ Driver for the Hamamatsu LC-L1V5 LED Driver """
 
     def __init__(self, port="/dev/ttyUSB0"):
         """ Open the serial port """
         self.ser = serial.Serial(port)
-        time.sleep(0.1) 
+        time.sleep(0.1)
 
     def comm(self, command):
         """ Handle sending and receiving commands """
@@ -27,9 +29,9 @@ class LCL1V5():
         return return_string
 
     def select_command_communication(self):
-        """ Selecting command communication opens for sending commands to the controller via the serial interface.
-        in panel control mode the commands are limited to checking the control mode """
-        
+        """Selecting command communication opens for sending commands to the controller via the serial interface.
+        in panel control mode the commands are limited to checking the control mode"""
+
         command = 'CNT1'
         response = self.comm(command)
         return response
@@ -39,14 +41,14 @@ class LCL1V5():
         CNT0: Panel control
         CNT1: Command communication
         """
-        
+
         command = 'CNTQ'
         response = self.comm(command)
         return response
 
     def switch_led_on(self, channel):
-        """ select a led to switch on.
-        
+        """select a led to switch on.
+
         Parameters
         ----------
         channel : int
@@ -62,8 +64,8 @@ class LCL1V5():
         return response
 
     def switch_led_off(self, channel):
-        """ select a led to switch off.
-        
+        """select a led to switch off.
+
         Parameters
         ----------
         channel : int
@@ -78,16 +80,16 @@ class LCL1V5():
         return response
 
     def check_led_status(self, channel):
-        """ Check the status of a led. For information about steps, refer to manual page 28
-        
+        """Check the status of a led. For information about steps, refer to manual page 28
+
         Parameters
         ----------
         channel : int
-        
+
         Return
         ---------
         channel, step
-        
+
         step : {0 : 'off',
                 1 : 'step 1',
                 2 : 'step 2',
@@ -95,16 +97,16 @@ class LCL1V5():
         """
         command = 'STPQ' + str(channel)
         response = self.comm(command)
-        
+
         return response
 
     def set_step_settings(self, channel, intensities, times):
-        """ Sets the intensity and time for all 3 steps on selected channel
+        """Sets the intensity and time for all 3 steps on selected channel
 
         Parameters
         ----------
         channel : int
-        
+
         intensities (%) : str
            range : 000 - 100
 
@@ -113,11 +115,11 @@ class LCL1V5():
            * if times < 10 s
            range : 0.1 - 9.9
         ---------
-        
+
         Example
         --------
         set_step_settings(1,('010','050','100'),('5.0','10','99'))
-        
+
         """
 
         command = 'CURE' + str(channel)
@@ -134,15 +136,15 @@ class LCL1V5():
         for i in range(3):
             if not isinstance(intensities[i], str) or len(intensities[i]) != 3:
                 print('Intensities must be given as strings with 3 characters')
-                command += stop_sign 
+                command += stop_sign
             else:
-                command += (',' + intensities[i])
+                command += ',' + intensities[i]
 
             if not isinstance(times[i], str):
                 print('Times must be a tuple of strings')
                 command += stop_sign
             else:
-                command += (',' + times[i])
+                command += ',' + times[i]
 
         if stop_sign in command:
             print('something went wrong with the command')
@@ -159,13 +161,13 @@ class LCL1V5():
         response = self.comm(command)
 
         return response
-        
-        
+
+
 if __name__ == '__main__':
 
     # Initialize the driver
     LED = LCL1V5()
-    
+
     time.sleep(0.5)
     # Turn on external communication
     LED.select_command_communication()

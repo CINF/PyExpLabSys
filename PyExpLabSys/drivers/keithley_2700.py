@@ -13,15 +13,24 @@ class Keithley2700(SCPI):
             SCPI.__init__(self, interface=interface, gpib_address=gpib_address)
 
     def select_measurement_function(self, function):
-        """ Select a measurement function.
+        """Select a measurement function.
 
         Keyword arguments:
         Function -- A string stating the wanted measurement function.
 
         """
 
-        values = ['CAPACITANCE', 'CONTINUITY', 'CURRENT', 'DIODE', 'FREQUENCY',
-                  'RESISTANCE', 'FRESISTANCE', 'TEMPERATURE', 'VOLTAGE']
+        values = [
+            'CAPACITANCE',
+            'CONTINUITY',
+            'CURRENT',
+            'DIODE',
+            'FREQUENCY',
+            'RESISTANCE',
+            'FRESISTANCE',
+            'TEMPERATURE',
+            'VOLTAGE',
+        ]
         return_value = False
         if function in values:
             return_value = True

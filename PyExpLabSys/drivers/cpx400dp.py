@@ -5,13 +5,16 @@ import time
 import logging
 from PyExpLabSys.drivers.scpi import SCPI
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 python2_and_3(__file__)
 
+
 class InterfaceOutOfBoundsError(Exception):
     """ Error class for CPX400DP Driver """
+
     def __init__(self, value):
         super(InterfaceOutOfBoundsError, self).__init__(value)
         self.value = value
@@ -77,9 +80,9 @@ class CPX400DPDriver(SCPI):
         return mode
 
     def set_dual_output(self, dual_output=True):
-        """ Sets voltage tracking or dual output
+        """Sets voltage tracking or dual output
         If dual_output is True, Dual output will be activated.
-        If dual_output is False, Voltage tracking will be enabled """
+        If dual_output is False, Voltage tracking will be enabled"""
         if dual_output:
             self.scpi_comm('CONFIG 2')
         else:
@@ -92,7 +95,7 @@ class CPX400DPDriver(SCPI):
         function_string = 'V' + self.output + 'O?'
         value_string = self.scpi_comm(function_string)
         LOGGER.warn(value_string)
-        time.sleep(0.1) # This might only be necessary on LAN interface
+        time.sleep(0.1)  # This might only be necessary on LAN interface
         try:
             value = float(value_string.replace('V', ''))
         except ValueError:
@@ -103,7 +106,7 @@ class CPX400DPDriver(SCPI):
         """Reads the actual output current"""
         function_string = 'I' + self.output + 'O?'
         value_string = self.scpi_comm(function_string)
-        time.sleep(0.1) # This might only be necessary on LAN interface
+        time.sleep(0.1)  # This might only be necessary on LAN interface
         try:
             value = float(value_string.replace('A', ''))
         except ValueError:
@@ -163,6 +166,7 @@ class CPX400DPDriver(SCPI):
         if status == 1:
             return_message = "Lock acquired"
         return return_message
+
 
 if __name__ == '__main__':
     CPX = CPX400DPDriver(1, interface='serial', device='/dev/ttyACM0')

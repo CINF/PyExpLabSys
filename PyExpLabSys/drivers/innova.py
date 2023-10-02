@@ -49,8 +49,7 @@ class Megatec(object):
     def __init__(self, device, baudrate=2400, timeout=2.0):
         self.serial = serial.Serial(device, baudrate=baudrate, timeout=timeout)
         self.serialio = io.TextIOWrapper(
-            io.BufferedRWPair(self.serial, self.serial),
-            newline='\r'
+            io.BufferedRWPair(self.serial, self.serial), newline='\r'
         )
         print('init')
 
@@ -88,14 +87,17 @@ class Megatec(object):
         """
         response = self.com('Q1\r')
         if response[0] != '(' or response[-1] != '\r':
-            msg = ('Unexpect reply on status inquiry. Either did not start '
-                   'with "(" or end with "\\r"')
+            msg = (
+                'Unexpect reply on status inquiry. Either did not start '
+                'with "(" or end with "\\r"'
+            )
             raise IOError(msg)
 
         # Split into section and
         sections = response.strip('(').split(' ')
-        status = {name: float(value) for name, value in
-                  zip(STATUS_INQUIRY_NAMES, sections)}
+        status = {
+            name: float(value) for name, value in zip(STATUS_INQUIRY_NAMES, sections)
+        }
 
         # Section 7 are boolean indicators
         bool_strs = sections[7].strip()
@@ -108,8 +110,7 @@ class Megatec(object):
         """Run a test of the batteries for 10 sec and return to utility"""
         response = self.com('T\r')
         if response.strip() != 'ACK':
-            message = ('UPS response to command "T" was "{}", not "ACK" as '
-                       'expected.')
+            message = 'UPS response to command "T" was "{}", not "ACK" as ' 'expected.'
             raise IOError(message.format(response))
 
     def ups_information(self):
@@ -129,9 +130,11 @@ class Megatec(object):
         """
         response = self.com('F\r')
         if response[0] != '#' or response[-1] != '\r':
-            msg = ('Unexpect reply on status inquiry. Either did not start '
-                   'with "#" or end with "\\r"')
-            raise IOError(msg)            
+            msg = (
+                'Unexpect reply on status inquiry. Either did not start '
+                'with "#" or end with "\\r"'
+            )
+            raise IOError(msg)
         sections = response.strip('#\r').split(' ')
 
         rating_information = {}
@@ -147,8 +150,9 @@ class InnovaRT6K(Megatec):
 
 def main():
     from pprint import pprint
+
     innova = InnovaRT6K('COM1')
-    #pprint(innova.get_status())
+    # pprint(innova.get_status())
     pprint(innova.ups_rating_information())
 
 

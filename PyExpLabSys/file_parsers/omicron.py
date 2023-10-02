@@ -3,6 +3,7 @@
 """File parser for the Omicron "Flattener" format"""
 
 import logging
+
 _LOG = logging.getLogger('omicron')
 _LOG.addHandler(logging.NullHandler())
 
@@ -18,17 +19,16 @@ class Flattener(object):
         """
         self._file = open(filepath, 'rb')
         _LOG.info('Parse flattener file: %s', filepath)
-        
-        
 
 
 def parse_test():
     """Test parsing different files"""
     logging.basicConfig(level=logging.DEBUG)
-    Flattener('/home/cinf/PyExpLabSys/tests/testdata/omicron_flattener/'
-              'default_2016May11-091439_ESpHybrid_NanoSAM-ESpHybrid_NanoSAM_XPS'
-              '--1_1.Detector.7_flat')
-    
+    Flattener(
+        '/home/cinf/PyExpLabSys/tests/testdata/omicron_flattener/'
+        'default_2016May11-091439_ESpHybrid_NanoSAM-ESpHybrid_NanoSAM_XPS'
+        '--1_1.Detector.7_flat'
+    )
 
 
 if __name__ == "__main__":

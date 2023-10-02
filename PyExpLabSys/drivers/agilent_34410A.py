@@ -4,6 +4,7 @@ import logging
 from PyExpLabSys.drivers.scpi import SCPI
 import sys
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
@@ -12,12 +13,17 @@ python2_and_3(__file__)
 
 class Agilent34410ADriver(SCPI):
     """ Driver for Agilent 34410A DMM """
+
     def __init__(self, interface='lan', hostname='', connection_string=''):
-        if interface == 'lan': # the LAN interface
-            SCPI.__init__(self, interface=interface, hostname=hostname, line_ending='\n')
-        if interface == 'file': # For distributions that mounts usbtmc as a file (eg. ubuntu)
+        if interface == 'lan':  # the LAN interface
+            SCPI.__init__(
+                self, interface=interface, hostname=hostname, line_ending='\n'
+            )
+        if (
+            interface == 'file'
+        ):  # For distributions that mounts usbtmc as a file (eg. ubuntu)
             SCPI.__init__(self, interface=interface, device='/dev/usbtmc0')
-        if interface == 'usbtmc': # For python-usbtmc (preferred over file)
+        if interface == 'usbtmc':  # For python-usbtmc (preferred over file)
             SCPI.__init__(self, interface=interface, visa_string=connection_string)
 
     def config_current_measurement(self):
@@ -33,15 +39,24 @@ class Agilent34410ADriver(SCPI):
         return True
 
     def select_measurement_function(self, function):
-        """ Select a measurement function.
+        """Select a measurement function.
 
         Keyword arguments:
         Function -- A string stating the wanted measurement function.
 
         """
 
-        values = ['CAPACITANCE', 'CONTINUITY', 'CURRENT', 'DIODE', 'FREQUENCY',
-                  'RESISTANCE', 'FRESISTANCE', 'TEMPERATURE', 'VOLTAGE']
+        values = [
+            'CAPACITANCE',
+            'CONTINUITY',
+            'CURRENT',
+            'DIODE',
+            'FREQUENCY',
+            'RESISTANCE',
+            'FRESISTANCE',
+            'TEMPERATURE',
+            'VOLTAGE',
+        ]
         return_value = False
         if function in values:
             return_value = True
@@ -72,12 +87,15 @@ class Agilent34410ADriver(SCPI):
         value = float(self.scpi_comm("READ?"))
         return value
 
+
 def main():
     """ Main function """
     if len(sys.argv) == 3:
         interface = sys.argv[1]
         device = sys.argv[2]
-        driver = Agilent34410ADriver(interface, hostname=device, connection_string=device)
+        driver = Agilent34410ADriver(
+            interface, hostname=device, connection_string=device
+        )
         print(driver.read())
         driver.select_measurement_function('VOLTAGE')
         print(driver.read())
@@ -85,6 +103,7 @@ def main():
         print(driver.read())
     else:
         print('Please provide interface and connection information')
-    
+
+
 if __name__ == "__main__":
     main()

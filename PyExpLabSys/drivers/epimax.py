@@ -1,4 +1,3 @@
-
 """Driver for the Epimax PVCi process vacuum controller
 
 There are three controllers share the same kind of communication:
@@ -51,6 +50,7 @@ import minimalmodbus
 # in the program running using it, since minimal modbus is missing a few corners in the
 # conversion to Python 2 and 3 support
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
@@ -59,6 +59,8 @@ python2_and_3(__file__)
 
 minimalmodbus.TIMEOUT = 1
 minimalmodbus.FLOAT_ENDIANNESS = '<'
+
+
 class PVCCommon(minimalmodbus.Instrument):
     """Common base for the PVCX, PVCi and PVCiDuo devices
 
@@ -110,10 +112,16 @@ class PVCCommon(minimalmodbus.Instrument):
             'slot_b_id': (0x44, bytes_to_slot_id, None),
             'bakeout_flags': (0x48, bytes_to_bakeout_flags, None),
             # Group 9
-            'trip_1_7_status': (0x80, partial(bytes_to_status, status_type='trip'), None),
-            'digital_input_1_2_status': (0x82,
-                                         partial(bytes_to_status, status_type='digital_input'),
-                                         None),
+            'trip_1_7_status': (
+                0x80,
+                partial(bytes_to_status, status_type='trip'),
+                None,
+            ),
+            'digital_input_1_2_status': (
+                0x82,
+                partial(bytes_to_status, status_type='digital_input'),
+                None,
+            ),
             # Group 10
             'ion_gauge_1_pressure': (0x9A, 'float', 'selected_unit'),
             # Group 14
@@ -139,20 +147,26 @@ class PVCCommon(minimalmodbus.Instrument):
         if check_hardware_version:
             # Check that this is the correct hardware
             ids = self.get_fields(['global_id', 'firmware_version'])
-            if ids['firmware_version'][0] != self.firmware_name or\
-               ids['global_id'] != self.global_id:
-                message = ('This driver class \'{}\' indicates that this hardware should '
-                           'have global_id: \'{}\' and firmware name: \'{}\'. However, '
-                           'the values are: \'{}\' and \'{}\'. This driver is not meant '
-                           'for this hardware. To run anyway, set '
-                           'check_hardware_version=False in __init__')
+            if (
+                ids['firmware_version'][0] != self.firmware_name
+                or ids['global_id'] != self.global_id
+            ):
+                message = (
+                    'This driver class \'{}\' indicates that this hardware should '
+                    'have global_id: \'{}\' and firmware name: \'{}\'. However, '
+                    'the values are: \'{}\' and \'{}\'. This driver is not meant '
+                    'for this hardware. To run anyway, set '
+                    'check_hardware_version=False in __init__'
+                )
                 raise ValueError(
                     message.format(
-                        self.__class__.__name__, self.global_id, self.firmware_name,
-                        ids['global_id'], ids['firmware_version'][0]
+                        self.__class__.__name__,
+                        self.global_id,
+                        self.firmware_name,
+                        ids['global_id'],
+                        ids['firmware_version'][0],
                     )
                 )
-
 
     def close(self):
         """Close the serial connection"""
@@ -170,7 +184,7 @@ class PVCCommon(minimalmodbus.Instrument):
         """
         raw_value = self.read_string(
             registeraddress=register_start,
-            numberOfRegisters=count//2,
+            numberOfRegisters=count // 2,
             functioncode=23,
         )
         if sys.version_info.major >= 3:
@@ -225,7 +239,9 @@ class PVCCommon(minimalmodbus.Instrument):
         # Update and check fields
         if fields == 'common':
             # Form a list of the keys whose address is between 0x80 and 0x9E
-            fields = [key for key, value in self.fields.items() if 0x80 <= value[0] <= 0x9E]
+            fields = [
+                key for key, value in self.fields.items() if 0x80 <= value[0] <= 0x9E
+            ]
         elif fields == 'all':
             fields = self.fields.keys()
         else:
@@ -242,8 +258,9 @@ class PVCCommon(minimalmodbus.Instrument):
         if attrname in self.fields:
             return self.get_field(attrname)
         else:
-            message = '\'{}\' object has no attribute {}'.format(self.__class__.__name__,
-                                                                 attrname)
+            message = '\'{}\' object has no attribute {}'.format(
+                self.__class__.__name__, attrname
+            )
             raise AttributeError(message)
 
 
@@ -264,19 +281,24 @@ class PVCi(PVCCommon):
 
         super(PVCi, self).__init__(*args, **kwargs)
         # Update the common field definitions with those specific to the PVCi
-        self.fields.update({
-            'ion_gauge_1_status': (0x88,
-                                   partial(ion_gauge_status, controller_type='pvci'),
-                                   None),
-            'slot_a_value_1': (0x90, 'float', None),
-            'slot_a_value_2': (0x92, 'float', None),
-            'slot_b_value_1': (0x94, 'float', None),
-            'slot_b_value_2': (0x96, 'float', None),
-        })
+        self.fields.update(
+            {
+                'ion_gauge_1_status': (
+                    0x88,
+                    partial(ion_gauge_status, controller_type='pvci'),
+                    None,
+                ),
+                'slot_a_value_1': (0x90, 'float', None),
+                'slot_a_value_2': (0x92, 'float', None),
+                'slot_b_value_1': (0x94, 'float', None),
+                'slot_b_value_2': (0x96, 'float', None),
+            }
+        )
 
 
 ### Convertion Functions ###
 ############################
+
 
 def bytes_to_firmware_version(bytes_):
     """Convert 4 bytes to firmware type and version"""
@@ -305,7 +327,9 @@ def bytes_to_string(bytes_, valid_chars=None):
             will be filtered out.
     """
     if valid_chars:
-        bytes_ = b''.join(c for c in bytes_ if valid_chars[0] <= ord(c) <= valid_chars[1])
+        bytes_ = b''.join(
+            c for c in bytes_ if valid_chars[0] <= ord(c) <= valid_chars[1]
+        )
     return bytes_.decode('ascii')
 
 
@@ -334,9 +358,7 @@ def bytes_to_slot_id(bytes_):
 
 
 def bytes_to_status(bytes_, status_type):
-    """Convert bytes to trip and digital input statuses
-
-    """
+    """Convert bytes to trip and digital input statuses"""
     # The 4 bits for a state is contained i 4 bytes, gather them up into one list
     all_states = []
     for byte_ in bytes_:
@@ -347,7 +369,9 @@ def bytes_to_status(bytes_, status_type):
     all_states = [state for state in all_states if state[3]]
 
     states = {}
-    for state_num, state_bits in enumerate(all_states, start=1):  # Enumeration starts at 1
+    for state_num, state_bits in enumerate(
+        all_states, start=1
+    ):  # Enumeration starts at 1
         # Translate the state bits, if none is set, default to off
         if sum(state_bits[:3]) > 1:
             all_state_strings = []
@@ -361,7 +385,9 @@ def bytes_to_status(bytes_, status_type):
     return states
 
 
-def byte_to_bits(byte, ):
+def byte_to_bits(
+    byte,
+):
     """Convert a byte to a list of bits"""
     try:
         byte_in = ord(byte)
@@ -400,7 +426,9 @@ def ion_gauge_status(bytes_, controller_type=None):
     # Measurement error and pressure trend
     bits = byte_to_bits(next(bytes_))
     raise_if_not_set(bits, 0, 'measurement error')
-    status['measurement_error'] = 'electrometer input below min. limit' if bits[1] else 'none'
+    status['measurement_error'] = (
+        'electrometer input below min. limit' if bits[1] else 'none'
+    )
 
     raise_if_not_set(bits, 4, 'ion gauge trend')
     status['ion_gauge_trend'] = 'none'
@@ -427,7 +455,9 @@ def ion_gauge_status(bytes_, controller_type=None):
         status_dict['emission'] = PVCI_ION_GAUGE_STATUSSES[current_int]
         status['ion_gauge_emission_setting'] = status_dict
     else:
-        raise NotImplementedError('Only controller type pvci is implement for gauge status')
+        raise NotImplementedError(
+            'Only controller type pvci is implement for gauge status'
+        )
 
     # Only return if there are no bytes left, else raise
     try:
@@ -456,7 +486,7 @@ def bytes_to_bakeout_flags(bytes_):
     for bit_number, flag in BAKEOUT_FLAGS.items():
         if bits[bit_number]:
             status_flags.append(flag)
-    #if len(status_flags) == 0:
+    # if len(status_flags) == 0:
     #    status_flags.append('off')
     status['status_flags'] = status_flags
 
@@ -467,9 +497,15 @@ def bytes_to_bakeout_flags(bytes_):
 #################
 
 ALL_PVC_IONGAUGE_MODES = [
-    'normal', 'fan_fail', 'digital_input_fail', 'over_pressure_fail',  # bits 0-3
-    'emmision_failed', 'interlock_trip', 'emmission_trip',  # bits 4-6
-    'filament_overcurrent_trip']  # bit 7
+    'normal',
+    'fan_fail',
+    'digital_input_fail',
+    'over_pressure_fail',  # bits 0-3
+    'emmision_failed',
+    'interlock_trip',
+    'emmission_trip',  # bits 4-6
+    'filament_overcurrent_trip',
+]  # bit 7
 
 
 PVCI_ION_GAUGE_STATUSSES = {
@@ -526,11 +562,12 @@ def run_module():
 
     """
     import logging
+
     logging.basicConfig()
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
     # '/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0'
-    #pvci = PVCi('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
+    # pvci = PVCi('/dev/serial/by-id/usb-FTDI_USB-RS485_Cable_FTY3M2GN-if00-port0')
     pvci = PVCi('/dev/ttyUSB0')
     from pprint import pprint
 
@@ -543,7 +580,9 @@ def run_module():
             for _ in range(20):
                 print(
                     'Pressure {:.2e}  Setpoint: {:.2f}  Actual temp: {:.2f}'.format(
-                        pvci.ion_gauge_1_pressure, pvci.bake_out_setpoint, pvci.slot_b_value_1
+                        pvci.ion_gauge_1_pressure,
+                        pvci.bake_out_setpoint,
+                        pvci.slot_b_value_1,
                     )
                 )
     except KeyboardInterrupt:

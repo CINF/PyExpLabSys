@@ -12,9 +12,17 @@ import numpy
 class DataPlotter(object):
     """This class provides a data plotter for continuous data"""
 
-    def __init__(self, left_plotlist, right_plotlist=None, left_log=False,
-                 right_log=False, auto_update=True, backend='qwt', parent=None,
-                 **kwargs):
+    def __init__(
+        self,
+        left_plotlist,
+        right_plotlist=None,
+        left_log=False,
+        right_log=False,
+        auto_update=True,
+        backend='qwt',
+        parent=None,
+        **kwargs
+    ):
         """Initialize the plotting backend, data and local setting
 
         :param left_plotlist: Codenames for the plots that should go on the
@@ -94,9 +102,10 @@ class DataPlotter(object):
         # Initiate the backend
         if backend == 'qwt':
             from PyExpLabSys.common.plotters_backend_qwt import QwtPlot
-            self._plot = QwtPlot(parent, left_plotlist, right_plotlist,
-                                 left_log, right_log,
-                                 **kwargs)
+
+            self._plot = QwtPlot(
+                parent, left_plotlist, right_plotlist, left_log, right_log, **kwargs
+            )
 
         # Initiate the data
         self._data = {}
@@ -113,16 +122,23 @@ class DataPlotter(object):
             message = 'At least one item in left_plotlist is required'
         # Check number of left labels and colors
         for kwarg in ['left_labels', 'left_colors']:
-            if kwargs.get(kwarg) is not None and\
-                    len(left_plotlist) != len(kwargs.get(kwarg)):
-                message = 'There must be as many items in \'{}\' as there '\
+            if kwargs.get(kwarg) is not None and len(left_plotlist) != len(
+                kwargs.get(kwarg)
+            ):
+                message = (
+                    'There must be as many items in \'{}\' as there '
                     'are left plots'.format(kwarg)
+                )
         # Check left thickness if it is a list
-        if kwargs.get('left_thickness') is not None and\
-                isinstance(kwargs['left_thickness'], collections.Iterable) and\
-                len(left_plotlist) != len(kwargs['left_thickness']):
-            message = '\'left_thickness\' must either be an int or a iterable'\
+        if (
+            kwargs.get('left_thickness') is not None
+            and isinstance(kwargs['left_thickness'], collections.Iterable)
+            and len(left_plotlist) != len(kwargs['left_thickness'])
+        ):
+            message = (
+                '\'left_thickness\' must either be an int or a iterable'
                 ' with as many ints as there are left plots'
+            )
         return message
 
     @staticmethod
@@ -131,25 +147,37 @@ class DataPlotter(object):
         message = None
         if right_plotlist is not None:
             for kwarg in ['right_labels', 'right_colors']:
-                if kwargs.get(kwarg) is not None and\
-                        len(right_plotlist) != len(kwargs.get(kwarg)):
-                    message = 'There must be as many items in \'{}\' as '\
+                if kwargs.get(kwarg) is not None and len(right_plotlist) != len(
+                    kwargs.get(kwarg)
+                ):
+                    message = (
+                        'There must be as many items in \'{}\' as '
                         'there are right plots'.format(kwarg)
-            if kwargs.get('right_thickness') is not None and\
-                isinstance(kwargs['right_thickness'], collections.Iterable)\
-                    and len(right_plotlist) != len(kwargs['right_thickness']):
-                message = '\'right_thickness\' must either be an int or a'\
-                          ' iterable with as many ints as there are left plots'
+                    )
+            if (
+                kwargs.get('right_thickness') is not None
+                and isinstance(kwargs['right_thickness'], collections.Iterable)
+                and len(right_plotlist) != len(kwargs['right_thickness'])
+            ):
+                message = (
+                    '\'right_thickness\' must either be an int or a'
+                    ' iterable with as many ints as there are left plots'
+                )
         return message
 
     @staticmethod
     def _init_check_legends_plots(all_plots, kwargs):
         """Check legend name and for duplicate plot names"""
         message = None
-        if kwargs.get('legend') is not None and not kwargs['legend'] in\
-                ['left', 'right', 'bottom', 'top']:
-            message = 'legend must be one of: \'left\', \'right\', '\
-                '\'bottom\', \'top\''
+        if kwargs.get('legend') is not None and not kwargs['legend'] in [
+            'left',
+            'right',
+            'bottom',
+            'top',
+        ]:
+            message = (
+                'legend must be one of: \'left\', \'right\', ' '\'bottom\', \'top\''
+            )
         # Check for duplicate plot names
         for plot in all_plots:
             if all_plots.count(plot) > 1:
@@ -193,9 +221,18 @@ class DataPlotter(object):
 class ContinuousPlotter(object):
     """This class provides a data plotter for continuous data"""
 
-    def __init__(self, left_plotlist, right_plotlist=None, left_log=False,
-                 right_log=False, timespan=600, preload=60, auto_update=True,
-                 backend='none', **kwargs):
+    def __init__(
+        self,
+        left_plotlist,
+        right_plotlist=None,
+        left_log=False,
+        right_log=False,
+        timespan=600,
+        preload=60,
+        auto_update=True,
+        backend='none',
+        **kwargs
+    ):
         """Initialize the plotting backend, data and local setting
 
         :param left_plotlist: Codenames for the plots that should go on the
@@ -233,12 +270,15 @@ class ContinuousPlotter(object):
         message = None
         if not len(left_plotlist) > 0:
             message = 'At least one item in left_plotlist is required'
-        if kwargs.get('left_labels') is not None and\
-                len(left_plotlist) != len(kwargs.get('left_labels')):
+        if kwargs.get('left_labels') is not None and len(left_plotlist) != len(
+            kwargs.get('left_labels')
+        ):
             message = 'There must be as many left labels as there are plots'
-        if right_plotlist is not None and\
-                kwargs.get('right_labels') is not None and\
-                len(right_plotlist) != len(kwargs.get('right_labels')):
+        if (
+            right_plotlist is not None
+            and kwargs.get('right_labels') is not None
+            and len(right_plotlist) != len(kwargs.get('right_labels'))
+        ):
             message = 'There must be as many right labels as there are plots'
         if timespan < 1:
             message = 'timespan must be positive'

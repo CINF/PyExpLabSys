@@ -3,8 +3,9 @@ import time
 import serial
 
 
-class VaisalaDMT143():
+class VaisalaDMT143:
     """Driver for Vaisala DMT 143"""
+
     def __init__(self, port):
         self.serial = serial.Serial(
             port,
@@ -12,7 +13,7 @@ class VaisalaDMT143():
             timeout=1,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS
+            bytesize=serial.EIGHTBITS,
         )
         self._init_device()
 
@@ -20,7 +21,9 @@ class VaisalaDMT143():
         self.comm(chr(27))  # stop continuous output
         # Set predictable output format;
         # dew_point; atm dew_point; vol_conc; status; addres; time since started
-        self.comm('FORM 3.6 Tdf ";" 3.6 Tdfa ";" 6.5 H2O ";" STAT ";" ADDR ";" TIME \\n')
+        self.comm(
+            'FORM 3.6 Tdf ";" 3.6 Tdfa ";" 6.5 H2O ";" STAT ";" ADDR ";" TIME \\n'
+        )
 
     def comm(self, command: str, single_line: bool = False) -> str:
         """
@@ -51,11 +54,7 @@ class VaisalaDMT143():
         serial_nr = info[1].split(' ')[-1].strip()
         pressure = info[13].split(' ')[-2].strip()
 
-        info_dict = {
-            'model': model,
-            'serial_nr': serial_nr,
-            'pressure': pressure
-        }
+        info_dict = {'model': model, 'serial_nr': serial_nr, 'pressure': pressure}
         return info_dict
 
     def current_errors(self):
@@ -95,7 +94,7 @@ class VaisalaDMT143():
         return_dict = {
             'dew_point': dew_point,  # C
             'dew_point_atm': dew_point_atm,
-            'vol_conc': vol_conc  # ppm
+            'vol_conc': vol_conc,  # ppm
         }
         return return_dict
 

@@ -9,11 +9,27 @@ class MSChannel(object):
     """ A mass spec channel """
 
     required_fields = ['mass']
-    optional_fields = ['channel_range', 'time', 'delay', 'label', 'color',
-                       'active', 'auto_label']
+    optional_fields = [
+        'channel_range',
+        'time',
+        'delay',
+        'label',
+        'color',
+        'active',
+        'auto_label',
+    ]
 
-    def __init__(self, mass, channel_range='1E-7', time=100, delay=100,
-                 label='', color='#000000', active=True, auto_label=True):
+    def __init__(
+        self,
+        mass,
+        channel_range='1E-7',
+        time=100,
+        delay=100,
+        label='',
+        color='#000000',
+        active=True,
+        auto_label=True,
+    ):
         """Initialize the channel
 
         Arguments:
@@ -30,23 +46,31 @@ class MSChannel(object):
         active      whether the channel is active (bool)
         auto_label  whether to update the label automatically (bool)
         """
-        self._range_translation = {'1E-5': 'L', '1E-7': 'M', '1E-9': 'H',
-                                   '1E-11': 'VH'}
+        self._range_translation = {'1E-5': 'L', '1E-7': 'M', '1E-9': 'H', '1E-11': 'VH'}
         # Internally store the channel properties in a dict
-        self._channel_desc = \
-            {'mass': mass, 'channel_range': channel_range, 'time': time,
-             'delay': delay, 'label': label, 'color': color, 'active': active,
-             'auto_label': auto_label}
+        self._channel_desc = {
+            'mass': mass,
+            'channel_range': channel_range,
+            'time': time,
+            'delay': delay,
+            'label': label,
+            'color': color,
+            'active': active,
+            'auto_label': auto_label,
+        }
         self._update_label()
 
     def __str__(self):
         """Return a str representation"""
         active_str = 'Active' if self.active else 'In-active'
-        out = '{active_str} channel for mass {mass}, range: {channel_range}, '\
-              'time: {time} and delay: {delay}\n'\
-              '+label: {label}\n'\
-              '+color: {color}, active: {active}, auto_label: {auto_label}'\
-            .format(active_str=active_str, **self._channel_desc)
+        out = (
+            '{active_str} channel for mass {mass}, range: {channel_range}, '
+            'time: {time} and delay: {delay}\n'
+            '+label: {label}\n'
+            '+color: {color}, active: {active}, auto_label: {auto_label}'.format(
+                active_str=active_str, **self._channel_desc
+            )
+        )
         return out
 
     @property
@@ -92,8 +116,10 @@ class MSChannel(object):
             self._channel_desc['channel_range'] = channel_range
             self._update_label()
         else:
-            message = '\'{}\' is not a valid value for channel_range, see '\
-                      'docstring for __init__'.format(channel_range)
+            message = (
+                '\'{}\' is not a valid value for channel_range, see '
+                'docstring for __init__'.format(channel_range)
+            )
             raise ValueError(message)
 
     @property
@@ -158,8 +184,9 @@ class MSChannel(object):
         """Update the label if auto_label is active"""
         if self.auto_label:
             mass = self.mass
-            if abs(int(mass) - mass) < 1E-3:
+            if abs(int(mass) - mass) < 1e-3:
                 mass = int(mass)
-            self._channel_desc['label'] = 'M{}{}'.\
-                format(mass, self._range_translation[self.channel_range])
+            self._channel_desc['label'] = 'M{}{}'.format(
+                mass, self._range_translation[self.channel_range]
+            )
             return self.label

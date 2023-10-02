@@ -11,8 +11,11 @@ from PyExpLabSys.common.sockets import LiveSocket
 
 class XGS600Control(threading.Thread):
     """Read all pressures and control states of
-        setpoints (ON/OFF/AUTO) in xgs600"""
-    def __init__(self, port, socket_name, codenames, user_labels, valve_properties, db_saver=None):
+    setpoints (ON/OFF/AUTO) in xgs600"""
+
+    def __init__(
+        self, port, socket_name, codenames, user_labels, valve_properties, db_saver=None
+    ):
         """
         Args:
             port (int): directory to port of USB to RS232 communication
@@ -33,28 +36,28 @@ class XGS600Control(threading.Thread):
         self.xgs600 = xgs600(port=port)
         time.sleep(0.2)
         threading.Thread.__init__(self)
-        #setting the initial setup specific values
+        # setting the initial setup specific values
         self.codenames = codenames
         self.devices = user_labels
         self.valve_properties = valve_properties
         self.valve_names = list(self.valve_properties.keys())
 
-        #setting the initial program specific values
+        # setting the initial program specific values
         self.pressures = None
         self.setpointstates = None
         self.quit = False
-        self.update_time = [time.time()]*len(self.valve_names)
-        self.updated = [0]*len(self.valve_names)
+        self.update_time = [time.time()] * len(self.valve_names)
+        self.updated = [0] * len(self.valve_names)
         names = self.codenames + self.devices
         print(names)
 
-        #starting push-, pull-, and live- sockets
+        # starting push-, pull-, and live- sockets
         self.pullsocket = DateDataPullSocket(
             socket_name,
             names,
             timeouts=3.0,
             port=9000,
-                )
+        )
         self.pullsocket.start()
 
         self.pushsocket = DataPushSocket(socket_name, action='enqueue')
@@ -70,8 +73,8 @@ class XGS600Control(threading.Thread):
 
     def value(self):
         """Return two lists
-           1. list of floats which is pressures from top down on xgs600 unit
-           2. list of string representing the state of each valve connnected"""
+        1. list of floats which is pressures from top down on xgs600 unit
+        2. list of string representing the state of each valve connnected"""
         return self.pressures, self.setpointstates
 
     def update_new_setpoint(self):
@@ -90,7 +93,6 @@ class XGS600Control(threading.Thread):
         print('press:', self.pressures)
         print('state:', self.setpointstates)
 
-
     def database_saver(self):
         """
         check weather it is time to update database logging.
@@ -99,34 +101,47 @@ class XGS600Control(threading.Thread):
         for valve in self.valve_names:
             channel = self.valve_properties[valve][0]
             try:
-                valve_state = self.setpointstates[channel-1]
+                valve_state = self.setpointstates[channel - 1]
                 valve_setpoint = self.xgs600.read_setpoint(channel)
             except TimeoutError:
-                print('Oops, could not read setpoint of channel, valve_state,\
-                        valve_setpoint: ', channel, valve_state, valve_setpoint)
+                print(
+                    'Oops, could not read setpoint of channel, valve_state,\
+                        valve_setpoint: ',
+                    channel,
+                    valve_state,
+                    valve_setpoint,
+                )
 
             if valve_setpoint is not 'OFF' and valve_state == False:
                 print('Holy Crap it is closed and should be open')
-                print('Channel, Valve_state, Valve_setpoint',\
-                        channel, valve_state, valve_setpoint)
-                if self.updated[channel-1] == 0:
+                print(
+                    'Channel, Valve_state, Valve_setpoint',
+                    channel,
+                    valve_state,
+                    valve_setpoint,
+                )
+                if self.updated[channel - 1] == 0:
                     print('Saved to Database', channel, valve_state, valve_setpoint)
-                    self.db_saver.save_point_now('microreactorng_valve_'+valve, -1)
-                    self.updated[channel-1] = 1
+                    self.db_saver.save_point_now('microreactorng_valve_' + valve, -1)
+                    self.updated[channel - 1] = 1
                 else:
-                    print('Not saved to database, due to earlier being saved',\
-                            channel, valve_state, valve_setpoint)
-                    if time.time() - self.update_time[channel-1] > 300:
-                        self.update_time[channel-1] = time.time()
-                        self.updated[channel-1] = 0
+                    print(
+                        'Not saved to database, due to earlier being saved',
+                        channel,
+                        valve_state,
+                        valve_setpoint,
+                    )
+                    if time.time() - self.update_time[channel - 1] > 300:
+                        self.update_time[channel - 1] = time.time()
+                        self.updated[channel - 1] = 0
             else:
-                if time.time() - self.update_time[channel-1] > 300:
-                    self.db_saver.save_point_now('microreactorng_valve_'+valve, -1)
-                    self.update_time[channel-1] = time.time()
-                    self.updated[channel-1] = 0
+                if time.time() - self.update_time[channel - 1] > 300:
+                    self.db_saver.save_point_now('microreactorng_valve_' + valve, -1)
+                    self.update_time[channel - 1] = time.time()
+                    self.updated[channel - 1] = 0
                     print('Saved to Database', channel, valve_state, valve_setpoint)
 
-                self.updated[channel-1] = 0
+                self.updated[channel - 1] = 0
                 print(channel, valve_state, valve_setpoint)
 
     def run(self):
@@ -152,18 +167,18 @@ class XGS600Control(threading.Thread):
                         sensor_code='user_label',
                         sensor_count=user_label,
                         pressure_on=setpoint_on,
-                            )
+                    )
 
                     self.xgs600.set_setpoint_off(
                         channel,
                         sensor_code='user_label',
                         sensor_count=user_label,
                         pressure_off=setpoint_off,
-                            )
-                    
+                    )
+
                     self.xgs600.set_setpoint(channel, state)
 
-            #Read values of pressures and states of setpoint
+            # Read values of pressures and states of setpoint
             self.pressures = self.xgs600.read_all_pressures()
             time.sleep(0.1)
             self.setpointstates = self.xgs600.read_setpoint_state()

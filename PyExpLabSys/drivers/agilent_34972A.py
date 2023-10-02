@@ -3,16 +3,23 @@ from __future__ import print_function
 from PyExpLabSys.drivers.scpi import SCPI
 import time
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
+
 
 class Agilent34972ADriver(SCPI):
     """ Driver for Agilent 34972A multiplexer """
+
     def __init__(self, interface='lan', hostname='', connection_string=''):
-        if interface == 'lan': # the LAN interface
-            SCPI.__init__(self, interface=interface, hostname=hostname, line_ending='\n')
-        if interface == 'file': # For distributions that mounts usbtmc as a file (eg. ubuntu)
+        if interface == 'lan':  # the LAN interface
+            SCPI.__init__(
+                self, interface=interface, hostname=hostname, line_ending='\n'
+            )
+        if (
+            interface == 'file'
+        ):  # For distributions that mounts usbtmc as a file (eg. ubuntu)
             SCPI.__init__(self, interface=interface, device='/dev/usbtmc0')
-        if interface == 'usbtmc': # For python-usbtmc (preferred over file)
+        if interface == 'usbtmc':  # For python-usbtmc (preferred over file)
             SCPI.__init__(self, interface=interface, visa_string=connection_string)
 
     def read_single_scan(self):
@@ -55,8 +62,8 @@ class Agilent34972ADriver(SCPI):
         conf_string = ""
         for channel in scan_list:
             conf_string += str(channel) + "\n" + "Measurement type: "
-            conf_string += conf[3*i] + "\nRange: " + conf[3*i+1]
-            conf_string += "\nResolution: " + conf[3*i + 2] + "\nNPLC: "
+            conf_string += conf[3 * i] + "\nRange: " + conf[3 * i + 1]
+            conf_string += "\nResolution: " + conf[3 * i + 2] + "\nNPLC: "
             conf_string += str(float(nplc_conf[i])) + "\n \n"
             i += 1
         return conf_string
@@ -80,7 +87,7 @@ class Agilent34972ADriver(SCPI):
         response = self.scpi_comm("ROUT:SCAN?")
         response = response.strip()
         start = response.find('@')
-        response = response[start+1:-1]
+        response = response[start + 1 : -1]
         return response.split(',')
 
     def set_scan_list(self, channels):
@@ -100,4 +107,3 @@ if __name__ == "__main__":
     print(DEVICE.read_scan_list())
     print(DEVICE.read_configuration())
     print(DEVICE.read_single_scan())
-

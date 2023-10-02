@@ -18,6 +18,7 @@ which is used to calculate the relative humidity as:
 from __future__ import division, print_function
 
 import struct
+
 try:
     import hid
 except (ImportError, AttributeError):
@@ -50,10 +51,10 @@ class ElUsbRt(object):
         while len(out) < 2:
             string = self.dev.read(8)
             if string.startswith('\x03'):
-                frac, = struct.unpack('H', string[1:])
+                (frac,) = struct.unpack('H', string[1:])
                 out['temperature'] = -200 + frac * 0.1
             elif string.startswith('\x02'):
-                frac, = struct.unpack('B', string[1:])
+                (frac,) = struct.unpack('B', string[1:])
                 out['humidity'] = frac * 0.5
         return out
 
@@ -62,7 +63,7 @@ class ElUsbRt(object):
         while True:
             string = self.dev.read(8)
             if string.startswith('\x03'):
-                frac, = struct.unpack('H', string[1:])
+                (frac,) = struct.unpack('H', string[1:])
                 return -200 + frac * 0.1
 
 

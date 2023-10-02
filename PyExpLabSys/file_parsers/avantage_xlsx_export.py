@@ -5,6 +5,7 @@
 from __future__ import print_function, unicode_literals
 
 import logging
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
@@ -65,8 +66,12 @@ class Spectrum(dict):
 
             # Parse the data without intermediate copies
             row_iter = sheet.iter_rows(start + ":" + end)  # Iterator over rows
-            value_generator = (row[0].value for row in row_iter)  # Generator over values
-            array = numpy.fromiter(value_generator, dtype=float, count=number_of_elements)
+            value_generator = (
+                row[0].value for row in row_iter
+            )  # Generator over values
+            array = numpy.fromiter(
+                value_generator, dtype=float, count=number_of_elements
+            )
 
             self[name] = array
 
@@ -92,11 +97,14 @@ class PeakTable(dict):
                 # Move to the right and down to find end cell
                 end = start
                 while end.offset(column=1).value is not None:
-                     end = end.offset(column=1)
+                    end = end.offset(column=1)
                 while end.offset(row=1).value is not None:
-                     end = end.offset(row=1)
-                log.debug('Found table "%s" %s:%s'.format(table_name, start.coordinate,
-                          end.coordinate))
+                    end = end.offset(row=1)
+                log.debug(
+                    'Found table "%s" %s:%s'.format(
+                        table_name, start.coordinate, end.coordinate
+                    )
+                )
 
                 # Form the range string and calculate rows and columns
                 range_str = start.coordinate + ":" + end.coordinate
@@ -110,15 +118,12 @@ class PeakTable(dict):
                         array[row_num, col_num] = cell.value
 
                 self[table_name] = array
-                
-        
-        
 
 
 def test():
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler())
-    #logging.basicConfig()
+    # logging.basicConfig()
     path = '/home/kenni/Dokumenter/xps/soren_dahl_battery/soren_dahl_battery/HT1/peak table.xlsx'
     avexport = AvantageXLSXExport(path)
     print(avexport["Ni2p Scan"].keys())

@@ -5,11 +5,17 @@ from PyExpLabSys.drivers.scpi import SCPI
 class Keithley2400(SCPI):
     """ Simple driver for Keithley 2400 SMU """
 
-    def __init__(self, interface, hostname='', device='',
-                 baudrate=9600, gpib_address=None):
+    def __init__(
+        self, interface, hostname='', device='', baudrate=9600, gpib_address=None
+    ):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device,
-                          baudrate=baudrate, line_ending='\n')
+            SCPI.__init__(
+                self,
+                interface=interface,
+                device=device,
+                baudrate=baudrate,
+                line_ending='\n',
+            )
             self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
@@ -74,7 +80,7 @@ class Keithley2400(SCPI):
             # Bits 19, 20 and 21 (Limit Results) — Provides limit test results
             # (see scpi command reference 18-51)
             22: ('Remote Sense', '4-wire remote sense selected'),
-            23: ('Pulse Mode', 'In the Pulse Mode')
+            23: ('Pulse Mode', 'In the Pulse Mode'),
         }
 
         status_messages = []
@@ -179,5 +185,8 @@ if __name__ == '__main__':
     current = SMU.read_current()
     voltage = SMU.read_voltage()
 
-    print('Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
-        current * 1e6, voltage * 1000, voltage / current))
+    print(
+        'Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
+            current * 1e6, voltage * 1000, voltage / current
+        )
+    )

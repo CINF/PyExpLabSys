@@ -5,8 +5,9 @@ import struct
 import logging
 
 
-class SensirionSPS30():
+class SensirionSPS30:
     """Driver for r"""
+
     def __init__(self, port='/dev/serial0'):
         self.serial = serial.Serial(
             port,
@@ -14,7 +15,7 @@ class SensirionSPS30():
             timeout=1,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS
+            bytesize=serial.EIGHTBITS,
         )
 
     def _calculate_checksum(self, command_bytes):
@@ -30,20 +31,18 @@ class SensirionSPS30():
     def comm(self, command, data=[]):
         read_success = True
         length = len(data)
-        first = [
-            0x7E,  # Start
-            0x00  # Addr, always 0 for this device
-        ] + [command, length] + data
+        first = (
+            [0x7E, 0x00]  # Start  # Addr, always 0 for this device
+            + [command, length]
+            + data
+        )
         checksum = self._calculate_checksum(first[1:])
 
-        last = [
-            checksum,
-            0x7E  # Stop
-        ]
+        last = [checksum, 0x7E]  # Stop
         actual_command = first + last
         self.serial.write(actual_command)
 
-        if not ord(self.serial.read(1)) == 0x7e:
+        if not ord(self.serial.read(1)) == 0x7E:
             read_success = False
             logging.warning('First char should have been 0x7e')
 
@@ -59,7 +58,7 @@ class SensirionSPS30():
         chars = chars.replace(b'\x7D\x31', b'\x11')
         chars = chars.replace(b'\x7D\x33', b'\x13')
 
-        if not  chars[0] == 0:
+        if not chars[0] == 0:
             # Address, 0x7E is already stripped
             pass
         expected_checksum = self._calculate_checksum(chars[:-1])
@@ -67,8 +66,7 @@ class SensirionSPS30():
 
         state = chars[2]
         if state == 0x43:
-            print('SPS30: Command {} not allowd in current state'.format(
-                hex(command)))
+            print('SPS30: Command {} not allowd in current state'.format(hex(command)))
         elif state > 0:
             print('SPS30: Error state: {}'.format(state))
 
@@ -83,8 +81,9 @@ class SensirionSPS30():
 
         data = [0x03]
         serial = self.comm(command, data)
-        info = 'Product type: {}. Serial no.: {}'.format(product_type.decode(),
-                                                         serial.decode())
+        info = 'Product type: {}. Serial no.: {}'.format(
+            product_type.decode(), serial.decode()
+        )
         return info
 
     def clean_fan(self):
@@ -95,7 +94,8 @@ class SensirionSPS30():
         data = self.comm(command)
 
         version = 'Firmware: {}.{}; Hardware: {}; SHDC: {}.{}'.format(
-            data[0], data[1], data[3], data[5], data[6])
+            data[0], data[1], data[3], data[5], data[6]
+        )
         return version
 
     def device_status(self):
@@ -115,10 +115,7 @@ class SensirionSPS30():
 
     def start_measuring(self):
         command = 0x00  # Start
-        data = [
-            0x01,  # Protocol, must be 0x01
-            0x03   # Big-endian IEEE754 float values
-        ]
+        data = [0x01, 0x03]  # Protocol, must be 0x01  # Big-endian IEEE754 float values
         self.comm(command, data)  # No reply from this command
         return True
 
@@ -132,12 +129,13 @@ class SensirionSPS30():
                 data = self.comm(command)
                 error = -1
             except AssertionError:
-                error +=1
+                error += 1
         if error > 0:
             return None
         # Unpack 10 big-endian floats - 40 bytes in total
         parsed_data = struct.unpack(">ffffffffff", data)
         return parsed_data
+
 
 if __name__ == '__main__':
     dust_sensor = SensirionSPS30()

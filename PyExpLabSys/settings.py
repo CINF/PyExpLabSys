@@ -131,14 +131,15 @@ class Settings(object):
             'util_log_mail_host': None,
             'util_log_max_emails_per_period': 5,
             'util_log_email_throttle_time': 86400,  # 1 day
-            'util_log_backlog_limit': 250
+            'util_log_backlog_limit': 250,
         }
 
         user_settings = {}
         if USERSETTINGS_PATH is not None and USERSETTINGS_PATH.exists():
             try:
-                user_settings = yaml.load(USERSETTINGS_PATH.read_text(),
-                                          yaml.SafeLoader)
+                user_settings = yaml.load(
+                    USERSETTINGS_PATH.read_text(), yaml.SafeLoader
+                )
             except Exception:
                 LOG.exception('Exception during loading of user settings')
             # FIXME check user_settings keys

@@ -3,15 +3,17 @@
 import smbus
 import time
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
+
 class OmronD6fph(object):
-    """ Class for reading pressure and temperature from Omron D6F-PH series
-    Ranging not implemented for all models """
+    """Class for reading pressure and temperature from Omron D6F-PH series
+    Ranging not implemented for all models"""
 
     def __init__(self):
         self.bus = smbus.SMBus(1)
-        self.device_address = 0x6c
+        self.device_address = 0x6C
         self.full_range = 1000.0
         self.init_device()
 
@@ -35,8 +37,8 @@ class OmronD6fph(object):
     def read_pressure(self):
         """ Read the pressure value """
         value = self.read_value([0xD0, 0x51, 0x2C])
-        #TODO: Implement range calculation for all sensor models
-        pressure = (value - 1024) * self.full_range / 60000 - self.full_range/2
+        # TODO: Implement range calculation for all sensor models
+        pressure = (value - 1024) * self.full_range / 60000 - self.full_range / 2
         return pressure
 
     def read_temperature(self):
@@ -46,7 +48,7 @@ class OmronD6fph(object):
         return temperature
 
 
-if __name__ == '__main__':    
+if __name__ == '__main__':
     OMRON = OmronD6fph()
     print(OMRON.read_pressure())
     print(OMRON.read_temperature())

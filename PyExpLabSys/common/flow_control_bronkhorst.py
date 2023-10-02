@@ -7,10 +7,13 @@ from PyExpLabSys.common.sockets import DateDataPullSocket
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
+
 
 class FlowControl(threading.Thread):
     """ Keep updated values of the current flow """
+
     def __init__(self, ranges, devices, socket_name):
         threading.Thread.__init__(self)
         self.devices = devices
@@ -47,17 +50,19 @@ class FlowControl(threading.Thread):
                 if ioerror < 10:
                     print(ioerror)
                     try:
-                        mfcs[name[i]] = bronkhorst.Bronkhorst('/dev/ttyUSB' + str(i),
-                                                              ranges[name[i]])
-                        mfcs[name[i]].set_control_mode() #Accept setpoint from rs232
+                        mfcs[name[i]] = bronkhorst.Bronkhorst(
+                            '/dev/ttyUSB' + str(i), ranges[name[i]]
+                        )
+                        mfcs[name[i]].set_control_mode()  # Accept setpoint from rs232
                     except IOError:
                         ioerror = ioerror + 1
                 if ioerror == 10:
                     print('Found MFC but could not set range')
 
         self.mfcs = mfcs
-        self.pullsocket = DateDataPullSocket(socket_name, devices,
-                                             timeouts=3.0, port=9000)
+        self.pullsocket = DateDataPullSocket(
+            socket_name, devices, timeouts=3.0, port=9000
+        )
         self.pullsocket.start()
 
         self.pushsocket = DataPushSocket(socket_name, action='enqueue')
@@ -86,6 +91,8 @@ class FlowControl(threading.Thread):
                 flow = self.mfcs[mfc].read_flow()
                 self.pullsocket.set_point_now(mfc, flow)
                 self.livesocket.set_point_now(mfc, flow)
-                if mfc == self.devices[0]: # First device is considered pressure controller
+                if (
+                    mfc == self.devices[0]
+                ):  # First device is considered pressure controller
                     print("Pressure: " + str(flow))
                     self.reactor_pressure = flow

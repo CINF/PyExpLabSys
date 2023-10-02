@@ -12,6 +12,7 @@ import select
 import textwrap
 from pprint import pprint
 from PyExpLabSys.common.sockets import PUSH_ERROR, PUSH_RET, UNKNOWN_COMMAND
+
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 SOCK.setblocking(0)
 
@@ -74,8 +75,7 @@ WELCOME = """
 This is a basic command-and-reply program. See {help} for more details.
 """.format(
     heading=HEADING,
-    greeting=ansi_color('Welcome to the socket tester program!',
-                        ['bright', 'magenta']),
+    greeting=ansi_color('Welcome to the socket tester program!', ['bright', 'magenta']),
     help=ansi_color('help', ['bright', 'green']),
 )
 
@@ -117,8 +117,7 @@ and LiveSocket (port default 8000) understands these commands:
  * data, codenames, sane_interval
 """.format(
     heading=HEADING,
-    greeting=ansi_color('Help',
-                        ['bright', 'magenta']),
+    greeting=ansi_color('Help', ['bright', 'magenta']),
     set_=ansi_color('set ', ['bright', 'green']) + IPPORT,
     set_noauto=ansi_color('set_noauto ', ['bright', 'green']) + IPPORT,
     help_=ansi_color('help', ['bright', 'green'], pad=16),
@@ -145,8 +144,7 @@ class SocketCompleter(object):  # pylint: disable=too-few-public-methods
         if state == 0:
             # This is the first time for this text, so build a match list.
             if text:
-                self.matches = [s for s in self.options
-                                if s and s.startswith(text)]
+                self.matches = [s for s in self.options if s and s.startswith(text)]
             else:
                 self.matches = self.options[:]
 
@@ -176,7 +174,7 @@ def commands_and_codenames(ip_port, timeout=1):
 
         push_ret_prefix = PUSH_RET + '#'
         if recv.startswith(push_ret_prefix):
-            recv = recv[len(push_ret_prefix):]
+            recv = recv[len(push_ret_prefix) :]
         if command == 'name':
             out.append(recv)
         else:
@@ -227,8 +225,10 @@ class SocketTester(object):
                 try:
                     self.forward_socket_command(line)
                 except SocketTimeout:
-                    message = 'Got timeout on command. Most likely there is '\
-                              'no socket on {}:{}'.format(*self.ip_port)
+                    message = (
+                        'Got timeout on command. Most likely there is '
+                        'no socket on {}:{}'.format(*self.ip_port)
+                    )
                     message = '\n'.join(textwrap.wrap(message, 80))
                     print(ansi_color(message, ['bright', 'red']))
                     self.unset()
@@ -270,17 +270,22 @@ class SocketTester(object):
             return
         self.ip_port = tuple(self.ip_port)
         self.noauto = noauto
-        print('Connected to: {}\n'.format(
-            ansi_color('{}:{}'.format(*self.ip_port), ['bright', 'blue'])
-        ))
+        print(
+            'Connected to: {}\n'.format(
+                ansi_color('{}:{}'.format(*self.ip_port), ['bright', 'blue'])
+            )
+        )
         if not noauto:
             try:
-                self.name, self.commands, self.codenames = \
-                    commands_and_codenames(self.ip_port)
+                self.name, self.commands, self.codenames = commands_and_codenames(
+                    self.ip_port
+                )
             except SocketTimeout:
-                message = 'Got timeout on asking for name, commands and '\
-                          'codenames. Most likely there is no socket on '\
-                          '{}'.format(ip_port)
+                message = (
+                    'Got timeout on asking for name, commands and '
+                    'codenames. Most likely there is no socket on '
+                    '{}'.format(ip_port)
+                )
                 message = '\n'.join(textwrap.wrap(message, 80))
                 print(ansi_color(message, ['bright', 'red']))
                 self.unset()
@@ -291,9 +296,11 @@ class SocketTester(object):
                 self.unset()
                 return
         if self.name:
-            print('The name of the socket is: {}\n'.format(
-                ansi_color(self.name, ['bright', 'blue'])
-            ))
+            print(
+                'The name of the socket is: {}\n'.format(
+                    ansi_color(self.name, ['bright', 'blue'])
+                )
+            )
 
         self.print_commands_and_codenames()
 
@@ -330,24 +337,24 @@ class SocketTester(object):
     def print_commands_and_codenames(self):
         """Print commands and codenames"""
         if self.commands:
-            print('{0} {1} {0}\n'.format(
-                ansi_color('==', ['bright', 'cyan']),
-                ansi_color('Known commands', ['bright', 'magenta']),
-            ))
+            print(
+                '{0} {1} {0}\n'.format(
+                    ansi_color('==', ['bright', 'cyan']),
+                    ansi_color('Known commands', ['bright', 'magenta']),
+                )
+            )
             for command in self.commands:
-                print(' * {}'.format(
-                    ansi_color(command, ['bright', 'green'])
-                ))
+                print(' * {}'.format(ansi_color(command, ['bright', 'green'])))
             print()
         if self.codenames:
-            print('{0} {1} {0}\n'.format(
-                ansi_color('==', ['bright', 'cyan']),
-                ansi_color('Known codenames:', ['bright', 'magenta']),
-            ))
+            print(
+                '{0} {1} {0}\n'.format(
+                    ansi_color('==', ['bright', 'cyan']),
+                    ansi_color('Known codenames:', ['bright', 'magenta']),
+                )
+            )
             for codename in self.codenames:
-                print(' * {}'.format(
-                    ansi_color(codename, ['bright', 'green'])
-                ))
+                print(' * {}'.format(ansi_color(codename, ['bright', 'green'])))
             print()
 
 

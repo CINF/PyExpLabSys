@@ -1,4 +1,3 @@
-
 """Driver for the Analog Devices AD5667 2 channel analog output DAC
 
 Implemented from the manual located `here
@@ -11,6 +10,7 @@ Implemented from the manual located `here
 import time
 import smbus
 from PyExpLabSys.common.supported_versions import python3_only
+
 python3_only(__file__)
 
 
@@ -34,25 +34,25 @@ class AD5667:
         self.waittime = 0.1
 
     def reset_device(self):
-        data = [0x00, 0xff]
+        data = [0x00, 0xFF]
         command = 0b00101000
-        self.bus.write_i2c_block_data(0x0c, command, data)
+        self.bus.write_i2c_block_data(0x0C, command, data)
         return True
 
     def enable_onbaord_reference(self):
-        """ Enable on-board reference voltage, if no voltage reference is externally
-         given, the onboard must be enabled.
+        """Enable on-board reference voltage, if no voltage reference is externally
+        given, the onboard must be enabled.
         """
-        data = [0x00, 0xff]
+        data = [0x00, 0xFF]
         command = 0b00111000
-        self.bus.write_i2c_block_data(0x0c, command, data)
+        self.bus.write_i2c_block_data(0x0C, command, data)
         return True
 
     def power_up_or_down(self):
         # Notice, default state is up, if you run this, device will turn off.
-        data = [0x00, 0xff]
+        data = [0x00, 0xFF]
         command = 0b00100000
-        self.bus.write_i2c_block_data(0x0c, command, data)
+        self.bus.write_i2c_block_data(0x0C, command, data)
         return True
 
     def write_to_and_update_dac(self, dac, value):
@@ -131,7 +131,7 @@ def module_test():
 
 if __name__ == '__main__':
     # module_test()
-    adc = AD5667(0x0c)
+    adc = AD5667(0x0C)
 
     adc.reset_device()
     time.sleep(0.05)

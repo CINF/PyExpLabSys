@@ -9,6 +9,7 @@ class PowerWalkerEthernet(object):
     values. SNMP could also be used, but apparently most values miss a
     digit compared to the internal tools.
     """
+
     def __init__(self, ip_address, read_old_events=True):
         if read_old_events:
             self.latest_event = datetime.datetime.min
@@ -16,8 +17,9 @@ class PowerWalkerEthernet(object):
             self.latest_event = datetime.datetime.now()
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(ip_address, username='root',
-                         password='12345678', look_for_keys=False)
+        self.ssh.connect(
+            ip_address, username='root', password='12345678', look_for_keys=False
+        )
 
     def _read_static_data(self):
         """
@@ -44,7 +46,7 @@ class PowerWalkerEthernet(object):
             'nominal_output_frequency': int(lines[10]) / 10.0,
             'rated_battery_voltage': int(lines[12]) / 10.0,
             'rated_va': int(lines[8]),
-            'rated_output_current': int(lines[11]) / 10.0
+            'rated_output_current': int(lines[11]) / 10.0,
         }
         return values
 
@@ -53,7 +55,7 @@ class PowerWalkerEthernet(object):
         information = {
             'company': 'Power Walker',
             'model': statics['model'],
-            'version': statics['version']
+            'version': statics['version'],
         }
         return information
 
@@ -63,7 +65,7 @@ class PowerWalkerEthernet(object):
             'rated_voltage': statics['nominal_output_voltage'],
             'rated_current': statics['rated_output_current'],
             'battery_voltage': statics['rated_battery_voltage'],
-            'rated_frequency': statics['nominal_output_frequency']
+            'rated_frequency': statics['nominal_output_frequency'],
         }
         return ratings
 
@@ -77,7 +79,7 @@ class PowerWalkerEthernet(object):
             if line.strip():
                 lines.append(line.strip())
 
-        status = []   # TODO!
+        status = []  # TODO!
         if not lines[1] == 'Line Mode':
             status.append('Utility Fail')  # Compatibility with serial interface
 
@@ -92,7 +94,7 @@ class PowerWalkerEthernet(object):
             'battery_capacity': int(lines[9]),
             'remaining_battery': lines[10],  # minutes
             'output_frequency': int(lines[14]) / 10.0,
-            'load_level': int(lines[17])
+            'load_level': int(lines[17]),
         }
         # WARNING (appears in web front-end - find how to read)
         # FAULT (appears in web front-end - find how to read)
@@ -110,18 +112,18 @@ class PowerWalkerEthernet(object):
         events = []
         for line in raw_lines[1:]:
             split_line = line.strip().split(',')
-            timestamp = datetime.datetime.strptime(split_line[0],
-                                                   '%Y/%m/%d %H:%M:%S')
+            timestamp = datetime.datetime.strptime(split_line[0], '%Y/%m/%d %H:%M:%S')
             if only_new and timestamp <= self.latest_event:
                 continue
             event = {
                 'timestamp': timestamp,
                 'event': split_line[1],
-                'source': split_line[2]
+                'source': split_line[2],
             }
             events.append(event)
             self.latest_event = timestamp
         return events
+
 
 if __name__ == '__main__':
     pw = PowerWalkerEthernet(ip_address='192.168.2.100')

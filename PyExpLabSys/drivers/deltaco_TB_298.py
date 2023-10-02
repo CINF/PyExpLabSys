@@ -1,4 +1,3 @@
-
 """Driver with line reader for the Deltaco TB-298 Keypad"""
 
 import glob
@@ -9,18 +8,20 @@ from threading import Thread
 from queue import Queue, Empty, Full
 
 from PyExpLabSys.common.supported_versions import python3_only
+
 python3_only(__file__)
 
 
 KEYS_TO_CHARS = {'KEY_KP{}'.format(n): str(n) for n in range(10)}
-KEYS_TO_CHARS.update({
-    'KEY_KPSLASH': '/',
-    'KEY_KPASTERISK': '*',
-    'KEY_KPMINUS': '-',
-    'KEY_KPPLUS': '+',
-    'KEY_KPDOT': '.',
-})
-
+KEYS_TO_CHARS.update(
+    {
+        'KEY_KPSLASH': '/',
+        'KEY_KPASTERISK': '*',
+        'KEY_KPMINUS': '-',
+        'KEY_KPPLUS': '+',
+        'KEY_KPDOT': '.',
+    }
+)
 
 
 def detect_keypad_device():
@@ -41,7 +42,10 @@ def detect_keypad_device():
         else:
             device_information = tmp_dev.info
             # Check for vendor and product ids
-            if not (device_information.vendor == 0x04d9 and device_information.product == 0x1203):
+            if not (
+                device_information.vendor == 0x04D9
+                and device_information.product == 0x1203
+            ):
                 continue
 
             available_keys = tmp_dev.capabilities(verbose=True)[('EV_KEY', 1)]
@@ -59,7 +63,7 @@ class MaxSizeQueue(Queue):
     queue.Full exception when adding an item. Otherwise the queue will block
     until an item is removed from the queue.
     """
-    
+
     def put(self, item):
         while True:
             try:
@@ -67,6 +71,7 @@ class MaxSizeQueue(Queue):
                 break
             except Full:
                 super().get()
+
 
 class ThreadedKeypad(Thread):
     """Threaded keypad reader
@@ -106,7 +111,7 @@ class ThreadedKeypad(Thread):
         for (name, value) in self.device.leds(verbose=True):
             if name == 'LED_NUML':
                 self.led_on = True
-                
+
         # Create queues
         _max_queue_sizes = {'line': 1024, 'event': 1024, 'key_pressed': 1024}
         if max_queue_sizes:
@@ -120,12 +125,14 @@ class ThreadedKeypad(Thread):
         while self._continue_reading:
             # Check if there is anything to read on the device
             try:
-                read_list, _, _ = select.select([self.device.fd], [], [], 0.5) # previous timeout 0.2
+                read_list, _, _ = select.select(
+                    [self.device.fd], [], [], 0.5
+                )  # previous timeout 0.2
                 if read_list:
                     for event in self.device.read():
                         if event.type == evdev.ecodes.EV_KEY:
                             self.handle_event(event)
-                #sleep(0.01)
+                # sleep(0.01)
                 # Read LED Num Lock state
                 for (name, value) in self.device.leds(verbose=True):
                     # Set True if LED is on
@@ -165,7 +172,7 @@ class ThreadedKeypad(Thread):
     def stop(self):
         """Stop the thread and put deltaco_TP_298.STOP in queues"""
         self._continue_reading = False
-        #while self.is_alive(): # Commented as thread cannot be closed from
+        # while self.is_alive(): # Commented as thread cannot be closed from
         #    sleep(0.1)         # within otherwise
         self.device.close()
         self.line_queue.put(STOP)

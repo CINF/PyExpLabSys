@@ -3,11 +3,13 @@ from __future__ import print_function
 import time
 import serial
 from PyExpLabSys.common.supported_versions import python2_and_3
+
 python2_and_3(__file__)
 
 
-class XGS600Driver():
+class XGS600Driver:
     """Driver for XGS600 gauge controller"""
+
     def __init__(self, port='/dev/ttyUSB1', timeout=2.0):
         self.serial = serial.Serial(port)
         self.timeout = timeout
@@ -29,7 +31,9 @@ class XGS600Driver():
             number_of_bytes = self.serial.inWaiting()
             gathered_reply += self.serial.read(number_of_bytes).decode()
             while not gathered_reply.endswith('\r'):
-                print("Waiting for rest of reply, reply so far is: ", repr(gathered_reply))
+                print(
+                    "Waiting for rest of reply, reply so far is: ", repr(gathered_reply)
+                )
                 number_of_bytes = self.serial.inWaiting()
                 gathered_reply += self.serial.read(number_of_bytes).decode()
 
@@ -59,24 +63,23 @@ class XGS600Driver():
                             pressures.append(-2)
             else:
                 time.sleep(0.2)
-                error = error +1
+                error = error + 1
         return pressures
-
 
     def list_all_gauges(self):
         """List all installed gauge cards"""
         gauge_string = self.xgs_comm("01")
         gauges = ""
         for gauge_number in range(0, len(gauge_string), 2):
-            gauge = gauge_string[gauge_number:gauge_number+2]
+            gauge = gauge_string[gauge_number : gauge_number + 2]
             if gauge == "10":
-                gauges = gauges + str(gauge_number/2) + ": Hot Filament Gauge\n"
+                gauges = gauges + str(gauge_number / 2) + ": Hot Filament Gauge\n"
             if gauge == "FE":
-                gauges = gauges + str(gauge_number/2) + ": Empty Slot\n"
+                gauges = gauges + str(gauge_number / 2) + ": Empty Slot\n"
             if gauge == "40":
-                gauges = gauges + str(gauge_number/2) + ": Convection Board\n"
+                gauges = gauges + str(gauge_number / 2) + ": Convection Board\n"
             if gauge == "3A":
-                gauges = gauges + str(gauge_number/2) + ": Inverted Magnetron Board\n"
+                gauges = gauges + str(gauge_number / 2) + ": Inverted Magnetron Board\n"
         return gauges
 
     def read_pressure(self, gauge_id):
@@ -140,15 +143,21 @@ class XGS600Driver():
         """
         setpoint_state_string = self.xgs_comm("03")
         setpoint_state = setpoint_state_string.replace(' ', '')
-        hex_to_binary = format(int(setpoint_state, base=16), '0>8b')  # format hex value to binari with 8bit
-        binary_to_bool_list = [char == '1' for char in hex_to_binary]  # make binary number to boolean array
-        states = list(reversed(binary_to_bool_list))  # Reverse boolean array to read states of valves left to right
+        hex_to_binary = format(
+            int(setpoint_state, base=16), '0>8b'
+        )  # format hex value to binari with 8bit
+        binary_to_bool_list = [
+            char == '1' for char in hex_to_binary
+        ]  # make binary number to boolean array
+        states = list(
+            reversed(binary_to_bool_list)
+        )  # Reverse boolean array to read states of valves left to right
 
         return states
 
     def read_setpoint(self, channel):
         """Read the Setpoint OFF/ON/AUTO for channel h in [1-8]"""
-        setpoint_string = self.xgs_comm("5F"+str(channel))
+        setpoint_string = self.xgs_comm("5F" + str(channel))
         setpoint = setpoint_string.replace(' ', '')
         if str(setpoint) == "0":
             status = 'OFF'
@@ -161,7 +170,7 @@ class XGS600Driver():
         return status
 
     def set_setpoint(self, channel, state):
-        """"Set Setpoint OFF/ON/AUTO
+        """ "Set Setpoint OFF/ON/AUTO
         Example: #005E83 sets setpoint #8 to Auto
         """
         if state in [0, 1, 3]:
@@ -176,7 +185,7 @@ class XGS600Driver():
             state_reply = 1
         else:
             return 'only (0,1,3) / ("OFF", "ON", "AUTO") is accepted'
-        self.xgs_comm("5E"+str(channel)+str(state_reply), expect_reply=False)
+        self.xgs_comm("5E" + str(channel) + str(state_reply), expect_reply=False)
 
     def set_setpoint_on(self, setpoint, sensor_code, sensor_count, pressure_on):
         """This sets the pressure setpoint of the valve where it will be on.
@@ -185,9 +194,22 @@ class XGS600Driver():
         c could be U and and then n would be the user label"""
         if sensor_code == 'user_label':
             sensor_code = 'U'
-        self.xgs_comm("6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure_on),
-                      expect_reply=False)
-        print('On_string: ', "6"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure_on))
+        self.xgs_comm(
+            "6"
+            + str(setpoint)
+            + str(sensor_code)
+            + str(sensor_count)
+            + str(pressure_on),
+            expect_reply=False,
+        )
+        print(
+            'On_string: ',
+            "6"
+            + str(setpoint)
+            + str(sensor_code)
+            + str(sensor_count)
+            + str(pressure_on),
+        )
 
     def set_setpoint_off(self, setpoint, sensor_code, sensor_count, pressure_off):
         """This sets the pressure setpoint of the valve where it will be off.
@@ -196,10 +218,22 @@ class XGS600Driver():
         press is pressure represented as x.xxxE-xx"""
         if sensor_code == 'user_label':
             sensor_code = 'U'
-        self.xgs_comm("7"+str(setpoint)+str(sensor_code)+str(sensor_count)+str(pressure_off),
-                      expect_reply=False)
-        print('Off_string: ',
-              "7"+str(sensor_code)+str(sensor_count)+str(sensor_count)+str(pressure_off))
+        self.xgs_comm(
+            "7"
+            + str(setpoint)
+            + str(sensor_code)
+            + str(sensor_count)
+            + str(pressure_off),
+            expect_reply=False,
+        )
+        print(
+            'Off_string: ',
+            "7"
+            + str(sensor_code)
+            + str(sensor_count)
+            + str(sensor_count)
+            + str(pressure_off),
+        )
 
     def read_all_user_label(self):
         """Read all user defined labels for gauge id Command Entry T for TC/CNV,
@@ -207,16 +241,16 @@ class XGS600Driver():
         Counting TCs or ion gauges from left to right from the front panel view."""
         user_labels = {}
         for i in range(1, 9):
-            thermo_couple_string = self.xgs_comm("T"+str(i))
-            ion_gauges_string = self.xgs_comm("I"+str(i))
+            thermo_couple_string = self.xgs_comm("T" + str(i))
+            ion_gauges_string = self.xgs_comm("I" + str(i))
             thermo_couple = thermo_couple_string.replace(' ', '')
             ion_gauges = ion_gauges_string.replace(' ', '')
             if thermo_couple != "?FF":
-                user_labels['T'+str(i)] = thermo_couple
+                user_labels['T' + str(i)] = thermo_couple
             else:
                 pass
             if ion_gauges != "?FF":
-                user_labels['I'+str(i)] = ion_gauges
+                user_labels['I' + str(i)] = ion_gauges
             else:
                 pass
 

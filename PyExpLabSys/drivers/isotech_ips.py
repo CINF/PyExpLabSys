@@ -7,11 +7,12 @@ works.
 import serial
 import time
 
+
 class IPS(object):
     """ Driver for IPS power supply """
+
     def __init__(self, port):
-        self.serial = serial.Serial(port, 2400, timeout=10, xonxoff=False,
-                                    rtscts=False)
+        self.serial = serial.Serial(port, 2400, timeout=10, xonxoff=False, rtscts=False)
 
     def comm(self, command):
         """ Communicate with instrument """
@@ -47,6 +48,7 @@ class IPS(object):
     def set_current_limit(self, current):
         """ Set the current limit """
         self.comm('SI ' + '{:1.2f}'.format(current).zfill(3))
+
 
 if __name__ == '__main__':
     ips = IPS('/dev/ttyUSB2')
