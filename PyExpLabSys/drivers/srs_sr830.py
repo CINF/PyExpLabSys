@@ -51,15 +51,22 @@ class SR830(SCPI):
 
     def sensitivity(self, sensitivity: int = None):
         """
-         0: 2 nV/fA       1: 5 nV/fA         2: 10 nV/fA       3: 20 nV/fA
-         4: 50 nV/fA      5: 100 nV/fA       6: 200 nV/fA      7: 500 nV/fA
-         8: 1µV/pA        9: 2µV/pA         10: µV/pA         11: µV/pA
-        12: µV/pA        13: 50 µV/pA       14: 100 µV/pA     15: 200 µV/pA
-        16: 500 µV/pA    17: 1 mV/n         18: 2 mV/nA       19: 5 mV/nA
-        20: 10 mV/nA     21: 20 mV/nA       22: 50 mV/nA      23: 100 mV/nA
-        24: 200 mV/nA    25: 500 mV/nA      26: 1 V/µA
+         0: 2nV     1: 5 nV     2: 10nV    3: 20 n    4: 50nV    5: 100 nV
+         6: 200nV   7: 500nV    8: 1µV     9: 2µV    10: 5µV    11: 10µV
+        12: 20µV   13: 50µV    14: 100µV  15: 200µV  16: 500µV  17: 1mV
+        18: 2mV    19: 5mV     20: 10mV   21: 20mV   22: 50mV   23: 100mV
+        24: 200mV  25: 500mV   26: 1 V
         """
-        print(self.scpi_comm('SENS?'))
+        sensitivity_table = {
+            0:  2e-9,  1: 5e-9,  2: 1e-8,  3: 2e-8,  4: 5e-8,  5: 1e-7,
+            6:  2e-7,  7: 5e-7,  8: 1e-6,  9: 2e-6, 10: 5e-6, 11: 1e-5,
+            12: 2e-5, 13: 5e-5, 14: 1e-4, 15: 2e-4, 16: 5e-4, 17: 1e-3, 
+            18: 2e-3, 19: 5e-3, 20: 1e-2, 21: 2e-2, 22: 5e-2, 23: 0.1,
+            24: 0.2,  25: 0.5,  26: 1
+        }
+        sensitivity_index = self.scpi_comm('SENS?')
+        sensitivity = sensitivity_table[int(sensitivity_index)]
+        return sensitivity
 
     def time_constant(self, time_constant: int = None):
         """
