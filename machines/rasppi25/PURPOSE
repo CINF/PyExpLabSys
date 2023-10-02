@@ -1,4 +1,0 @@
-id: rasppi25
-purpose: Log load lock pressure on thetaprobe
-
-This raspberry pi is responsible for logging the pressure in the load lock on the Thetaprobe.

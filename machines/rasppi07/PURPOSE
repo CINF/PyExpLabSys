@@ -1,4 +1,0 @@
-id: microreactor
-purpose: Analog readout of ion gauge
-
-Readout of an old analog ion gauge using a direct measurement of the dial current.

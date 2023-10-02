@@ -1,3 +1,0 @@
-Controls the furnace in 307 and log the temperatures to the DB.
-
-OBS both data_logger and temperature_controller needs to run

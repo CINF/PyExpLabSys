@@ -37,6 +37,11 @@ SurfCat and Nanomade sections at the Technical University of Denmark
 department, which means that different components have different
 levels of maturity.
 
+Some functionalities of PyExpLabSys are bound to the assumption of the
+existence of a machines folder in the home directory (next to PyExpLabSys.
+This contains deployment-specific use cases (example of `machines
+<https://github.com/CINF/machines>`_ folder).
+
 Support
 -------
 

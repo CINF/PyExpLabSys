@@ -1,4 +1,0 @@
-id: rasppi34
-purpose: Logs gas alarms levels from Vortex gas alarm system in B307
-
-This Rasberry Pi is responsible for logging the outputs from the Vortex gas alarm central in building 307.

@@ -1,6 +1,0 @@
-id: Omicron
-purpose: TPD cell on Omicron setup
-
-This Rasberry Pi is responsible for logging the temperature of one of the Omega temperature readers on Omicron setup and
-supplies controls for running heat ramps in the TPD cell. This includes providing power supply and temperature values as live socket values
-to be logged via the LabView QMS "Mass-time scan" for TPD measurements.

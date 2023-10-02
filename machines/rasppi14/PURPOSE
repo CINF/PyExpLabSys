@@ -1,4 +1,0 @@
-id: Hall
-purpose: Logs system status for UPS in b312
-
-This Rasberry Pi is responsible for logging the outputs from the emergency power supply in building 312.

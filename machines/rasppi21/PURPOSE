@@ -1,4 +1,0 @@
-id: Oxide sputter chamber
-purpose: Chiller
-
-Reads the flow, temperature, pressure and setpoint of the chiller.

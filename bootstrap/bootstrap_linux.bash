@@ -22,12 +22,12 @@ declare -a apt3=("libpython3-dev" "python3-dev")
 # packages to be installed by pip
 pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient"
 # Put packages into this array, whose installation sometimes fail
-declare -a pip3problempackages=("")
+declare -a pip3problempackages=("pylint")
 
 # These lines will be added to the ~/.bashrc file, to modify the PATH and
 # PYTHONPATH for PyExpLabSys usage
 bashrc_addition='
-export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin
+export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin:$HOME/machines/bin
 export PYTHONPATH=$PYTHONPATH:$HOME/PyExpLabSys:$HOME/machines
 stty -ixon
 
