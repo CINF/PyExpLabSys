@@ -371,14 +371,8 @@ fi
 
 if [ $1 == "wiringpi" ];then
     echobold "===> INSTALLING WIRINGPI"
-    echoblue "---> Installing wiringpi with apt-get"
-    sudo apt-get install wiringpi
     echoblue "---> Installing python wiringpi with pip (as root)"
-    sudo pip2 install wiringpi
-    sudo pip3 install wiringpi
-    echoblue "---> Setting sticky bit on python2 and python3"
-    sudo chmod +s `which python2`
-    sudo chmod +s `which python3`
+    sudo pip install wiringpi
     echogood "+++++> DONE"
 fi
 
