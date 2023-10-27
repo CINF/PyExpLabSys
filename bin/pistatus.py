@@ -15,7 +15,12 @@ running programs:
  * display whether there is running a screen
  * display running python programs
 
-git:
+git (PyExpLabSys):
+
+ * date of last commit
+ * git clean
+
+git (machines):
 
  * date of last commit
  * git clean
@@ -85,13 +90,10 @@ def get_hostname():
 HOSTNAME = get_hostname()
 
 PYEXPLABSYS_DIR = pathlib.Path.home() / 'PyExpLabSys'
-MACHINE_DIR_OLD = PYEXPLABSYS_DIR / 'machines' / HOSTNAME
-MACHINE_DIR_NEW = pathlib.Path.home() / 'machines' / HOSTNAME
-if MACHINE_DIR_NEW.exists():
-    MACHINE_DIR = MACHINE_DIR_NEW
-elif MACHINE_DIR_OLD.exists():
-    MACHINE_DIR = MACHINE_DIR_OLD
-else:
+MACHINE_DIR = pathlib.Path.home() / 'machines' / HOSTNAME
+if not MACHINE_DIR.exists():
+    MACHINE_DIR = pathlib.Path.home() / 'machines'
+if not MACHINE_DIR.exists():
     MACHINE_DIR = None
 
 # key width default
@@ -179,7 +181,7 @@ def machine_status():
         if autostart.exists():
             value_pair('Has autostart', YES)
         else:
-            value_pair('Has autostart', 'NO')
+            value_pair('Has autostart', NO)
 
 
 def collect_running_programs():
@@ -221,37 +223,52 @@ def running_programs():
 
 
 def collect_last_commit():
-    """Collect last commit"""
+    """Collect last commit for PyExpLabSys and machines"""
     # older gits did not have the -C options, to change current
     # working directory internally, so we have to do it manually
     cwd = pathlib.Path.cwd()
     if not PYEXPLABSYS_DIR.exists():
-        THREAD_COLLECT['last_commit'] = red('No PyExpLabSys archive')
-        return
+        THREAD_COLLECT['pels_last_commit'] = red('No PyExpLabSys archive')
+    else:
+        os.chdir(PYEXPLABSYS_DIR)
+        last_commit = check_output(
+            'git log --date=iso -n 1 --pretty=format:"%ad"',
+            shell=True,
+        ).decode('utf-8')
+        THREAD_COLLECT['pels_last_commit'] = last_commit
 
-    os.chdir(PYEXPLABSYS_DIR)
-    last_commit = check_output(
-        'git log --date=iso -n 1 --pretty=format:"%ad"',
-        shell=True,
-    ).decode('utf-8')
-    THREAD_COLLECT['last_commit'] = last_commit
+    if not MACHINE_DIR:
+        THREAD_COLLECT['machines_last_commit'] = red('No machines archive')
+    else:
+        os.chdir(MACHINE_DIR)
+        last_commit = check_output(
+            'git log --date=iso -n 1 --pretty=format:"%ad"',
+            shell=True,
+        ).decode('utf-8')
+        THREAD_COLLECT['machines_last_commit'] = last_commit
 
     # Change cwd back
     os.chdir(cwd)
 
 
 def collect_git_status():
-    """Collect git status"""
+    """Collect git status for PyExpLabSys and machines"""
     # older gits did not have the -C options, to change current
     # working directory internally, so we have to do it manually
     cwd = pathlib.Path.cwd()
     if not PYEXPLABSYS_DIR.exists():
-        THREAD_COLLECT['git_status'] = None
-        return
+        THREAD_COLLECT['pels_git_status'] = None
+    else:
+        os.chdir(PYEXPLABSYS_DIR)
+        git_status = check_output('git status --porcelain', shell=True)
+        THREAD_COLLECT['pels_git_status'] = git_status
 
-    os.chdir(PYEXPLABSYS_DIR)
-    git_status = check_output('git status --porcelain', shell=True)
-    THREAD_COLLECT['git_status'] = git_status
+    if not MACHINE_DIR:
+        THREAD_COLLECT['machines_git_status'] = None
+    else:
+        os.chdir(MACHINE_DIR)
+        git_status = check_output('git status --porcelain', shell=True)
+        THREAD_COLLECT['machines_git_status'] = git_status
 
     # Change cwd back
     os.chdir(cwd)
@@ -302,16 +319,31 @@ def time_zone():
 
 def git():
     """Display the git status"""
-    framed(bold('git'))
-    framed(bold('==='))
+    framed(bold('git - PyExpLabSys'))
+    framed(bold('================='))
 
     # date of last commit
-    value_pair('Last commit', THREAD_COLLECT['last_commit'])
+    value_pair('Last commit', THREAD_COLLECT['pels_last_commit'])
 
     # git clean
-    if THREAD_COLLECT['git_status'] is None:
+    if THREAD_COLLECT['pels_git_status'] is None:
         value_pair('Git clean', red('No PyExpLabSys archive'))
-    elif THREAD_COLLECT['git_status']:
+    elif THREAD_COLLECT['pels_git_status']:
+        value_pair('Git clean', NO)
+    else:
+        value_pair('Git clean', YES)
+
+    framed('')
+    framed(bold('git - machines'))
+    framed(bold('=============='))
+
+    # date of last commit
+    value_pair('Last commit', THREAD_COLLECT['machines_last_commit'])
+
+    # git clean
+    if THREAD_COLLECT['machines_git_status'] is None:
+        value_pair('Git clean', red('No machines archive'))
+    elif THREAD_COLLECT['machines_git_status']:
         value_pair('Git clean', NO)
     else:
         value_pair('Git clean', YES)
