@@ -169,24 +169,27 @@ class Keithley2400(SCPI):
 
 
 if __name__ == '__main__':
+    import time
     GPIB = 22
     SMU = Keithley2400(interface='gpib', gpib_address=GPIB)
+
     SMU.set_source_function('v')
     SMU.output_state(True)
-    print(SMU.set_current_limit(100e-6))
 
-    # SMU.set_voltage_limit(1e-1)
-    SMU.set_voltage(0.0)
-    print(SMU.read_software_version())
-    # SMU.output_state(True)
+    # print(SMU.scpi_comm(':TRIGGER:OUTPUT SENSE'))
+    print(SMU.scpi_comm(':TRIGGER:OUTPUT SOURCE'))
+    print(SMU.scpi_comm(':TRIGGER:OUTPUT?'))
 
-    # print(SMU.output_state())
+    print(SMU.scpi_comm(':TRIGGER:OLINE?'))
+    print(SMU.scpi_comm(':TRIGGER:OLINE 2'))
 
-    current = SMU.read_current()
-    voltage = SMU.read_voltage()
+    for i in range(0, 10):
+        SMU.set_voltage(i/10.0)
+        time.sleep(0.5)
+        print(SMU.scpi_comm(':TRIGGER:OUTPUT SENSE'))
+        current = SMU.read_current()
+        print(SMU.scpi_comm(':TRIGGER:OUTPUT NONE'))
+        voltage = SMU.read_voltage()
+        print('Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
+            current * 1e6, voltage * 1000, voltage / current))
 
-    print(
-        'Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
-            current * 1e6, voltage * 1000, voltage / current
-        )
-    )
