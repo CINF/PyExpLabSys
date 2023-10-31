@@ -5,7 +5,7 @@ This module is Python 2 and 3 compatible.
 
 from __future__ import unicode_literals
 import os
-from os import path
+import pathlib
 import re
 import sys
 import socket
@@ -309,13 +309,7 @@ class SystemStatus(object):
         self._cache['purpose'] = purpose
 
         # Read the purpose file
-        filepath = path.join(
-            path.expanduser('~'),
-            'PyExpLabSys',
-            'machines',
-            self._machinename,
-            'PURPOSE',
-        )
+        filepath = pathlib.Path.home() / 'machines' / self._machinename / 'PURPOSE'
         try:
             with codecs.open(filepath, encoding='utf-8') as file_:
                 purpose_lines = file_.readlines()
