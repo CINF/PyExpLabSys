@@ -1,4 +1,5 @@
 """ Simple driver for Keithley 2000 DMM """
+import time
 from PyExpLabSys.drivers.scpi import SCPI
 
 
@@ -55,14 +56,21 @@ class Keithley2000(SCPI):
         """
         Set the measurement integration time
         """
+
+        if 'AC' in self.configure_measurement_type():
+            set_msg = 'SENSE:VOLTAGE:AC:NPLCYCLES {}'
+            read_msg = 'SENSE:VOLTAGE:AC:NPLCYCLES?'
+        else:
+            set_msg = 'SENSE:VOLTAGE:DC:NPLCYCLES {}'
+            read_msg = 'SENSE:VOLTAGE:DC:NPLCYCLES?'
+
         if nplc is not None:
             if nplc < 0.01:
                 nplc = 0.01
             if nplc > 60:
                 nplc = 60
-            self.scpi_comm('SENSE:VOLTAGE:AC:NPLCYCLES {}'.format(nplc))
-            # self.scpi_comm('SENSE:VOLTAGE:DC:NPLCYCLES {}'.format(nplc))
-        current_nplc = float(self.scpi_comm('SENSE:VOLTAGE:AC:NPLCYCLES?'))
+            self.scpi_comm(set_msg.format(nplc))
+        current_nplc = float(self.scpi_comm(read_msg))
         return current_nplc
 
     def configure_measurement_type(self, measurement_type=None):
@@ -72,6 +80,24 @@ class Keithley2000(SCPI):
             self.scpi_comm(':CONFIGURE:{}'.format(measurement_type))
         actual = self.scpi_comm(':CONFIGURE?')
         return actual
+
+    def set_trigger_source(self, external):
+        """
+        Set the trigger source either to external or immediate.
+        If external is true, trigger will be set accordingly
+        otherwise immediate triggering will be chosen.
+        """
+        if external:
+            self.scpi_comm('TRIGGER:SOURCE External')
+        else:
+            self.scpi_comm('TRIGGER:SOURCE Immediate')
+        return external
+
+    def read_dc_voltage(self):
+        """ Read a voltage """
+        raw = self.scpi_comm(':MEASURE:VOLTAGE:DC?')
+        voltage = float(raw)
+        return voltage
 
     def read_ac_voltage(self):
         """ Read a voltage """
@@ -100,10 +126,10 @@ class Keithley2000(SCPI):
 
 
 if __name__ == '__main__':
-    import time
-
     GPIB = 16
     DMM = Keithley2000(interface='gpib', gpib_address=GPIB)
+    DMM.set_trigger_source(external=True)
+    exit()
 
     # TODO! Something changes with the configuration when this
     # command is called, measurement is much slower and
@@ -114,6 +140,7 @@ if __name__ == '__main__':
     print(DMM.set_integration_time(2))
     # print(DMM.set_bandwith())
     # print(DMM.set_integration_time(10))
+    print(DMM.read_dc_voltage())
 
     for i in range(0, 20):
         # time.sleep(0.05)
@@ -124,4 +151,4 @@ if __name__ == '__main__':
             time.sleep(0.05)
         reading = DMM.next_reading()
         dt = time.time() - t
-        print('Time: {:.2f}ms. AC {:.3f}uV'.format(dt * 1e3, reading * 1e6))
+        print('Time: {:.2f}ms. DC {:.3f}mV'.format(dt * 1e3, reading * 1e3))
