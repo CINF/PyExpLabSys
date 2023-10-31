@@ -1,4 +1,5 @@
 """ Simple driver for Keithley 2182 Nanovolt Meter """
+import time
 from PyExpLabSys.drivers.scpi import SCPI
 
 
@@ -9,17 +10,13 @@ class Keithley2182(SCPI):
     double check if you have a 2182.
     """
 
-    def __init__(
-        self, interface, hostname='', device='', baudrate=9600, gpib_address=None
-    ):
+    def __init__(self, interface, hostname='', device='',
+                 baudrate=9600, gpib_address=None):
+        self.interface = interface
+
         if interface == 'serial':
-            SCPI.__init__(
-                self,
-                interface=interface,
-                device=device,
-                baudrate=baudrate,
-                line_ending='\n',
-            )
+            SCPI.__init__(self, interface=interface, device=device,
+                          baudrate=baudrate)
             self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
@@ -27,7 +24,7 @@ class Keithley2182(SCPI):
             SCPI.__init__(self, interface=interface, gpib_address=gpib_address)
 
         # For now, turn off continous trigger - this might need reconsideration
-        self.scpi_comm('INIT:CONT OFF')
+        # self.scpi_comm('INIT:CONT OFF')
 
     def set_range(self, channel1: float = None, channel2: float = None):
         """
@@ -65,8 +62,33 @@ class Keithley2182(SCPI):
             if nplc > 60:
                 nplc = 60
             self.scpi_comm('SENSE:VOLTAGE:NPLCYCLES {}'.format(nplc))
+            time.sleep(nplc * 0.2)
         current_nplc = float(self.scpi_comm('SENSE:VOLTAGE:NPLCYCLES?'))
         return current_nplc
+
+    def set_trigger_source(self, external):
+        """
+        Set the trigger source either to external or immediate.
+        If external is true, trigger will be set accordingly
+        otherwise immediate triggering will be chosen.
+        """
+        if external:
+            self.scpi_comm(':TRIGGER:SOURCE External')
+        else:
+            self.scpi_comm(':TRIGGER:SOURCE Immediate')
+        return external
+
+    def read_fresh(self):
+        """
+        Read a single value from current channel. This will also be a new value
+        (or will fail if channel is not trigged.
+        """
+        raw = self.scpi_comm(":DATA:FRESh?")  # DF? also works
+        try:
+            voltage = float(raw)
+        except ValueError:
+            voltage = None
+        return voltage
 
     def read_voltage(self, channel: int):
         """ Read the measured voltage """
@@ -81,10 +103,18 @@ class Keithley2182(SCPI):
 
 if __name__ == '__main__':
     GPIB = 7
-    NVM = Keithley2182(interface='gpib', gpib_address=GPIB)
+    # NVM = Keithley2182(interface='gpib', gpib_address=GPIB)
+    NVM = Keithley2182(
+        interface='serial',
+        device='/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0',
+    )
+
+    print(NVM.set_integration_time(50))
+    exit()
 
     print(NVM.set_range(1, 0.01))
     print(NVM.set_integration_time(10))
+    print('Channel 1: {:.3f}uV'.format(NVM.read_voltage(1) * 1e6))
 
     for i in range(0, 10):
         print()
