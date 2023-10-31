@@ -10,13 +10,13 @@ class Keithley2182(SCPI):
     double check if you have a 2182.
     """
 
-    def __init__(self, interface, hostname='', device='',
-                 baudrate=9600, gpib_address=None):
+    def __init__(
+        self, interface, hostname='', device='', baudrate=9600, gpib_address=None
+    ):
         self.interface = interface
 
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device,
-                          baudrate=baudrate)
+            SCPI.__init__(self, interface=interface, device=device, baudrate=baudrate)
             self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
@@ -91,7 +91,7 @@ class Keithley2182(SCPI):
         return voltage
 
     def read_voltage(self, channel: int):
-        """ Read the measured voltage """
+        """Read the measured voltage"""
         if channel not in (1, 2):
             return None
         self.scpi_comm(":SENSE:FUNC 'VOLT:DC'")

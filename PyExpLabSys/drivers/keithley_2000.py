@@ -8,11 +8,17 @@ class Keithley2000(SCPI):
     Simple driver for Keithley 2000 DMM
     """
 
-    def __init__(self, interface, hostname='', device='',
-                 baudrate=9600, gpib_address=None):
+    def __init__(
+        self, interface, hostname='', device='', baudrate=9600, gpib_address=None
+    ):
         if interface == 'serial':
-            SCPI.__init__(self, interface=interface, device=device,
-                          baudrate=baudrate, line_ending='\n')
+            SCPI.__init__(
+                self,
+                interface=interface,
+                device=device,
+                baudrate=baudrate,
+                line_ending='\n',
+            )
             self.comm_dev.timeout = 2
             self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
@@ -68,7 +74,7 @@ class Keithley2000(SCPI):
         return current_nplc
 
     def configure_measurement_type(self, measurement_type=None):
-        """ Setup measurement type """
+        """Setup measurement type"""
         if measurement_type is not None:
             # todo: Ensure type is an allow type!!!!
             self.scpi_comm(':CONFIGURE:{}'.format(measurement_type))
@@ -88,19 +94,19 @@ class Keithley2000(SCPI):
         return external
 
     def read_dc_voltage(self):
-        """ Read a voltage """
+        """Read a voltage"""
         raw = self.scpi_comm(':MEASURE:VOLTAGE:DC?')
         voltage = float(raw)
         return voltage
 
     def read_ac_voltage(self):
-        """ Read a voltage """
+        """Read a voltage"""
         raw = self.scpi_comm(':MEASURE:VOLTAGE:AC?')
         voltage = float(raw)
         return voltage
 
     def next_reading(self):
-        """ Read next reading """
+        """Read next reading"""
         t0 = time.time()
         while not self.measurement_available():
             time.sleep(0.001)
