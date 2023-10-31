@@ -12,8 +12,11 @@ from PyExpLabSys.drivers.scpi import SCPI
 class OxfordMercury(SCPI):
     def __init__(self, hostname: str) -> None:
         super().__init__(
-            'lan', hostname=hostname, tcp_port=7020,
-            line_ending='\n', encoding='latin-1'
+            'lan',
+            hostname=hostname,
+            tcp_port=7020,
+            line_ending='\n',
+            encoding='latin-1',
         )
         self.switch_heater_turn_on_time = 0
 
@@ -31,7 +34,9 @@ class OxfordMercury(SCPI):
         raw_reply = raw_reply.strip()
         return raw_reply
 
-    def _read_value(self, uid: str, meas_type: str, keyword: str = None) -> (float, str):
+    def _read_value(
+        self, uid: str, meas_type: str, keyword: str = None
+    ) -> (float, str):
         if keyword is None:
             keyword = meas_type
         fields = []
@@ -53,7 +58,7 @@ class OxfordMercury(SCPI):
         value_raw = fields[-1]
         for i in range(1, len(value_raw)):
             try:
-                float(value_raw[0:i + 1])
+                float(value_raw[0 : i + 1])
             except ValueError:
                 break
 
@@ -127,7 +132,7 @@ class OxfordMercury(SCPI):
         raw_reply = self._comm(cmd)
         print(raw_reply)
         state_raw = raw_reply.split('SWHT')
-        heater_on = (state_raw[-1] == ':ON')
+        heater_on = state_raw[-1] == ':ON'
         # If heater was turned on and the software did not
         # notice, at least notice now.
         if heater_on:
@@ -144,7 +149,7 @@ class OxfordMercury(SCPI):
             value_raw = fields[-1]
             for i in range(1, len(value_raw)):
                 try:
-                    actual_setpoint = float(value_raw[0:i + 1])
+                    actual_setpoint = float(value_raw[0 : i + 1])
                 except ValueError:
                     break
             return actual_setpoint
@@ -194,7 +199,7 @@ class OxfordMercury(SCPI):
             value_raw = fields[-1]
             for i in range(1, len(value_raw)):
                 try:
-                    actual_setpoint = float(value_raw[0:i + 1])
+                    actual_setpoint = float(value_raw[0 : i + 1])
                 except ValueError:
                     break
             return actual_setpoint
