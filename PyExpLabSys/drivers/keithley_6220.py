@@ -104,7 +104,7 @@ class Keithley6220(SCPI):
         return status_ok
 
     def output_state(self, output_state: bool = None):
-        """ Turn the output on or off """
+        """Turn the output on or off"""
         if output_state is not None:
             if output_state:
                 self.scpi_comm('OUTPUT ON')
@@ -137,14 +137,14 @@ class Keithley6220(SCPI):
         return actual_range
 
     def set_voltage_limit(self, voltage: float = None):
-        """ Set the desired voltate limit """
+        """Set the desired voltate limit"""
         if voltage is not None:
             self.scpi_comm('CURRENT:COMPLIANCE {:.9f}'.format(voltage))
         actual = self.scpi_comm('CURRENT:COMPLIANCE?')
         return actual
 
     def set_current(self, current: float):
-        """ Set the DC current, when not performing a waveform """
+        """Set the DC current, when not performing a waveform"""
         self.scpi_comm('CURRENT {:.12f}'.format(current))
         return True
 
@@ -216,7 +216,7 @@ class Keithley6220(SCPI):
         return row
 
     def perform_differential_conductance_measurement(
-            self, start, stop, steps, delta, v_limit=1.5, nplc=5
+        self, start, stop, steps, delta, v_limit=1.5, nplc=5
     ):
         step_size = (stop - start) / steps
         # print('Number of steps: {}'.format(steps))
@@ -392,10 +392,7 @@ if __name__ == '__main__':
     t = time.time()
     rows = []
     SOURCE.perform_differential_conductance_measurement(
-        start=1e-6,
-        stop=2e-5,
-        step=2e-7,
-        delta=1.0e-7
+        start=1e-6, stop=2e-5, step=2e-7, delta=1.0e-7
     )
     print('End peform start')
     for i in range(0, 250):

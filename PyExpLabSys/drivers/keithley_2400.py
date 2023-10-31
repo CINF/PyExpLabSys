@@ -3,7 +3,7 @@ from PyExpLabSys.drivers.scpi import SCPI
 
 
 class Keithley2400(SCPI):
-    """ Simple driver for Keithley 2400 SMU """
+    """Simple driver for Keithley 2400 SMU"""
 
     def __init__(
         self, interface, hostname='', device='', baudrate=9600, gpib_address=None
@@ -25,7 +25,7 @@ class Keithley2400(SCPI):
             SCPI.__init__(self, interface=interface, gpib_address=gpib_address)
 
     def output_state(self, output_state: bool = None):
-        """ Turn the output on or off """
+        """Turn the output on or off"""
         if output_state is not None:
             if output_state:
                 self.scpi_comm('OUTPUT:STATE 1')
@@ -36,7 +36,7 @@ class Keithley2400(SCPI):
         return actual_state
 
     def set_current_measure_range(self, current_range=None):
-        """ Set the current measurement range """
+        """Set the current measurement range"""
         # TODO!
         raise NotImplementedError
 
@@ -117,7 +117,7 @@ class Keithley2400(SCPI):
         return current
 
     def read_voltage(self):
-        """ Read the measured voltage """
+        """Read the measured voltage"""
         if self.output_state():
             raw = self.scpi_comm('MEASURE:VOLTAGE?')
         else:
@@ -144,32 +144,33 @@ class Keithley2400(SCPI):
         return actual_function
 
     def set_current_limit(self, current: float = None):
-        """ Set the desired current limit """
+        """Set the desired current limit"""
         if current is not None:
             self.scpi_comm('CURRENT:PROTECTION {:.9f}'.format(current))
         actual = self.scpi_comm('CURRENT:PROTECTION?')
         return actual
 
     def set_voltage_limit(self, voltage: float = None):
-        """ Set the desired voltate limit """
+        """Set the desired voltate limit"""
         if voltage is not None:
             self.scpi_comm('VOLTAGE:PROTECTION {:.9f}'.format(voltage))
         actual = self.scpi_comm('VOLTAGE:PROTECTION?')
         return actual
 
     def set_current(self, current: float):
-        """ Set the desired current """
+        """Set the desired current"""
         self.scpi_comm('SOURCE:CURRENT {:.9f}'.format(current))
         return True
 
     def set_voltage(self, voltage: float):
-        """ Set the desired current """
+        """Set the desired current"""
         self.scpi_comm('SOURCE:VOLT {:.9f}'.format(voltage))
         return True
 
 
 if __name__ == '__main__':
     import time
+
     GPIB = 22
     SMU = Keithley2400(interface='gpib', gpib_address=GPIB)
 
@@ -184,12 +185,14 @@ if __name__ == '__main__':
     print(SMU.scpi_comm(':TRIGGER:OLINE 2'))
 
     for i in range(0, 10):
-        SMU.set_voltage(i/10.0)
+        SMU.set_voltage(i / 10.0)
         time.sleep(0.5)
         print(SMU.scpi_comm(':TRIGGER:OUTPUT SENSE'))
         current = SMU.read_current()
         print(SMU.scpi_comm(':TRIGGER:OUTPUT NONE'))
         voltage = SMU.read_voltage()
-        print('Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
-            current * 1e6, voltage * 1000, voltage / current))
-
+        print(
+            'Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
+                current * 1e6, voltage * 1000, voltage / current
+            )
+        )

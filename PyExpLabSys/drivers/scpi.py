@@ -20,10 +20,20 @@ LOGGER.addHandler(logging.NullHandler())
 
 
 class SCPI(object):
-    """ Driver for scpi communication """
-    def __init__(self, interface, device='', tcp_port=5025, hostname='',
-                 baudrate=9600, visa_string='', gpib_address=None, line_ending='\r',
-                 encoding='ascii'):
+    """Driver for scpi communication"""
+
+    def __init__(
+        self,
+        interface,
+        device='',
+        tcp_port=5025,
+        hostname='',
+        baudrate=9600,
+        visa_string='',
+        gpib_address=None,
+        line_ending='\r',
+        encoding='ascii',
+    ):
         self.device = device
         self.line_ending = line_ending
         self.interface = interface
@@ -32,8 +42,9 @@ class SCPI(object):
             self.comm_dev = open(self.device, 'w')
             self.comm_dev.close()
         if self.interface == 'serial':
-            self.comm_dev = serial.Serial(self.device, baudrate,
-                                          timeout=3, xonxoff=True)
+            self.comm_dev = serial.Serial(
+                self.device, baudrate, timeout=3, xonxoff=True
+            )
         if self.interface == 'lan':
             self.comm_dev = telnetlib.Telnet(hostname, tcp_port)
         if self.interface == 'usbtmc':
@@ -46,7 +57,7 @@ class SCPI(object):
             self.comm_dev = Gpib.Gpib(0, pad=gpib_address)
 
     def scpi_comm(self, command, expect_return=False):
-        """ Implements actual communication with SCPI instrument """
+        """Implements actual communication with SCPI instrument"""
         return_string = ""
         if self.interface == 'file':
             self.comm_dev = open(self.device, 'wb')
@@ -94,11 +105,19 @@ class SCPI(object):
                     self.comm_dev.read_until(b'\n', 0.1).decode()
 
             LOGGER.info('Return string length: ' + str(len(return_string)))
-            LOGGER.info('lan_time for command ' + command_text.strip() +
-                        ': ' + str(time.time() - lan_time))
+            LOGGER.info(
+                'lan_time for command '
+                + command_text.strip()
+                + ': '
+                + str(time.time() - lan_time)
+            )
             LOGGER.info('Return string length: ' + str(len(return_string)))
-            LOGGER.info('lan_time for command ' + command_text.strip() +
-                        ': ' + str(time.time() - lan_time))
+            LOGGER.info(
+                'lan_time for command '
+                + command_text.strip()
+                + ': '
+                + str(time.time() - lan_time)
+            )
 
         if self.interface == 'usbtmc':
             if command.find('?') > -1:
@@ -114,23 +133,23 @@ class SCPI(object):
         return return_string
 
     def read_software_version(self):
-        """ Read version string from device """
+        """Read version string from device"""
         version_string = self.scpi_comm("*IDN?")
         version_string = version_string.strip()
         return version_string
 
     def reset_device(self):
-        """ Rest device """
+        """Rest device"""
         self.scpi_comm("*RST")
         return True
 
     def device_clear(self):
-        """ Stop current operation """
+        """Stop current operation"""
         self.scpi_comm("*abort")
         return True
 
     def clear_error_queue(self):
-        """ Clear error queue """
+        """Clear error queue"""
         error = self.scpi_comm("*ESR?")
         self.scpi_comm("*cls")
         return error

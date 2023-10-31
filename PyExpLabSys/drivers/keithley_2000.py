@@ -74,7 +74,7 @@ class Keithley2000(SCPI):
         return current_nplc
 
     def configure_measurement_type(self, measurement_type=None):
-        """ Setup measurement type """
+        """Setup measurement type"""
         if measurement_type is not None:
             # todo: Ensure type is an allow type!!!!
             self.scpi_comm(':CONFIGURE:{}'.format(measurement_type))
@@ -94,19 +94,19 @@ class Keithley2000(SCPI):
         return external
 
     def read_dc_voltage(self):
-        """ Read a voltage """
+        """Read a voltage"""
         raw = self.scpi_comm(':MEASURE:VOLTAGE:DC?')
         voltage = float(raw)
         return voltage
 
     def read_ac_voltage(self):
-        """ Read a voltage """
+        """Read a voltage"""
         raw = self.scpi_comm(':MEASURE:VOLTAGE:AC?')
         voltage = float(raw)
         return voltage
 
     def next_reading(self):
-        """ Read next reading """
+        """Read next reading"""
         t0 = time.time()
         while not self.measurement_available():
             time.sleep(0.001)
