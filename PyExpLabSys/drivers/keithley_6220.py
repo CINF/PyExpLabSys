@@ -22,10 +22,10 @@ class Keithley6220(SCPI):
                 line_ending='\r',
             )
             self.comm_dev.timeout = 2
-            # self.comm_dev.rtscts = False
+            self.comm_dev.rtscts = False
             self.comm_dev.xonxoff = False
         if interface == 'lan':
-            SCPI.__init__(self, interface=interface, hostname=hostname)
+            SCPI.__init__(self, 'lan', hostname=hostname, tcp_port=1394)
         if interface == 'gpib':
             SCPI.__init__(self, interface=interface, gpib_address=gpib_address)
 
@@ -63,7 +63,11 @@ class Keithley6220(SCPI):
         error = 1
         while error > 0:
             next_error = self.scpi_comm('STATUS:QUEUE:NEXT?')
-            error_raw, msg = next_error.split(',')
+            try:
+                error_raw, msg = next_error.split(',')
+            except ValueError:
+                print('Error! ', next_error)
+                error_raw = 0
             error = int(error_raw)
             if error > 0:
                 if error in error_list:
@@ -77,7 +81,7 @@ class Keithley6220(SCPI):
         registers = {
             '*ESR?': 'Standard Event Status',
             # 'STATUS:MEASUREMENT:CONDITION?': 'Measurement Condition Register',
-            '*STB?': 'Status Byte Register',
+            # '*STB?': 'Status Byte Register',
             'STATUS:MEASUREMENT:EVENT?': 'Measurement Event Register',
             'STATUS:QUESTIONABLE:EVENT?': 'Questionable Event Register',
         }
@@ -106,8 +110,17 @@ class Keithley6220(SCPI):
                 self.scpi_comm('OUTPUT ON')
             else:
                 self.scpi_comm('OUTPUT OFF')
-        actual_state_raw = self.scpi_comm('OUTPUT?')
-        actual_state = int(actual_state_raw[0]) == 1
+
+        error = 0
+        while -1 < error < 10:
+            try:
+                actual_state_raw = self.scpi_comm('OUTPUT?')
+                actual_state = int(actual_state_raw[0]) == 1
+                error = -1
+            except ValueError:
+                print('output state error ', repr(actual_state_raw))
+                error = error + 1
+        # This will fail if error exceeds 10, let's see if it happens
         return actual_state
 
     def set_current_range(self, current_range: float = None):
@@ -132,7 +145,7 @@ class Keithley6220(SCPI):
 
     def set_current(self, current: float):
         """ Set the DC current, when not performing a waveform """
-        self.scpi_comm('CURRENT {:.9f}'.format(current))
+        self.scpi_comm('CURRENT {:.12f}'.format(current))
         return True
 
     def set_wave_amplitude(self, amplitude: float):
@@ -143,31 +156,291 @@ class Keithley6220(SCPI):
     def source_sine_wave(self, frequency, amplitude):
         self.scpi_comm('SOUR:WAVE:FUNC SIN')
         self.scpi_comm('SOUR:WAVE:FREQ {}'.format(frequency))
-        self.scpi_comm('SOUR:WAVE:AMPL {}'.format(1e-11))
+        # self.scpi_comm('SOUR:WAVE:AMPL {}'.format(1e-11))
+        self.scpi_comm('SOUR:WAVE:AMPL {}'.format(amplitude))
         self.scpi_comm('SOUR:WAVE:OFFS 0')  # Offset
         self.scpi_comm('SOUR:WAVE:PMAR:STAT ON')
-        self.scpi_comm('SOUR:WAVE:PMAR 269')
-        self.scpi_comm('SOUR:WAVE:PMAR:OLIN 1')
+        self.scpi_comm('SOUR:WAVE:PMAR 0')
+        self.scpi_comm('SOUR:WAVE:PMAR:OLIN 6')
         self.scpi_comm('SOUR:WAVE:DUR:TIME INF')
         # self.scpi_comm('SOUR:WAVE:RANG BEST')
         self.scpi_comm('SOUR:WAVE:ARM')
         self.scpi_comm('SOUR:WAVE:AMPL {}'.format(amplitude))
         self.scpi_comm('SOUR:WAVE:INIT')
 
-    def stop_and_unarm(self):
-        self.scpi_comm('SOUR:WAVE:ABOR')
+    # TODO - CAN WE PROGRAMMATICALLY CHOOSE BETWEEN THESE
+    # FOR ONE COMMON FUNCTION?
+    def stop_and_unarm_wave(self):
+        self.scpi_comm('SOURCE:WAVE:ABORT')
+
+    def stop_and_unarm_sweep(self):
+        # This now has two names - same as end_delta_measurement!!!!!!!
+        self.scpi_comm('SOURCE:SWEEP:ABORT')
+
+    def read_diff_conduct_line(self):
+        try:
+            t = time.time()
+            buf_actual = int(self.scpi_comm('TRACe:POINTs:ACTual?').strip())
+            print(' K6220: Read buffer: {}'.format(time.time() - t))
+
+        except ValueError:
+            buf_actual = 0
+        print('Buf: ', buf_actual)
+        if buf_actual > 0:
+            t = time.time()
+            data = self.scpi_comm('SENS:DATA:FRESH?').strip()
+            print(' K6220: Read data: {}'.format(time.time() - t))
+        else:
+            print('No data')
+            return {}
+        row = {}
+        if len(data) < 5:
+            return {}
+
+        fields = data.split(',')
+        try:
+            row = {
+                'reading': float(fields[0][:-3]),
+                'time': float(fields[1][:-4]),
+                'current': float(fields[2][:-3]),
+                'avoltage': float(fields[3][:-3]),
+                'compliance_ok': fields[4][0] == 'F',
+                'reading_nr': int(fields[5][1:6]),
+            }
+            # print(row)
+        except ValueError:
+            # Could we do a fancy split based on the units even if errors exists in the
+            # field delimiters?
+            # +1.01194701E-05VDC+1.01928472E-05VDC,+1.471E+00SECS,+1.0000E-06ADC,+2.03093674E-04VDC,FCMPL,+22698RDNG#
+            print('Error in row: {}'.format(data))
+        return row
+
+    def perform_differential_conductance_measurement(
+            self, start, stop, steps, delta, v_limit=1.5, nplc=5
+    ):
+        step_size = (stop - start) / steps
+        # print('Number of steps: {}'.format(steps))
+        print('K6220 driver: steps size: {}'.format(step_size))
+
+        # 1) Configure 2182a?
+        # print('2182a present, ', self.scpi_comm('SOURCE:DELTA:NVPResent?'))
+        # self.reset_device()  # Is this needed?
+        # time.sleep(1)
+        msg = 'SYST:COMM:SER:SEND "VOLT:NPLC {}"'.format(nplc)
+        print(msg)
+        self.scpi_comm(msg)
+
+        self.set_voltage_limit(v_limit)
+        time.sleep(1)
+        self.scpi_comm('FORMat:ELEMENTS ALL')
+        time.sleep(0.5)
+
+        self.scpi_comm('SOUR:DCON:STARt {}'.format(start))
+        self.scpi_comm('SOUR:DCON:STEP {}'.format(step_size))
+        self.scpi_comm('SOUR:DCON:STOP {}'.format(stop))
+        self.scpi_comm('SOUR:DCON:DELTa {}'.format(delta))
+
+        self.scpi_comm('SOUR:DCON:DELay 5e-3')
+        self.scpi_comm('SOUR:DCON:CAB ON')  # Enables Compliance Abort
+        self.scpi_comm('TRAC:POIN {}'.format(steps))
+        time.sleep(0.2)
+        print('Prepare to arm')
+        self.scpi_comm('SOUR:DCON:ARM')
+        time.sleep(1)
+        print('Init')
+        self.scpi_comm('INIT:IMM', expect_return=True)
+        time.sleep(3)
+        return True
+
+    def _2182a_comm(self, cmd=None):
+        if cmd is None:
+            cmd_6220 = 'SYST:COMM:SER:ENT?'
+            expect_return = True
+        else:
+            cmd_6220 = 'SYST:COMM:SER:SEND "{}"'.format(cmd)
+            expect_return = False
+
+        i = 0
+        reply = self.scpi_comm(cmd_6220, expect_return=expect_return).strip()
+        if expect_return:
+            while len(reply) < 2:
+                if i > 10:
+                    print('Trying to get return ', i)
+                reply = self.scpi_comm(cmd_6220, expect_return=expect_return).strip()
+                i = i + 1
+                if i > 50:
+                    print('Reply apparantly never arrives?!?!?')
+                    break
+        if len(reply) > 0:
+            while ord(reply[0]) == 19:
+                reply = reply[1:]
+                if len(reply) == 0:
+                    break
+        return reply
+
+    def read_2182a_channel_2(self, probe_current):
+        print(probe_current)
+        self.set_current(probe_current)
+        self.set_voltage_limit(1)
+        self.output_state(True)
+        time.sleep(0.2)
+
+        self._2182a_comm(':CONF:VOLT')
+        self._2182a_comm(':SENSE:CHANNEL 2')
+        self._2182a_comm(':SAMP:COUNT 1')
+        self._2182a_comm(':READ?')
+        value_raw = self._2182a_comm()
+        self._2182a_comm(':READ?')
+        value_raw = self._2182a_comm()
+        # print(value_raw)
+
+        # while ord(value_raw[0]) == 19:
+        #     value_raw = value_raw[1:]
+        print('VALUE RAW!!', value_raw)
+        value = float(value_raw)
+        time.sleep(0.5)
+        # status = self.read_status()
+        # print('Status (check for compliance): ', status)
+        self.output_state(False)
+        return value
+
+    def prepare_delta_measurement(self, probe_current, v_limit=1.0):
+        # Set range on nanovoltmeter'
+        self.scpi_comm('SYST:COMM:SER:SEND "VOLT:RANG 0.1"')
+        # self.scpi_comm('SYST:COMM:SER:SEND ":SENSE:VOLT:CHANNEL1:RANGE:AUTO ON"')
+        time.sleep(1)
+        # self.scpi_comm('SYST:COMM:SER:SEND "VOLT:RANG?"')
+        # print('2181a range: ', self.scpi_comm('SYST:COMM:SER:ENT?'))
+
+        self.scpi_comm('SYST:COMM:SER:SEND "VOLT:NPLC 5"')
+        # print('2181a NPLC: ', self.scpi_comm('SYST:COMM:SER:ENT?'))
+
+        # self.scpi_comm('SYST:COMM:SER:SEND "VOLT:NPLC?"')
+        # print('2181a NPLC: ', self.scpi_comm('SYST:COMM:SER:ENT?'))
+
+        # self.reset_device()
+        # TODO!!! SET RANGE ON 6221!!!
+
+        time.sleep(3)
+        self.scpi_comm('FORMat:ELEMents READING, TSTAMP')
+        self.set_voltage_limit(v_limit)
+        # self.scpi_comm(':FORMAT:SREG BIN')
+        # print('High', self.scpi_comm('SOURCE:DELTA:HIGH 2e-6'))
+        # print('SOURCE:DELTA:HIGH {}'.format(probe_current))
+        self.scpi_comm('SOURCE:DELTA:HIGH {}'.format(probe_current))
+        self.scpi_comm('SOURCE:DELTA:DELAY 100e-3')  # Apparantly strictly needed...
+        # self.scpi_comm('SOURCE:DELTA:CAB ON') # Abort on compliance
+        time.sleep(3.0)
+        print('SOURCE:DELTA:ARM')
+        self.scpi_comm('SOURCE:DELTA:ARM')
+        time.sleep(3.0)
+        print('INIT:IMM')
+        self.scpi_comm('INIT:IMM')
+
+    def end_delta_measurement(self):
+        self.scpi_comm('SOUR:SWE:ABOR')
+
+    def read_delta_measurement(self):
+        reply = self.scpi_comm('SENS:DATA:FRESH?').strip()
+        print('delta reply', reply)
+        value_raw, dt_raw = reply.split(',')
+        value = float(value_raw)
+        dt = float(dt_raw)
+        return value, dt
+
+    # def read_differential_conductance_measurement(self):
+    #     reply = self.scpi_comm('SENS:DATA:FRESH?').strip()
+    #     fields = reply.split(',')
+    #     row = {
+    #         'reading': float(fields[row_nr + 0][:-3]),
+    #         'time': float(fields[row_nr + 1][:-4]),
+    #         'current': float(fields[row_nr + 2][:-3]),
+    #         'avoltage': float(fields[row_nr + 3][:-3]),
+    #         'compliance_ok': fields[row_nr + 4][0] == 'F',
+    #         'reading_nr': int(fields[row_nr + 5][1:6]),
+    #     }
+    #     # print('delta reply', reply)
+    #     # value_raw, dt_raw = reply.split(',')
+    #     # value = float(value_raw)
+    #     # dt = float(dt_raw)
+    #     # return value, dt
+    #     return row
 
 
 if __name__ == '__main__':
-    PORT = '/dev/ttyUSB0'
-    SOURCE = Keithley6220(interface='serial', device=PORT)
+    SOURCE = Keithley6220(interface='lan', hostname='192.168.0.3')
 
-    print(SOURCE.read_software_version())
+    SOURCE.source_sine_wave(741, 1.2e-6)
+    time.sleep(30)
     exit()
 
-    SOURCE.stop_and_unarm()
-    SOURCE.set_current_range(1e-4)
-    time.sleep(2)
-    print(SOURCE.read_status())
-    SOURCE.source_sine_wave(1298, 1e-5)
-    SOURCE.set_wave_amplitude(2e-5)
+    current = 5e-10
+
+    SOURCE.set_current_range(current)
+    SOURCE.set_current(current)
+    SOURCE.output_state(True)
+
+    exit()
+
+    # SOURCE.scpi_comm('SYST:COMM:SER:SEND "VOLT:NPLC 10"')
+    # SOURCE.scpi_comm('SYST:COMM:SER:SEND "VOLT:NPLC?"')
+    # print('2181a NPLC: ', SOURCE.scpi_comm('SYST:COMM:SER:ENT?'))
+
+    SOURCE.prepare_delta_measurement(1e-5)
+    # SOURCE.end_delta_measurement()
+    # exit()
+    t = time.time()
+    rows = []
+    SOURCE.perform_differential_conductance_measurement(
+        start=1e-6,
+        stop=2e-5,
+        step=2e-7,
+        delta=1.0e-7
+    )
+    print('End peform start')
+    for i in range(0, 250):
+        data = SOURCE.scpi_comm('SENS:DATA:FRESH?').strip()
+        if len(data) > 2:
+            fields = data.split(',')
+            try:
+                row = {
+                    'reading': float(fields[0][:-3]),
+                    'time': float(fields[1][:-4]),
+                    'current': float(fields[2][:-3]),
+                    'avoltage': float(fields[3][:-3]),
+                    'compliance_ok': fields[4][0] == 'F',
+                    'reading_nr': int(fields[5][1:6]),
+                }
+                print(row)
+                rows.append(row)
+            except ValueError:
+                print('Error in row: {}'.format(data))
+        if (i > 15) and (len(data) < 5):
+            break
+    print('End measurement')
+    nvz = SOURCE.scpi_comm('SOUR:DCON:NVZ?').strip()
+    print('NVZero', nvz)
+
+    SOURCE.end_delta_measurement()
+    print('Number of lines: {}'.format(len(rows)))
+    print('First and last line:')
+    print(rows[0])
+    print(rows[-1])
+
+    # print(SOURCE.read_2182a_channel_2(1e-5))
+
+    # SOURCE.scpi_comm('SYST:COMM:SER:SEND "VOLT:NPLC 10"')
+    # SOURCE.end_delta_measurement()
+    exit()
+
+    print('Read software version:')
+    print(SOURCE.read_software_version())
+    print()
+    # condition = SOURCE.scpi_comm('STATUS:MEASurement:CONDition?')[::-1]
+    # print(condition)
+    # exit()
+
+    # for i in range(0, 2):
+    # print(SOURCE.perform_delta_measurement())
+
+    # SOURCE._end_delta_measurement()
