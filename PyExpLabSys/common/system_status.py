@@ -125,14 +125,20 @@ class SystemStatus(object):
         # Get dirname of current file and add two parent directory entries a
         # .git and a FETCH_HEAD in a hopefullt crossplatform manner, result:
         # /home/pi/PyExpLabSys/PyExpLabSys/common/../../.git/FETCH_HEAD
-        fetch_head_file = os.path.join(
-            os.path.dirname(__file__), *[os.path.pardir] * 2 + ['.git', 'FETCH_HEAD']
-        )
+        git = {}
+        fetch_head_file = pathlib.Path(__file__).parents[2] / '.git' / 'FETCH_HEAD'
         # Check for last change
         if os.access(fetch_head_file, os.F_OK):
-            return os.path.getmtime(fetch_head_file)
+            git['PyExpLabSys'] = os.path.getmtime(fetch_head_file)
         else:
-            return None
+            git['PyExpLabSys'] = None
+        fetch_head_file = pathlib.Path.home() / 'machines' / '.git' / 'FETCH_HEAD'
+        # Check for last change
+        if os.access(fetch_head_file, os.F_OK):
+            git['machines'] = os.path.getmtime(fetch_head_file)
+        else:
+            git['machines'] = None
+        return git
 
     @staticmethod
     @works_on('all')
