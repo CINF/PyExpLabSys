@@ -61,32 +61,31 @@ class MksGSeries:
         if len(reply) == 0:
             LOGGER.warning('No such device')
             return ''
+
         # Response structure: '@@@000' + 'ACK' + content + ';' + 2-char-checksum
         noise_check_passed = reply.find(';') == len(reply) - 3
-        ack = reply[6:9]
-        content = reply[9:-3]
-        crc = reply[-2:]
-        if noise_check_passed:
-            # Calculate checksum (the first @ is added again during calc)
-            if crc == self.checksum(reply[1:-2]):
-                if ack == 'ACK':
-                    return content
-                elif ack == 'NAK':
-                    message = NAK_TABLE[content]
-                    print('NAK error {} in command: {}'.format(content, message))
-                    LOGGER.warning(
-                        'NAK error {} in command: {}'.format(content, message)
-                    )
-                    return ''
-                else:
-                    LOGGER.warning('Unexpected response: {}'.format(repr(raw_reply)))
-                    return ''
-            else:
-                LOGGER.error('Checksum error in reply')
-                return ''
-        else:
+        if not noise_check_passed:
             LOGGER.warning('Response seemingly too noisy: {}'.format(repr(raw_reply)))
             return ''
+
+        ack = reply[6:9]
+        content = reply[9:-3]
+        # Calculate checksum (the first @ is added again during calc)
+        if reply[-2:] != self.checksum(reply[1:-2]):
+            LOGGER.error('Checksum error in reply')
+            return ''
+
+        if ack == 'ACK':
+            return content
+
+        if ack == 'NAK':
+            message = NAK_TABLE[content]
+            print('NAK error {} in command: {}'.format(content, message))
+            LOGGER.warning('NAK error {} in command: {}'.format(content, message))
+            return ''
+
+        LOGGER.warning('Unexpected response: {}'.format(repr(raw_reply)))
+        return ''
 
     def read_full_scale_range(self, addr):
         """ Read back the current full scale range from the instrument """
