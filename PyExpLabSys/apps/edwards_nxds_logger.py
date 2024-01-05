@@ -98,9 +98,8 @@ def main():
 
         for channel in channels:
             codenames.append(codename + '_' + channel)  # Build the list of codenames
-            loggers[port + channel] = ValueLogger(
-                pumpreaders[port], comp_val=0.9, channel=channel, maximumtime=600
-            )
+            loggers[port + channel] = ValueLogger(pumpreaders[port], comp_val=1.1,
+                                                  channel=channel, maximumtime=600)
             loggers[port + channel].start()
 
     # socket = DateDataPullSocket('Pump Reader', codenames, timeouts=2.0)

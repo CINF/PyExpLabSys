@@ -17,7 +17,12 @@ class EdwardsNxds(object):
     def comm(self, command):
         """ Ensures correct protocol for instrument """
         self.ser.write((command + '\r').encode('ascii'))
-        return_string = self.ser.readline().decode()
+        try:
+            return_string = self.ser.readline().decode()
+        except UnicodeDecodeError:
+            # This is really an IOError, could happen if the plug is inserted
+            # while communication software is running
+            raise IOError
         if not return_string[2:5] == command[2:5]:
             raise IOError
         return return_string[6:-1]

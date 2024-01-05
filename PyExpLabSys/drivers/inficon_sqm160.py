@@ -24,6 +24,7 @@ class InficonSQM160(object):
         for i in range(0, len(command)):
             command_bytes.append(ord(command[i]))
         error = 0
+        return_val = None
         while (error > -1) and (error < 20):
             self.serial.write(command_bytes)
             time.sleep(0.1)
