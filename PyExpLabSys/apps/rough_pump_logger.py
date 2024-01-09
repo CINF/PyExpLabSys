@@ -19,13 +19,11 @@ machine_path = pathlib.Path.home() / 'machines' / HOSTNAME
 sys.path.append(str(machine_path))
 
 import credentials  # pylint: disable=wrong-import-position, import-error
-
-# import settings  # pylint: disable=wrong-import-position, import-error
-import settings2 as settings # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+import settings  # pylint: disable=wrong-import-position, import-error
 
 
 class PumpReader(threading.Thread):
-    """ Read pump parameters """
+    """Read pump parameters"""
 
     def __init__(self, port, pump_type):
         threading.Thread.__init__(self)
@@ -37,7 +35,7 @@ class PumpReader(threading.Thread):
         else:
             print('Unknown pump type!')
             exit()
-            
+
         self.values = {}
         self.values['pressure'] = -1
         self.values['temperature'] = -1
@@ -49,7 +47,7 @@ class PumpReader(threading.Thread):
         self.quit = False
 
     def value(self, channel):
-        """ Return the value of the reader """
+        """Return the value of the reader"""
         value = self.values[channel]
         return value
 
@@ -62,14 +60,14 @@ class PumpReader(threading.Thread):
                 controller_status = self.pump.pump_controller_status()
                 self.values['temperature'] = temperatures['pump']
                 self.values['controller_temperature'] = temperatures['controller']
-                self.values['rotational_speed'] = self.pump.rotational_speed()['actual']                
+                self.values['rotational_speed'] = self.pump.rotational_speed()['actual']
                 self.values['run_hours'] = self.pump.read_run_hours()
                 self.values['controller_run_hours'] = controller_status[
                     'controller_run_time'
                 ]
                 self.values['time_to_service'] = controller_status['time_to_service']
                 self.values['pressure'] = self.pump.pressure()
-                
+
             except OSError:
                 print('Error reading from pump')
                 time.sleep(2)
@@ -83,7 +81,7 @@ class PumpReader(threading.Thread):
 
 
 def main():
-    """ Main function """
+    """Main function"""
     pumpreaders = {}
     loggers = {}
     channels = [
@@ -93,7 +91,7 @@ def main():
         'rotational_speed',
         'controller_run_hours',
         'time_to_service',
-        'pressure'
+        'pressure',
     ]
     codenames = []
     # for port, codename in settings.channels.items():
@@ -107,8 +105,9 @@ def main():
 
         for channel in channels:
             codenames.append(codename + '_' + channel)  # Build the list of codenames
-            loggers[port + channel] = ValueLogger(pumpreaders[port], comp_val=1.1,
-                                                  channel=channel, maximumtime=600)
+            loggers[port + channel] = ValueLogger(
+                pumpreaders[port], comp_val=1.1, channel=channel, maximumtime=600
+            )
             loggers[port + channel].start()
 
     # socket = DateDataPullSocket('Pump Reader', codenames, timeouts=2.0)
