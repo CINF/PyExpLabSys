@@ -145,6 +145,9 @@ class PfeifferHiscroll(object):
     def bearing_service(self):
         return 0
 
+    def pump_controller_status(self):
+        return {'controller_run_time': -1, 'time_to_service': -1}
+
     # def pump_controller_status(self):
     #     """ Read  the status of the pump controller """
     #     return_string = self.comm('?V813')
@@ -319,19 +322,20 @@ class PfeifferHiscroll(object):
 
 
 if __name__ == '__main__':
-    PUMP = PfeifferHiscroll('/dev/ttyUSB0', device_address=2)
+    PUMP = PfeifferHiscroll('/dev/ttyUSB4', device_address=2)
 
-    # print('Set rotaional speed: ', PUMP.set_rotational_speed())
-    # print('Actual rotaional speed: ', PUMP.actual_rotational_speed())
-
+    print('Actual rotaional speed: ', PUMP.rotational_speed())
+    print('Pressure mode state: ', PUMP.pressure_mode_state())
+    print('Pressure: ', PUMP.pressure())
+    print('Pressure setpoint: ', PUMP.pressure_setpoint(0.09))
+    exit()
     # print(PUMP.stand_by_state(True))
     # print('Stand by state: ', PUMP.stand_by_state(False))
-    print('Pressure mode state: ', PUMP.pressure_mode_state())
-    print('Pressure mode state: ', PUMP.pressure_mode_state(True))
-    print('Pressure: ', PUMP.pressure())
-    print('Pressure setpoint: ', PUMP.pressure_setpoint())
-    print('Pressure setpoint: ', PUMP.pressure_setpoint(1))
-    print('Pressure setpoint: ', PUMP.pressure_setpoint())
+    # print('Pressure mode state: ', PUMP.pressure_mode_state(True))
+    # print('Pressure: ', PUMP.pressure())
+    # print('Pressure setpoint: ', PUMP.pressure_setpoint())
+    # print('Pressure setpoint: ', PUMP.pressure_setpoint(1))
+    # print('Pressure setpoint: ', PUMP.pressure_setpoint())
 
     # print(PUMP.stand_by_state(False))
     for i in range(0, 5):
