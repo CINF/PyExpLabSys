@@ -8,14 +8,14 @@ LOGGER.addHandler(logging.NullHandler())
 
 
 class EdwardsNxds(object):
-    """ Driver for the Edwards nXDS series of dry pumps """
+    """Driver for the Edwards nXDS series of dry pumps"""
 
     def __init__(self, port):
         self.ser = serial.Serial(port, 9600, timeout=2)
         time.sleep(0.1)
 
     def comm(self, command):
-        """ Ensures correct protocol for instrument """
+        """Ensures correct protocol for instrument"""
         self.ser.write((command + '\r').encode('ascii'))
         try:
             return_string = self.ser.readline().decode()
@@ -28,7 +28,7 @@ class EdwardsNxds(object):
         return return_string[6:-1]
 
     def read_pump_type(self):
-        """ Read identification information """
+        """Read identification information"""
         return_string = self.comm('?S801')
         pump_type = return_string.split(';')
         return {
@@ -38,7 +38,7 @@ class EdwardsNxds(object):
         }
 
     def read_pump_temperature(self):
-        """ Read Pump Temperature """
+        """Read Pump Temperature"""
         return_string = self.comm('?V808')
         temperatures = return_string.split(';')
         pump = int(temperatures[0])
@@ -46,7 +46,7 @@ class EdwardsNxds(object):
         return {'pump': pump, 'controller': controller}
 
     def read_serial_numbers(self):
-        """ Read Pump Serial numbers """
+        """Read Pump Serial numbers"""
         return_string = self.comm('?S835')
         service = return_string.split(';')
         serials = service[0].split(' ')
@@ -58,13 +58,13 @@ class EdwardsNxds(object):
         }
 
     def read_run_hours(self):
-        """ Return number of run hours """
+        """Return number of run hours"""
         return_string = self.comm('?V810')
         run_hours = int(return_string)
         return run_hours
 
     def set_run_state(self, on_state):
-        """ Start or stop the pump """
+        """Start or stop the pump"""
         if on_state is True:
             return_string = self.comm('!C802 1')
         else:
@@ -72,7 +72,7 @@ class EdwardsNxds(object):
         return return_string
 
     def status_to_bin(self, word):
-        """ Convert status word to array of binaries """
+        """Convert status word to array of binaries"""
         status_word = ''
         for i in range(0, 4):
             val = int(word[i], 16)
@@ -83,7 +83,7 @@ class EdwardsNxds(object):
         return bin_word
 
     def bearing_service(self):
-        """ Status of bearings """
+        """Status of bearings"""
         return_string = self.comm('?V815')
         status = return_string.split(';')
         time_since = int(status[0])
@@ -91,7 +91,7 @@ class EdwardsNxds(object):
         return {'time_since_service': time_since, 'time_to_service': time_to}
 
     def pump_controller_status(self):
-        """ Read  the status of the pump controller """
+        """Read  the status of the pump controller"""
         return_string = self.comm('?V813')
         status = return_string.split(';')
         controller_run_time = int(status[0])
@@ -102,17 +102,17 @@ class EdwardsNxds(object):
         }
 
     def read_normal_speed_threshold(self):
-        """ Read the value for acknowledge the pump as normally running """
+        """Read the value for acknowledge the pump as normally running"""
         return_string = self.comm('?S804')
         return int(return_string)
 
     def read_standby_speed(self):
-        """ Read the procentage of full speed on standby """
+        """Read the procentage of full speed on standby"""
         return_string = self.comm('?S805')
         return int(return_string)
 
     def read_pump_status(self):
-        """ Read the overall status of the pump """
+        """Read the overall status of the pump"""
         return_string = self.comm('?V802')
         status = return_string.split(';')
         rotational_speed = int(status[0])
@@ -187,8 +187,15 @@ class EdwardsNxds(object):
             'faults': faults,
         }
 
+    def rotational_speed(self):
+        status = self.read_pump_status()
+        actual_speed = status['rotational_speed']
+        # return_dict = {'actual': actual, 'setpoint': setpoint, 'nominal': nominal}
+        return_dict = {'actual': actual_speed}
+        return return_dict
+
     def read_service_status(self):
-        """ Read the overall status of the pump """
+        """Read the overall status of the pump"""
         service_status = self.status_to_bin(self.comm('?V826'))
         messages = []
         if service_status[15] is True:
@@ -202,12 +209,15 @@ class EdwardsNxds(object):
         return messages
 
     def set_standby_mode(self, standbymode):
-        """ Set the pump on or off standby mode """
+        """Set the pump on or off standby mode"""
         if standbymode is True:
             return_string = self.comm('!C803 1')
         else:
             return_string = self.comm('!C803 0')
         return return_string
+
+    def pressure(self):
+        return 0
 
 
 if __name__ == '__main__':
