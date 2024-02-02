@@ -294,7 +294,11 @@ def skip(app, what, name, obj, skip_, options):  # pylint: disable=unused-argume
 def setup(app):
     """Make custom setup"""
     app.connect("autodoc-skip-member", skip)
-    app.add_stylesheet('theme_overrides.css')
+
+
+html_css_files = [
+    'theme_overrides.css',
+]
 
 
 # -- PyExpLabSys build hacks ---------------------------------------------------
