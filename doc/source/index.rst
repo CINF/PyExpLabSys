@@ -20,6 +20,7 @@ Contents:
    overview
    user_notes
    common
+   auxiliary
    file-parsers
    apps
    drivers
