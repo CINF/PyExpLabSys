@@ -55,8 +55,10 @@ class MoorfieldMinilab:
         return value
 
     def read_turbo_speed(self):
-        addr = self.mapping['turbo_speed']
-        value = self._read_value(addr=addr)
+        value = None
+        addr = self.mapping.get('turbo_speed')
+        if addr is not None:
+            value = self._read_value(addr=addr)
         return value
 
     def read_rf_values(self):
@@ -78,20 +80,20 @@ class MoorfieldMinilab:
 
 if __name__ == '__main__':
     mapping = {
-        'full_range_pressure': 117,
+        'full_range_pressure': 397,
         'baratron_pressure': 1376,
-        'mfc_1_flow': 1114,
+        'mfc_1_flow': None,
         'mfc_1_setpoint': None,
-        'mfc_2_flow': 1116,
+        'mfc_2_flow': None,
         'mfc_2_setpoint': None,
-        'mfc_3_flow': 1118,
+        'mfc_3_flow': None,
         'mfc_3_setpoint': None,
-        'forward_power': 1224,
-        'reflected_power': 1226,
-        'dc_bias': 1215,
-        'tune_motor': 1228,
-        'load_motor': 1300,
-        'turbo_speed': 1427,  # This is a guess...
+        'forward_power': None,
+        'reflected_power': None,
+        'dc_bias': None,
+        'tune_motor': None,
+        'load_motor': None,
+        'turbo_speed': None,  # This is a guess...
     }
 
     ML = MoorfieldMinilab(mapping)
