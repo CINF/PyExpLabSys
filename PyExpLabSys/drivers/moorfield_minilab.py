@@ -3,7 +3,9 @@ from omronfins.finsudp import datadef
 
 
 class MoorfieldMinilab:
-    def __init__(self):
+    def __init__(self, mapping):
+        self.mapping = mapping
+
         self.fins = finsudp.FinsUDP(0, 170)
         # ret = fins.open('192.168.1.99', 9600)
         self.fins.open('192.168.1.99', 9600)
@@ -20,33 +22,96 @@ class MoorfieldMinilab:
         return value
 
     def read_mfc(self, mfc_number):
+        addr_setpoint = None
+        addr_actual = None
         if mfc_number == 1:
-            addr_setpoint = 266  # Apprantly also 464 and 1214
-            addr_actual = 1103  # Apprantly also 1202
+            addr_setpoint = self.mapping.get('mfc_1_setpoint')
+            addr_actual = self.mapping.get('mfc_1_flow')
         elif mfc_number == 2:
-            addr_setpoint = 328  # Apprantly also 470 and 1216
-            addr_actual = 1105  # Apprantly also 1204
+            addr_setpoint = self.mapping.get('mfc_2_setpoint')
+            addr_actual = self.mapping.get('mfc_2_flow')
+        elif mfc_number == 3:
+            addr_setpoint = self.mapping.get('mfc_3_setpoint')
+            addr_actual = self.mapping.get('mfc_3_flow')
 
-        setpoint = self._read_value(addr=addr_setpoint)
-        actual = self._read_value(addr=addr_actual)
+        setpoint = None
+        if addr_setpoint is not None:
+            setpoint = self._read_value(addr=addr_setpoint)
+
+        actual = None
+        if addr_actual is not None:
+            actual = self._read_value(addr=addr_actual)
         return_val = {'setpoint': setpoint, 'actual': actual}
         return return_val
-    
+
     def read_full_range_gauge(self):
-        addr = 397
+        addr = self.mapping['full_range_pressure']
         value = self._read_value(addr=addr)
         return value
 
     def read_baratron_gauge(self):
-        addr = 1200  # apprantly also 1376
+        addr = self.mapping['baratron_pressure']
+        value = self._read_value(addr=addr) / 1000.0
+        return value
+
+    def read_turbo_speed(self):
+        addr = self.mapping['turbo_speed']
         value = self._read_value(addr=addr)
         return value
 
+    def read_rf_values(self):
+        return_val = {}
+        rf_params = [
+            'rf_forward_power',
+            'rf_reflected_power',
+            'dc_bias',
+            'tune_motor',
+            'load_motor',
+        ]
+        for param in rf_params:
+            return_val[param] = None
+            addr = self.mapping.get(param)
+            if addr is not None:
+                return_val[param] = self._read_value(addr=addr)
+        return return_val
+
 
 if __name__ == '__main__':
-    ML = MoorfieldMinilab()
-    print(ML.read_full_range_gauge())
-    print(ML.read_baratron_gauge())
+    mapping = {
+        'full_range_pressure': 117,
+        'baratron_pressure': 1376,
+        'mfc_1_flow': 1114,
+        'mfc_1_setpoint': None,
+        'mfc_2_flow': 1116,
+        'mfc_2_setpoint': None,
+        'mfc_3_flow': 1118,
+        'mfc_3_setpoint': None,
+        'forward_power': 1224,
+        'reflected_power': 1226,
+        'dc_bias': 1215,
+        'tune_motor': 1228,
+        'load_motor': 1300,
+        'turbo_speed': 1427,  # This is a guess...
+    }
 
+    ML = MoorfieldMinilab(mapping)
+    print('Gauges:')
+    print('Full range: ', ML.read_full_range_gauge())
+    print('Baratron: ', ML.read_baratron_gauge())
+
+    print()
+
+    print('MFCs')
     print(ML.read_mfc(1))
     print(ML.read_mfc(2))
+    print(ML.read_mfc(3))
+
+    print()
+
+    print('RF values')
+    print(ML.read_rf_values())
+
+    print()
+
+    print('Turbo speed')
+    print(ML.read_turbo_speed())
