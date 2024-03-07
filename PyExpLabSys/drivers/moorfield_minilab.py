@@ -77,15 +77,29 @@ class MoorfieldMinilab:
                 return_val[param] = self._read_value(addr=addr)
         return return_val
 
+    def read_dc_psu_values(self):
+        return_val = {}
+        psu_params = [
+            'dc_psu_voltage',
+            'dc_psu_current',
+            'dc_psu_power',
+        ]
+        for param in psu_params:
+            return_val[param] = None
+            addr = self.mapping.get(param)
+            if addr is not None:
+                return_val[param] = self._read_value(addr=addr)
+        return return_val
+
 
 if __name__ == '__main__':
     mapping = {
-        'full_range_pressure': 397,
+        'full_range_pressure': 398,
         'baratron_pressure': 1376,
-        'mfc_1_flow': None,
-        'mfc_1_setpoint': None,
-        'mfc_2_flow': None,
-        'mfc_2_setpoint': None,
+        'mfc_1_flow': 1202,
+        'mfc_1_setpoint': 1213,
+        'mfc_2_flow': 1204,
+        'mfc_2_setpoint': 1215,
         'mfc_3_flow': None,
         'mfc_3_setpoint': None,
         'forward_power': None,
@@ -93,7 +107,10 @@ if __name__ == '__main__':
         'dc_bias': None,
         'tune_motor': None,
         'load_motor': None,
-        'turbo_speed': None,  # This is a guess...
+        'turbo_speed': None,
+        'dc_psu_voltage': 1586,
+        'dc_psu_current': 1584,
+        'dc_psu_power': 1588,
     }
 
     ML = MoorfieldMinilab(mapping)
@@ -112,6 +129,11 @@ if __name__ == '__main__':
 
     print('RF values')
     print(ML.read_rf_values())
+
+    print()
+
+    print('DC PSU values')
+    print(ML.read_dc_psu_values())
 
     print()
 
