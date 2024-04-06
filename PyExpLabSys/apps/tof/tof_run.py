@@ -1,4 +1,5 @@
 import time
+import pickle
 import pexpect
 import threading
 
@@ -38,6 +39,8 @@ class MCSRunner():
         self.starts = 0
 
     def _update_data(self):
+        with open('data.p', 'wb') as f:
+            pickle.dump(self.spectrum, f) # serialize the list
         with TdmsWriter("data.tdms") as tdms_writer:
             channel = ChannelObject('group name', 'channel name', self.spectrum)
             tdms_writer.write_segment([channel])
