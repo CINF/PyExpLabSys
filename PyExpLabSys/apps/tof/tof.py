@@ -3,12 +3,25 @@ import time
 import pickle
 import socket
 
+import numpy as np
+
+from icecream import ic
+
+from PyExpLabSys.common.database_saver import DataSetSaver, CustomColumn
+
 
 class Tof():
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(0)
         self.expected_iterations = 0
+
+        self.data_set_saver = DataSetSaver('measurements_tof',
+                                           'xy_values_tof',
+                                           # credentials.user, credentials.passwd)
+                                           # MOVE THIS TO MACHINES!!!!!!
+
+        self.data_set_saver.start()
 
     def contact_external_pi(self, payload, hostname, port=9000):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -25,9 +38,20 @@ class Tof():
             socket_command = 'json_wn#' + json.dumps(payload)
         else:
             socket_command = payload
-        self.sock.sendto(socket_command.encode(), ('127.0.0.1', port))
-        time.sleep(0.02)
-        recv = self.sock.recv(65535)
+
+        error = 0
+        while error > -1:
+            if error > 10:
+                ic('We have a communication issue')
+            try:
+                self.sock.sendto(socket_command.encode(), ('127.0.0.1', port))
+                time.sleep(0.02)
+                recv = self.sock.recv(65535)
+                error = -1
+            except BlockingIOError:
+                error += 1
+                time.sleep(0.001)
+
         raw_reply = recv.decode('ascii')
         try:
             data = json.loads(raw_reply)
@@ -122,51 +146,53 @@ class Tof():
 
         tof_pulse_voltage = 800  # todo: Currently hard codet
 
-        query = 'insert into {} set type=11, comment="{}", tof_iterations={}, '
-        query += ' tof_pulse_voltage={}, tof_liner_voltage={},'
-        query += ' tof_lens_A={}, tof_lens_B={}, tof_lens_C={}, tof_lens_D={}, tof_lens_e={},'
-        query += ' ionenergy={}, R1_voltage={}, R2_voltage={},'
-        query += ' sem_voltage={}, tof_focus_voltage,'
-        query += ' tof_emission_current={}, emission_focus={}, emission_extraction={}'
-        # tof_pulse_width  - apparantly always zero
-        # tof_deflection_voltage ? From where
-        # sample_temperature - seems not to be logged currently
-        query = query.format(
-            'tof',
-            comment,
-            tof_iterations,
-            tof_pulse_voltage,
-            tof_voltages['liner'],
-            optics_values['lens_a'],
-            optics_values['lens_b'],
-            optics_values['lens_c'],
-            optics_values['lens_d'],
-            optics_values['lens_e'],
-            ion_energy,
-            tof_voltages['r1'],
-            tof_voltages['r2'],
-            tof_voltages['mcp'],
-            tof_voltages['focus'],
-            emission,
-            optics_values['focus'],
-            optics_values['extraction'],
+        metadata = {
+            # Endtime, should this had been starttime?
+            'Time': CustomColumn(time.time(), "FROM_UNIXTIME(%s)"),
+            'type': 11,
+            'comment': comment,
+            'tof_iterations': tof_iterations,
+            'tof_pulse_voltage': tof_pulse_voltage,
+            'tof_liner_voltage': tof_voltages['liner'],
+            'tof_lens_A': optics_values['lens_a'],
+            'tof_lens_B': optics_values['lens_b'],
+            'tof_lens_C': optics_values['lens_c'],
+            'tof_lens_D': optics_values['lens_d'],
+            'tof_lens_E': optics_values['lens_e'],
+            'tof_ion_energy': ion_energy,
+            'tof_R1_voltage': tof_voltages['r1'],
+            'tof_R2_voltage': tof_voltages['r2'],
+            'sem_voltage': tof_voltages['mcp'],
+            # DEFLECTION!!!!! tof_voltages['deflection'],
+            'tof_focus_voltage': tof_voltages['focus'],
+            'tof_emission_current': emission,
+            'emission_focus': optics_values['focus'],
+            'emission_extraction': optics_values['extraction'],
+        }
+        self.data_set_saver.add_measurement('data', metadata)
+
+        with open('data.p', 'rb') as f:
+            spectrum = pickle.load(f)
+
+        times = np.arange(0, len(spectrum)) * 0.0000000004
+        self.data_set_saver.save_points_batch(
+            'data', times, spectrum
         )
-        print(query)
+        time.sleep(5)
 
 
 if __name__ == '__main__':
     TOF = Tof()
-    comment = 'This is a command line test'
+    comment = 'This is a command line test II'
 
-    TOF.start_measurement(95000)
-    for i in range(0, 25):
-        time.sleep(2)
+    TOF.start_measurement(2.6e5)
+    while True:
+        time.sleep(3)
         print(TOF.read_acq_status())
         done = TOF.are_we_done_yet()
         if done:
             break
-
+    time.sleep(1)
     with open('data.p', 'rb') as f:
         spectrum = pickle.load(f)
-
     TOF.create_measurement_entry(comment)
