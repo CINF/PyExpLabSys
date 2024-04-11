@@ -5,6 +5,7 @@ import threading
 
 import numpy as np
 
+from icecream import ic
 from nptdms import TdmsWriter, ChannelObject
 
 from PyExpLabSys.common.sockets import DataPushSocket
@@ -78,6 +79,7 @@ class MCSRunner():
         total_count = sum(self.spectrum)
         self.pullsocket.set_point_now('total_count', total_count)
         self.pullsocket.set_point_now('starts', self.starts)
+        ic(self.starts, total_count)
         return total_count
 
     def _run_command(self, command):
