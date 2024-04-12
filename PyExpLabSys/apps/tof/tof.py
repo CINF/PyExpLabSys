@@ -1,7 +1,9 @@
+import sys
 import json
 import time
 import pickle
 import socket
+import pathlib
 
 import numpy as np
 
@@ -9,18 +11,24 @@ from icecream import ic
 
 from PyExpLabSys.common.database_saver import DataSetSaver, CustomColumn
 
+HOSTNAME = socket.gethostname()
+machine_path = pathlib.Path.home() / 'machines' / HOSTNAME
+sys.path.append(str(machine_path))
+
+import credentials  # pylint: disable=wrong-import-position, import-error
+
 
 class Tof():
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(0)
         self.expected_iterations = 0
+        self.machine_path = machine_path
 
-        self.data_set_saver = DataSetSaver('measurements_tof',
-                                           'xy_values_tof',
-                                           # credentials.user, credentials.passwd)
-                                           # MOVE THIS TO MACHINES!!!!!!
-
+        self.data_set_saver = DataSetSaver(
+            'measurements_tof', 'xy_values_tof',
+            credentials.user, credentials.passwd
+        )
         self.data_set_saver.start()
 
     def contact_external_pi(self, payload, hostname, port=9000):
@@ -82,7 +90,8 @@ class Tof():
         return ionenergy, emission
 
     def _read_ion_optics_from_rasppi74(self):
-        cmd_list = ['lens_a', 'lens_b', 'lens_c', 'lens_d', 'lens_e', 'focus', 'extraction']
+        cmd_list = ['lens_a', 'lens_b', 'lens_c', 'lens_d', 'lens_e',
+                    'focus', 'extraction']
         optics_values = {}
         for cmd in cmd_list:
             raw_reply = self.contact_external_pi(cmd + '#json', '10.54.7.74', 9000)
@@ -171,7 +180,7 @@ class Tof():
         }
         self.data_set_saver.add_measurement('data', metadata)
 
-        with open('data.p', 'rb') as f:
+        with open(self.machine_path / 'data.p', 'rb') as f:
             spectrum = pickle.load(f)
 
         times = np.arange(0, len(spectrum)) * 0.0000000004
@@ -183,9 +192,9 @@ class Tof():
 
 if __name__ == '__main__':
     TOF = Tof()
-    comment = 'This is a command line test II'
+    comment = 'This is a command line test III'
 
-    TOF.start_measurement(2.6e5)
+    TOF.start_measurement(1.6e5)
     while True:
         time.sleep(3)
         print(TOF.read_acq_status())
@@ -193,6 +202,6 @@ if __name__ == '__main__':
         if done:
             break
     time.sleep(1)
-    with open('data.p', 'rb') as f:
+    with open(machine_path / 'data.p', 'rb') as f:
         spectrum = pickle.load(f)
     TOF.create_measurement_entry(comment)
