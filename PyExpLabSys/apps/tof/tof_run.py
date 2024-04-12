@@ -1,21 +1,29 @@
+import sys
 import time
 import pickle
-import pexpect
+import socket
+import pathlib
 import threading
 
+import pexpect
 import numpy as np
-
 from icecream import ic
+
 from nptdms import TdmsWriter, ChannelObject
 
 from PyExpLabSys.common.sockets import DataPushSocket
 from PyExpLabSys.common.sockets import DateDataPullSocket
+
+HOSTNAME = socket.gethostname()
+machine_path = pathlib.Path.home() / 'machines' / HOSTNAME
+sys.path.append(str(machine_path))
 
 
 class MCSRunner():
     def __init__(self):
         threading.Thread.__init__(self)
         self.mcs = pexpect.spawn('./testmcs6a')
+        self.machine_path = machine_path
         # Allow time for testmcs6a to start
         time.sleep(4)
 
@@ -40,9 +48,9 @@ class MCSRunner():
         self.starts = 0
 
     def _update_data(self):
-        with open('data.p', 'wb') as f:
-            pickle.dump(self.spectrum, f) # serialize the list
-        with TdmsWriter("data.tdms") as tdms_writer:
+        with open(self.machine_path / 'data.p', 'wb') as f:
+            pickle.dump(self.spectrum, f)  # serialize the list
+        with TdmsWriter(self.machine_path / 'data.tdms') as tdms_writer:
             channel = ChannelObject('group name', 'channel name', self.spectrum)
             tdms_writer.write_segment([channel])
 
