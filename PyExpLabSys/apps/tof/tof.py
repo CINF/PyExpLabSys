@@ -18,7 +18,7 @@ sys.path.append(str(machine_path))
 import credentials  # pylint: disable=wrong-import-position, import-error
 
 
-class Tof():
+class Tof:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(0)
@@ -26,8 +26,7 @@ class Tof():
         self.machine_path = machine_path
 
         self.data_set_saver = DataSetSaver(
-            'measurements_tof', 'xy_values_tof',
-            credentials.user, credentials.passwd
+            'measurements_tof', 'xy_values_tof', credentials.user, credentials.passwd
         )
         self.data_set_saver.start()
 
@@ -49,8 +48,9 @@ class Tof():
 
         error = 0
         while error > -1:
-            if error > 10:
+            if error > 5:
                 ic('We have a communication issue')
+                time.sleep(0.5)
             try:
                 self.sock.sendto(socket_command.encode(), ('127.0.0.1', port))
                 time.sleep(0.02)
@@ -68,14 +68,6 @@ class Tof():
             value = raw_reply
         return value
 
-    def read_acq_status(self):
-        cmd = 'starts#json'
-        starts = self._send_command(cmd, 9000)
-        cmd = 'total_count#json'
-        total_counts = self._send_command(cmd, 9000)
-        reply = {'starts': starts, 'total_counts': total_counts}
-        return reply
-
     def _read_emission_rom_rasppi49(self):
         # todo: this does not need to be a separate function, but practical to test
         cmd = 'ionenergy#json'
@@ -90,13 +82,24 @@ class Tof():
         return ionenergy, emission
 
     def _read_ion_optics_from_rasppi74(self):
-        cmd_list = ['lens_a', 'lens_b', 'lens_c', 'lens_d', 'lens_e',
-                    'focus', 'extraction']
+        cmd_list = [
+            'lens_a',
+            'lens_b',
+            'lens_c',
+            'lens_d',
+            'lens_e',
+            'focus',
+            'extraction',
+        ]
         optics_values = {}
         for cmd in cmd_list:
             raw_reply = self.contact_external_pi(cmd + '#json', '10.54.7.74', 9000)
-            data = json.loads(raw_reply)
-            optics_values[cmd] = float(data[1])
+            try:
+                data = json.loads(raw_reply)
+                optics_values[cmd] = float(data[1])
+            except json.decoder.JSONDecodeError:
+                print('Error reading {} from rasppi74!'.format(cmd))
+                optics_values[cmd] = 0
         return optics_values
 
     def _read_voltages_from_rasppi74(self):
@@ -106,15 +109,35 @@ class Tof():
         # rasppi74.fys.clients.local (10.54.7.74):
         cmd = 'read_voltages\r'
         items_raw = self.contact_external_pi(cmd, '10.54.7.74', 9696)
+        print(items_raw)
         items = {}
         for item in items_raw.split(' '):
             if len(item) < 1:
                 continue
-            item_list = item.split(':')
-            key = item_list[0]
-            value = float(item_list[1])
-            items[key] = value
+            try:
+                item_list = item.split(':')
+                key = item_list[0]
+                value = float(item_list[1])
+                items[key] = value
+            except IndexError:
+                items[key] = 0
         return items
+
+    def read_acq_status(self):
+        cmd = 'starts#json'
+        starts = self._send_command(cmd, 9000)
+        try:
+            starts = float(starts)
+        except ValueError:
+            starts = 0
+        cmd = 'total_count#json'
+        total_counts = self._send_command(cmd, 9000)
+        try:
+            total_counts = float(total_counts)
+        except ValueError:
+            total_counts = 0
+        reply = {'starts': starts, 'total_counts': total_counts}
+        return reply
 
     def start_measurement(self, iterations):
         self.expected_iterations = iterations
@@ -127,7 +150,7 @@ class Tof():
         payload = {
             'cmd': 'start_measurement',
             'sweeps': iterations,
-            'iteration_time': 5
+            'iteration_time': 5,
         }
         self._send_command(payload, 8500)
         return
@@ -184,24 +207,26 @@ class Tof():
             spectrum = pickle.load(f)
 
         times = np.arange(0, len(spectrum)) * 0.0000000004
-        self.data_set_saver.save_points_batch(
-            'data', times, spectrum
-        )
+        self.data_set_saver.save_points_batch('data', times, spectrum)
         time.sleep(5)
 
 
 if __name__ == '__main__':
     TOF = Tof()
-    comment = 'This is a command line test III'
 
-    TOF.start_measurement(1.6e5)
-    while True:
-        time.sleep(3)
-        print(TOF.read_acq_status())
-        done = TOF.are_we_done_yet()
-        if done:
-            break
-    time.sleep(1)
-    with open(machine_path / 'data.p', 'rb') as f:
-        spectrum = pickle.load(f)
-    TOF.create_measurement_entry(comment)
+    for i in range(0, 10):  # number of spectra
+        comment = 'This is a command line test IV'
+
+        TOF.start_measurement(2.6e5)  # number of scans in each spectrum
+        while True:
+            time.sleep(3)
+            print(TOF.read_acq_status())
+            done = TOF.are_we_done_yet()
+            if done:
+                break
+        time.sleep(1)
+        with open(machine_path / 'data.p', 'rb') as f:
+            spectrum = pickle.load(f)
+        TOF.create_measurement_entry(comment)
+
+        time.sleep(1 * 60)  # time between spectra
