@@ -19,14 +19,15 @@ machine_path = pathlib.Path.home() / 'machines' / HOSTNAME
 sys.path.append(str(machine_path))
 
 
-class MCSRunner():
+class MCSRunner:
     def __init__(self):
         threading.Thread.__init__(self)
-        self.mcs = pexpect.spawn('./testmcs6a')
-        self.machine_path = machine_path
-        # Allow time for testmcs6a to start
-        time.sleep(4)
 
+        self.mcs = None  # Set by _init_mcs6a
+        self.starts = 0
+        self.measurement_running = False
+
+        self.machine_path = machine_path
         self.running = True
         self.pullsocket = DateDataPullSocket(
             'tof-pull', ['total_count', 'starts'], timeouts=[600, 600]
@@ -34,9 +35,17 @@ class MCSRunner():
         self.pullsocket.start()
         self.pushsocket = DataPushSocket('tof-push', action='enqueue')
         self.pushsocket.start()
-        self._init_measurement()
+        # self._init_mcs6a()
+        # self._init_measurement()
+
+    def _init_mcs6a(self):
+        self.mcs = pexpect.spawn('./testmcs6a')
+        # Allow time for testmcs6a to start
+        time.sleep(4)
 
     def _init_measurement(self):
+        self._init_mcs6a()
+        time.sleep(0.5)
         self.pullsocket.set_point_now('total_count', 0)
         self.pullsocket.set_point_now('starts', 0)
 
@@ -108,15 +117,21 @@ class MCSRunner():
     def measure(self, iterations, iteration_time=5):
         if self.measurement_running:
             return False
+        self._init_mcs6a()
         self.measurement_running = True
         self._init_measurement()
         while self.starts < iterations:
             self._perform_single_measurement(iteration_time)
             self._read_data_file()
-        self.measurement_running = False
+        self.end_measurement()
 
-    def _quit(self):
+    def end_measurement(self):
+        self._run_command('e')
+        time.sleep(1)
         self._run_command('q')
+        time.sleep(1)
+        self.measurement_running = False
+        self.mcs = None
 
     def run(self):
         while self.running:
