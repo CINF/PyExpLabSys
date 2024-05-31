@@ -5,7 +5,7 @@ This module is Python 2 and 3 compatible.
 
 from __future__ import unicode_literals
 import os
-from os import path
+import pathlib
 import re
 import sys
 import socket
@@ -125,14 +125,20 @@ class SystemStatus(object):
         # Get dirname of current file and add two parent directory entries a
         # .git and a FETCH_HEAD in a hopefullt crossplatform manner, result:
         # /home/pi/PyExpLabSys/PyExpLabSys/common/../../.git/FETCH_HEAD
-        fetch_head_file = os.path.join(
-            os.path.dirname(__file__), *[os.path.pardir] * 2 + ['.git', 'FETCH_HEAD']
-        )
+        git = {}
+        fetch_head_file = pathlib.Path(__file__).parents[2] / '.git' / 'FETCH_HEAD'
         # Check for last change
         if os.access(fetch_head_file, os.F_OK):
-            return os.path.getmtime(fetch_head_file)
+            git['PyExpLabSys'] = os.path.getmtime(fetch_head_file)
         else:
-            return None
+            git['PyExpLabSys'] = None
+        fetch_head_file = pathlib.Path.home() / 'machines' / '.git' / 'FETCH_HEAD'
+        # Check for last change
+        if os.access(fetch_head_file, os.F_OK):
+            git['machines'] = os.path.getmtime(fetch_head_file)
+        else:
+            git['machines'] = None
+        return git
 
     @staticmethod
     @works_on('all')
@@ -309,13 +315,7 @@ class SystemStatus(object):
         self._cache['purpose'] = purpose
 
         # Read the purpose file
-        filepath = path.join(
-            path.expanduser('~'),
-            'PyExpLabSys',
-            'machines',
-            self._machinename,
-            'PURPOSE',
-        )
+        filepath = pathlib.Path.home() / 'machines' / self._machinename / 'PURPOSE'
         try:
             with codecs.open(filepath, encoding='utf-8') as file_:
                 purpose_lines = file_.readlines()
