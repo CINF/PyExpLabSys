@@ -135,13 +135,43 @@ class Keithley2400:
         # Also return timestamp?
         return voltage
 
-    def set_source_function(self, function=None):
+    def set_source_function(self, function=None, source_range=None):
         if function in ('i', 'I'):
             self.instr.write('SOURCE:FUNCTION CURRENT')
+            if source_range:
+                self.instr.write(':SOURCE:CURRENT:RANGE {}'.format(source_range))
         if function in ('v', 'V'):
             self.instr.write('SOURCE:FUNCTION VOLTAGE')
+            if source_range:
+                self.instr.write(':SOURCE:VOLTAGE:RANGE {}'.format(source_range))
+
         actual_function = self.instr.query('SOURCE:FUNCTION?')
         return actual_function
+
+    def set_sense_function(self, function, sense_range=None):
+        """
+        Set the sense range, a value of None returns the current value without
+        changing the actual value. A range value of 0 indicates auto-range.
+        """
+        if function.lower() in ('i' 'current'):
+            self.instr.write(':SENSE:FUNCTION:ON "CURRENT"')
+            if sense_range == 0:
+                self.instr.write(':SENSE:CURRENT:RANGE:AUTO ON')
+            else:
+                self.instr.write(':SENSE:CURRENT:RANGE {}'.format(sense_range))
+        if function.lower() in ('v', 'voltage'):
+            #  TODO: Configure read-back!!!
+            self.instr.write(':SENSE:FUNCTION:ON "VOLTAGE"')
+            if sense_range == 0:
+                self.instr.write(':SENSE:VOLTAGE:RANGE:AUTO ON')
+            else:
+                self.instr.write(':SENSE:VOLTAGE:RANGE {}'.format(sense_range))
+
+        # Double read was needed with the old scpi module, hopefully no wwith pyvisa
+        # self.scpi_comm(':SENSE:FUNCTION:ON?')
+        # self.clear_buffer()
+        raw = self.instr.query(':SENSE:FUNCTION:ON?')
+        return raw
 
     def set_current_limit(self, current: float = None):
         """Set the desired current limit"""
@@ -149,7 +179,6 @@ class Keithley2400:
             self.instr.write('CURRENT:PROTECTION {:.9f}'.format(current))
         raw = self.instr.query('CURRENT:PROTECTION?')
         actual = float(raw)
-        print('K2400 set current limit: ', actual)
         return actual
 
     def set_voltage_limit(self, voltage: float = None):
