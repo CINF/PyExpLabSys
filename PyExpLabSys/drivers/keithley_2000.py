@@ -28,7 +28,6 @@ class Keithley2000:
         scpi_cmd = 'SENSE:{}:DETector:BANDwidth'.format(measurement)
         if bandwidth is not None:
             self.instr.write(scpi_cmd + ' {}'.format(bandwidth))
-        # value_raw = DMM.scpi_comm(scpi_cmd + '?')
         value_raw = self.instr.query(scpi_cmd + '?')
         value = float(value_raw)
         return value
