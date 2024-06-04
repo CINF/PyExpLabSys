@@ -1,37 +1,37 @@
 """ Simple driver for Keithley 2400 SMU """
-from PyExpLabSys.drivers.scpi import SCPI
+import pyvisa
 
 
-class Keithley2400(SCPI):
+class Keithley2400:
     """Simple driver for Keithley 2400 SMU"""
 
     def __init__(
         self, interface, hostname='', device='', baudrate=9600, gpib_address=None
     ):
+        rm = pyvisa.ResourceManager('@py')
         if interface == 'serial':
-            SCPI.__init__(
-                self,
-                interface=interface,
-                device=device,
-                baudrate=baudrate,
-                line_ending='\n',
-            )
-            self.comm_dev.timeout = 2
-            self.comm_dev.rtscts = False
-            self.comm_dev.xonxoff = False
-        if interface == 'lan':
-            SCPI.__init__(self, interface=interface, hostname=hostname)
+            conn_string = 'ASRL{}::INSTR'.format(device)
+            self.instr = rm.open_resource(conn_string)
+            # self.instr.set_visa_attribute(
+            #     pyvisa.constants.VI_ATTR_ASRL_FLOW_CNTRL,
+            #     pyvisa.constants.VI_ASRL_FLOW_XON_XOFF,
+            # )
+            self.instr.read_termination = '\n'
+            self.instr.write_termination = '\n'
+            self.instr.baud_rate = baudrate
         if interface == 'gpib':
-            SCPI.__init__(self, interface=interface, gpib_address=gpib_address)
+            pass
+        if interface == 'lan':
+            pass
 
     def output_state(self, output_state: bool = None):
         """Turn the output on or off"""
         if output_state is not None:
             if output_state:
-                self.scpi_comm('OUTPUT:STATE 1')
+                self.instr.write('OUTPUT:STATE 1')
             else:
-                self.scpi_comm('OUTPUT:STATE 0')
-        actual_state_raw = self.scpi_comm('OUTPUT:STATE?')
+                self.instr.write('OUTPUT:STATE 0')
+        actual_state_raw = self.instr.query('OUTPUT:STATE?')
         actual_state = actual_state_raw[0] == '1'
         return actual_state
 
@@ -51,9 +51,9 @@ class Keithley2400(SCPI):
                 nplc = 0.01
             if nplc > 10:
                 nplc = 10
-            self.scpi_comm('SENSE:CURRENT:NPLCYCLES {}'.format(nplc))
-            self.scpi_comm('SENSE:VOLTAGE:NPLCYCLES {}'.format(nplc))
-        current_nplc = float(self.scpi_comm('SENSE:CURRENT:NPLCYCLES?'))
+            self.instr.write('SENSE:CURRENT:NPLCYCLES {}'.format(nplc))
+            self.instr.write('SENSE:VOLTAGE:NPLCYCLES {}'.format(nplc))
+        current_nplc = float(self.instr.query('SENSE:CURRENT:NPLCYCLES?'))
         return current_nplc
 
     def _parse_status(self, status_string):
@@ -100,7 +100,7 @@ class Keithley2400(SCPI):
         Returns None if the output is off.
         """
         if self.output_state():
-            raw = self.scpi_comm('MEASURE:CURRENT?')
+            raw = self.instr.query('MEASURE:CURRENT?')
         else:
             raw = None
         if raw is None:
@@ -137,62 +137,102 @@ class Keithley2400(SCPI):
 
     def set_source_function(self, function=None):
         if function in ('i', 'I'):
-            self.scpi_comm('SOURCE:FUNCTION CURRENT')
+            self.instr.write('SOURCE:FUNCTION CURRENT')
         if function in ('v', 'V'):
-            self.scpi_comm('SOURCE:FUNCTION VOLTAGE')
-        actual_function = self.scpi_comm('SOURCE:FUNCTION?')
+            self.instr.write('SOURCE:FUNCTION VOLTAGE')
+        actual_function = self.instr.query('SOURCE:FUNCTION?')
         return actual_function
 
     def set_current_limit(self, current: float = None):
         """Set the desired current limit"""
         if current is not None:
-            self.scpi_comm('CURRENT:PROTECTION {:.9f}'.format(current))
-        actual = self.scpi_comm('CURRENT:PROTECTION?')
+            self.instr.write('CURRENT:PROTECTION {:.9f}'.format(current))
+        raw = self.instr.query('CURRENT:PROTECTION?')
+        actual = float(raw)
+        print('K2400 set current limit: ', actual)
         return actual
 
     def set_voltage_limit(self, voltage: float = None):
         """Set the desired voltate limit"""
         if voltage is not None:
-            self.scpi_comm('VOLTAGE:PROTECTION {:.9f}'.format(voltage))
-        actual = self.scpi_comm('VOLTAGE:PROTECTION?')
+            self.instr.write('VOLTAGE:PROTECTION {:.9f}'.format(voltage))
+        raw = self.instr.query('VOLTAGE:PROTECTION?')
+        actual = float(raw)
         return actual
 
     def set_current(self, current: float):
         """Set the desired current"""
-        self.scpi_comm('SOURCE:CURRENT {:.9f}'.format(current))
+        self.instr.write('SOURCE:CURRENT {:.9f}'.format(current))
         return True
+
+    def set_voltage_range(self, voltage: float):
+        self.instr.write(':SOURCE:VOLTAGE:RANGE {:.9f}'.format(voltage))
 
     def set_voltage(self, voltage: float):
         """Set the desired current"""
-        self.scpi_comm('SOURCE:VOLT {:.9f}'.format(voltage))
+        self.instr.write('SOURCE:VOLT {:.9f}'.format(voltage))
         return True
+
+    def read_volt_and_current(self):
+        # TODO - CONFIGURE TO ENSURE RIGHT SYNTAX OF RETURN!
+        # Also try to configure to measure actual voltage
+        # self.scpi_comm(':INIT')
+        raw = self.instr.query(':READ?')
+        fields = raw.split(',')
+        voltage = float(fields[0])
+        current = float(fields[1])
+        return voltage, current
 
 
 if __name__ == '__main__':
     import time
 
-    GPIB = 22
-    SMU = Keithley2400(interface='gpib', gpib_address=GPIB)
+    device = '/dev/serial/by-id/usb-FTDI_Chipi-X_FT6F1A7R-if00-port0'
+    SMU = Keithley2400(
+        interface='serial',
+        device=device,
+        baudrate=19200,
+    )
+    print(SMU.instr.query('*IDN?'))
+    exit()
+
+    # GPIB = 22
+    # SMU = Keithley2400(interface='gpib', gpib_address=GPIB)
 
     SMU.set_source_function('v')
     SMU.output_state(True)
+    # SMU.set_voltage_range(voltage=90)
+    SMU.set_voltage(0.12)
 
-    # print(SMU.scpi_comm(':TRIGGER:OUTPUT SENSE'))
+    print(SMU.read_current())
+    SMU.set_current_limit(1e-7)
+
+    time.sleep(1)
+
+    cmd = 'READ?'
+    for i in range(0, 50):
+        print(SMU.read_volt_and_current())
+
+    # print(SMU.read_current())
+
+    exit()
+
+    # # print(SMU.scpi_comm(':TRIGGER:OUTPUT SENSE'))
     print(SMU.scpi_comm(':TRIGGER:OUTPUT SOURCE'))
     print(SMU.scpi_comm(':TRIGGER:OUTPUT?'))
 
     print(SMU.scpi_comm(':TRIGGER:OLINE?'))
     print(SMU.scpi_comm(':TRIGGER:OLINE 2'))
 
-    for i in range(0, 10):
-        SMU.set_voltage(i / 10.0)
-        time.sleep(0.5)
-        print(SMU.scpi_comm(':TRIGGER:OUTPUT SENSE'))
-        current = SMU.read_current()
-        print(SMU.scpi_comm(':TRIGGER:OUTPUT NONE'))
-        voltage = SMU.read_voltage()
-        print(
-            'Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
-                current * 1e6, voltage * 1000, voltage / current
-            )
-        )
+    # for i in range(0, 10):
+    #     SMU.set_voltage(i / 10.0)
+    #     time.sleep(0.5)
+    #     print(SMU.scpi_comm(':TRIGGER:OUTPUT SENSE'))
+    #     current = SMU.read_current()
+    #     print(SMU.scpi_comm(':TRIGGER:OUTPUT NONE'))
+    #     voltage = SMU.read_voltage()
+    #     print(
+    #         'Current: {:.1f}uA. Voltage: {:.2f}mV. Resistance: {:.1f}ohm'.format(
+    #             current * 1e6, voltage * 1000, voltage / current
+    #         )
+    #     )
