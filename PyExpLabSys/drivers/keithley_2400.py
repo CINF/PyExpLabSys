@@ -5,9 +5,7 @@ import pyvisa
 class Keithley2400:
     """Simple driver for Keithley 2400 SMU"""
 
-    def __init__(
-        self, interface, hostname='', device='', baudrate=9600, gpib_address=None
-    ):
+    def __init__(self, interface, device='', baudrate=9600, gpib_address=None):
         rm = pyvisa.ResourceManager('@py')
         if interface == 'serial':
             conn_string = 'ASRL{}::INSTR'.format(device)
@@ -19,9 +17,11 @@ class Keithley2400:
             self.instr.read_termination = '\n'
             self.instr.write_termination = '\n'
             self.instr.baud_rate = baudrate
-        if interface == 'gpib':
-            pass
         if interface == 'lan':
+            # The 2400 actually no not have a LAN interface, but 2450 do
+            conn_string = 'TCPIP::{}::inst0::INSTR'.format(device)
+            self.instr = rm.open_resource(conn_string)
+        if interface == 'gpib':
             pass
 
     def output_state(self, output_state: bool = None):
@@ -56,7 +56,8 @@ class Keithley2400:
         current_nplc = float(self.instr.query('SENSE:CURRENT:NPLCYCLES?'))
         return current_nplc
 
-    def _parse_status(self, status_string):
+    @staticmethod
+    def _parse_status(status_string):
         status_table = {
             0: ('OFLO', 'Measurement was made while in over-range'),
             1: ('Filter', 'Measurement was made with the filter enabled'),
@@ -106,11 +107,14 @@ class Keithley2400:
         if raw is None:
             return
 
-        # Values are: voltage, current, ohm, time, status
-        # Only the current is measured, voltage is either
-        # NaN or the source-setpoint.
-        values = raw.split(',')
-        current = float(values[1])
+        if ',' in raw:
+            # Values are: voltage, current, ohm, time, status
+            # Only the current is measured, voltage is either
+            # NaN or the source-setpoint.
+            values = raw.split(',')
+            current = float(values[1])
+        else:
+            current = float(raw)
         # timestamp = float(values[3])
         # print(self._parse_status(values[4]))
         # Also return timestamp?
@@ -119,7 +123,7 @@ class Keithley2400:
     def read_voltage(self):
         """Read the measured voltage"""
         if self.output_state():
-            raw = self.scpi_comm('MEASURE:VOLTAGE?')
+            raw = self.instr.query('MEASURE:VOLTAGE?')
         else:
             raw = None
         if raw is None:
@@ -177,6 +181,7 @@ class Keithley2400:
         """Set the desired current limit"""
         if current is not None:
             self.instr.write('CURRENT:PROTECTION {:.9f}'.format(current))
+            print('K2400: LIMIT IS NOW: ', current)
         raw = self.instr.query('CURRENT:PROTECTION?')
         actual = float(raw)
         return actual
