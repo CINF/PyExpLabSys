@@ -326,15 +326,15 @@ class Keithley6220:
 
     def prepare_delta_measurement(self, probe_current, v_limit=1.0):
         # Set range on nanovoltmeter'
-        # self.scpi_comm('SYST:COMM:SER:SEND "VOLT:RANG 0.1"')
-        self.instr.write('SYST:COMM:SER:SEND "VOLT:RANG {}"'.format(v_limit))
+        self.instr.write('SYST:COMM:SER:SEND "VOLT:RANG 0.1"')
+        # self.instr.write('SYST:COMM:SER:SEND "VOLT:RANG {}"'.format(v_limit))
 
         # self.scpi_comm('SYST:COMM:SER:SEND ":SENSE:VOLT:CHANNEL1:RANGE:AUTO ON"')
         time.sleep(1)
         # self.scpi_comm('SYST:COMM:SER:SEND "VOLT:RANG?"')
         # print('2181a range: ', self.scpi_comm('SYST:COMM:SER:ENT?'))
 
-        self.instr.write('SYST:COMM:SER:SEND "VOLT:NPLC 5"')
+        self.instr.write('SYST:COMM:SER:SEND "VOLT:NPLC 10"')
         # print('2181a NPLC: ', self.scpi_comm('SYST:COMM:SER:ENT?'))
 
         # self.scpi_comm('SYST:COMM:SER:SEND "VOLT:NPLC?"')
