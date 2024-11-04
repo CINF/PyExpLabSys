@@ -180,13 +180,13 @@ class OxfordMercury(SCPI):
         # cmd = 'READ:DEV:{}:TEMP:LOOP:ENAB?'.format(uid)
         # raw_reply = self.scpi_comm(cmd, expect_return=True)
         # print(raw_reply)
-        # cmd = 'SET:DEV:{}:TEMP:LOOP:RSET:0.1K/m'.format(uid)
-        # raw_reply = self.scpi_comm(cmd, expect_return=True)
-        # print(raw_reply)
+        cmd = 'SET:DEV:{}:TEMP:LOOP:RSET:3K/m'.format(uid)
+        raw_reply = self.scpi_comm(cmd, expect_return=True)
         return setpoint
 
     def b_field_setpoint(self, uid: str, setpoint: float = None) -> (float, str):
         # cmd = 'SET:DEV:GRPZ:PSU:SIG:RFST:0.3T/m'
+        # print(cmd)
         # raw_reply = self.scpi_comm(cmd)
         # print(raw_reply)
         if setpoint is None:
@@ -216,6 +216,9 @@ class OxfordMercury(SCPI):
             print(raw_reply)
             # Todo check that raw_reply contains VALID
         else:
+            # Hold the ramp currently being performed
+            cmd = 'SET:DEV:{}:PSU:ACTN:HOLD'.format(uid)
+            raw_reply = self.scpi_comm(cmd, expect_return=True)
             print('Set setpoint to {}T'.format(setpoint))
             cmd = 'SET:DEV:{}:PSU:SIG:FSET:{}T'.format(uid, setpoint)
             print(cmd)
@@ -241,16 +244,54 @@ class OxfordMercury(SCPI):
 
         # HOLD:RTOS:RTOZ:CLMP
         # cmd = 'READ:DEV:{}:PSU:ACTN?'.format(uid)
-        # cmd = 'SET:DEV:{}:PSU:ACTN:HOLD'.format(uid)
         # cmd = 'SET:DEV:{}:PSU:ACTN:RTOZ'.format(uid)
 
-        # raw_reply = self.scpi_comm(cmd, expect_return=True)
+        raw_reply = self.scpi_comm(cmd, expect_return=True)
         return setpoint
 
 
 if __name__ == '__main__':
-    mitc = OxfordMercury('/dev/ttyACM0')
-    print(mitc.read_software_version())
+    itc = OxfordMercury(hostname='192.168.0.20')
+    ips = OxfordMercury(hostname='192.168.0.21')
+
+    print(ips.read_software_version())
+    print(itc.read_software_version())
+
+    print(itc.read_heater('DB1.H1'))
+
+    print()
+    # VTI_TEMP_DB6.H1
+    # uid = 'DB1.H1'
+
+    uid = 'DB1.H1'
+    cmd = 'READ:DEV:{}:HTR:PMAX'.format(uid)
+    # cmd = 'READ:DEV:{}:HTR:VLIM'.format(uid)
+    # cmd = 'READ:DEV:{}:HTR:SIG:POWR?'.format(uid)
+    # STAT:DEV:DB1.H1:HTR:SIG:POWR:0.0000W
+    cmd = 'READ:DEV:{}:HTR:SIG:POWR?'.format(uid)
+    # STAT:DEV:DB1.H1:HTR:SIG:POWR:18.4934W
+
+    ###cmd = 'SET:DEV:{}:PSU:SIG:FSET:{}T'.format(uid, setpoint)
+    # cmd = 'SET:DEV:{}:HTR:SIG:FSET:0.1W'.format(uid)
+    print(cmd)
+    raw_reply = itc.scpi_comm(cmd, expect_return=True)
+    print(raw_reply)
+
+    exit()
+
+    # print(mitc.b_field_setpoint(3))
+
+    # cmd = 'SET:DEV:PSU.M1:PSU:SIG:RCST:2.5A/m'
+    # ips.scpi_comm(cmd)
+    cmd = 'READ:DEV:PSU.M1:PSU:SIG:RCST?'  # Current ramp rate
+    raw_reply = ips.scpi_comm(cmd, expect_return=True)
+    print(raw_reply)
+
+    cmd = 'SET:DEV:GRPZ:PSU:SIG:RFST:0.25T/m'
+    ips.scpi_comm(cmd)
+    cmd = 'READ:DEV:GRPZ:PSU:SIG:RFST?'
+    raw_reply = ips.scpi_comm(cmd, expect_return=True)
+    print(raw_reply)
 
     # print(mitc.read_temperature('MB1.T1'))  # Sample temperature
     # print(mitc.read_temperature('DB6.T1'))  # VTI temperature
