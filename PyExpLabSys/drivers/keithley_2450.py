@@ -1,6 +1,7 @@
 """
 Simple driver for Keithley 2450 SMU
 """
+import time
 from PyExpLabSys.drivers.keithley_2400 import Keithley2400
 
 # Notice, SOURCE will report either setpoint or readback
@@ -137,7 +138,7 @@ class Keithley2450(Keithley2400):
         return reply
 
     def trigger_measurement(self, buffer='defbuffer1'):
-        cmd = ':TRACE:TRIGGER "{}"'.format(buffer)
+        cmd = ':TRACE:TRIGGER "{}"; *TRG;'.format(buffer)
         self.instr.write(cmd)
         return True
 
@@ -161,7 +162,9 @@ class Keithley2450(Keithley2400):
         return actual_readings
 
     def clear_buffer(self, buffer='defbuffer1'):
-        self.instr.query(':TRACE:CLEAR "{}"'.format(buffer))
+        actual_readings = self.elements_in_buffer(buffer)
+        if actual_readings > 0:
+            self.instr.write(':TRACE:CLEAR "{}"'.format(buffer))
         actual_readings = self.elements_in_buffer(buffer)
         return actual_readings
 
@@ -187,10 +190,11 @@ class Keithley2450(Keithley2400):
                 iteration = 0
             iteration += 1
             try:
-                # t = time.time()
+                t = time.time()
                 raw = self.instr.query(cmd)
-                # print('raw read', time.time() - t)
+                # print('k2540 raw read', time.time() - t, '   ', self.latest_fetch_time)
                 reading = self._parse_raw_reading(raw)
+                # print(reading)
                 if reading is None:
                     continue
                 dt = reading['delta_time']
@@ -199,58 +203,59 @@ class Keithley2450(Keithley2400):
         self.latest_fetch_time = dt
         return reading
 
+    def configure_digital_port_as_triggers(self, channel_list=[]):
+        """
+        Configure the DB9 digital output to be configured as
+        individual outputs, that can be (mis)used as triggers.
+        """
+        # Manual trigger of lines can be achived like this:
+        # :DIGital:LINE{}:MODE DIGITAL, OUT'
+        # :DIGital:LINE{}:STATE 0
+        # time.sleep(0.1)
+        # :DIGital:LINE{}:STATE 1
+        # time.sleep(0.025)
+        # :DIGital:LINE{}:STATE 0
+        if not channel_list:
+            channel_list = [1, 2, 3, 4, 5, 6]
+        for i in range(1, 7):
+            if i in channel_list:
+                cmd = ':DIGital:LINE{}:MODE TRIG, OPENdrain'.format(i)
+                self.instr.write(cmd)
+                cmd = ':TRIGger:DIGital{}:OUT:PULSewidth 1e-5'.format(i)
+                self.instr.write(cmd)
+                cmd = ':TRIGger:DIGital{}:OUT:STIMulus COMMAND'.format(i)
+                self.instr.write(cmd)
+            else:
+                cmd = ':DIGital:LINE{}:MODE DIGItal, IN'.format(i)
+                self.instr.write(cmd)
+
 
 if __name__ == '__main__':
     import time
 
     SMU = Keithley2450(interface='lan', device='192.168.0.30')
-    # SMU.make_buffer('gate_data')
-
-    # SMU = Keithley2450(interface='lan', hostname='192.168.0.4')
-    # SMU.make_buffer('iv_data')
-
+    t = time.time()
+    SMU.trigger_measurement()
+    print(time.time() - t)
     # SMU.instr.write('*TRG')
+    # print(time.time() - t)
+    exit()
 
-    # for i in range(1, 7):
-    #     cmd = ':DIGital:LINE{}:MODE DIGital, OUT'.format(i)
-    #    print(cmd)
-    #    SMU.instr.write(cmd)
-
-    SMU.instr.write(':TRIGger:DIGital5:OUT:PULSewidth 0.02')
-    for i in range(0, 30):
+    # SMU.configure_digital_port_as_triggers()
+    # SMU.clear_buffer()
+    for i in range(0, 100):
+        SMU.trigger_measurement()
         SMU.instr.write('*TRG')
-        time.sleep(0.2)
+        # SMU.instr.assert_trigger()
+        # time.sleep(0.1)
     exit()
 
-    SMU.instr.write(':DIGital:LINE5:MODE TRIG, OUT')
-    SMU.instr.write(':TRIGger:DIGital5:OUT:PULSewidth 0.01')
-
-    SMU.instr.write(':TRIGger:DIGital5:OUT:STIMulus COMMAND')
-    print('*')
-    print(SMU.instr.query(':TRIGger:DIGital5:OUT:STIMulus?'))
-    print('*')
-
-    SMU.instr.write('*TRG')
-
-    exit()
-    SMU.instr.write(':DIGital:LINE5:MODE DIGital, OUT')
-    SMU.instr.write(':DIGital:LINE5:STATE 0')
-    time.sleep(0.1)
-    SMU.instr.write(':DIGital:LINE5:STATE 1')
-    time.sleep(0.025)
-    SMU.instr.write(':DIGital:LINE5:STATE 0')
-    exit()
-
-    # for i in range(1, 7):
-    i = 5
-    for _ in range(0, 1000):
-        SMU.instr.write(':DIGital:LINE{}:STATE 0'.format(i))
-        time.sleep(0.02)
-        SMU.instr.write(':DIGital:LINE{}:STATE 1'.format(i))
-        time.sleep(0.005)
-
-    # time.sleep(0.5)
-    # SMU.instr.write(':DIGital:LINE2:STATE 1')
+    while True:
+        time.sleep(1.5)
+        print('Trig')
+        SMU.instr.trigger_measurement()
+        # SMU.instr.write('*TRG')
+        # print(SMU.read_latest())
     exit()
 
     SMU.set_source_function('i', source_range=1e-2)
