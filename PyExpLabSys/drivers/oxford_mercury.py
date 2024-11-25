@@ -1,30 +1,30 @@
 """
-Crude implementation of communication with Oxford Mercury controllers.
+Driver for Oxford Mercury controllers
 To a large extend this is implemented agains a specic device, and will
 take some amount of work to generalize. Unfortunately I have access to
 only a single cryostat.
 """
 
 import time
-from PyExpLabSys.drivers.scpi import SCPI
+import pyvisa
 
 
-class OxfordMercury(SCPI):
+class OxfordMercury():
     def __init__(self, hostname: str) -> None:
-        super().__init__(
-            'lan',
-            hostname=hostname,
-            tcp_port=7020,
-            line_ending='\n',
-            encoding='latin-1',
-        )
+        conn_string = 'TCPIP::{}::7020::SOCKET'.format(hostname)
+        rm = pyvisa.ResourceManager('@py')
+        print(conn_string)
+        self.instr = rm.open_resource(conn_string)
+        self.instr.read_termination = '\n'
+        self.instr.write_termination = '\n'
+        #    encoding='latin-1',
         self.switch_heater_turn_on_time = 0
 
     def _comm(self, cmd):
         error = 0
         while error > -1:
             try:
-                raw_reply = self.scpi_comm(cmd)
+                raw_reply = self.instr.query(cmd)
                 error = -1
             except ValueError:
                 error += 1
@@ -45,7 +45,7 @@ class OxfordMercury(SCPI):
         error = 0
         while len(fields) < 2:
             error = error + 1
-            raw_reply = self._comm(cmd)
+            raw_reply = self.instr.query(cmd)
             if error > 1:
                 print('Errror!')
                 print('Command:', cmd)
@@ -68,7 +68,7 @@ class OxfordMercury(SCPI):
 
     def read_configuration(self) -> str:
         cmd = 'READ:SYS:CAT?'
-        uids = self.scpi_comm(cmd)
+        uids = self.instr.query(cmd)
         return uids
 
     def read_raw(self, uid: str, meas_type: str) -> str:
@@ -76,7 +76,7 @@ class OxfordMercury(SCPI):
         Return all available information about a sensor as a string
         """
         cmd = 'READ:DEV:{}:{}?'.format(uid, meas_type)
-        return self.scpi_comm(cmd)
+        return self.instr.query(cmd)
 
     def read_temperature(self, uid: str) -> (float, str):
         value = self._read_value(uid, 'TEMP')
@@ -140,11 +140,11 @@ class OxfordMercury(SCPI):
                 switch_heater_turn_on_time = time.time()
         return heater_on
 
-    def temperature_setpoint(self, uid: str, setpoint: float = None) -> float:
+    def temperature_setpoint(self, uid: str, setpoint: float = None, rate: float = None) -> float:
         if setpoint is None:
             # This code is almost identical to _read_value()....
             cmd = 'READ:DEV:{}:TEMP:LOOP:TSET?'.format(uid)
-            raw_reply = self.scpi_comm(cmd)
+            raw_reply = self.instr.query(cmd)
             fields = raw_reply.split(':')
             value_raw = fields[-1]
             for i in range(1, len(value_raw)):
@@ -155,46 +155,40 @@ class OxfordMercury(SCPI):
             return actual_setpoint
 
         # If we are here, we are setting a setpoint
-        if setpoint > 310:
-            # Temporary safety precaution
-            setpoint = 0
+        if setpoint > 300:
+            setpoint = 5
+
+        if rate is None:
+            rate = 0.5
+
+        cmd = 'SET:DEV:{}:TEMP:LOOP:RSET:{}K/m'.format(uid, rate)
+        raw_reply = self.instr.query(cmd)
+        print(cmd)
+        print(raw_reply)
 
         # Convntion: A setpoint of 0 turns off heating entirely
         if setpoint <= 0:
             print('Turning off heater')
             cmd = 'SET:DEV:{}:TEMP:LOOP:ENAB:OFF'.format(uid)
-            raw_reply = self.scpi_comm(cmd, expect_return=True)
+            raw_reply = self.instr.query(cmd)
             print(raw_reply)
             # Todo check that raw_reply contains VALID
         else:
             print('Set setpoint to {}K'.format(setpoint))
             cmd = 'SET:DEV:{}:TEMP:LOOP:TSET:{}K'.format(uid, setpoint)
-            raw_reply = self.scpi_comm(cmd, expect_return=True)
+            raw_reply = self.instr.query(cmd)
+            print(raw_reply)
             cmd = 'SET:DEV:{}:TEMP:LOOP:ENAB:ON'.format(uid)
-            raw_reply = self.scpi_comm(cmd, expect_return=True)
+            raw_reply = self.instr.query(cmd)
+            print(raw_reply)
 
-        # cmd = 'READ:DEV:{}:TEMP:LOOP?'.format(uid)
-        # raw_reply = self.scpi_comm(cmd, expect_return=True)
-        # print(raw_reply)
-
-        # cmd = 'READ:DEV:{}:TEMP:LOOP:ENAB?'.format(uid)
-        # raw_reply = self.scpi_comm(cmd, expect_return=True)
-        # print(raw_reply)
-        cmd = 'SET:DEV:{}:TEMP:LOOP:RSET:3K/m'.format(uid)
-        raw_reply = self.scpi_comm(cmd, expect_return=True)
         return setpoint
 
-    def b_field_setpoint(self, uid: str, setpoint: float = None) -> (float, str):
-        # cmd = 'SET:DEV:GRPZ:PSU:SIG:RFST:0.3T/m'
-        # print(cmd)
-        # raw_reply = self.scpi_comm(cmd)
-        # print(raw_reply)
+    def b_field_setpoint(self, uid: str, setpoint: float = None, rate: float = None) -> (float, str):
         if setpoint is None:
             # This code is almost identical to _read_value()....
             cmd = 'READ:DEV:{}:PSU:SIG:FSET?'.format(uid)
-            raw_reply = self.scpi_comm(cmd)
-            # print(cmd)
-            # print(raw_reply)
+            raw_reply = self.instr.query(cmd)
             fields = raw_reply.split(':')
             value_raw = fields[-1]
             for i in range(1, len(value_raw)):
@@ -203,6 +197,19 @@ class OxfordMercury(SCPI):
                 except ValueError:
                     break
             return actual_setpoint
+
+        if rate is None:
+            rate = 0.1
+        if rate < 0.01:
+            print('Rate too low, using 0.01T/min')
+            rate = 0.01
+        if rate > 0.3:
+            print('Rate too high, using 0.3T/min')
+            rate = 0.3
+        cmd = 'SET:DEV:{}:PSU:SIG:RFST:{}T/m'.format(uid, rate)
+        print(cmd)
+        raw_reply = self.instr.query(cmd)
+        print(raw_reply)
 
         # If we are here, we are setting a setpoint
         if abs(setpoint) > 12:
@@ -212,46 +219,29 @@ class OxfordMercury(SCPI):
         if setpoint == 0:
             print('Turning off magnets')
             cmd = 'SET:DEV:{}:PSU:ACTN:RTOZ'.format(uid)
-            raw_reply = self.scpi_comm(cmd, expect_return=True)
+            raw_reply = self.instr.query(cmd)
             print(raw_reply)
             # Todo check that raw_reply contains VALID
         else:
             # Hold the ramp currently being performed
             cmd = 'SET:DEV:{}:PSU:ACTN:HOLD'.format(uid)
-            raw_reply = self.scpi_comm(cmd, expect_return=True)
+            raw_reply = self.instr.query(cmd)
             print('Set setpoint to {}T'.format(setpoint))
+            # Set new setpoint
             cmd = 'SET:DEV:{}:PSU:SIG:FSET:{}T'.format(uid, setpoint)
-            print(cmd)
-            raw_reply = self.scpi_comm(cmd, expect_return=True)
+            raw_reply = self.instr.query(cmd)
             print(raw_reply)
+            # Start the ramp
             cmd = 'SET:DEV:{}:PSU:ACTN:RTOS'.format(uid)
-            raw_reply = self.scpi_comm(cmd, expect_return=True)
+            raw_reply = self.instr.query(cmd)
             print(raw_reply)
-
-        # cmd = 'READ:DEV:PSU.M1:PSU:SIG:RCST?'  # Current ramp rate
-        # cmd = 'SET:DEV:PSU.M1:PSU:SIG:CSET:1A'
-        # cmd = 'SET:DEV:PSU.M1:PSU:SIG:RCST:0.1A/m'
-
-        # cmd = 'READ:DEV:PSU.M1:PSU:SIG:FLD?'
-        # cmd = 'READ:DEV:PSU.M2:PSU:SIG:FLD?'
-        # cmd = 'READ:DEV:GRPZ:PSU:SIG:FLD?'
-        # cmd = 'READ:DEV:MB1.T1:PSU:SIG:TEMP?'
-
-        # cmd = 'DEV:PSU.M1:PSU:ACTN:RTOS'
-
-        # cmd = 'SET:DEV:{}:PSU:FSET 0.5'.format(uid)
-        # cmd = 'READ:DEV:{}:PSU:SIG:FSET?'.format(uid)
-
-        # HOLD:RTOS:RTOZ:CLMP
-        # cmd = 'READ:DEV:{}:PSU:ACTN?'.format(uid)
-        # cmd = 'SET:DEV:{}:PSU:ACTN:RTOZ'.format(uid)
-
-        raw_reply = self.scpi_comm(cmd, expect_return=True)
         return setpoint
 
 
 if __name__ == '__main__':
     itc = OxfordMercury(hostname='192.168.0.20')
+    print(itc.read_heater('DB1.H1'))
+    exit()
     ips = OxfordMercury(hostname='192.168.0.21')
 
     print(ips.read_software_version())
