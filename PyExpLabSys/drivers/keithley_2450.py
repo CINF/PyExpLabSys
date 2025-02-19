@@ -78,9 +78,9 @@ class Keithley2450:
         if source_range is not None:
             if source_range == 0:
                 self.instr.write('smu.source.autorange = smu.ON')
-        else:
-            self.instr.write('smu.source.autorange = smu.OFF')
-            self.instr.write('smu.source.range = {}'.format(source_range))
+            else:
+                self.instr.write('smu.source.autorange = smu.OFF')
+                self.instr.write('smu.source.range = {}'.format(source_range))
 
         # TODO - Readback currently hard-coded!
         self.instr.write('smu.source.readback = smu.ON')
