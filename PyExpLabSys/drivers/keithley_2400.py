@@ -6,8 +6,13 @@ class Keithley2400(SCPI):
     """Simple driver for Keithley 2400 SMU"""
 
     def __init__(
-        self, interface, hostname='', device='', baudrate=9600,
-            gpib_address=None, line_ending='\n'
+        self,
+        interface,
+        hostname='',
+        device='',
+        baudrate=9600,
+        gpib_address=None,
+        line_ending='\n',
     ):
         if interface == 'serial':
             SCPI.__init__(
@@ -110,7 +115,6 @@ class Keithley2400(SCPI):
         # Only the current is measured, voltage is either
         # NaN or the source-setpoint.
         values = raw.split(',')
-        print('DEBUG KLAF 2400 CURRENT', values)
         current = float(values[1])
         # timestamp = float(values[3])
         # print(self._parse_status(values[4]))
@@ -119,8 +123,6 @@ class Keithley2400(SCPI):
 
     def read_voltage(self):
         """Read the measured voltage"""
-        print('DEBUG KLAF READ 2400 VOLTAGE')
-
         if self.output_state():
             raw = self.scpi_comm('MEASURE:VOLTAGE?')
         else:
@@ -131,7 +133,6 @@ class Keithley2400(SCPI):
         # Values is: voltage, current, ohm, time, status
         # Only the voltage is measured, current is either
         # NaN or the source-setpoint.
-        print('DEBUG KLAF 2400 Voltage', repr(raw))
         values = raw.split(',')
         voltage = float(values[0])
         # timestamp = float(values[3])
@@ -160,14 +161,16 @@ class Keithley2400(SCPI):
             if sense_range == 0:
                 self.scpi_comm(':SENSE:CURRENT:RANGE:AUTO ON')
             else:
-                self.scpi_comm(':SENSE:CURRENT:RANGE {}'.format(sense_range))
+                if sense_range is not None:
+                    self.scpi_comm(':SENSE:CURRENT:RANGE {}'.format(sense_range))
         if function.lower() in ('v', 'voltage'):
             #  TODO: Configure read-back!!!
             self.scpi_comm(':SENSE:FUNCTION:ON "VOLTAGE"')
             if sense_range == 0:
                 self.scpi_comm(':SENSE:VOLTAGE:RANGE:AUTO ON')
             else:
-                self.scpi_comm(':SENSE:VOLTAGE:RANGE {}'.format(sense_range))
+                if sense_range is not None:
+                    self.scpi_comm(':SENSE:VOLTAGE:RANGE {}'.format(sense_range))
         self.scpi_comm(':SENSE:FUNCTION:ON?')
         self.clear_buffer()
         raw = self.scpi_comm(':SENSE:FUNCTION:ON?')
