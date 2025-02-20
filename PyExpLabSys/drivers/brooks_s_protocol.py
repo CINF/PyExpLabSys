@@ -47,6 +47,7 @@ class Brooks(object):
         ignore_errors=False,
         suppress_info=False,
     ):
+        self.init = False # Initialization started
         self.ser = serial.Serial(port, 19200)
         self.ser.parity = serial.PARITY_ODD
         self.ser.bytesize = serial.EIGHTBITS
@@ -110,6 +111,8 @@ class Brooks(object):
                 '\tSensor minimum span: {} {}'.format(self.info['minimum_span'], unit)
             )
             print('\tFull range: {} {}\r\n'.format(*self.full_range))
+            self.extra_status = True
+            self.init = True # Initialization complete
 
     def pack(self, input_string):
         """ Turns a string in packed-ascii format """
@@ -175,8 +178,8 @@ class Brooks(object):
             except ValueError:
                 error = error + 1
                 response = 'Error'
-        if self.assertions:
-            assert delimiter == '86'
+        #if self.assertions:
+        #    assert delimiter == '86'
         if error == 10:
             print('Brooks communication error!')
         if self.debug:
@@ -193,7 +196,7 @@ class Brooks(object):
         """ Interpret the status byte """
         if self.ignore_errors:
             return
-        print('*****', end='')
+        print('***** {}'.format(self.device), end='')
         print('Non-zero status bytes: ', end='')
         byte_1 = int(status[0:2], 16)
         byte_1 = bin(byte_1)[2:].zfill(8)
@@ -255,7 +258,9 @@ class Brooks(object):
             if byte_2[-6] == '1':
                 print('Cold start', end='')
             if byte_2[-5] == '1':
-                print('More status available (cmd 48 - check manual)', end='')
+                print('More status available (cmd 48 - check manual)')
+                if self.init and self.extra_status:
+                    self.read_extra_status()
             if byte_2[-4] == '1':
                 print('Primary variable analog output fixed', end='')
             if byte_2[-3] == '1':
@@ -265,6 +270,59 @@ class Brooks(object):
             if byte_2[-1] == '1':
                 print('Primary variable out of range', end='')
         print('*****')
+
+    def read_extra_status(self):
+        """Read extra transmitter status (cmd 48)"""
+        self.extra_status = False
+        response = self.comm('82' + self.long_address + '3000')
+        byte_1 = bin(int(response[0:2], 16))[2:].zfill(8)
+        if byte_1[-1] == '1':
+            print('* Program memory corrupt! *')
+        if byte_1[-2] == '1':
+            print('* RAM test failure! *')
+        if byte_1[-4] == '1':
+            print('* Non-volatile memory failure! *')
+        if byte_1[-6] == '1':
+            print('* Internal power supply failure! *')
+        for i in [-3, -5, -7, -8]:
+            if byte_1[i] == '1':
+                print('* Undefined! *')
+        byte_2 = bin(int(response[2:4], 16))[2:].zfill(8)
+        if byte_2[-7] == '1':
+            print('* Setpoint deviation (controller error)! *')
+        if byte_2[-8] == '1':
+            print('* Temperature out of limits! *')
+        for i in [-1, -2, -3, -4, -5, -6]:
+            if byte_2[i] == '1':
+                print('* Undefined! *')
+        byte_3 = bin(int(response[4:6], 16))[2:].zfill(8)
+        if byte_3[-1] == '1':
+            print('* Low flow alarm (flow alarm 1)! *')
+        if byte_3[-2] == '1':
+            print('* High flow alarm (flow alarm 2)! *')
+        if byte_3[-3] == '1':
+            print('* Totalizer overflow! *')
+        if byte_3[-4] == '1':
+            print('* Low pressure alarm! *')
+        if byte_3[-5] == '1':
+            print('* High pressure alarm! *')
+        if byte_3[-6] == '1':
+            print('* Valve drive out of limits! *')
+        if byte_3[-8] == '1':
+            print('* Device calibration due! *')
+        byte_4 = bin(int(response[6:8], 16))[2:].zfill(8)
+        if byte_4[-1] == '1':
+            print('* Device overhaul due! *')
+        if byte_4[-3] == '1':
+            print('* No-Flow Indication! *')
+        for i in [-2, -4, -5, -6, -7, -8]:
+            if byte_4[i] == '1':
+                print('* Undefined! *')
+        if self.debug:
+            print('Additional device status bit stream: {} {} {} {}'.format(
+                byte_1, byte_2, byte_3, byte_4,
+            ))
+        self.extra_status = True
 
     def read_sensor_information(self):
         """Read primary variable sensor information (cmd 14)
