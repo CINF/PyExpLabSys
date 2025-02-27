@@ -71,8 +71,9 @@ class ValueLogger(threading.Thread):
                 self.value = self.valuereader.value()
             else:
                 self.value = self.valuereader.value(self.channel)
-            time_trigged = (time.time() - self.last['time']) > self.maximumtime
-            pre_time_trigged = (time.time() - self.last['time']) > self.low_time
+            this_time = time.time()
+            time_trigged = (this_time - self.last['time']) > self.maximumtime
+            pre_time_trigged = (this_time - self.last['time']) > self.low_time
 
             try:
                 if self.compare['type'] == 'lin':
@@ -102,7 +103,6 @@ class ValueLogger(threading.Thread):
                     val_trigged = False
 
             if val_trigged and (self.value is not None):
-                self.status['trigged'] = True
                 if pre_time_trigged:
                     # Loop back through previous data points to find onset
                     low_val_trigged = False
@@ -111,23 +111,24 @@ class ValueLogger(threading.Thread):
                         if self.compare['type'] == 'lin':
                             low_val_trigged = not (
                                 self.last['val'] - self.compare['low val']
-                                < self.value
+                                < y_i
                                 < self.last['val'] + self.compare['low val']
                             )
                         if self.compare['type'] == 'log':
                             low_val_trigged = not (
                                 self.last['val'] * (1 - self.compare['low val'])
-                                < self.value
+                                < y_i
                                 < self.last['val'] * (1 + self.compare['low val'])
                             )
                         if low_val_trigged:
                             # Save extra point
                             self.saved_points.append((t_i, y_i))
                             break
-                self.last['time'] = time.time()
+                self.last['time'] = this_time
                 self.last['val'] = self.value
                 self.saved_points.append((self.last['time'], self.last['val']))
                 self.pre_trig_queue = []
+                self.status['trigged'] = True
                 # if val_trigged:
                 #    try:
                 #        pre_time, pre_val = previous_point
@@ -138,12 +139,12 @@ class ValueLogger(threading.Thread):
                 #        pass
             elif time_trigged and (self.value is not None):
                 self.status['trigged'] = True
-                self.last['time'] = time.time()
+                self.last['time'] = this_time
                 self.last['val'] = self.value
-                self.saved_points.append((time.time(), self.value))
+                self.saved_points.append((this_time, self.value))
                 self.pre_trig_queue = []
             else:
-                self.pre_trig_queue.append((time.time(), self.value))
+                self.pre_trig_queue.append((this_time, self.value))
             # previous_point = (time.time(), self.value)
 
 
