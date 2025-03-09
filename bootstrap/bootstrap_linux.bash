@@ -14,7 +14,7 @@ apt1="openssh-server emacs graphviz screen i2c-tools vim-nox"
 #
 # NOTE: This line used to contain colorama, but it is a dependency of
 # pip, so it will be installed anyway
-apt2="python3-pip python3-numpy black"
+apt2="python3-pip python3-venv python3-numpy black"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
 declare -a apt3=("libpython3-dev" "python3-dev")
@@ -68,18 +68,15 @@ usage="This is the PyExpLabSys Linux bootstrap script
 Where SECTION is the part of the bootstrap script that you want to run, lised below. If the value of \"all\" is given all section will be run. NOTE you can only supply one argument:
 
 Sections:
-bash        Edit PATH and PYTHONPATH in .bashrc to make PyExpLabSys scripts
+base        Edit PATH and PYTHONPATH in .bashrc to make PyExpLabSys scripts
             runnable and PyExpLabSys importable. Plus add bash aliasses for
-            most common commands including apt commands.
-git         Add common git aliases
-install     Install commonly used packages e.g openssh-server
-pip         Install extra Python packages with pip
-autostart   Setup autostart cronjob
-settings    Link in the PyExpLabSys settings file
-pycheckers  Install Python code style checkers and hook them up to emacs and
+            most common commands. Install commonly used packages.
+	    Setup autostart cronjob. Link in the PyExpLabSys settings file
+	    Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
-all         All of the above
+bash git install pip autostart settings pyheckers
+base         All of the above
 
 doc         Install extra packages needed for writing docs (NOT part of all)
 wiringpi    Install wiring pi and python-wiringpi
@@ -122,7 +119,7 @@ if [ $# -eq 0 ] || [ $# -gt 1 ];then
 fi
 
 # Bash section
-if [ $1 == "bash" ] || [ $1 == "all" ];then
+if [ $1 == "all" ];then
     echo
     echobold "===> SETTING UP BASH"
     grep PATH ~/.bashrc > /dev/null
@@ -171,11 +168,9 @@ if [ $1 == "bash" ] || [ $1 == "all" ];then
     echoblue "----> ======================================================"
     echo "$bash_aliases" > ~/.bash_aliases
     reset_bash="YES"
-    echogood "+++++> DONE"
-fi
+    echogood "+++++> Bash - DONE"
 
-# Git section
-if [ $1 == "git" ] || [ $1 == "all" ];then
+    # Git section
     echo
     echobold "===> SETTING UP GIT"
     echoblue "---> Setting up git aliases"
@@ -196,29 +191,13 @@ if [ $1 == "git" ] || [ $1 == "all" ];then
     echoblue "---> Set default push setting"
     git config --global push.default matching
     echogood "+++++> DONE"
-fi
 
-# Install packages
-if [ $1 == "install" ] || [ $1 == "all" ];then
+    # Install packages
     echo
     echobold "===> INSTALLING PACKAGES"
     echoblue "---> Updating package archive information"
 
-    # Update, but only if it has not just been done (within the last
-    # 10 hours), since it actually takes a while on a RPi.
-    #
-    # NOTE. The method is based on checking the last modification of
-    # the apt cache file, which may not the perfect method, we will
-    # test it and see
-    last_update=`stat /var/cache/apt/pkgcache.bin --format="%Y"`
-    now=`date +%s`
-    since_last_update=$((now-last_update))
-    if [ $since_last_update -gt 36000 ];then
-	sudo apt-get update
-    else
-	echoblue "Skipping, since it was done" $(($since_last_update/3600)) "hours ago"
-    fi
-
+    sudo apt-get update
     aptgetprefix='sudo apt-get -y'
 
     echoblue "---> Upgrade all existing packages"
@@ -243,27 +222,21 @@ if [ $1 == "install" ] || [ $1 == "all" ];then
     echoblue "---> Enable ssh by creating /boot/ssh"
     sudo touch /boot/ssh
     echogood "+++++> DONE"
-fi
 
-# Install extra packages with pip
-if [ $1 == "pip" ] || [ $1 == "all" ];then
+    
     echo
-    # Test if pip3 is there
-    PIPEXECUTABLE=`which pip3`
-
-    if [ $? -eq 0 ];then
-	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
-	echoblue "---> Installing: $pip3packages"
-	sudo $PIPEXECUTABLE install -U $pip3packages
-	# Individual packages
-	for package in "${pip3problempackages[@]}";do
-	    echoblue "---> Installing \"$package\" as an invididual package"
-	    sudo $PIPEXECUTABLE install -U $package
-	done
-	echogood "+++++> DONE"
-    else
-	echobad "pip3 not installed, run install step and then re-try pip step"
-    fi
+    PYTHONEXECUTABLE=`which python3`
+    $PYTHONEXECUTABLE -m venv $HOME/venv/
+    PIPEXECUTABLE=$HOME/venv/bin/pip
+    echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
+    echoblue "---> Installing: $pip3packages"
+    sudo $PIPEXECUTABLE install $pip3packages
+    # Individual packages
+    for package in "${pip3problempackages[@]}";do
+	echoblue "---> Installing \"$package\" as an invididual package"
+	sudo $PIPEXECUTABLE install  $package
+    done
+    echogood "+++++> DONE"
 fi
 
 # Setup autostart cronjob
