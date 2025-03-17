@@ -291,6 +291,7 @@ class EjlaborateLoggingCriteriumChecker(object):
         criteria=(()),
         time_outs=None,
         low_compare_values=None,
+        grades=None,
     ):
         """Initialize the logging criterium checker
 
@@ -306,6 +307,8 @@ class EjlaborateLoggingCriteriumChecker(object):
                 indicate the logging timeouts in seconds. Defaults to 600.
             low_compare_values (sequence): An (optional) sequence of lower limits under
                 which the logging criteria will never trigger
+            grades (sequence): An (optional) sequence of subcriteria (0-100%) to use
+                in the pre_trig condition. Defaults to 10%
         """
         error_message = None
         if len(types) != len(codenames):
@@ -322,6 +325,17 @@ class EjlaborateLoggingCriteriumChecker(object):
                 'If time_outs is given, it must contain as many '
                 'values as there are codenames'
             )
+        if grades is not None and len(grades) != len(codenames):
+            error_message = (
+                'If grades is given, it must contain as many '
+                'values as there are codenames'
+            )
+        if grades is not None and error_message is None:
+            for grade in grades:
+                if grade <= 0 or grade >= 1:
+                    error_message = (
+                'If grades is given, each grade must be larger than 0 and less than 1'
+            )
         if error_message is not None:
             raise ValueError(error_message)
 
@@ -330,16 +344,18 @@ class EjlaborateLoggingCriteriumChecker(object):
             low_compare_values = [None for _ in codenames]
         if time_outs is None:
             time_outs = [600 for _ in codenames]
+        if grades is None:
+            grades = [0.1 for _ in codenames]
 
         self.last_values = {}
         self.last_time = {}
         self.measurements = {}
         self.buffer = {}
         self.saved_points = {}
-        for codename, type_, criterium, time_out, low_compare in zip(
-            codenames, types, criteria, time_outs, low_compare_values
+        for codename, type_, criterium, time_out, low_compare, grade in zip(
+            codenames, types, criteria, time_outs, low_compare_values, grades
         ):
-            self.add_measurement(codename, type_, criterium, time_out, low_compare)
+            self.add_measurement(codename, type_, criterium, time_out, low_compare, grade)
 
     @property
     def codenames(self):
@@ -347,7 +363,7 @@ class EjlaborateLoggingCriteriumChecker(object):
         return list(self.measurements.keys())
 
     def add_measurement(
-        self, codename, type_, criterium, time_out=600, low_compare=None
+        self, codename, type_, criterium, time_out=600, low_compare=None, grade=0.1
     ):
         """Add a measurement channel"""
         if not type_ in ['lin', 'log']:
@@ -357,6 +373,7 @@ class EjlaborateLoggingCriteriumChecker(object):
             'criterium': criterium,
             'low_compare': low_compare,
             'time_out': time_out,
+            'grade': grade,
         }
         self.buffer[codename] = []
         self.saved_points[codename] = []
@@ -366,6 +383,7 @@ class EjlaborateLoggingCriteriumChecker(object):
     def get_data(self, codename):
         """Return the data saved during checks and reset list"""
         data = self.saved_points[codename].copy()
+        #data.sort()
         self.saved_points[codename] = []
         return data
 
@@ -421,6 +439,7 @@ class EjlaborateLoggingCriteriumChecker(object):
                 if pre_trig:
                     print('Pre trig at time={}s'.format(time_)) ### DELETEME after test
                     self.pretrig_sorter(codename, 'lin', (time_, value))
+                    self.saved_points[codename].sort()
                 # Update references before returning true
                 self.last_time[codename] = time_
                 self.last_values[codename] = value
@@ -432,6 +451,7 @@ class EjlaborateLoggingCriteriumChecker(object):
                 # Pre trig check
                 if pre_trig:
                     self.pretrig_sorter(codename, 'log', (time_, value))
+                    self.saved_points[codename].sort()
                 # Update references before returning true
                 self.last_time[codename] = time_
                 self.last_values[codename] = value
@@ -447,10 +467,24 @@ class EjlaborateLoggingCriteriumChecker(object):
         trig event. Fine tuning this is most easily done by subclassing and overwriting
         this method. It will loop through the self.buffer[codename] attribute and add
         point (x, y) to be saved to self.saved_points[codename] attribute."""
-        return
+        self.buffer[codename].reverse() # the attribute will be cleared after this algorithm
+        latest = data_point
+        saved_points = []
+        print('Pretrig sorter: {}'.format(latest)) ###
+        # Log every point with a "sequential" variation of 10% (of general criterium)
+        crit = self.measurements[codename]['criterium'] * self.measurements[codename]['grade']
         for x, y in self.buffer[codename]:
-            pass
-        if type_ == 'lin':
-            pass
-        if type_ == 'log':
-            pass
+            if type_ == 'lin':
+                #print(latest[1] - y, crit)
+                if abs(latest[1] - y) > crit:
+                    #print('adding point: {}'.format((x, y)))
+                    saved_points.append((x, y))
+                    latest = (x, y)
+            else:
+                if abs(latest[1] - y) / abs(latest[1]) > crit:
+                    #print('adding point: {}'.format((x, y)))
+                    saved_points.append((x, y))
+                    latest = (x, y)
+        #saved_points.reverse() # fix ordering (this should be done in main function to prevent this sort of mistake)
+        for point in saved_points:
+            self.saved_points[codename].append(point)
