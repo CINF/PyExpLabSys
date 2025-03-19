@@ -19,9 +19,28 @@ class ValueLogger(threading.Thread):
         comp_type='lin',
         comp_val=1,
         channel=None,
-        pre_trig=None,
-        pre_trig_value=0.1,
+        model='sparse',
+        grade=0.1,
     ):
+        """Initialize the value logger
+
+        Args:
+            value_reader (instance): Instance of a Reader class (should be defined somewhere FIXME)
+            maximumtime (float): Timeout in seconds
+            low_comp (float): Optional low limit beneath which readings should be disregarded
+            comp_type (str): Comparison type either 'lin' or 'log' for linear or
+                logarithmic criteria, respectively
+            comp_val (float): Trigger value for the comparison
+            channel (int): Optional channel for data input from Reader class
+            model (str): Model behaviour of value logger 'sparse' or 'event'.
+                'sparse' value logger (default) behaves like normal as in it will trigger
+                on data points where the newly given point deviates by more than comp_val
+                since the last trigger and then returns True.
+                'event' will use the sparse value logger as an event trigger, buffering
+                all data between events and then sort through the data based on a subcriterium
+            grade (0 < float < 1): The subcriterium used for the event based data sorting.
+                The subcriterium will be comp_val * grade. Default is 10%.
+        """
         threading.Thread.__init__(self)
         self.daemon = True
         self.valuereader = value_reader
@@ -38,32 +57,42 @@ class ValueLogger(threading.Thread):
         self.status['trigged'] = False
         self.last['time'] = 0
         self.last['val'] = 0
-        # "Fancy" algorithm
+        # "Fancy" event algorithm
         self.saved_points = []
-        self.pre_trig = pre_trig
-        # self.pre_trig_value = pre_trig_value * comp_val
-        self.compare['low val'] = pre_trig_value * comp_val
-        self.pre_trig_queue = []
-        self.low_time = self.maximumtime * pre_trig_value
+        self.buffer = []
+        if grade >= 1 or grade <= 0:
+            raise ValueError('"grade" must be larger than 0 and less than 1')
+        self.grade = grade
+        if model == 'sparse':
+            self.event_model = False
+        elif model == 'event':
+            self.event_model = True
+            self.compare['grade_val'] = grade * comp_val
+        else:
+            raise ValueError('"model" must be either "sparse" or "event"')
 
     def read_value(self):
-        """ Read the current value """
+        """Read the current value"""
         return self.value
 
     def read_trigged(self):
-        """ Ask if the class is trigged """
+        """Ask if the class is trigged"""
         return self.status['trigged']
 
     def clear_trigged(self):
-        """ Clear trigger """
+        """Clear trigger"""
         self.status['trigged'] = False
-        if not self.pre_trig is None:
-            self.pre_trig = False
+
+    def get_data(self):
+        """Cleanly return the event based sorted data and clear trigger latch"""
+        data = self.saved_points.copy()
+        data.sort()
         self.saved_points = []
+        self.clear_trigged()
+        return data
 
     def run(self):
         error_count = 0
-        # previous_point = None
 
         while not self.status['quit']:
             time.sleep(1)
@@ -71,8 +100,8 @@ class ValueLogger(threading.Thread):
                 self.value = self.valuereader.value()
             else:
                 self.value = self.valuereader.value(self.channel)
-            time_trigged = (time.time() - self.last['time']) > self.maximumtime
-            pre_time_trigged = (time.time() - self.last['time']) > self.low_time
+            this_time = time.time()
+            time_trigged = (this_time - self.last['time']) > self.maximumtime
 
             try:
                 if self.compare['type'] == 'lin':
@@ -102,49 +131,42 @@ class ValueLogger(threading.Thread):
                     val_trigged = False
 
             if val_trigged and (self.value is not None):
-                self.status['trigged'] = True
-                if pre_time_trigged:
+                if self.event_model:
                     # Loop back through previous data points to find onset
-                    low_val_trigged = False
-                    for i in range(len(self.pre_trig_queue) - 1, -1, -1):
-                        t_i, y_i = self.pre_trig_queue[i]
+                    last = {'time': this_time, 'val': self.value}
+                    for i in range(len(self.buffer) - 1, -1, -1):
+                        t_i, y_i = self.buffer[i]
                         if self.compare['type'] == 'lin':
                             low_val_trigged = not (
-                                self.last['val'] - self.compare['low val']
-                                < self.value
-                                < self.last['val'] + self.compare['low val']
+                                last['val'] - self.compare['grade_val']
+                                < y_i
+                                < last['val'] + self.compare['grade_val']
                             )
                         if self.compare['type'] == 'log':
                             low_val_trigged = not (
-                                self.last['val'] * (1 - self.compare['low val'])
-                                < self.value
-                                < self.last['val'] * (1 + self.compare['low val'])
+                                last['val'] * (1 - self.compare['grade_val'])
+                                < y_i
+                                < last['val'] * (1 + self.compare['grade_val'])
                             )
                         if low_val_trigged:
                             # Save extra point
                             self.saved_points.append((t_i, y_i))
-                            break
-                self.last['time'] = time.time()
+                            last = {'time': t_i, 'val': y_i}
+                    self.saved_points.append((self.last['time'], self.last['val']))
+                    self.buffer = []
+                self.last['time'] = this_time
                 self.last['val'] = self.value
-                self.saved_points.append((self.last['time'], self.last['val']))
-                self.pre_trig_queue = []
-                # if val_trigged:
-                #    try:
-                #        pre_time, pre_val = previous_point
-                #        if pre_val is not None:
-                #            if self.last['time'] - pre_time > self.maximumtime*0.1:
-                #                self.pre_trig = (pre_time, pre_val)
-                #    except TypeError:
-                #        pass
+                self.status['trigged'] = True
             elif time_trigged and (self.value is not None):
                 self.status['trigged'] = True
-                self.last['time'] = time.time()
+                self.last['time'] = this_time
                 self.last['val'] = self.value
-                self.saved_points.append((time.time(), self.value))
-                self.pre_trig_queue = []
+                if self.event_model:
+                    self.saved_points.append((this_time, self.value))
+                    self.buffer = []
             else:
-                self.pre_trig_queue.append((time.time(), self.value))
-            # previous_point = (time.time(), self.value)
+                if self.event_model:
+                    self.buffer.append((this_time, self.value))
 
 
 class LoggingCriteriumChecker(object):
@@ -273,6 +295,7 @@ class LoggingCriteriumChecker(object):
                 return True
         return False
 
+
 class EjlaborateLoggingCriteriumChecker(object):
     """Class that performs a logging criterium check and stores last values for a series
     of meaurements
@@ -295,8 +318,8 @@ class EjlaborateLoggingCriteriumChecker(object):
     ):
         """Initialize the logging criterium checker
 
-        .. note:: If given, codenames, types and criteria must be sequences with the same
-            number of elements
+        .. note:: If given, codenames, types, criteria and grades must be sequences with
+            the same number of elements
 
         Args:
             codename (sequence): A sequence of codenames
@@ -308,7 +331,7 @@ class EjlaborateLoggingCriteriumChecker(object):
             low_compare_values (sequence): An (optional) sequence of lower limits under
                 which the logging criteria will never trigger
             grades (sequence): An (optional) sequence of subcriteria (0-100%) to use
-                in the pre_trig condition. Defaults to 10%
+                in the event handling condition. Defaults to 10%
         """
         error_message = None
         if len(types) != len(codenames):
@@ -333,9 +356,7 @@ class EjlaborateLoggingCriteriumChecker(object):
         if grades is not None and error_message is None:
             for grade in grades:
                 if grade <= 0 or grade >= 1:
-                    error_message = (
-                'If grades is given, each grade must be larger than 0 and less than 1'
-            )
+                    error_message = 'If grades is given, each grade must be larger than 0 and less than 1'
         if error_message is not None:
             raise ValueError(error_message)
 
@@ -355,7 +376,9 @@ class EjlaborateLoggingCriteriumChecker(object):
         for codename, type_, criterium, time_out, low_compare, grade in zip(
             codenames, types, criteria, time_outs, low_compare_values, grades
         ):
-            self.add_measurement(codename, type_, criterium, time_out, low_compare, grade)
+            self.add_measurement(
+                codename, type_, criterium, time_out, low_compare, grade
+            )
 
     @property
     def codenames(self):
@@ -379,11 +402,11 @@ class EjlaborateLoggingCriteriumChecker(object):
         self.saved_points[codename] = []
         # Unix timestamp
         self.last_time[codename] = 0
-        
+
     def get_data(self, codename):
         """Return the data saved during checks and reset list"""
         data = self.saved_points[codename].copy()
-        #data.sort()
+        data.sort()
         self.saved_points[codename] = []
         return data
 
@@ -425,21 +448,11 @@ class EjlaborateLoggingCriteriumChecker(object):
         ):
             return False
 
-        # check for additional trigger conditions
-        if time_ - self.last_time[codename] > measurement['time_out'] * 0.1:
-            pre_trig = True
-        else:
-            pre_trig = False
-
         # Compare
         abs_diff = abs(value - last)
         if measurement['type'] == 'lin':
             if abs_diff > measurement['criterium']:
-                # Pre trig check
-                if pre_trig:
-                    print('Pre trig at time={}s'.format(time_)) ### DELETEME after test
-                    self.pretrig_sorter(codename, 'lin', (time_, value))
-                    self.saved_points[codename].sort()
+                self.event_handler(codename, 'lin', (time_, value))
                 # Update references before returning true
                 self.last_time[codename] = time_
                 self.last_values[codename] = value
@@ -448,10 +461,7 @@ class EjlaborateLoggingCriteriumChecker(object):
                 return True
         elif measurement['type'] == 'log':
             if abs_diff / abs(last) > measurement['criterium']:
-                # Pre trig check
-                if pre_trig:
-                    self.pretrig_sorter(codename, 'log', (time_, value))
-                    self.saved_points[codename].sort()
+                self.event_handler(codename, 'log', (time_, value))
                 # Update references before returning true
                 self.last_time[codename] = time_
                 self.last_values[codename] = value
@@ -462,29 +472,27 @@ class EjlaborateLoggingCriteriumChecker(object):
         self.buffer[codename].append((time_, value))
         return False
 
-    def pretrig_sorter(self, codename, type_, data_point):
-        """This method does the actual assesment of which extra values to save in a pre-
-        trig event. Fine tuning this is most easily done by subclassing and overwriting
+    def event_handler(self, codename, type_, data_point):
+        """This method does the actual assesment of which extra values to save in an
+        event. Fine tuning this is most easily done by subclassing and overwriting
         this method. It will loop through the self.buffer[codename] attribute and add
         point (x, y) to be saved to self.saved_points[codename] attribute."""
-        self.buffer[codename].reverse() # the attribute will be cleared after this algorithm
         latest = data_point
         saved_points = []
-        print('Pretrig sorter: {}'.format(latest)) ###
         # Log every point with a "sequential" variation of 10% (of general criterium)
-        crit = self.measurements[codename]['criterium'] * self.measurements[codename]['grade']
-        for x, y in self.buffer[codename]:
+        crit = (
+            self.measurements[codename]['criterium']
+            * self.measurements[codename]['grade']
+        )
+        for i in range(len(self.buffer[codename]) - 1, -1, -1):
+            t_i, y_i = self.buffer[codename][i]
             if type_ == 'lin':
-                #print(latest[1] - y, crit)
-                if abs(latest[1] - y) > crit:
-                    #print('adding point: {}'.format((x, y)))
-                    saved_points.append((x, y))
-                    latest = (x, y)
+                if abs(latest[1] - y_i) > crit:
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
             else:
-                if abs(latest[1] - y) / abs(latest[1]) > crit:
-                    #print('adding point: {}'.format((x, y)))
-                    saved_points.append((x, y))
-                    latest = (x, y)
-        #saved_points.reverse() # fix ordering (this should be done in main function to prevent this sort of mistake)
+                if abs(latest[1] - y_i) / abs(latest[1]) > crit:
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
         for point in saved_points:
             self.saved_points[codename].append(point)
