@@ -152,7 +152,7 @@ class ValueLogger(threading.Thread):
                             # Save extra point
                             self.saved_points.append((t_i, y_i))
                             last = {'time': t_i, 'val': y_i}
-                    self.saved_points.append((self.last['time'], self.last['val']))
+                    self.saved_points.append((this_time, self.value))
                     self.buffer = []
                 self.last['time'] = this_time
                 self.last['val'] = self.value
