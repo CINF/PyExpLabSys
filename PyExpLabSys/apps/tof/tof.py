@@ -31,11 +31,25 @@ class Tof:
         self.data_set_saver.start()
 
     def contact_external_pi(self, payload, hostname, port=9000):
+        print(hostname)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setblocking(0)
         self.sock.sendto(payload.encode(), (hostname, port))
         time.sleep(0.02)
-        recv = self.sock.recv(65535)
+        error = 0
+        while True:
+            try:
+                recv = self.sock.recv(65535)
+                print(recv)
+                break
+            except BlockingIOError as errmsg:
+                print(errmsg)
+                error += 1
+                if error > 5:
+                    ic('We have a communication issue')
+                    time.sleep(0.5)
+                else:
+                    time.sleep(0.002)
         # print('recv: ', recv)
         raw_reply = recv.decode('ascii')
         return raw_reply
@@ -93,7 +107,19 @@ class Tof:
         ]
         optics_values = {}
         for cmd in cmd_list:
-            raw_reply = self.contact_external_pi(cmd + '#json', '10.54.7.74', 9000)
+            time.sleep(0.1)
+            errors = 0
+            while errors > -1:
+                try:
+                    raw_reply = self.contact_external_pi(cmd + '#json', '10.54.7.74', 9000)
+                    errors = -1
+                except BlockingIOError:
+                    time.sleep(0.14)
+                    errors += 1
+                    if errors > 10:
+                        print('Blocking error from 10.54.7.74')
+                        raw_reply = ''
+                        break
             try:
                 data = json.loads(raw_reply)
                 optics_values[cmd] = float(data[1])
@@ -125,17 +151,24 @@ class Tof:
 
     def read_acq_status(self):
         cmd = 'starts#json'
-        starts = self._send_command(cmd, 9000)
-        try:
-            starts = float(starts)
-        except ValueError:
-            starts = 0
+        for _ in range(0, 3):
+            starts = self._send_command(cmd, 9000)
+            time.sleep(0.1)
+            try:
+                starts = float(starts)
+                break ###
+            except ValueError:
+                print('read_acq_status ValueError', starts)
+                starts = 0
         cmd = 'total_count#json'
-        total_counts = self._send_command(cmd, 9000)
-        try:
-            total_counts = float(total_counts)
-        except ValueError:
-            total_counts = 0
+        for _ in range(0, 3):
+            total_counts = self._send_command(cmd, 9000)
+            time.sleep(0.1)
+            try:
+                total_counts = float(total_counts)
+                break ###
+            except ValueError:
+                total_counts = 0
         reply = {'starts': starts, 'total_counts': total_counts}
         return reply
 
@@ -150,7 +183,7 @@ class Tof:
         payload = {
             'cmd': 'start_measurement',
             'sweeps': iterations,
-            'iteration_time': 5,
+            'iteration_time': 60,
         }
         self._send_command(payload, 8500)
         return
@@ -185,21 +218,21 @@ class Tof:
             'comment': comment,
             'tof_iterations': tof_iterations,
             'tof_pulse_voltage': tof_pulse_voltage,
-            'tof_liner_voltage': tof_voltages['liner'],
-            'tof_lens_A': optics_values['lens_a'],
-            'tof_lens_B': optics_values['lens_b'],
-            'tof_lens_C': optics_values['lens_c'],
-            'tof_lens_D': optics_values['lens_d'],
-            'tof_lens_E': optics_values['lens_e'],
+            'tof_liner_voltage': tof_voltages.get('liner', 0),
+            'tof_lens_A': optics_values.get('lens_a', 0),
+            'tof_lens_B': optics_values.get('lens_b', 0),
+            'tof_lens_C': optics_values.get('lens_c', 0),
+            'tof_lens_D': optics_values.get('lens_d', 0),
+            'tof_lens_E': optics_values.get('lens_e', 0),
             'tof_ion_energy': ion_energy,
-            'tof_R1_voltage': tof_voltages['r1'],
-            'tof_R2_voltage': tof_voltages['r2'],
-            'sem_voltage': tof_voltages['mcp'],
+            'tof_R1_voltage': tof_voltages.get('r1', 0),
+            'tof_R2_voltage': tof_voltages.get('r2', 0),
+            'sem_voltage': tof_voltages.get('mcp', 0),
             # DEFLECTION!!!!! tof_voltages['deflection'],
-            'tof_focus_voltage': tof_voltages['focus'],
+            'tof_focus_voltage': tof_voltages.get('focus', 0),
             'tof_emission_current': emission,
-            'emission_focus': optics_values['focus'],
-            'emission_extraction': optics_values['extraction'],
+            'emission_focus': optics_values.get('focus', 0),
+            'emission_extraction': optics_values.get('extraction', 0),
         }
         self.data_set_saver.add_measurement('data', metadata)
 
@@ -214,12 +247,13 @@ class Tof:
 if __name__ == '__main__':
     TOF = Tof()
 
-    for i in range(0, 10):  # number of spectra
-        comment = 'This is a command line test IV'
+    for i in range(0,400):  # number of spectra
+        comment = '20241108_La-Co-C_v3_1'
 
-        TOF.start_measurement(2.6e5)  # number of scans in each spectrum
+        TOF.start_measurement(1835985)  # number of scans in each spectrum
+	#approximately 10min per spectrum
         while True:
-            time.sleep(3)
+            time.sleep(20)
             print(TOF.read_acq_status())
             done = TOF.are_we_done_yet()
             if done:
@@ -229,4 +263,5 @@ if __name__ == '__main__':
             spectrum = pickle.load(f)
         TOF.create_measurement_entry(comment)
 
-        time.sleep(1 * 60)  # time between spectra
+        time.sleep(1 * 20)  # time between spectra
+
