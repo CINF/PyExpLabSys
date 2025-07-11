@@ -1,4 +1,5 @@
 import gzip
+import json
 import time
 import pathlib
 import datetime
@@ -22,6 +23,13 @@ class PyExpLabSysBackup:
         isotime = datetime.datetime.now().isoformat(timespec='seconds')
         self.path = pathlib.Path.cwd() / isotime
         self.path.mkdir()
+        self.t_start = time.time()
+        self.stats = {
+            'dateplots': {},
+            'measurements': {},
+            'misc': {},
+            'stats': {'start': datetime.datetime.now().isoformat()},
+        }
 
     def _find_all_tables(self):
         query = 'show tables;'
@@ -32,6 +40,13 @@ class PyExpLabSysBackup:
             tables.append(table[0])
         return tables
 
+    def write_stats(self):
+        self.stats['stats']['end'] = datetime.datetime.now().isoformat()
+        self.stats['stats']['total_time'] = time.time() - self.t_start
+        filename = self.path / 'stats.json'
+        with filename.open("w", encoding="UTF-8") as stat_file:
+            json.dump(self.stats, stat_file)
+
     def find_matching_tables(self, name):
         matching = []
         for table in self.untreated_tables:
@@ -39,7 +54,7 @@ class PyExpLabSysBackup:
                 matching.append(table)
         return matching
 
-    def find_dateplots(self):
+    def backup_dateplots(self):
         t = time.time()
         print('Backing up all dateplots since beginning of time')
         untreated_tables = self.untreated_tables.copy()
@@ -49,9 +64,27 @@ class PyExpLabSysBackup:
                 # wil go in the miscellaneous category.
                 continue
             if 'dateplot' in table:
-                self.perform_backup(table, [table])
+                stats = self.perform_backup(table, [table])
                 self.untreated_tables.remove(table)
                 self.backed_up_tables.append(table)
+                self.stats['dateplots'][table] = stats
+        print('Done in {:.0f}s'.format(time.time() - t))
+
+    def backup_measurements(self):
+        t = time.time()
+        print('Backing up all xy-measurements since beginning of time')
+        # Backing up all related measurements - dateplots are also found
+        # by this algorithm, but will typically be removed from
+        # untreated_tables by the backup_dateplots function
+        untreated_tables = self.untreated_tables.copy()
+        for table in untreated_tables:
+            if 'measurements' in table:
+                name = table[table.find('_') :]
+                tables = self.find_matching_tables(name)
+                stats = self.perform_backup(table, tables)
+                self.untreated_tables.remove(table)
+                self.backed_up_tables.append(table)
+                self.stats['measurements'][name] = stats
         print('Done in {:.0f}s'.format(time.time() - t))
 
     def perform_backup(self, name, table_list):
@@ -63,18 +96,29 @@ class PyExpLabSysBackup:
         cmd = cmd.format(HOST, USER, PASSWD, DB)
         for table in table_list:
             cmd += ' ' + table
-
         p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
-        # with gzip.open(path, "wb") as f:
-        #     f.writelines(p.stdout)
+        backup_file = self.path / filename
         with gzip.open(self.path / filename, "wb") as f:
             f.writelines(p.stdout)
-        print('Done in {:.1f}s'.format(time.time() - t))
+        t_total = time.time() - t
+        stats = {
+            'cmd': cmd,
+            'tables': table_list,
+            'time': t_total,
+            'size': backup_file.stat().st_size,
+            'where_clause': '',  # TODO!
+        }
+        print('Done in {:.1f}s'.format(t_total))
+        return stats
 
 
 if __name__ == '__main__':
     PB = PyExpLabSysBackup()
-    PB.find_dateplots()
+    PB.backup_dateplots()
+    PB.backup_measurements()
+    exit()
+
+    # PB.write_stats()
 
     # t = time.time()
     # # name = 'linkam'
