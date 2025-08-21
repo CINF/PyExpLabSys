@@ -1,14 +1,11 @@
 """ Driver for MPG500 gauge controller """
-from __future__ import print_function
 import time
 import logging
 import serial
-from PyExpLabSys.common.supported_versions import python2_and_3
 
 # Configure logger as library logger and set supported python versions
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
-python2_and_3(__file__)
 
 # test_tx = b'\x00\x00\x00\x05\x01\x00\xDD\x00\x00\xAB\x21' # Ask the gauge for pressure
 # test_rx = b'\x00\x04\x01\t\x02\x00\xdd\x00\x00\x0c\xb4QD\x82\xd4' # Answer from the gauge
