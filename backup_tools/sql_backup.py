@@ -1,8 +1,10 @@
+import os
 import gzip
 import json
 import time
 import logging
 import pathlib
+import argparse
 import datetime
 from subprocess import Popen, PIPE
 
@@ -23,15 +25,28 @@ LOGGER = get_logger(
 )
 
 
+# TODO:
+# It is the intention that this software can perform both a full and a differential backup
+# so far only full backups are implemented
 class PyExpLabSysBackup:
-    def __init__(self):
+    def __init__(self, backup_path, differential=False):
+        # Todo - so far only full backups are implemented
+        assert differential == False
+
+        if not backup_path.is_dir():
+            print('Invalid backup path: {}'.format(backup_path))
+
+        self.differential = differential
         isotime = datetime.datetime.now().isoformat(timespec='seconds')
         LOGGER.info('Starting backup on {}'.format(isotime))
         self.conn = pymysql.connect(host=HOST, user=USER, passwd=PASSWD, db=DB)
         self.cursor = self.conn.cursor()
         self.untreated_tables = self._find_all_tables()
         self.backed_up_tables = []
-        self.path = pathlib.Path.cwd() / isotime
+        if differential:
+            self.path = backup_path / (isotime + '_diff')
+        else:
+            self.path = backup_path / (isotime + '_complete')
         self.path.mkdir()
         self.t_start = time.time()
         self.stats = {
@@ -113,11 +128,14 @@ class PyExpLabSysBackup:
         print(msg)
         LOGGER.info(msg)
 
-    def backup_user(self):
+    def backup_users(self):
         # reader needs full access to read this:
         # grant select on *.* to `reader`@`%`;
-        # mysqldump --opt --system=users --no-create-info  --insert-ignore --all-databases --no-data
-        pass
+        cmd = 'mysqldump --single-transaction --system=users --insert-ignore --all-databases --no-data --host={} --user={} --password={}'
+        cmd = cmd.format(HOST, USER, PASSWD, DB)
+        p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
+        with gzip.open(self.path / 'metadata.sql.gz', "wb") as f:
+            f.writelines(p.stdout)
 
     def perform_backup(self, name, table_list):
         t = time.time()
@@ -126,7 +144,9 @@ class PyExpLabSysBackup:
         # https://stackoverflow.com/questions/3600948/python-subprocess-mysqldump-and-pipes
         # Add, --insert-ignore to ensure partial backups can be imported even a few rows are
         # overlapping
-        cmd = 'mysqldump --single-transaction --insert-ignore --host={} --user={} --password={} {}'
+        # --no-create-info to not need DROP TABLE grant for reader. The tables
+        # will be created as part of the initialization along with the users.
+        cmd = 'mysqldump --single-transaction --no-create-info --insert-ignore --host={} --user={} --password={} {}'
         cmd = cmd.format(HOST, USER, PASSWD, DB)
 
         # Holds max-id and number of rows for each table
@@ -164,12 +184,45 @@ class PyExpLabSysBackup:
         return stats
 
 
-if __name__ == '__main__':
-    PB = PyExpLabSysBackup()
+def main():
+    def dir_path(path):
+        os_path = pathlib.Path(path).expanduser()
+        if os_path.is_dir():
+            return os_path
+        else:
+            raise argparse.ArgumentTypeError('{} is not a valid path'.format(path))
+
+    parser = argparse.ArgumentParser(
+        description='Tool for backing up PyExpLabSys sql-data'
+    )
+
+    parser.add_argument('--path', type=dir_path)
+    parser.add_argument('--version', action='store_true')
+    args = vars(parser.parse_args())
+
+    if args['version']:
+        print('SQL Export version 1.0')
+        exit()
+
+    path = args['path']
+    if not path:
+        path_raw = os.environ.get('PYEXPLABSYS_EXPORT')
+        print(path_raw)
+        path = dir_path(path_raw)
+
+    if not path:
+        exit('No export path on either command line og env-variable')
+
+    PB = PyExpLabSysBackup(path)
+    PB.backup_users()
     PB.backup_dateplots()
     PB.backup_measurements()
     PB.backup_misc_tables()
     PB.write_stats()
-
     print('Untreated tables:')
     print(PB.untreated_tables)
+
+
+if __name__ == '__main__':
+    # export PYEXPLABSYS_EXPORT='~/Backups/cinfdatabackup'
+    main()
