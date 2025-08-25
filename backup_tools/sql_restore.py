@@ -15,7 +15,7 @@ LOGGER = get_logger(
     'SQL backup',
     level='info',
     file_log=True,
-    file_name='sql_backup.log',
+    file_name='sql_restore.log',
     terminal_log=False,
 )
 
@@ -39,7 +39,8 @@ class PyExpLabSysRestore:
         components = backup_path.glob('*')
         file_list = []
         for component in components:
-            if 'users.sql' in component.name:
+            if 'metadata.sql' in component.name:
+                # This is far handled manually
                 continue
             if not 'sql.gz' in component.name:
                 continue
@@ -74,4 +75,4 @@ if __name__ == '__main__':
     # PR.find_backups()
 
     # PR.restore_full_backup('2025-07-31T14:47:08')
-    PR.restore_full_backup('2025-08-01T13:34:50_complete')
+    PR.restore_full_backup('2025-08-25T13:08:57_complete')
