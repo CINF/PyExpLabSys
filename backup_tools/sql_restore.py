@@ -1,15 +1,13 @@
-import time
-import gzip
+import os
 import pathlib
 import subprocess
 
 from PyExpLabSys.common.utilities import get_logger
 
-
-HOST = '127.0.0.1'
-USER = 'root'
-PASSWD = '2dphys'
-DB = 'nanomadedata'
+HOST = os.environ.get('PYEXPLABSYS_RESTORE_HOST')
+USER = os.environ.get('PYEXPLABSYS_RESTORE_USER')
+PASSWD = os.environ.get('PYEXPLABSYS_RESTORE_PASSWD')
+DB = os.environ.get('PYEXPLABSYS_RESTORE_DB')
 
 LOGGER = get_logger(
     'SQL backup',
@@ -42,7 +40,7 @@ class PyExpLabSysRestore:
             if 'metadata.sql' in component.name:
                 # This is far handled manually
                 continue
-            if not 'sql.gz' in component.name:
+            if 'sql.gz' not in component.name:
                 continue
             file_list.append(component)
         return file_list
@@ -50,7 +48,7 @@ class PyExpLabSysRestore:
     def import_dump(self, dump_file):
         print()
         print('Restoring {}'.format(dump_file))
-        # Ideally this would all happen via pumps witout an itermediate file, but
+        # Ideally this would all happen via pipeps witout an itermediate file, but
         # this has proven a bit tricky without keeping the entire dump in memory
         print('unzip')
         subprocess.run(['gunzip', dump_file])
