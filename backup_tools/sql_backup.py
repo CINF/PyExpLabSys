@@ -2,7 +2,6 @@ import os
 import gzip
 import json
 import time
-import logging
 import pathlib
 import argparse
 import datetime
@@ -12,10 +11,19 @@ from PyExpLabSys.common.utilities import get_logger
 
 import pymysql
 
-HOST = '10.11.114.11'
-USER = 'reader'
-PASSWD = 'reader'
-DB = 'nanomadedata'
+print(os.environ)
+print()
+
+EXPORT_PATH = os.environ.get('PYEXPLABSYS_EXPORT_PATH')
+HOST = os.environ.get('PYEXPLABSYS_HOST')
+USER = os.environ.get('PYEXPLABSYS_USER')
+PASSWD = os.environ.get('PYEXPLABSYS_PASSWD')
+DB = os.environ.get('PYEXPLABSYS_DB')
+
+print(DB)
+print(EXPORT_PATH)
+
+
 LOGGER = get_logger(
     'SQL backup',
     level='info',
@@ -26,12 +34,12 @@ LOGGER = get_logger(
 
 
 # TODO:
-# It is the intention that this software can perform both a full and a differential backup
-# so far only full backups are implemented
+# It is the intention that this software can perform both a full and a differential
+# backup so far only full backups are implemented
 class PyExpLabSysBackup:
     def __init__(self, backup_path, differential=False):
         # Todo - so far only full backups are implemented
-        assert differential == False
+        assert differential is False
 
         if not backup_path.is_dir():
             print('Invalid backup path: {}'.format(backup_path))
@@ -108,7 +116,7 @@ class PyExpLabSysBackup:
         untreated_tables = self.untreated_tables.copy()
         for table in untreated_tables:
             if 'measurements' in table:
-                name = table[table.find('_') :]
+                name = table[table.find('_'):]
                 tables = self.find_matching_tables(name)
                 stats = self.perform_backup(table, tables)
                 self.stats['measurements'][name] = stats
@@ -142,8 +150,8 @@ class PyExpLabSysBackup:
         filename = '{}.sql.gz'.format(name)
         LOGGER.info('Backing up: {} as {}'.format(table_list, filename))
         # https://stackoverflow.com/questions/3600948/python-subprocess-mysqldump-and-pipes
-        # Add, --insert-ignore to ensure partial backups can be imported even a few rows are
-        # overlapping
+        # Add, --insert-ignore to ensure partial backups can be imported even a few
+        # rows are overlapping
         # --no-create-info to not need DROP TABLE grant for reader. The tables
         # will be created as part of the initialization along with the users.
         cmd = 'mysqldump --single-transaction --no-create-info --insert-ignore --host={} --user={} --password={} {}'
@@ -162,11 +170,12 @@ class PyExpLabSysBackup:
             self.backed_up_tables.append(table)
             cmd += ' ' + table
 
-        # We do not enforce table-locking between the select statements and the dump-command,
-        # however, in practice only a few miliseconds will separate the two commands - the
-        # error will be very small and always with the stats being either correct or sligltly
-        # too low. Subsequent backups will be either perfectly aligen or slightly overlapping
-        # which is not a problem due to --insert-ignore.
+        # We do not enforce table-locking between the select statements and the
+        # dump-command, however, in practice only a few miliseconds will separate
+        # the two commands - the error will be very small and always with the stats
+        # being either correct or sligltly too low. Subsequent backups will be
+        # either perfectly aligen or slightly overlapping which is not a problem
+        # due to --insert-ignore.
         p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
         backup_file = self.path / filename
         with gzip.open(self.path / filename, "wb") as f:
@@ -206,8 +215,7 @@ def main():
 
     path = args['path']
     if not path:
-        path_raw = os.environ.get('PYEXPLABSYS_EXPORT')
-        print(path_raw)
+        path_raw = EXPORT_PATH
         path = dir_path(path_raw)
 
     if not path:
