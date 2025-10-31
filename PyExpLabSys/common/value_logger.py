@@ -2,6 +2,7 @@
 
 import threading
 import time
+import numpy as np
 from PyExpLabSys.common.supported_versions import python2_and_3
 
 python2_and_3(__file__)
@@ -372,6 +373,19 @@ class EjlaborateLoggingCriteriumChecker(object):
         if grades is None:
             grades = [0.1 for _ in codenames]
 
+        ###
+        self.r_time = []
+        self.r_value = []
+        self.r_buffer = []
+        self.extra = {}
+        self.extra['time'] = []
+        self.extra['value'] = []
+        self.means = []
+        self.timeout_ref = 0
+        self.timeout_counter = 0
+        self.deviation_factor = 50
+        self.in_timeout = False
+        ###
         self.last_values = {}
         self.last_time = {}
         self.measurements = {}
@@ -414,12 +428,16 @@ class EjlaborateLoggingCriteriumChecker(object):
         self.saved_points[codename] = []
         return data
 
-    def check(self, codename, value, time_=time.time()):
+    def check(self, codename, value, now=None):
         """Check a new value"""
         try:
             measurement = self.measurements[codename]
         except KeyError:
             raise KeyError('Codename \'{}\' is unknown'.format(codename))
+
+        # Check for time
+        if now is None:
+            now = time.time()
 
         # Pull out last value
         last = self.last_values.get(codename)
@@ -430,19 +448,26 @@ class EjlaborateLoggingCriteriumChecker(object):
 
         # Always trigger for the first value
         if last is None:
-            self.last_time[codename] = time_
+            self.last_time[codename] = now
             self.last_values[codename] = value
             # data buffer is empty
-            self.saved_points[codename].append((time_, value))
+            self.saved_points[codename].append((now, value))
             return True
 
         # Always trigger on a timeout
-        if time_ - self.last_time[codename] > measurement['time_out']:
-            self.last_time[codename] = time_
+        if now - self.last_time[codename] > measurement['time_out']:
+            # Do extra fancy stuff to prevent artificial tailing
+            self.timeout_counter += 1
+            self.in_timeout = True
+            self.timeout_handler(codename, now, value)
+            self.in_timeout = False
+
+            self.last_time[codename] = now
             self.last_values[codename] = value
-            # reset data buffer
+
+            # reset data buffer and save point(s)
             self.buffer[codename] = []
-            self.saved_points[codename].append((time_, value))
+            self.saved_points[codename].append((now, value))
             return True
 
         # Check if below lower compare value
@@ -450,53 +475,176 @@ class EjlaborateLoggingCriteriumChecker(object):
             measurement['low_compare'] is not None
             and value < measurement['low_compare']
         ):
+            # self.buffer[codename].append(now, value)
             return False
 
         # Compare
-        abs_diff = abs(value - last)
+        diff = value - last
+        if diff < 0:
+            sign = -1
+        elif diff > 0:
+            sign = 1
+        else:
+            sign = 0
+
+        abs_diff = abs(diff)
         if measurement['type'] == 'lin':
             if abs_diff > measurement['criterium']:
-                self.event_handler(codename, 'lin', (time_, value))
+                self.event_handler(codename, 'lin', (now, value), sign)
                 # Update references before returning true
-                self.last_time[codename] = time_
+                self.last_time[codename] = now
                 self.last_values[codename] = value
                 self.buffer[codename] = []
-                self.saved_points[codename].append((time_, value))
+                self.saved_points[codename].append((now, value))
                 return True
         elif measurement['type'] == 'log':
-            if abs_diff / abs(last) > measurement['criterium']:
-                self.event_handler(codename, 'log', (time_, value))
+            if last == 0:
+                if abs_diff > 0:
+                    self.event_handler(codename, 'log', (now, value), sign)
+                    # Update references before returning true
+                    self.last_time[codename] = now
+                    self.last_values[codename] = value
+                    self.buffer[codename] = []
+                    self.saved_points[codename].append((now, value))
+                    return True
+                self.buffer[codename].append((now, value))
+                return False
+            if (abs_diff / abs(last) > measurement['criterium']) or (
+                abs(value - self.last_values[codename]) / abs(last)
+                > measurement['criterium']
+            ):
+                self.event_handler(codename, 'log', (now, value), sign)
                 # Update references before returning true
-                self.last_time[codename] = time_
+                self.last_time[codename] = now
                 self.last_values[codename] = value
                 self.buffer[codename] = []
-                self.saved_points[codename].append((time_, value))
+                self.saved_points[codename].append((now, value))
                 return True
         # Append point to buffer before returning false
-        self.buffer[codename].append((time_, value))
+        self.buffer[codename].append((now, value))
         return False
 
-    def event_handler(self, codename, type_, data_point):
+    def check_buffer_deviation(self, codename, now, value):
+        """Compare the buffer data to the general data variation obtained from timeouts"""
+        # Don't check if we haven't yet had a timeout
+        if self.timeout_counter == 0:
+            return
+
+        # Skip if data set is too small
+        if len(self.buffer[codename]) < 10:
+            return
+
+        # Get the variation of the data in the buffer
+        buff = np.array(self.buffer[codename])
+        newest = (now, value)
+        oldest = (self.last_time[codename], self.last_values[codename])
+        slope = (newest[1] - oldest[1]) / (newest[0] - oldest[0])
+        intercept = newest[1] - slope * newest[0]
+        fit = intercept + slope * buff[:, 0]
+
+        time_limit = (oldest[0], newest[0])  ##
+
+        smoothed = smooth(buff[:, 1], 5)
+        # The following gives a RuntimeWarning on 0's. This is okay for this purpose
+        # A way to suppress this is to run np.seterr(invalid='ignore'), but this will
+        # seemingly affect the Python master script
+        variance = ((fit - smoothed) ** 2) / smoothed  # Division by 0 = np.nan
+        mean_var = np.mean(variance)
+        if self.in_timeout:
+            self.timeout_ref += mean_var
+        mean_var = self.timeout_ref / self.timeout_counter  # running mean of variance
+
+        # Find any extra data points with significant deviation
+        extra = np.where(variance > mean_var * self.deviation_factor)[0]
+        for i in range(len(self.buffer[codename])):  ##
+            self.r_value.append(variance[i])  ##
+            self.r_time.append(buff[i, 0])  ##
+        lextra = len(extra)
+        for j, i in enumerate(extra):  ##
+            # Skip duplicates and save everything else
+            if j > 0 and j < lextra - 1:
+                if buff[i, 1] == buff[i - 1, 1] and buff[i, 1] == buff[i + 1, 1]:
+                    continue
+            self.extra['time'].append(buff[i, 0])  ##
+            self.extra['value'].append(buff[i, 1])  ##
+            self.saved_points[codename].append(self.buffer[codename][i])
+        self.means.append([time_limit, mean_var])  ##
+
+        self.r_buffer.append(self.buffer[codename])  ##
+        self.r_buffer.append(newest)  ##
+
+    def event_handler(self, codename, type_, data_point, sign):
         """This method does the actual assesment of which extra values to save in an
         event. Fine tuning this is most easily done by subclassing and overwriting
         this method. It will loop through the self.buffer[codename] attribute and add
         point (x, y) to be saved to self.saved_points[codename] attribute."""
         latest = data_point
         saved_points = []
-        # Log every point with a "sequential" variation of 10% (of general criterium)
+        # Log every point on the up-/down-hill event that has a variation greater than
+        # 10% of the general criterium
         crit = (
             self.measurements[codename]['criterium']
             * self.measurements[codename]['grade']
         )
+        t_0 = self.saved_points[codename][0][0]  ###
+        y_0 = self.last_values[codename]
         for i in range(len(self.buffer[codename]) - 1, -1, -1):
             t_i, y_i = self.buffer[codename][i]
+            diff = latest[1] - y_i
+            if diff * sign < 0:
+                # Run the remaining buffer through the deviation check
+                self.buffer[codename] = self.buffer[codename][:i]
+                self.check_buffer_deviation(codename, t_i, y_i)
+                break
             if type_ == 'lin':
-                if abs(latest[1] - y_i) > crit:
+                if abs(diff) > crit:
                     saved_points.append((t_i, y_i))
                     latest = (t_i, y_i)
-            else:
-                if abs(latest[1] - y_i) / abs(latest[1]) > crit:
+            else: # type log
+                # Handle zeros in case they are used as error codes
+                if y_i == 0:
+                    if latest[1] == 0:
+                        continue
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
+                if latest[1] == 0:
+                    if y_i == 0:
+                        continue
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
+                # Not entirely sure why, at this point, the next check does not seem to
+                # cause a ZeroDivisionError, but it seems to work
+                if (
+                    abs(diff) / abs(latest[1]) > crit
+                    or abs(y_i - y_0) / abs(y_0) > crit
+                ):
                     saved_points.append((t_i, y_i))
                     latest = (t_i, y_i)
         for point in saved_points:
             self.saved_points[codename].append(point)
+
+    def timeout_handler(self, codename, now, value):
+        """This method can be overwritten to do something extra on the buffered data
+        before saving the point that triggered the timeout. Default here is to run the
+        check_buffer_deviation method."""
+        self.check_buffer_deviation(codename, now, value)
+
+
+def smooth(data, width=1):
+    """Average `data` with `width` neighbors"""
+    if len(data) == 0:
+        print('Empty data!')
+        return data
+    smoothed_data = np.zeros(len(data))
+    smoothed_data[width:-width] = data[2 * width :]
+    for i in range(2 * width):
+        smoothed_data[width:-width] += data[i : -2 * width + i]
+        if i < width:
+            smoothed_data[i] = sum(data[0 : i + width + 1]) / len(
+                data[0 : i + width + 1]
+            )
+            smoothed_data[-1 - i] = sum(data[-1 - i - width :]) / len(
+                data[-1 - i - width :]
+            )
+    smoothed_data[width:-width] = smoothed_data[width:-width] / (2 * width + 1)
+    return smoothed_data
