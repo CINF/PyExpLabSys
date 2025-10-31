@@ -289,6 +289,10 @@ class LoggingCriteriumChecker(object):
                 self.last_values[codename] = value
                 return True
         elif measurement['type'] == 'log':
+            if last == 0 and abs_diff > 0:
+                self.last_time[codename] = time.time()
+                self.last_values[codename] = value
+                return True
             if abs_diff / abs(last) > measurement['criterium']:
                 self.last_time[codename] = time.time()
                 self.last_values[codename] = value
