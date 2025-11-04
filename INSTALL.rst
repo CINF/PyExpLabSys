@@ -11,15 +11,12 @@ Server
 From the server side, PyExpLabSys is basically only dependent on a functional MariaDB
 installation prepared with the needed structure.
 
-TODO: Describe the DB-structure and provide templates for the needed tables.
-
 Database structure
 ------------------
 
 PyExpLabSys use only a single database. This can be named in any wanted way - historicly
 most installations has used a form of <localname>data, eg. cinfdata, nanomadedata,
 homedata, etc...
-
 
 Table structure
 ---------------
