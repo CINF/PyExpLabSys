@@ -13,6 +13,45 @@ installation prepared with the needed structure.
 
 TODO: Describe the DB-structure and provide templates for the needed tables.
 
+Database structure
+------------------
+
+PyExpLabSys use only a single database. This can be named in any wanted way - historicly
+most installations has used a form of <localname>data, eg. cinfdata, nanomadedata,
+homedata, etc...
+
+
+Table structure
+---------------
+
+In order to allow the PyExpLabSys installation to work seemlessly with a corresponding
+`cinfdata` installation, a number of tables should exist. An empty MariaDB dump-file is
+provided as a starting point for this, `PyExpLabSys/bootstrap/cinfdata.sql.
+The provided tables include:
+
+ * alarm
+ * alarm_log
+ * plot_com
+ * plot_com_in
+ * plot_com_out
+ * short_links
+ * dateplots_descriptions
+
+Besides these, the actual data is kept in tables with a naming scheme as described in
+the main docs. For the install procedure, a few selected tables are provided:
+
+ * dateplots_cryostat
+ * measurements_cryostat
+ * measurements_dummy
+ * xy_values_cryostat
+ * xy_values_dummy
+
+If you are using PyExpLabSys only for dateplot-data, you can delete everything
+but the dateplot example. If you do not happen have a cryostat, this table can
+be renamed and copied to suit your particular needs.
+
+
+
 Clients
 =======
 
