@@ -317,9 +317,9 @@ if [ $1 == "settings" ] || [ $1 == "all" ];then
     else
         echoblue "---> Make ~/.config/PyExpLabSys dir"
         mkdir -p ~/.config/PyExpLabSys
-        echoblue "---> Link settings into dir:"
+        echoblue "---> Copy settings into dir:"
         echoblue "---> ~/PyExpLabSys/bootstrap/user_settings.yaml into ~/.config/PyExpLabSys/"
-        ln -s ~/PyExpLabSys/bootstrap/user_settings.yaml ~/.config/PyExpLabSys/user_settings.yaml
+        cp ~/PyExpLabSys/bootstrap/user_settings.yaml ~/.config/PyExpLabSys/user_settings.yaml
     fi
     echogood "+++++> DONE"
 fi
