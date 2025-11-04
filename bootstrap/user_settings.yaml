@@ -1,6 +1,9 @@
 # PyExpLabSys settings defaults
 
 # Common
+sql_server_host: 'fys-plog01.win.dtu.dk'
+sql_database: 'nanomadedata
+
 common_sql_reader_user: 'cinf_reader'
 common_sql_reader_password: 'cinf_reader'
 # The host can be hostname or IP-address
