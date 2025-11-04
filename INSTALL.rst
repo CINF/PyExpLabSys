@@ -23,7 +23,7 @@ Table structure
 
 In order to allow the PyExpLabSys installation to work seemlessly with a corresponding
 `cinfdata` installation, a number of tables should exist. An empty MariaDB dump-file is
-provided as a starting point for this, `PyExpLabSys/bootstrap/cinfdata.sql.
+provided as a starting point for this, `PyExpLabSys/bootstrap/cinfdata.sql`.
 The provided tables include:
 
  * alarm
