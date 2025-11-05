@@ -4,6 +4,11 @@ Installation Instructions
 
 These are instructions for installation of the server and the clients respectively.
 
+Notice, that if you are interested in PyExpLabSys only for the collection of drivers
+and not so much for the data logging framework, you do NOT need a server. In that
+case you can simply follow the minimal install procedure described in
+:ref:`_install_without_boostrap`.
+
 
 Server
 ======
@@ -73,6 +78,7 @@ environment with niceness such as support for AUTOSTART and status screen upon l
 
 Now, modify `~/.config/PyExpLabSys/user.settings.yaml` to fit your local setup.
 
+.. _install_without_boostrap:
 
 Installing without bootstrap
 ----------------------------
