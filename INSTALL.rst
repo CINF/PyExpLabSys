@@ -7,8 +7,7 @@ These are instructions for installation of the server and the clients respective
 Notice, that if you are interested in PyExpLabSys only for the collection of drivers
 and not so much for the data logging framework, you do NOT need a server. In that
 case you can simply follow the minimal install procedure described in
-:ref:`_install_without_boostrap`.
-
+the section `Installing without bootstrap`.
 
 Server
 ======
