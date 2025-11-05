@@ -60,7 +60,7 @@ class MPG500(object):
         self.ser.write(prestring + command + endstring)
 
         time.sleep(0.3)
-        return_string = self.ser.read(self.ser.inWaiting()).decode()
+        return_string = self.ser.read(self.ser.inWaiting())
         #return_string = b'\x00\x04\x01\t\x02\x00\xdd\x00\x00\x0c\xb4QD\x82\xd4'  # Simulated response
 
         # Check byte 3 for ACK
