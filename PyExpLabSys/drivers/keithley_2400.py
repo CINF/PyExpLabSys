@@ -24,6 +24,13 @@ class Keithley2400:
         if interface == 'gpib':
             pass
 
+    def reset(self):
+        """
+        Send the *RST command to the instrument
+        """
+        self.instr.write('*RST')
+        return
+
     def output_state(self, output_state: bool = None):
         """Turn the output on or off"""
         if output_state is not None:
@@ -143,10 +150,12 @@ class Keithley2400:
         if function in ('i', 'I'):
             self.instr.write('SOURCE:FUNCTION CURRENT')
             if source_range:
+                self.instr.write(':SOURCE:CURRENT:RANGE:AUTO OFF')
                 self.instr.write(':SOURCE:CURRENT:RANGE {}'.format(source_range))
         if function in ('v', 'V'):
             self.instr.write('SOURCE:FUNCTION VOLTAGE')
             if source_range:
+                self.instr.write(':SOURCE:VOLTAGE:RANGE:AUTO OFF')
                 self.instr.write(':SOURCE:VOLTAGE:RANGE {}'.format(source_range))
 
         actual_function = self.instr.query('SOURCE:FUNCTION?')
@@ -205,6 +214,7 @@ class Keithley2400:
     def set_voltage(self, voltage: float):
         """Set the desired current"""
         self.instr.write('SOURCE:VOLT {:.9f}'.format(voltage))
+        print('SOURCE:VOLT {:.9f}'.format(voltage))
         return True
 
     def read_volt_and_current(self):

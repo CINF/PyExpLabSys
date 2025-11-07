@@ -89,6 +89,25 @@ class Keithley2450(Keithley2400):
 
     # *********************************** #
 
+    # def measure_range(self, function: str, meas_range: float = None):
+    #     if function.lower() == 'i':
+    #         scpi_function = 'CURRENT'
+    #     elif function.lower() == 'v':
+    #         scpi_function = 'VOLTAGE'
+    #     else:
+    #         raise Exception('Function not allowed: {}'.format(function))
+    #     cmd = 'SENSE:{}:RANGE'.format(scpi_function)
+        
+    #     if meas_range == 0:
+    #         self.instr.write(cmd + ':AUTO ON')
+    #     elif meas_range is not None:
+    #         self.instr.write(cmd + ':AUTO OFF')
+    #         self.instr.write(cmd + ' {}'.format(meas_range))
+
+    #     actual_auto = (self.instr.query(cmd + ':AUTO?').find('1') > -1)
+    #     actual_range = float(self.instr.query(cmd + '?'))
+    #     return (actual_auto, actual_range)
+    
     def set_auto_zero(self, function: str, action: bool = None):
         """
         Set auto-zero behaviour for a given function (voltage or current).
@@ -221,6 +240,7 @@ class Keithley2450(Keithley2400):
             if i in channel_list:
                 cmd = ':DIGital:LINE{}:MODE TRIG, OPENdrain'.format(i)
                 self.instr.write(cmd)
+                print(cmd)
                 cmd = ':TRIGger:DIGital{}:OUT:PULSewidth 1e-5'.format(i)
                 self.instr.write(cmd)
                 cmd = ':TRIGger:DIGital{}:OUT:STIMulus COMMAND'.format(i)
@@ -228,12 +248,27 @@ class Keithley2450(Keithley2400):
             else:
                 cmd = ':DIGital:LINE{}:MODE DIGItal, IN'.format(i)
                 self.instr.write(cmd)
-
+                print(cmd)
 
 if __name__ == '__main__':
     import time
 
     SMU = Keithley2450(interface='lan', device='192.168.0.30')
+    print(SMU.measure_range('i'))
+    exit()
+    
+    SMU.configure_digital_port_as_triggers([1, 2, 3, 4, 5, 6])
+
+    time.sleep(10)
+    SMU.instr.write('*RST')
+    trigger_list = [
+        1,  # Vxy - white
+        2,  # DMM - brown
+        3,  # Vxx - Green
+        4,  # Osciloscope - Yellow
+    ]
+    SMU.configure_digital_port_as_triggers(trigger_list)
+
     t = time.time()
     SMU.trigger_measurement()
     print(time.time() - t)
