@@ -3,11 +3,27 @@ from __future__ import print_function
 import time
 import logging
 import serial
-from PyExpLabSys.common.supported_versions import python2_and_3
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
-python2_and_3(__file__)
+
+NAK_TABLE = {
+    '01': 'Checksum error',
+    '10': 'Syntax error',
+    '11': 'Data length error',
+    '12': 'Invalid data',
+    '13': 'Invalid operating mode',
+    '14': 'Invalid action',
+    '15': 'Invalid gas',
+    '16': 'Invalid control mode',
+    '17': 'Invalid command',
+    '24': 'Calibration error',
+    '25': 'Flow too large',
+    '27': 'Too many gases in gas table',
+    '28': 'Flow cal error, valve not open',
+    '98': 'Internal device error',
+    '99': 'Internal device error',
+}
 
 
 class MksGSeries:
@@ -20,46 +36,56 @@ class MksGSeries:
         self.ser.bytesize = serial.EIGHTBITS
         self.ser.stopbits = serial.STOPBITS_ONE
 
-    def checksum(self, command, reply=False):
+    def checksum(self, command):
         """ Calculate checksum of command """
-        if not reply:
-            com_string = '@' + command
-        else:
-            com_string = command
-        total = 0
-        for i in range(0, len(com_string)):
-            total = total + ord(com_string[i])
-        return (hex(total)[-2:]).upper()
+        com_string = '@' + command
+        checksum = sum([ord(i) for i in com_string])
+        # The following hack deviates from the manual, but has proven to work on two different setups
+        if 'NAK' in com_string:
+            checksum += 9
+        return hex(checksum)[-2:].upper()
 
     def comm(self, command, addr):
         """ Implements communication protocol """
+        # TODO: add retries on comm errors
         com_string = str(addr).zfill(3) + command + ';'
         checksum = self.checksum(com_string)
-        com_string = '@@@@' + com_string + checksum
+        com_string = '@@@' + com_string + checksum
         com_string = com_string.encode('ascii')
         self.ser.write(com_string)
         time.sleep(0.1)
-        reply = self.ser.read(self.ser.inWaiting())
-        try:
-            reply = reply.decode('ascii')
-        except UnicodeDecodeError:
-            reply = reply.decode('ascii', 'ignore')
-            reply = reply.strip('\x00')
-            reply = '@' + reply
-
+        raw_reply = self.ser.read(self.ser.inWaiting())
+        # In case that noise adds zeros on either side:
+        reply = raw_reply.strip(b'\x00')
+        reply = reply.decode('ascii')
         if len(reply) == 0:
             LOGGER.warning('No such device')
-        else:
-            if reply[-3:] == self.checksum(reply[1:-3], reply=True):
-                reply = reply[6:-3]  # Cut away master address and checksum
-            else:
-                LOGGER.error('Checksum error in reply')
-                reply = ''
-            if reply[1:4] == 'ACK':
-                reply = reply[4:-3]
-            else:
-                LOGGER.warning('Error in command')
-        return reply
+            return ''
+
+        # Response structure: '@@@000' + 'ACK' + content + ';' + 2-char-checksum
+        noise_check_passed = reply.find(';') == len(reply) - 3
+        if not noise_check_passed:
+            LOGGER.warning('Response seemingly too noisy: {}'.format(repr(raw_reply)))
+            return ''
+
+        ack = reply[6:9]
+        content = reply[9:-3]
+        # Calculate checksum (the first @ is added again during calc)
+        if reply[-2:] != self.checksum(reply[1:-2]):
+            LOGGER.error('Checksum error in reply')
+            return ''
+
+        if ack == 'ACK':
+            return content
+
+        if ack == 'NAK':
+            message = NAK_TABLE[content]
+            print('NAK error {} in command: {}'.format(content, message))
+            LOGGER.warning('NAK error {} in command: {}'.format(content, message))
+            return ''
+
+        LOGGER.warning('Unexpected response: {}'.format(repr(raw_reply)))
+        return ''
 
     def read_full_scale_range(self, addr):
         """ Read back the current full scale range from the instrument """
@@ -132,9 +158,14 @@ class MksGSeries:
         command = 'SN?'
         return self.comm(command, addr)
 
+    def read_internal_temperature(self, addr=254):
+        """ Return the internal temperature in degrees Celcius """
+        command = 'TA?'
+        return self.comm(command, addr)
+
 
 if __name__ == '__main__':
     MKS = MksGSeries()
     print(MKS.read_serial_number(1))
     print(MKS.read_full_scale_range(1))
-# print(MKS.set_device_address(254,005))
+    # print(MKS.set_device_address(254, 005))
