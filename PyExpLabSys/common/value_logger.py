@@ -22,6 +22,7 @@ class ValueLogger(threading.Thread):
         channel=None,
         model='sparse',
         grade=0.1,
+        simulate=False,
     ):
         """Initialize the value logger
 
@@ -41,6 +42,8 @@ class ValueLogger(threading.Thread):
                 all data between events and then sort through the data based on a subcriterium
             grade (0 < float < 1): The subcriterium used for the event based data sorting.
                 The subcriterium will be comp_val * grade. Default is 10%.
+            simulate (bool): Simulate how the ValueLogger runs through a non-live data set (i.e.
+                the Reader will serve the time stamps).
         """
         threading.Thread.__init__(self)
         self.daemon = True
@@ -58,12 +61,13 @@ class ValueLogger(threading.Thread):
         self.status['trigged'] = False
         self.last['time'] = 0
         self.last['val'] = 0
-        # "Fancy" event algorithm
+        # Event algorithm
         self.saved_points = []
         self.buffer = []
         if grade >= 1 or grade <= 0:
             raise ValueError('"grade" must be larger than 0 and less than 1')
         self.grade = grade
+        self.simulate = simulate
         if model == 'sparse':
             self.event_model = False
         elif model == 'event':
@@ -82,13 +86,13 @@ class ValueLogger(threading.Thread):
 
     def clear_trigged(self):
         """Clear trigger"""
+        self.saved_points = []
         self.status['trigged'] = False
 
     def get_data(self):
         """Cleanly return the event based sorted data and clear trigger latch"""
         data = self.saved_points.copy()
         data.sort()
-        self.saved_points = []
         self.clear_trigged()
         return data
 
@@ -96,12 +100,19 @@ class ValueLogger(threading.Thread):
         error_count = 0
 
         while not self.status['quit']:
-            time.sleep(1)
+            if not self.simulate:
+                time.sleep(1)
             if self.channel is None:
                 self.value = self.valuereader.value()
             else:
                 self.value = self.valuereader.value(self.channel)
-            this_time = time.time()
+            if self.simulate:
+                if self.channel is None:
+                    this_time = self.valuereader.time_value
+                else:
+                    this_time = self.valuereader.time_value[self.channel]
+            else:
+                this_time = time.time()
             time_trigged = (this_time - self.last['time']) > self.maximumtime
 
             try:
@@ -117,7 +128,19 @@ class ValueLogger(threading.Thread):
                         < self.value
                         < self.last['val'] * (1 + self.compare['val'])
                     )
+                    # Special case to prevent error codes of 0 to be continuously saved
+                    if self.last['val'] == 0:
+                        if abs(self.last['val'] - self.value) == 0:
+                            val_trigged = False
                 error_count = 0
+                # Get sign of slope for use in secondary check
+                diff = self.value - self.last['val']
+                if diff < 0:
+                    sign = -1
+                elif diff > 0:
+                    sign = 1
+                else:
+                    sign = 0
             except (UnboundLocalError, TypeError):
                 # Happens when value is not yet ready from reader
                 val_trigged = False
@@ -134,40 +157,70 @@ class ValueLogger(threading.Thread):
             if val_trigged and (self.value is not None):
                 if self.event_model:
                     # Loop back through previous data points to find onset
-                    last = {'time': this_time, 'val': self.value}
-                    for i in range(len(self.buffer) - 1, -1, -1):
-                        t_i, y_i = self.buffer[i]
-                        if self.compare['type'] == 'lin':
-                            low_val_trigged = not (
-                                last['val'] - self.compare['grade_val']
-                                < y_i
-                                < last['val'] + self.compare['grade_val']
-                            )
-                        if self.compare['type'] == 'log':
-                            low_val_trigged = not (
-                                last['val'] * (1 - self.compare['grade_val'])
-                                < y_i
-                                < last['val'] * (1 + self.compare['grade_val'])
-                            )
-                        if low_val_trigged:
-                            # Save extra point
-                            self.saved_points.append((t_i, y_i))
-                            last = {'time': t_i, 'val': y_i}
-                    self.saved_points.append((self.last['time'], self.last['val']))
-                    self.buffer = []
+                    self.event_handler((this_time, self.value), sign)
                 self.last['time'] = this_time
                 self.last['val'] = self.value
+                self.saved_points.append((this_time, self.value))
                 self.status['trigged'] = True
             elif time_trigged and (self.value is not None):
-                self.status['trigged'] = True
                 self.last['time'] = this_time
                 self.last['val'] = self.value
                 if self.event_model:
-                    self.saved_points.append((this_time, self.value))
                     self.buffer = []
+                self.saved_points.append((this_time, self.value))
+                self.status['trigged'] = True
             else:
-                if self.event_model:
+                if error_count == 0 and self.event_model:
                     self.buffer.append((this_time, self.value))
+
+    def event_handler(self, data_point, sign):
+        """This method does the actual assesment of which extra values to save in an
+        event. Fine tuning this is most easily done by subclassing and overwriting
+        this method. It will loop through the self.buffer attribute and add
+        point (x, y) to be saved to self.saved_points attribute."""
+        latest = data_point
+        saved_points = []
+        # Log every point on the up-/down-hill event that has a variation greater than
+        # 10% of the general criterium
+        crit = (
+            self.compare['val']
+            * self.compare['grade_val']
+        )
+        t_0 = self.last['time']
+        y_0 = self.last['val']
+        for i in range(len(self.buffer) - 1, -1, -1):
+            t_i, y_i = self.buffer[i]
+            diff = latest[1] - y_i
+            if diff * sign < 0:
+                # Remaining buffer could be run through an extra deviation check here
+                break
+            if self.compare['type'] == 'lin':
+                if abs(diff) > crit:
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
+            else: # type log
+                # Handle zeros in case they are used as error codes
+                if y_i == 0:
+                    if latest[1] == 0:
+                        continue
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
+                if latest[1] == 0:
+                    if y_i == 0:
+                        continue
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
+                # Not entirely sure why, at this point, the next check does not seem to
+                # cause a ZeroDivisionError, but it seems to work
+                if (
+                    abs(diff) / abs(latest[1]) > crit
+                    or abs(y_i - y_0) / abs(y_0) > crit
+                ):
+                    saved_points.append((t_i, y_i))
+                    latest = (t_i, y_i)
+        for point in saved_points:
+            self.saved_points.append(point)
+        self.buffer = []
 
 
 class LoggingCriteriumChecker(object):
