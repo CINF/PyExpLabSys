@@ -209,6 +209,25 @@ filtered_datapoints = logger.get_data()
 for t, y in filtered_datapoints:
     my_save_data_function('pressure', (t, y))
 --------------------
+
+Stats from a test dataset:
+--------------------
+Dataset is pressure and speed collected from a scroll pump at 1 second intervals.
+The settings from above examples have been used in this.
+
+For pressure: (ranging from 4E-4 mbar to 30 mbar)
+Number of points in raw data set: 1423989 / 100%
+Number of points saved by old LoggingCriteriumChecker: 4911 / 0.3%
+Number of points saved by new EjlaborateLoggingCriteriumChecker: 23100 / 1.6%
+Number of points saved by old sparse ValueLogger: 4971 / 0.3%
+Number of points saved by new event ValueLogger: 14535 / 1.0%
+
+For speed: (mostly 1797 ± 1, with 21 events briefly shooting up to 2159)
+Number of points in raw data set: 1423989 / 100%
+Number of points saved by old LoggingCriteriumChecker: 2650 / 0.2%
+Number of points saved by new EjlaborateLoggingCriteriumChecker: 3086 / 0.2%
+Number of points saved by old sparse ValueLogger: 2653 / 0.2%
+Number of points saved by new event ValueLogger: 2695 / 0.2%
 """
 
 import threading
