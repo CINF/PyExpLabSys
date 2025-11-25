@@ -393,10 +393,7 @@ class ValueLogger(threading.Thread):
         saved_points = []
         # Log every point on the up-/down-hill event that has a variation greater than
         # 10% of the general criterium
-        crit = (
-            self.compare['val']
-            * self.compare['grade_val']
-        )
+        crit = self.compare['val'] * self.compare['grade_val']
         t_0 = self.last['time']
         y_0 = self.last['val']
         for i in range(len(self.buffer) - 1, -1, -1):
@@ -409,7 +406,7 @@ class ValueLogger(threading.Thread):
                 if abs(diff) > crit:
                     saved_points.append((t_i, y_i))
                     latest = (t_i, y_i)
-            else: # type log
+            else:  # type log
                 # Handle zeros in case they are used as error codes
                 if y_i == 0:
                     if latest[1] == 0:
@@ -864,7 +861,7 @@ class EjlaborateLoggingCriteriumChecker(object):
                 if abs(diff) > crit:
                     saved_points.append((t_i, y_i))
                     latest = (t_i, y_i)
-            else: # type log
+            else:  # type log
                 # Handle zeros in case they are used as error codes
                 if y_i == 0:
                     if latest[1] == 0:
