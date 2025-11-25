@@ -634,19 +634,10 @@ class EjlaborateLoggingCriteriumChecker(object):
         if grades is None:
             grades = [0.1 for _ in codenames]
 
-        ###
-        self.r_time = []
-        self.r_value = []
-        self.r_buffer = []
-        self.extra = {}
-        self.extra['time'] = []
-        self.extra['value'] = []
-        self.means = []
         self.timeout_ref = 0
         self.timeout_counter = 0
         self.deviation_factor = 50
         self.in_timeout = False
-        ###
         self.last_values = {}
         self.last_time = {}
         self.measurements = {}
@@ -817,22 +808,13 @@ class EjlaborateLoggingCriteriumChecker(object):
 
         # Find any extra data points with significant deviation
         extra = np.where(variance > mean_var * self.deviation_factor)[0]
-        for i in range(len(self.buffer[codename])):  ##
-            self.r_value.append(variance[i])  ##
-            self.r_time.append(buff[i, 0])  ##
         lextra = len(extra)
-        for j, i in enumerate(extra):  ##
+        for j, i in enumerate(extra):
             # Skip duplicates and save everything else
             if j > 0 and j < lextra - 1:
                 if buff[i, 1] == buff[i - 1, 1] and buff[i, 1] == buff[i + 1, 1]:
                     continue
-            self.extra['time'].append(buff[i, 0])  ##
-            self.extra['value'].append(buff[i, 1])  ##
             self.saved_points[codename].append(self.buffer[codename][i])
-        self.means.append([time_limit, mean_var])  ##
-
-        self.r_buffer.append(self.buffer[codename])  ##
-        self.r_buffer.append(newest)  ##
 
     def event_handler(self, codename, type_, data_point, sign):
         """This method does the actual assesment of which extra values to save in an
