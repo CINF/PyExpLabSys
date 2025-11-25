@@ -1,4 +1,215 @@
-""" Reads continuously updated values and decides whether it is time to log a new point """
+""" Reads continuously updated values and decides whether it is time to log a new point 
+
+Three loggers (or checkers) exist: ValueLogger, LoggingCriteriumChecker and
+EjlaborateLoggingCriteriumChecker. The internal workings are slightly different, but all
+checks the newest measured value against the last recorded value and determines whether
+or not the newest value should be saved.
+    A timeout counter (default 600s) forces data to be saved at no longer than this
+interval.
+    An event checker (logarithmic or linear) checks for events based on a large enough
+change since the last recorded value.
+The amount of data saved using these, can be down to 0.1% to 3% of the full dataset while
+retaining key features.
+
+ *LoggingCriteriumChecker* is an object class capable of keeping track of saved values
+for several different datasets - each represented by a unique codename. Its checks are
+manually handled for every data point in any thread handling the collected data. This
+checker is responsible for timestamping the data value.
+
+Example:
+--------------------
+import time
+from PyExpLabSys.common.value_logger import LoggingCriteriumChecker
+
+# Create an instance
+logger = LoggingCriteriumChecker(
+    codenames=['pressure', 'speed'],
+    types=['log', 'lin'],
+    criteria=[0.25, 5],
+    time_outs=[600, 600],
+)
+# "Pressure" events are detected at changes of 25% and timeouts of 600s
+# "Speed" events are detected at changes of 5 units and timeouts of 600s
+
+# Use in some code
+while True:
+    for codename in ['pressure', 'speed']:
+        data = get_newest_data(codename)
+        if logger.check(codename, value): # Data is timestamped in the check
+            # Save the data point triggering the event
+            save_point(codename, time.time(), value)
+--------------------
+While it records the event, the details around that event are not recorded and it can be
+difficult to say whether the event was a sudden step function or a slow rise over eight
+minutes.
+
+ *EjlaborateLoggingCriteriumChecker* deprecates the LoggingCriteriumChecker by expanding
+the functionality greatly. Compared to its predecessor, all data points between events
+are buffered in the instance. On an event, the buffer is looped through from the newest
+measurement to follow the slope down to the beginning and record every data point based
+on a subcriterium (default is 10% of the normal criterium). This takes care of most
+details around the event. For even finer recording, the remaining buffer is run through
+a deviation_check, which checks whether a linear representation of the data deviates
+significantly from the average linear representation of data gathered from timeout
+events. Any significantly deviant data is added to the save pool. These data points can
+be served the timestamp which also makes it possible to use this module as a filter on
+existing data.
+
+Example:
+--------------------
+from PyExpLabSys.common.value_logger import EjlaborateLoggingCriteriumChecker
+
+# Create an instance
+logger = EjlaborateLoggingCriteriumChecker(
+    codenames=['pressure', 'speed'],
+    types=['log', 'lin'],
+    criteria=[0.25, 5],
+    time_outs=[600, 600],
+    grades=[0.1, 0.1],
+)
+# Pressure events are detected at 25% value change and timeouts of 600s. 2.5% is used as
+# the subcriterium. Speed events are detected at 5 unit changes and timeouts of 600s.
+# 0.5 units are used as the subcriterium.
+
+# Use in some code
+while True:
+    for codename in ['pressure', 'speed']:
+        time_, value = get_newest_data(codename)
+        if logger.check(codename, value, now=time_): # Defaulting 'now' to None will make
+                                                     # the logger timestamp the value
+            datapoints_to_save = logger.get_data(codename)
+            for t, y in datapoints_to_save:
+                save_data(codename, (t, y))
+--------------------
+This means that data can be saved sparsely when no events are occuring, but retain high
+resolution around the events.
+
+ *ValueLogger* is a threaded class where each instance continuously monitors a single
+value stream (codename) which is served by a Reader class. Other than that, it logs
+similarly to the other two checkers. A "model" parameter ("sparse" or "event") chooses
+whether it should behave like the original LoggingCriteriumChecker ("sparse") or the new
+EjlaborateLoggingCriteriumChecker ("event"). At present, the latter does not include the
+deviation checks, though. If needed, it is probably better to use the EjlaborateLogging-
+CriteriumChecker instead to keep the ValueLogger (more) lightweight.
+
+Example 1: Using the ValueLogger to monitor pressure and speed
+--------------------
+import time
+import threading
+from PyExpLabSys.common.value_logger import ValueLogger
+
+class Reader(threading.Thread)
+    def __init__(self, driver):
+        super().__init__()
+        self.driver = driver
+        self.running = False
+        self.pressure = 0
+        self.speed = 0
+
+    def value(self, channel):
+        if channel == 1:
+            return self.pressure
+        if channel == 2:
+            return self.speed
+
+    def run(self):
+        self.running = True
+        while self.running:
+            self.pressure = self.driver.get_pressure()
+            self.speed = self.driver.get_speed()
+            time.sleep(1)
+
+reader = Reader(pressure_and_speed_driver)
+reader.start() # start the run method
+
+loggers = {}
+loggers['pressure'] = ValueLogger(
+    reader,
+    channel=1,
+    comp_type='log',
+    comp_val=0.25, # 25% value change
+    maximumtime=600, # timeout in seconds
+    model='event', # get higher res info about the onset of events
+    grade=0.1, # default 2.5% value change as subcriterium
+)
+loggers['speed'] = ValueLogger( # use old behaviour by using the default model
+    reader,
+    channel=2,
+    comp_type='lin',
+    comp_val=5, # 5 units value change
+    maximumtime=600, # timeout in seconds
+)
+for codename in ['pressure', 'speed']:
+    loggers[codename].start()
+
+# Continue in main thread
+time.sleep(3)
+while True:
+    # New way to do it:
+    if loggers['pressure'].read_trigged():
+        datapoints = loggers['pressure'].get_data()
+        # The logger timestamps the data, when it reads a new value
+        for t, y in datapoints:
+            my_save_data_function('pressure', (t, y))
+    # The old way still works:
+    if loggers['speed'].read_trigged():
+        # We timestamp the data here, even though it might be several seconds old
+        datapoint = (time.time(), loggers['speed'].get_value())
+        my_save_data_function('speed', datapoint)
+    time.sleep(1)
+
+--------------------
+Example 2: Use the ValueLogger to filter an existing dataset
+--------------------
+import time
+from PyExpLabSys.common.value_logger import ValueLogger
+
+# Define a reader to serve the data
+class Reader(object):
+    def __init__(self, time_array, data_array):
+        self.counter = 0
+        self.time = time_array
+        self.data = data_array
+        self.running = True
+
+    def value(self):
+        try:
+            data = self.data[self.counter]
+            self.time_value = self.time[self.counter]
+            self.counter += 1
+            return data
+        except IndexError:
+            self.running = False
+
+time_array, value_array = load_my_data(file)
+
+reader = Reader(time_array, value_array) # this one is not threaded
+
+logger = ValueLogger(
+    reader,
+    comp_type='log',
+    comp_val=0.25, # 25 % value change
+    maximumtime=600,
+    model='event', # use new model
+    # skip the sleep time in the logger and have the reader serve the timestamps
+    simulate=True,
+) # 'channel' defaults to None and 'grade' defaults to 0.1
+logger.start()
+
+# Let the filter run through the data
+while reader.running:
+    time.sleep(1)
+    # You could also start getting the data here
+    # if logger.read_trigged():
+    #    data_so_far = logger.get_data()
+    # Code hasn't been checked for possible race conditions in this high paced scenario
+
+# Get filtered data
+filtered_datapoints = logger.get_data()
+for t, y in filtered_datapoints:
+    my_save_data_function('pressure', (t, y))
+--------------------
+"""
 
 import threading
 import time
