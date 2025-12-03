@@ -1,22 +1,25 @@
 from cinfdata import Cinfdata # https://github.com/CINF/cinf_database/blob/master/cinf_database/cinfdata.py
-from value_logger import EjlaborateLoggingCriteriumChecker as Checker
+from value_logger import LoggingCriteriumChecker as Checker
 import matplotlib.pyplot as plt
 import numpy as np
 
 # Constants used for criterium checker
 TYPE = 'lin' # lin/log
 TIMEOUT = 60 # seconds
-CRITERIUM = 5e-12 # Ampere in this example
+CRITERIUM = 1e-12 # Ampere in this example
 
 # Get reference data
 db = Cinfdata('omicron', use_caching=True)
 ref_data = db.get_data(29472)
 
-# Overwrite default event handler to simulate old LoggingCriteriumChecker behaviour
+# Get and plot old LoggingCriteriumChecker behaviour
 class OldChecker(Checker):
-    def event_handler(self, codename, type_, data_point):
+    def event_handler(self, codename, type_, data_point, sign):
         """Skip pretrig sorting to simulate behaviour of LoggingCriteriumChecker"""
         return
+    def timeout_handler(self, codename, now, value):
+        return
+
 
 # Run on data set
 checker = OldChecker(
@@ -25,8 +28,9 @@ checker = OldChecker(
     criteria=[CRITERIUM],
     time_outs=[TIMEOUT],
     )
+checker.deprecation_warning = False
 for x, y in ref_data:
-    checker.check('current', y, time_=x)
+    checker.check('current', y, now=x)
 old_data = np.array(checker.get_data('current'))
 
 # Plot reference data
@@ -43,9 +47,11 @@ checker = Checker(
     types=[TYPE],
     criteria=[CRITERIUM],
     time_outs=[TIMEOUT],
+    grades=[0.01],
     )
+checker.deprecation_warning = False
 for x, y in ref_data:
-    checker.check('current', y, time_=x)
+    checker.check('current', y, now=x)
 new_data = np.array(checker.get_data('current'))
 
 # Data stats
