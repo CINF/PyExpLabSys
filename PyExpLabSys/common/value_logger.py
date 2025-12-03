@@ -166,21 +166,22 @@ reader = Reader(pressure_and_speed_driver)
 reader.start() # start the run method
 
 loggers = {}
-loggers['pressure'] = ValueLogger(
+loggers['pressure'] = ValueLogger( # use default new behaviour
     reader,
     channel=1,
     comp_type='log',
     comp_val=0.25, # 25% value change
     maximumtime=600, # timeout in seconds
-    model='event', # get higher res info about the onset of events
+    model='event', # default - get higher res info about the onset of events
     grade=0.1, # default 2.5% value change as subcriterium
 )
-loggers['speed'] = ValueLogger( # use old behaviour by using the default model
+loggers['speed'] = ValueLogger( # use old behaviour
     reader,
     channel=2,
     comp_type='lin',
     comp_val=5, # 5 units value change
     maximumtime=600, # timeout in seconds
+    model='sparse', # opt out of the event_handler algorithm and just save the events
 )
 for codename in ['pressure', 'speed']:
     loggers[codename].start()
@@ -188,19 +189,25 @@ for codename in ['pressure', 'speed']:
 # Continue in main thread
 time.sleep(3)
 while True:
+
     # New way to do it:
     if loggers['pressure'].read_trigged():
-        datapoints = loggers['pressure'].get_data()
-        # The logger timestamps the data, when it reads a new value
+
+        # Retrieve filtered data from the logger
+        datapoints = loggers['pressure'].get_data() # this also clears the save pool
+
+        # The data is timestamped by the logger, when it reads a new value
         for t, y in datapoints:
             my_save_data_function('pressure', (t, y))
+
     # The old way still works:
     if loggers['speed'].read_trigged():
         # We timestamp the data here, even though it might be several seconds old
-        datapoint = (time.time(), loggers['speed'].get_value())
+        datapoint = (time.time(), loggers['speed'].read_value())
         my_save_data_function('speed', datapoint)
-    time.sleep(1)
+        loggers['speed'].clear_trigged() # this also clears the save pool
 
+    time.sleep(1)
 --------------------
 Example 5: Filter an existing dataset through the ValueLogger
 --------------------
@@ -233,9 +240,8 @@ logger = ValueLogger(
     comp_type='log',
     comp_val=0.25, # 25 % value change
     maximumtime=600,
-    model='event', # use new model
     simulate=True, # skip the sleep time in the logger - the reader serves timestamps
-) # 'channel' defaults to None and 'grade' defaults to 0.1
+) # defaults: channel=None and grade=0.1 and model='event'
 logger.start()
 
 # Let the filter run through the data
@@ -288,7 +294,7 @@ class ValueLogger(threading.Thread):
         comp_type='lin',
         comp_val=1,
         channel=None,
-        model='sparse',
+        model='event',
         grade=0.1,
         simulate=False,
     ):
