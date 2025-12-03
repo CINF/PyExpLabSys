@@ -1,16 +1,16 @@
 # PyExpLabSys settings defaults
 
 # Common
-sql_server_host: 'fys-plog01.win.dtu.dk'
-sql_database: 'nanomadedata
+sql_server_host: 'sql_server_hostname.example.com'
+sql_database: 'data'
 
-common_sql_reader_user: 'cinf_reader'
-common_sql_reader_password: 'cinf_reader'
+common_sql_reader_user: 'reader'
+common_sql_reader_password: 'reader'
 # The host can be hostname or IP-address
-common_liveserver_host: 'cinf-wsserver.fysik.dtu.dk'
+common_liveserver_host: 'wsserver.example.com'
 common_liveserver_port: 9767
 
 # PyExpLabSys.common.utilities settings
-util_log_warning_email: 'FYS-list-CINF-FM@fysik.dtu.dk'
-util_log_error_email: 'FYS-list-CINF-FM@fysik.dtu.dk'
-util_log_mail_host: 'mail.fysik.dtu.dk'
+util_log_warning_email: 'server_admin@example.com'
+util_log_error_email: 'server_admin@example.com'
+util_log_mail_host: 'smtp.example.com'
