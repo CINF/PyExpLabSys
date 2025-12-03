@@ -1,24 +1,33 @@
 """ Reads continuously updated values and decides whether it is time to log a new point 
 
-Three loggers (or checkers) exist: ValueLogger, LoggingCriteriumChecker and
-EjlaborateLoggingCriteriumChecker. The internal workings are slightly different, but all
-checks the newest measured value against the last recorded value and determines whether
-or not the newest value should be saved.
+Two loggers (or checkers) exist: ValueLogger and LoggingCriteriumChecker. The internal
+workings are slightly different, but both checks the newest measured value against the
+last recorded value and determines whether or not the newest value should be saved.
     A timeout counter (default 600s) forces data to be saved at no longer than this
 interval.
     An event checker (logarithmic or linear) checks for events based on a large enough
 change since the last recorded value.
-The amount of data saved using these, can be down to 0.1% to 3% of the full dataset while
-retaining key features.
+The amount of data saved using these, can be down to 0.1% to 3% of the full dataset
+while retaining key features (details around events).
 
  *LoggingCriteriumChecker* is an object class capable of keeping track of saved values
 for several different datasets - each represented by a unique codename. Its checks are
 manually handled for every data point in any thread handling the collected data. This
 checker is responsible for timestamping the data value.
 
-Example:
+All data points between events are buffered in the instance to be able to retrospective-
+ly save relevant data. On an event, the code loops through the buffer from the newest
+measurement to follow the slope down to the beginning of the event and saves every data
+point based on a subcriterium (default is 10% of the normal criterium). This takes care
+of most details around the event. For even finer details, the remaining buffer is run
+through the check_buffer_deviation method, which checks whether a linear representation
+of the data deviates significantly from the average linear representation of data
+gathered from timeout events. Any significantly deviant data is added to the save pool.
+These data points can be served the timestamp which also makes it possible to use this
+module as a filter on existing data.
+
+Example 1: Use the LoggingCriteriumChecker to filter pressure and speed before logging
 --------------------
-import time
 from PyExpLabSys.common.value_logger import LoggingCriteriumChecker
 
 # Create an instance
@@ -27,46 +36,9 @@ logger = LoggingCriteriumChecker(
     types=['log', 'lin'],
     criteria=[0.25, 5],
     time_outs=[600, 600],
-)
-# "Pressure" events are detected at changes of 25% and timeouts of 600s
-# "Speed" events are detected at changes of 5 units and timeouts of 600s
-
-# Use in some code
-while True:
-    for codename in ['pressure', 'speed']:
-        data = get_newest_data(codename)
-        if logger.check(codename, value): # Data is timestamped in the check
-            # Save the data point triggering the event
-            save_point(codename, time.time(), value)
---------------------
-While it records the event, the details around that event are not recorded and it can be
-difficult to say whether the event was a sudden step function or a slow rise over eight
-minutes.
-
- *EjlaborateLoggingCriteriumChecker* deprecates the LoggingCriteriumChecker by expanding
-the functionality greatly. Compared to its predecessor, all data points between events
-are buffered in the instance. On an event, the buffer is looped through from the newest
-measurement to follow the slope down to the beginning and record every data point based
-on a subcriterium (default is 10% of the normal criterium). This takes care of most
-details around the event. For even finer recording, the remaining buffer is run through
-a deviation_check, which checks whether a linear representation of the data deviates
-significantly from the average linear representation of data gathered from timeout
-events. Any significantly deviant data is added to the save pool. These data points can
-be served the timestamp which also makes it possible to use this module as a filter on
-existing data.
-
-Example:
---------------------
-from PyExpLabSys.common.value_logger import EjlaborateLoggingCriteriumChecker
-
-# Create an instance
-logger = EjlaborateLoggingCriteriumChecker(
-    codenames=['pressure', 'speed'],
-    types=['log', 'lin'],
-    criteria=[0.25, 5],
-    time_outs=[600, 600],
     grades=[0.1, 0.1],
 )
+
 # Pressure events are detected at 25% value change and timeouts of 600s. 2.5% is used as
 # the subcriterium. Speed events are detected at 5 unit changes and timeouts of 600s.
 # 0.5 units are used as the subcriterium.
@@ -74,25 +46,96 @@ logger = EjlaborateLoggingCriteriumChecker(
 # Use in some code
 while True:
     for codename in ['pressure', 'speed']:
+
+        # Get newest timestamped data either directly from the driver unit or from an
+        # existing data set
         time_, value = get_newest_data(codename)
-        if logger.check(codename, value, now=time_): # Defaulting 'now' to None will make
-                                                     # the logger timestamp the value
+
+        # Check for events (defaulting 'now' to None would make the logger timestamp the
+        # value instead)
+        if logger.check(codename, value, now=time_):
+
+            # Access the data flagged as relevant by the logger
             datapoints_to_save = logger.get_data(codename)
+
+            # Do something with the datapoints (time, value)
             for t, y in datapoints_to_save:
                 save_data(codename, (t, y))
 --------------------
-This means that data can be saved sparsely when no events are occuring, but retain high
-resolution around the events.
+Example 2: Subclass the LoggingCriteriumChecker to get rid of the new fancy algorithms
+           and simulate the behaviour of the old LoggingCriteriumChecker
+--------------------
+from PyExpLabSys.common.value_logger import LoggingCriteriumChecker
+
+# Subclass LoggingCriteriumChecker to get rid of the overhead from the new algorithms
+class OldChecker(LoggingCriteriumChecker):
+    def event_handler(self, codename, type_, data_point, sign):
+        return
+    def timeout_handler(self, codename, now, value):
+        return
+
+# Create instance
+logger = OldChecker(
+    codenames=['pressure', 'speed'],
+    types=['log', 'lin'],
+    criteria=[0.25, 5],
+    time_outs=[600, 600],
+)
+
+while True:
+    for codename in ['pressure', 'speed']:
+
+        value = get_newest_data(codename) # Return data is not timestamped
+
+        if logger.check(codename, value): # The logger timestamps the data during check
+
+            datapoints_to_save = logger.get_data(codename) # save pool is reset
+
+            # A DeprecationWarning will be printed if the get_data method is not used to
+            # access the data (legacy code behaviour) to prevent the internal list from
+            # growing larger than the available memory.
+--------------------
+Example 3: Use the LoggingCriteriumChecker on an existing pressure dataset
+--------------------
+from PyExpLabSys.common.value_logger import LoggingCriteriumChecker
+
+# Create an instance
+logger = LoggingCriteriumChecker(
+    codenames=['pressure'],
+    types=['log'],
+    criteria=[0.25],
+    time_outs=[600],
+    grades=[0.1],
+)
+
+# Disable the deprecation warning since we'll intentionally store all the filtered data
+# in the internal save pool of the logger
+logger.deprecation_warning = False
+
+pressures = load_existing_pressures()
+
+# Use in some code
+for time_, value in pressures:
+    logger.check(codename, value, now=time_)
+
+# Access the data flagged as relevant by the logger
+datapoints_to_save = logger.get_data('pressure')
+
+# Do something with the datapoints (time, value)
+for t, y in datapoints_to_save:
+    save_new_pressures(t, y)
+--------------------
 
  *ValueLogger* is a threaded class where each instance continuously monitors a single
 value stream (codename) which is served by a Reader class. Other than that, it logs
-similarly to the other two checkers. A "model" parameter ("sparse" or "event") chooses
+similarly to the other checker. A "model" parameter ("sparse" or "event") chooses
 whether it should behave like the original LoggingCriteriumChecker ("sparse") or the new
-EjlaborateLoggingCriteriumChecker ("event"). At present, the latter does not include the
-deviation checks, though. If needed, it is probably better to use the EjlaborateLogging-
-CriteriumChecker instead to keep the ValueLogger (more) lightweight.
+LoggingCriteriumChecker ("event"). Since the ValueLogger is responsible for timestamping
+the data at ±1 second, the deviation checks from the new LoggingCriteriumChecker are not
+included. If fine control over the timestamps is needed, it is probably better to use
+the LoggingCriteriumChecker instead to keep the ValueLogger more lightweight.
 
-Example 1: Using the ValueLogger to monitor pressure and speed
+Example 4: Use the ValueLogger to monitor pressure and speed
 --------------------
 import time
 import threading
@@ -159,7 +202,7 @@ while True:
     time.sleep(1)
 
 --------------------
-Example 2: Use the ValueLogger to filter an existing dataset
+Example 5: Filter an existing dataset through the ValueLogger
 --------------------
 import time
 from PyExpLabSys.common.value_logger import ValueLogger
@@ -183,7 +226,7 @@ class Reader(object):
 
 time_array, value_array = load_my_data(file)
 
-reader = Reader(time_array, value_array) # this one is not threaded
+reader = Reader(time_array, value_array) # this reader is not threaded
 
 logger = ValueLogger(
     reader,
@@ -191,15 +234,14 @@ logger = ValueLogger(
     comp_val=0.25, # 25 % value change
     maximumtime=600,
     model='event', # use new model
-    # skip the sleep time in the logger and have the reader serve the timestamps
-    simulate=True,
+    simulate=True, # skip the sleep time in the logger - the reader serves timestamps
 ) # 'channel' defaults to None and 'grade' defaults to 0.1
 logger.start()
 
 # Let the filter run through the data
 while reader.running:
     time.sleep(1)
-    # You could also start getting the data here
+    # You could also start retrieving the filtered data here
     # if logger.read_trigged():
     #    data_so_far = logger.get_data()
     # Code hasn't been checked for possible race conditions in this high paced scenario
@@ -209,7 +251,6 @@ filtered_datapoints = logger.get_data()
 for t, y in filtered_datapoints:
     my_save_data_function('pressure', (t, y))
 --------------------
-
 Stats from a test dataset:
 --------------------
 Dataset is pressure and speed collected from a scroll pump at 1 second intervals.
@@ -218,14 +259,14 @@ The settings from above examples have been used in this.
 For pressure: (ranging from 4E-4 mbar to 30 mbar)
 Number of points in raw data set: 1423989 / 100%
 Number of points saved by old LoggingCriteriumChecker: 4911 / 0.3%
-Number of points saved by new EjlaborateLoggingCriteriumChecker: 23100 / 1.6%
+Number of points saved by new LoggingCriteriumChecker: 23100 / 1.6%
 Number of points saved by old sparse ValueLogger: 4971 / 0.3%
 Number of points saved by new event ValueLogger: 14535 / 1.0%
 
 For speed: (mostly 1797 ± 1, with 21 events briefly shooting up to 2159)
 Number of points in raw data set: 1423989 / 100%
 Number of points saved by old LoggingCriteriumChecker: 2650 / 0.2%
-Number of points saved by new EjlaborateLoggingCriteriumChecker: 3086 / 0.2%
+Number of points saved by new LoggingCriteriumChecker: 3086 / 0.2%
 Number of points saved by old sparse ValueLogger: 2653 / 0.2%
 Number of points saved by new event ValueLogger: 2695 / 0.2%
 """
@@ -233,9 +274,6 @@ Number of points saved by new event ValueLogger: 2695 / 0.2%
 import threading
 import time
 import numpy as np
-from PyExpLabSys.common.supported_versions import python2_and_3
-
-python2_and_3(__file__)
 
 
 class ValueLogger(threading.Thread):
@@ -257,23 +295,26 @@ class ValueLogger(threading.Thread):
         """Initialize the value logger
 
         Args:
-            value_reader (instance): Instance of a Reader class (should be defined somewhere FIXME)
+            value_reader (instance): Instance of a Reader class (see doc string)
             maximumtime (float): Timeout in seconds
-            low_comp (float): Optional low limit beneath which readings should be disregarded
+            low_comp (float): Optional low limit beneath which readings should be
+                disregarded
             comp_type (str): Comparison type either 'lin' or 'log' for linear or
                 logarithmic criteria, respectively
             comp_val (float): Trigger value for the comparison
             channel (int): Optional channel for data input from Reader class
             model (str): Model behaviour of value logger 'sparse' or 'event'.
-                'sparse' value logger (default) behaves like normal as in it will trigger
-                on data points where the newly given point deviates by more than comp_val
-                since the last trigger and then returns True.
+                'sparse' value logger (default) behaves like normal as in it will
+                trigger on data points where the newly given point deviates by more than
+                comp_val since the last trigger and then returns True.
                 'event' will use the sparse value logger as an event trigger, buffering
-                all data between events and then sort through the data based on a subcriterium
-            grade (0 < float < 1): The subcriterium used for the event based data sorting.
+                all data between events and then sort through the data based on a
+                subcriterium
+            grade (0 < float < 1): The subcriterium used for the event based data
+                sorting.
                 The subcriterium will be comp_val * grade. Default is 10%.
-            simulate (bool): Simulate how the ValueLogger runs through a non-live data set (i.e.
-                the Reader will serve the time stamps).
+            simulate (bool): Default False. Set to True if you want to serve the value
+                logger old data (i.e. the Reader will serve the time stamps).
         """
         threading.Thread.__init__(self)
         self.daemon = True
@@ -451,146 +492,8 @@ class ValueLogger(threading.Thread):
 
 
 class LoggingCriteriumChecker(object):
-    """Class that performs a logging criterium check and stores last values for a series
-    of meaurements
-
-    """
-
-    def __init__(
-        self,
-        codenames=(()),
-        types=(()),
-        criteria=(()),
-        time_outs=None,
-        low_compare_values=None,
-    ):
-        """Initialize the logging criterium checker
-
-        .. note:: If given, codenames, types and criteria must be sequences with the same
-            number of elements
-
-        Args:
-            codename (sequence): A sequence of codenames
-            types (sequence): A sequence of logging criteria types ('lin' or 'log')
-            criteria (sequence): A sequence of floats indicating the values change
-                that should trigger a log
-            time_outs (sequence): An (optional) sequence of floats or integers that
-                indicate the logging timeouts in seconds. Defaults to 600.
-            low_compare_values (sequence): An (optional) sequence of lower limits under
-                which the logging criteria will never trigger
-        """
-        error_message = None
-        if len(types) != len(codenames):
-            error_message = 'There must be exactly as many types as codenames'
-        if len(criteria) != len(codenames):
-            error_message = 'There must be exactly as many criteria as codenames'
-        if low_compare_values is not None and len(low_compare_values) != len(codenames):
-            error_message = (
-                'If low_compare_values is given, it must contain as many '
-                'values as there are codenames'
-            )
-        if time_outs is not None and len(time_outs) != len(codenames):
-            error_message = (
-                'If time_outs is given, it must contain as many '
-                'values as there are codenames'
-            )
-        if error_message is not None:
-            raise ValueError(error_message)
-
-        # Init local variables
-        if low_compare_values is None:
-            low_compare_values = [None for _ in codenames]
-        if time_outs is None:
-            time_outs = [600 for _ in codenames]
-
-        self.last_values = {}
-        self.last_time = {}
-        self.measurements = {}
-        for codename, type_, criterium, time_out, low_compare in zip(
-            codenames, types, criteria, time_outs, low_compare_values
-        ):
-            self.add_measurement(codename, type_, criterium, time_out, low_compare)
-
-    @property
-    def codenames(self):
-        """Return the codenames"""
-        return list(self.measurements.keys())
-
-    def add_measurement(
-        self, codename, type_, criterium, time_out=600, low_compare=None
-    ):
-        """Add a measurement channel"""
-        self.measurements[codename] = {
-            'type': type_,
-            'criterium': criterium,
-            'low_compare': low_compare,
-            'time_out': time_out,
-        }
-        # Unix timestamp
-        self.last_time[codename] = 0
-
-    def check(self, codename, value):
-        """Check a new value"""
-        try:
-            measurement = self.measurements[codename]
-        except KeyError:
-            raise KeyError('Codename \'{}\' is unknown'.format(codename))
-
-        # Pull out last value
-        last = self.last_values.get(codename)
-
-        # Never trigger if the compared value is None
-        if value is None:
-            return False
-
-        # Always trigger for the first value
-        if last is None:
-            self.last_time[codename] = time.time()
-            self.last_values[codename] = value
-            return True
-
-        # Always trigger on a timeout
-        if time.time() - self.last_time[codename] > measurement['time_out']:
-            self.last_time[codename] = time.time()
-            self.last_values[codename] = value
-            return True
-
-        # Check if below lower compare value
-        if (
-            measurement['low_compare'] is not None
-            and value < measurement['low_compare']
-        ):
-            return False
-
-        # Compare
-        abs_diff = abs(value - last)
-        if measurement['type'] == 'lin':
-            if abs_diff > measurement['criterium']:
-                self.last_time[codename] = time.time()
-                self.last_values[codename] = value
-                return True
-        elif measurement['type'] == 'log':
-            if last == 0 and abs_diff > 0:
-                self.last_time[codename] = time.time()
-                self.last_values[codename] = value
-                return True
-            if abs_diff / abs(last) > measurement['criterium']:
-                self.last_time[codename] = time.time()
-                self.last_values[codename] = value
-                return True
-        return False
-
-
-class EjlaborateLoggingCriteriumChecker(object):
-    """Class that performs a logging criterium check and stores last values for a series
-    of meaurements
-
-    Compared to the standard LoggingCriteriumChecker that just checks last saved value against
-    the newest measure value, this Ejlaborate version buffers all values since last save (or check?).
-    If more than 10% of the timeout time has passed and it would return true, cycle backwards
-    through the buffered data and choose select few datapoints representing the change leading
-    up to the criterium check.
-    """
+    """Class that performs a logging criterium check to detect events and store relevant
+    data leading up to that event for a series of meaurements"""
 
     def __init__(
         self,
@@ -607,7 +510,7 @@ class EjlaborateLoggingCriteriumChecker(object):
             the same number of elements
 
         Args:
-            codename (sequence): A sequence of codenames
+            codenames (sequence): A sequence of codenames
             types (sequence): A sequence of logging criteria types ('lin' or 'log')
             criteria (sequence): A sequence of floats indicating the values change
                 that should trigger a log
@@ -641,7 +544,8 @@ class EjlaborateLoggingCriteriumChecker(object):
         if grades is not None and error_message is None:
             for grade in grades:
                 if grade <= 0 or grade >= 1:
-                    error_message = 'If grades is given, each grade must be larger than 0 and less than 1'
+                    error_message = 'If grades is given, each grade must be larger ' \
+                        'than 0 and less than 1'
         if error_message is not None:
             raise ValueError(error_message)
 
@@ -657,6 +561,7 @@ class EjlaborateLoggingCriteriumChecker(object):
         self.timeout_counter = 0
         self.deviation_factor = 50
         self.in_timeout = False
+        self.deprecation_warning = True
         self.last_values = {}
         self.last_time = {}
         self.measurements = {}
@@ -705,6 +610,18 @@ class EjlaborateLoggingCriteriumChecker(object):
             measurement = self.measurements[codename]
         except KeyError:
             raise KeyError('Codename \'{}\' is unknown'.format(codename))
+
+        if self.deprecation_warning and len(self.saved_points[codename]) > 0:
+            print(
+                "DeprecationWarning: Attribute ´saved_points[\"{}\"]´ is not empty.\n"
+                "It seems you are not using the `get_data` attribute to access the "
+                "data - if you are doing this on purpose (filtering an existing dataset"
+                " for example), you can disable this warning by setting the attribute "
+                "`deprecation_warning` to False after initializing this instance.\n"
+                "If not on purpose, values will be continuously appended to this array"
+                " as long as the code runs - it is emptied when `get_data` is called."
+                "".format(codename)
+            )
 
         # Check for time
         if now is None:
@@ -796,7 +713,7 @@ class EjlaborateLoggingCriteriumChecker(object):
         return False
 
     def check_buffer_deviation(self, codename, now, value):
-        """Compare the buffer data to the general data variation obtained from timeouts"""
+        """Compare the buffer data to the variation in data obtained from timeouts"""
         # Don't check if we haven't yet had a timeout
         if self.timeout_counter == 0:
             return
