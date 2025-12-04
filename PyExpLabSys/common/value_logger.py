@@ -240,7 +240,10 @@ logger = ValueLogger(
     comp_type='log',
     comp_val=0.25, # 25 % value change
     maximumtime=600,
-    simulate=True, # skip the sleep time in the logger - the reader serves timestamps
+    run_on_old_data=True, # Use this to feed the ValueLogger an existing dataset
+                          # This skips the time.sleep(1) in the logger and the reader is
+                          # expected to store the timestamp of the data point in
+                          # reader.time_value (updated when reader.value() is called)
 ) # defaults: channel=None and grade=0.1 and model='event'
 logger.start()
 
@@ -296,7 +299,7 @@ class ValueLogger(threading.Thread):
         channel=None,
         model='event',
         grade=0.1,
-        simulate=False,
+        run_on_old_data=False,
     ):
         """Initialize the value logger
 
@@ -319,8 +322,12 @@ class ValueLogger(threading.Thread):
             grade (0 < float < 1): The subcriterium used for the event based data
                 sorting.
                 The subcriterium will be comp_val * grade. Default is 10%.
-            simulate (bool): Default False. Set to True if you want to serve the value
-                logger old data (i.e. the Reader will serve the time stamps).
+            run_on_old_data (bool): Default False. Set to True if you want to feed the
+                value logger old data (i.e. run an existing dataset through it). This
+                skips the time.sleep(1) in the run method, so it loops through the data
+                as fast as possible. It looks for the timestamp in reader.time_value,
+                which should be updated when reader.value() is called.
+                See Example 5 in the doc string.
         """
         threading.Thread.__init__(self)
         self.daemon = True
@@ -344,7 +351,7 @@ class ValueLogger(threading.Thread):
         if grade >= 1 or grade <= 0:
             raise ValueError('"grade" must be larger than 0 and less than 1')
         self.grade = grade
-        self.simulate = simulate
+        self.run_on_old_data = run_on_old_data
         if model == 'sparse':
             self.event_model = False
         elif model == 'event':
@@ -377,13 +384,13 @@ class ValueLogger(threading.Thread):
         error_count = 0
 
         while not self.status['quit']:
-            if not self.simulate:
+            if not self.run_on_old_data:
                 time.sleep(1)
             if self.channel is None:
                 self.value = self.valuereader.value()
             else:
                 self.value = self.valuereader.value(self.channel)
-            if self.simulate:
+            if self.run_on_old_data:
                 if self.channel is None:
                     this_time = self.valuereader.time_value
                 else:
