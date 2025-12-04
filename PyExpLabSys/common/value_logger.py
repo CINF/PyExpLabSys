@@ -484,8 +484,8 @@ class ValueLogger(threading.Thread):
                         continue
                     saved_points.append((t_i, y_i))
                     latest = (t_i, y_i)
-                # Not entirely sure why, at this point, the next check does not seem to
-                # cause a ZeroDivisionError, but it seems to work
+                # y_0 and latest[1] can be zero, but the two previous if statements
+                # prevent the execution of the following in those cases
                 if (
                     abs(diff) / abs(latest[1]) > crit
                     or abs(y_i - y_0) / abs(y_0) > crit
@@ -797,8 +797,8 @@ class LoggingCriteriumChecker(object):
                         continue
                     saved_points.append((t_i, y_i))
                     latest = (t_i, y_i)
-                # Not entirely sure why, at this point, the next check does not seem to
-                # cause a ZeroDivisionError, but it seems to work
+                # y_0 and latest[1] can be zero, but the two previous if statements
+                # prevent the execution of the following in those cases
                 if (
                     abs(diff) / abs(latest[1]) > crit
                     or abs(y_i - y_0) / abs(y_0) > crit
