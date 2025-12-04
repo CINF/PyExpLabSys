@@ -35,8 +35,10 @@ logger = LoggingCriteriumChecker(
     codenames=['pressure', 'speed'],
     types=['log', 'lin'],
     criteria=[0.25, 5],
-    time_outs=[600, 600],
-    grades=[0.1, 0.1],
+    time_outs=[600, 600], # 600s are default, so this line could be left out
+    # Uncomment the following line to change the subcriteria from default to 0.25% for
+    # pressure and 2.5 units for speed
+    #grades=[0.01, 0.5],
 )
 
 # Pressure events are detected at 25% value change and timeouts of 600s. 2.5% is used as
@@ -49,11 +51,11 @@ while True:
 
         # Get newest timestamped data either directly from the driver unit or from an
         # existing data set
-        time_, value = get_newest_data(codename)
+        timestamp, value = get_newest_data(codename)
 
         # Check for events (defaulting 'now' to None would make the logger timestamp the
         # value instead)
-        if logger.check(codename, value, now=time_):
+        if logger.check(codename, value, now=timestamp):
 
             # Access the data flagged as relevant by the logger
             datapoints_to_save = logger.get_data(codename)
@@ -61,6 +63,7 @@ while True:
             # Do something with the datapoints (time, value)
             for t, y in datapoints_to_save:
                 save_data(codename, (t, y))
+                # See e.g. PyExpLabSys.common.database_saver for use with SQL databases
 --------------------
 Example 2: Subclass the LoggingCriteriumChecker to get rid of the new fancy algorithms
            and simulate the behaviour of the old LoggingCriteriumChecker
@@ -79,7 +82,7 @@ logger = OldChecker(
     codenames=['pressure', 'speed'],
     types=['log', 'lin'],
     criteria=[0.25, 5],
-    time_outs=[600, 600],
+    time_outs=[600, 600], # 600s are default, so this line could be left out
 )
 
 while True:
@@ -104,8 +107,7 @@ logger = LoggingCriteriumChecker(
     codenames=['pressure'],
     types=['log'],
     criteria=[0.25],
-    time_outs=[600],
-    grades=[0.1],
+    time_outs=[600], # 600s are default, so this line could be left out
 )
 
 # Disable the deprecation warning since we'll intentionally store all the filtered data
@@ -115,8 +117,8 @@ logger.deprecation_warning = False
 pressures = load_existing_pressures()
 
 # Use in some code
-for time_, value in pressures:
-    logger.check(codename, value, now=time_)
+for timestamp, value in pressures:
+    logger.check(codename, value, now=timestamp)
 
 # Access the data flagged as relevant by the logger
 datapoints_to_save = logger.get_data('pressure')
@@ -124,6 +126,7 @@ datapoints_to_save = logger.get_data('pressure')
 # Do something with the datapoints (time, value)
 for t, y in datapoints_to_save:
     save_new_pressures(t, y)
+    # See e.g. PyExpLabSys.common.database_saver for use with SQL databases
 --------------------
 
  *ValueLogger* is a threaded class where each instance continuously monitors a single
@@ -171,16 +174,17 @@ loggers['pressure'] = ValueLogger( # use default new behaviour
     channel=1,
     comp_type='log',
     comp_val=0.25, # 25% value change
-    maximumtime=600, # timeout in seconds
+    maximumtime=600, # timeout (600s are default, so this line could be left out)
     model='event', # default - get higher res info about the onset of events
-    grade=0.1, # default 2.5% value change as subcriterium
+    # Uncomment the following line to change the subcriteria from default to 0.25%
+    #grade=0.01, # default is 0.1 * 0.25 = 2.5% value change as subcriterium
 )
 loggers['speed'] = ValueLogger( # use old behaviour
     reader,
     channel=2,
     comp_type='lin',
     comp_val=5, # 5 units value change
-    maximumtime=600, # timeout in seconds
+    maximumtime=1800, # change default timeout to 1800 seconds
     model='sparse', # opt out of the event_handler algorithm and just save the events
 )
 for codename in ['pressure', 'speed']:
@@ -205,6 +209,7 @@ while True:
         # We timestamp the data here, even though it might be several seconds old
         datapoint = (time.time(), loggers['speed'].read_value())
         my_save_data_function('speed', datapoint)
+        # See e.g. PyExpLabSys.common.database_saver for use with SQL databases
         loggers['speed'].clear_trigged() # this also clears the save pool
 
     time.sleep(1)
@@ -239,12 +244,11 @@ logger = ValueLogger(
     reader,
     comp_type='log',
     comp_val=0.25, # 25 % value change
-    maximumtime=600,
     run_on_old_data=True, # Use this to feed the ValueLogger an existing dataset
                           # This skips the time.sleep(1) in the logger and the reader is
                           # expected to store the timestamp of the data point in
                           # reader.time_value (updated when reader.value() is called)
-) # defaults: channel=None and grade=0.1 and model='event'
+) # defaults: channel=None and grade=0.1 and model='event' and maximumtime=600
 logger.start()
 
 # Let the filter run through the data
@@ -259,6 +263,7 @@ while reader.running:
 filtered_datapoints = logger.get_data()
 for t, y in filtered_datapoints:
     my_save_data_function('pressure', (t, y))
+    # See e.g. PyExpLabSys.common.database_saver for use with SQL databases
 --------------------
 Stats from a test dataset:
 --------------------
