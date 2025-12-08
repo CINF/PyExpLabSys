@@ -472,7 +472,6 @@ class ValueLogger(threading.Thread):
         # Log every point on the up-/down-hill event that has a variation greater than
         # 10% of the general criterium
         crit = self.compare['val'] * self.compare['grade_val']
-        t_0 = self.last['time']
         y_0 = self.last['val']
         for i in range(len(self.buffer) - 1, -1, -1):
             t_i, y_i = self.buffer[i]
@@ -783,7 +782,6 @@ class LoggingCriteriumChecker(object):
             self.measurements[codename]['criterium']
             * self.measurements[codename]['grade']
         )
-        t_0 = self.saved_points[codename][0][0]  ###
         y_0 = self.last_values[codename]
         for i in range(len(self.buffer[codename]) - 1, -1, -1):
             t_i, y_i = self.buffer[codename][i]
