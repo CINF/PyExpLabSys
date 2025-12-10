@@ -26,10 +26,6 @@ from functools import wraps
 
 from serial import Serial
 
-from PyExpLabSys.common.supported_versions import python2_and_3
-
-# Mark this module as supporting both Python 2 and 3
-python2_and_3(__file__)
 
 # Setup logging
 LOG = logging.getLogger(__name__)
@@ -37,7 +33,7 @@ LOG.addHandler(logging.NullHandler())
 
 
 class TenmaBase(Serial):
-    r"""Serial driver for the Tenma 72-2535, \*72-2540, \*72-2545, \*72-2550, 72-2930 and
+    r"""Serial driver for the Tenma 72-2535, 72-2540, \*72-2545, \*72-2550, 72-2930 and
     \*72-2940 power supplies
 
     .. note:: \* The driver has not been tested on the models with a \*. However, the two
