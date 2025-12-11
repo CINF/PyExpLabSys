@@ -1,6 +1,6 @@
 # pylint: disable=too-many-arguments,too-many-instance-attributes,no-member
 
-"""Classes for saving coninuous data and data sets to a database"""
+"""Classes for saving continuous data and data sets to a database"""
 
 import re
 import time
@@ -14,7 +14,6 @@ try:
     import MySQLdb
 except ImportError:
     import pymysql as MySQLdb
-
     MySQLdb.install_as_MySQLdb()
 
 from ..settings import Settings
@@ -335,7 +334,7 @@ class ContinuousDataSaver(object):
                 :meth:`add_continuous_measurement` method.
 
         .. note:: The codenames are the 'official' codenames defined in the database for
-            contionuous measurements NOT codenames that can be userdefined
+            continuous measurements NOT codenames that can be userdefined
 
         """
         CDS_LOG.info(
@@ -378,7 +377,7 @@ class ContinuousDataSaver(object):
             codename (str): Codename for the measurement to add
 
         .. note:: The codenames are the 'official' codenames defined in the database
-            for contionuous measurements NOT codenames that can be userdefined
+            for continuous measurements NOT codenames that can be userdefined
 
         """
         CDS_LOG.info('Add measurements for codename \'%s\'', codename)
@@ -393,6 +392,25 @@ class ContinuousDataSaver(object):
             CDS_LOG.critical(message)
             raise ValueError(message)
         self.codename_translation[codename] = results[0][0]
+
+    def get_last_point(self, codename):
+        """Get the last saved datapoint of codename from the database
+
+        Args:
+            codename (str): Codename for the measurement datapoint to get
+
+        Returns:
+            tuple: (unixtime, value) of most recent point in data table
+        """
+        CDS_LOG.info('Get latest value for codename \'%s\'', codename)
+        measurement_number = self.codename_translation[codename]
+        query = 'SELECT unix_timestamp(time), value FROM {} where type = {} ORDER BY time DESC LIMIT 1'
+        query = query.format(self.continuous_data_table, measurement_number)
+        self.cursor.execute(query)
+        results = self.cursor.fetchall()
+        if len(results) == 0:
+            return None
+        return results[0]
 
     def save_point_now(self, codename, value):
         """Save a value and use now (a call to :func:`time.time`) as the timestamp
