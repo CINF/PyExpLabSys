@@ -57,11 +57,9 @@ except ImportError:
     # Queue was renamed to queue in Python 3
     import queue as Queue
 import logging
-import six
 from .utilities import call_spec_string
 from .system_status import SystemStatus
 from ..settings import Settings
-from .supported_versions import python2_and_3
 
 # Instantiate module logger
 LOGGER = logging.getLogger(__name__)
@@ -70,9 +68,6 @@ LOGGER.addHandler(logging.NullHandler())
 
 # Instantiate a global system status object
 SYSTEM_STATUS = SystemStatus()
-
-# Indicate Python 2/3
-python2_and_3(__file__)
 
 # Instantiate settings object
 SETTINGS = Settings()
@@ -200,9 +195,9 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
 
         elif command == 'json' and name in DATA[self.port]['data']:
             if self._old_data(name):
-                out = six.text_type(json.dumps(OLD_DATA))
+                out = json.dumps(OLD_DATA)
             else:
-                out = six.text_type(json.dumps(DATA[self.port]['data'][name]))
+                out = json.dumps(DATA[self.port]['data'][name])
         # The command is unknown
         else:
             out = UNKNOWN_COMMAND
@@ -239,7 +234,7 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
                 else:
                     data = DATA[self.port]['data'][codename]
                 points.append(data)
-            out = six.text_type(json.dumps(points))
+            out = json.dumps(points)
         # Return a raw string with all measurements in codenames order including names
         elif command == 'raw_wn':
             strings = []
@@ -258,25 +253,23 @@ class PullUDPHandler(SocketServer.BaseRequestHandler):
             for codename in DATA[self.port]['codenames']:
                 if self._old_data(codename):
                     datacopy[codename] = OLD_DATA
-            out = six.text_type(json.dumps(datacopy))
+            out = json.dumps(datacopy)
         # Return all codesnames in a raw string
         elif command == 'codenames_raw':
             out = ','.join(DATA[self.port]['codenames'])
         # Return a list with all codenames encoded as a json string
         elif command == 'codenames_json':
-            out = six.text_type(json.dumps(DATA[self.port]['codenames']))
+            out = json.dumps(DATA[self.port]['codenames'])
         # Return the socket server name
         elif command == 'name':
             out = DATA[self.port]['name']
         # Return status of system and all socket servers
         elif command == 'status':
-            out = six.text_type(
-                json.dumps(
-                    {
-                        'system_status': SYSTEM_STATUS.complete_status(),
-                        'socket_server_status': socket_server_status(),
-                    }
-                )
+            out = json.dumps(
+                {
+                    'system_status': SYSTEM_STATUS.complete_status(),
+                    'socket_server_status': socket_server_status(),
+                }
             )
         # The command is not known
         else:
@@ -686,13 +679,11 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
             commands = ['json_wn#', 'raw_wn#', 'name', 'status', 'commands']
             return_value = '{}#{}'.format(PUSH_RET, json.dumps(commands))
         elif request == 'status':
-            return_value = six.text_type(
-                json.dumps(
-                    {
-                        'system_status': SYSTEM_STATUS.complete_status(),
-                        'socket_server_status': socket_server_status(),
-                    }
-                )
+            return_value = json.dumps(
+                {
+                    'system_status': SYSTEM_STATUS.complete_status(),
+                    'socket_server_status': socket_server_status(),
+                }
             )
         elif request.count('#') != 1:
             return_value = '{}#{}'.format(PUSH_ERROR, UNKNOWN_COMMAND)
@@ -939,7 +930,7 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 # Check all values in list are of same type
                 types = [type(element) for element in value]
                 element_type = types[0]
-                element_type_name = six.text_type(element_type.__name__)
+                element_type_name = element_type.__name__
                 if types != len(types) * [element_type]:
                     message = (
                         'With return format raw, value in list must have same type'
@@ -953,12 +944,8 @@ class PushUDPHandler(SocketServer.BaseRequestHandler):
                 value_string = ''
             else:
                 # Single element conversion
-                element_type_name = six.text_type(type(value).__name__)
+                element_type_name = type(value).__name__
                 value_string = '{}'.format(str(value))
-
-            # We always call it str
-            if sys.version_info[0] == 2 and element_type_name == 'unicode':
-                element_type_name = 'str'
 
             # Check that the element type makes sense for raw conversion
             if element_type_name not in ['int', 'float', 'bool', 'str']:
