@@ -17,7 +17,7 @@ apt1="emacs-nox graphviz screen i2c-tools vim-nox"
 #
 # NOTE: This line used to contain colorama, but it was a dependency of
 # pip, so it will be installed anyway. Only used on Windows systems?
-apt2="python3-pip python3-venv python3-numpy black"
+apt2="python3-pip python3-venv black"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
 # https://pypi.org/project/mysqlclient/
@@ -25,7 +25,7 @@ declare -a apt3=("libpython3-dev" "python3-dev default-libmysqlclient-dev build-
 # for rhel, you need python3-devel mysql-devel pkgconfig instead to be able to pip mysqlclient
 
 # packages to be installed by pip
-pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient"
+pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient numpy"
 # Put packages into this array, whose installation sometimes fail
 declare -a pip3problempackages=("pylint")
 
