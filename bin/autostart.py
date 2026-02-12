@@ -73,9 +73,6 @@ def main():
     args = parse_args()
     config_file_path = find_config(args)
 
-    # Change current working directory to config dir
-    pathlib.os.chdir(config_file_path.parent)
-
     # Parse XML config file
     etree_object = XML.parse(config_file_path)
     xml = etree_object.getroot()
