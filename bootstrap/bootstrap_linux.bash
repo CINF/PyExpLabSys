@@ -62,6 +62,18 @@ alias b=\"cd ~/PyExpLabSys/bootstrap\"
 alias s=\"screen -x -p 0\"
 "
 
+# These lines will be added to /etc/screenrc
+screen_addition="
+# Added by PyExpLabSys:
+# turn sending of screen messages to hardstatus off
+hardstatus alwayslastline
+# Set the hardstatus prop on gui terms to set the titlebar/icon title
+termcapinfo xterm*|rxvt*|kterm*|Eterm* hs:ts=\E]0;:fs=\007:ds=\E]0;\007
+# use this for the hard status string
+hardstatus string '%{= kG}[%{G}%H%? %1\`%?%{g}][%= %{= kw}%-w%{+b yk} %n*%t%?(%u)%? %{-}%+w %=%{g}][%{B}%m/%d %{W}%C%A%{g}]'
+bind s split
+"
+
 # Usage string, edit if adding another section to the script
 usage="This is the PyExpLabSys Linux bootstrap script
 
@@ -78,6 +90,7 @@ install     Install commonly used packages e.g openssh-server
 pip         Install extra Python packages with pip
 autostart   Setup autostart cronjob
 settings    Link in the PyExpLabSys settings file
+screen      Add visual defaults in the screen setup
 pycheckers  Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
@@ -324,6 +337,20 @@ if [ $1 == "settings" ] || [ $1 == "all" ];then
     echogood "+++++> DONE"
 fi
 
+# Screen section
+if [ $1 == "screen" ] || [ $1 == "all" ];then
+    echo
+    echobold "===> SETTING UP SCREEN"
+    grep "Added by PyExpLabSys" /etc/screenrc > /dev/null
+    if [ $? -eq 0 ];then
+	echogood "---> /etc/screenrc previously modified"
+    else
+	echoblue "----> Making the following addition to /etc/screenrc ============="
+	echoyellow "$screen_addition"
+	echoblue "----> ======================================================"
+	echo "$screen_addition" | sudo tee -a /etc/screenrc > /dev/null
+    fi
+fi
 
 if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
     echobold "===> SETTINGS UP CODE STYLE CHECKERS FOR EMACS AND GEANY"
