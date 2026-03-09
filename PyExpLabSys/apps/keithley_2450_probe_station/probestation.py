@@ -15,7 +15,7 @@ import pickle
 import socket
 
 
-IP = 10.54.5.244
+IP = '10.54.5.228'
 
 
 class InvalidFieldError(Exception):
@@ -292,7 +292,7 @@ class MainWindow(QtWidgets.QMainWindow):
         simulation = self._read_simulation(command)
         self.simulation_inner_line.setData(simulation['time'], simulation['inner'])
         self.simulation_outer_line.setData(simulation['time'], simulation['outer'])
-        # self.updateViews()
+        self.updateViews()
 
     def _start_4p_delta_dc_gate_sweep(self):
         comment = self.measurement_comment.text()
@@ -415,12 +415,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.read_socket_in_use = False
         return value
 
-    def _update_temp_and_field(self):
+    def _update_live_plot(self):
         # TODO:
         # Consider to move all the socket reads into a separate thread that
         # will continuously track these values
         source_voltage = self._read_socket('source_voltage')
         gate_voltage = self._read_socket('gate_voltage')
+        print(source_voltage, gate_voltage)
         if source_voltage is None or gate_voltage is None:
             return
         self.source_voltage_show.setText('{:.2f}mV'.format(sourc_voltage * 1000))
@@ -438,7 +439,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.read_socket_in_use:
             time.sleep(0.05)
             return
-        self._update_temp_and_field()
+        self._update_live_plot()
 
         # Read status of ongoing measurement
         status = self._read_socket('status', 9002)
@@ -456,13 +457,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.measurement_plot_y.append(v_tot)
             self.current_measurement_show.setText('No measurement')
         else:
-            v_xx = self._read_socket('v_xx', 9002)
+            v_source = self._read_socket('v_source', 9002)
             self.current_measurement_show.setText(measurement_type)
-            if v_xx is not None:
-                if None not in v_xx:
+            if v_source is not None:
+                if None not in v_source:
                     # TODO: Could we differentiate by measurement type?
-                    self.measurement_plot_x.append(v_xx[0])
-                    self.measurement_plot_y.append(v_xx[1])
+                    self.measurement_plot_x.append(v_source[0])
+                    self.measurement_plot_y.append(v_source[1])
 
         if None not in (self.measurement_plot_x + self.measurement_plot_y):
             self.measurement_line.setData(
