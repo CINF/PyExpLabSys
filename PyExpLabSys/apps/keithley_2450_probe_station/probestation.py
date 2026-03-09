@@ -44,14 +44,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggle_k6221_button.clicked.connect(self._toggle_k6221)
 
         # Connect to buttons
-        self.DC2pGateSweep_start_button.clicked.connect(self._start_2p_dc_gate_sweep)
-        # self.DC2pGateSweep_simulate_button.clicked.connect(
-        #     self._simulate_2p_dc_gate_sweep)
-        self.DC2pGateSweep_simulate_button.clicked.connect(
-            self._simulate_2p_dc_gate_sweep
+        self.two_point_double_stepped_v_source_start_button.clicked.connect(self._start_2p_dc_sweep)
+        self.two_point_double_stepped_v_source_simulate_button.clicked.connect(
+            self._simulate_2p_dc_sweep
         )
-        # self.DC2pGateSweep_start_button.clicked.connect(
-        #    self.self._start_4p_dc_gate_sweep)
+        self.four_point_double_stepped_i_source_start_button.clicked.connect(self._start_4p_dc_sweep)
+        self.four_point_double_stepped_i_source_simulate_button.clicked.connect(
+            self._simulate_4p_dc_sweep
+        )
 
         self.abort_measurement_button.clicked.connect(self._abort_measurement)
 
@@ -246,12 +246,15 @@ class MainWindow(QtWidgets.QMainWindow):
         command = {'cmd': 'abort'}
         self._write_socket(command, 8510)
 
-    def _start_2p_dc_gate_sweep(self, no_execution=False):
+    def _start_2p_dc_sweep(self, no_execution=False):
+        """
+        This is a double-stepped 2point set-voltage measure current measurement
+        """
         comment = self.measurement_comment.text()
         if len(comment) < 5:
             self.alert('Comment too short')
             return False
-        if self.DC2pGateSweep_source_inner_loop_label_box.currentText() == 'Gate':
+        if self.DC2pSweep_source_inner_loop_label_box.currentText() == 'Gate':
             inner = 'gate'
         else:
             inner = 'source'
@@ -261,18 +264,18 @@ class MainWindow(QtWidgets.QMainWindow):
             'comment': comment,
             'inner': inner,
             'gate': {
-                'v_low': self.DC2pGateSweep_gate_low.value(),
-                'v_high': self.DC2pGateSweep_gate_high.value(),
-                'steps': int(self.DC2pGateSweep_gate_steps.value()),
-                'repeats': int(self.DC2pGateSweep_gate_repeats.value()),
+                'v_low': self.DC2pSweep_gate_low.value(),
+                'v_high': self.DC2pSweep_gate_high.value(),
+                'steps': int(self.DC2pSweep_gate_steps.value()),
+                'repeats': int(self.DC2pSweep_gate_repeats.value()),
                 'nplc': float(self.nplc.currentText()),
                 'limit': self.gate_max_current.value() * 1e-6,
             },
             'source': {
-                'v_low': self.DC2pGateSweep_source_low.value(),
-                'v_high': self.DC2pGateSweep_source_high.value(),
-                'steps': int(self.DC2pGateSweep_source_steps.value()),
-                'repeats': int(self.DC2pGateSweep_source_repeats.value()),
+                'v_low': self.DC2pSweep_source_low.value(),
+                'v_high': self.DC2pSweep_source_high.value(),
+                'steps': int(self.DC2pSweep_source_steps.value()),
+                'repeats': int(self.DC2pSweep_source_repeats.value()),
                 'nplc': float(self.nplc.currentText()),
                 'limit': self.source_max_current.value() * 1e-3,
             },
@@ -287,8 +290,59 @@ class MainWindow(QtWidgets.QMainWindow):
             self._write_socket(command, 8510)
         return command
 
-    def _simulate_2p_dc_gate_sweep(self):
-        command = self._start_2p_dc_gate_sweep(no_execution=True)
+    def _simulate_2p_dc_sweep(self):
+        command = self._start_2p_dc_sweep(no_execution=True)
+        simulation = self._read_simulation(command)
+        self.simulation_inner_line.setData(simulation['time'], simulation['inner'])
+        self.simulation_outer_line.setData(simulation['time'], simulation['outer'])
+        self.updateViews()
+        
+    def _start_4p_dc_sweep(self, no_execution=False):
+        """
+        This is a double-stepped 4point set-current measure voltage measurement
+        """
+        comment = self.measurement_comment.text()
+        if len(comment) < 5:
+            self.alert('Comment too short')
+            return False
+        if self.DC4pSweep_inner_loop_label_box.currentText() == 'Gate':
+            inner = 'gate'
+        else:
+            inner = 'source'
+        command = {
+            'cmd': 'start_measurement',
+            'measurement': '4point_double_stepped_i_source',
+            'comment': comment,
+            'inner': inner,
+            'gate': {
+                'v_low': self.DC4pSweep_gate_low.value(),
+                'v_high': self.DC4pSweep_gate_high.value(),
+                'steps': int(self.DC4pSweep_gate_steps.value()),
+                'repeats': int(self.DC4pSweep_gate_repeats.value()),
+                'nplc': float(self.nplc.currentText()),
+                'limit': self.gate_max_current.value() * 1e-6,
+            },
+            'source': {
+                'i_low': self.DC4pSweep_source_low.value(),
+                'i_high': self.DC4pSweep_source_high.value(),
+                'steps': int(self.DC4pSweep_source_steps.value()),
+                'repeats': int(self.DC4pSweep_source_repeats.value()),
+                'nplc': float(self.nplc.currentText()),
+                'limit': self.source_max_current.value() * 1e-3,
+            },
+            'params': {
+                'autozero': False,  # TODO!!!!!!!
+                'readback': False,  # TODO!!!!!!!
+                'source_measure_delay': 1e-3,  # TODO!!!!!!!
+            },
+        }
+        print(command)
+        if not no_execution:
+            self._write_socket(command, 8510)
+        return command
+    
+    def _simulate_4p_dc_sweep(self):
+        command = self._start_4p_dc_sweep(no_execution=True)
         simulation = self._read_simulation(command)
         self.simulation_inner_line.setData(simulation['time'], simulation['inner'])
         self.simulation_outer_line.setData(simulation['time'], simulation['outer'])
@@ -419,18 +473,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # TODO:
         # Consider to move all the socket reads into a separate thread that
         # will continuously track these values
-        source_voltage = self._read_socket('source_voltage')
-        gate_voltage = self._read_socket('gate_voltage')
-        print(source_voltage, gate_voltage)
-        if source_voltage is None or gate_voltage is None:
+        v_source = self._read_socket('v_source', 9002)
+        v_backgate = self._read_socket('v_backgate', 9002)
+        if v_source is None or v_backgate is None:
             return
-        self.source_voltage_show.setText('{:.2f}mV'.format(sourc_voltage * 1000))
-        self.gate_voltage_show.setText('{:.2f}mV'.format(gate_voltage * 1000))
+        self.source_voltage_show.setText('{:.2f}mV'.format(v_source[1] * 1000))
+        self.gate_voltage_show.setText('{:.2f}mV'.format(v_backgate[1] * 1000))
 
         self.source_voltage_x.append(time.time() - self.t_start)
-        self.source_voltage_y.append(source_voltage)
+        self.source_voltage_y.append(v_source[1])
         self.gate_voltage_x.append(time.time() - self.t_start)
-        self.gate_voltage_y.append(sample_temp)
+        self.gate_voltage_y.append(v_backgate[1])
 
         self.source_voltage_line.setData(self.source_voltage_x, self.source_voltage_y)
         self.gate_voltage_line.setData(self.gate_voltage_x, self.gate_voltage_y)
@@ -445,7 +498,6 @@ class MainWindow(QtWidgets.QMainWindow):
         status = self._read_socket('status', 9002)
         print('Status is ', status)
         measurement_type = status['type']
-        print(measurement_type)
         if not measurement_type == self.latest_measurement_type:
             self.measurement_plot_x = []
             self.measurement_plot_y = []

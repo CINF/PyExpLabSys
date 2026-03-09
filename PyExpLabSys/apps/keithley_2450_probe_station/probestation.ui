@@ -21,7 +21,7 @@
        <bool>true</bool>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="Main_tab">
        <attribute name="title">
@@ -45,16 +45,16 @@
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_12">
               <item>
-               <layout class="QVBoxLayout" name="verticalLayout">
+               <layout class="QVBoxLayout" name="gate_voltage_show_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="label_3">
+                 <widget class="QLabel" name="gate_voltage_show_label">
                   <property name="text">
-                   <string>Gate Voltage</string>
+                   <string>Gate Voltage / mV</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLineEdit" name="vti_temp_show">
+                 <widget class="QLineEdit" name="gate_voltage_show">
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
@@ -108,16 +108,16 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="verticalLayout_3">
+               <layout class="QVBoxLayout" name="gate_current_show_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="label_5">
+                 <widget class="QLabel" name="gate_current_show_label">
                   <property name="text">
                    <string>Gate current</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLineEdit" name="sample_temp_show">
+                 <widget class="QLineEdit" name="gate_current_show">
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
@@ -202,16 +202,16 @@
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_11">
               <item>
-               <layout class="QVBoxLayout" name="verticalLayout_6">
+               <layout class="QVBoxLayout" name="source_voltage_show_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="label_7">
+                 <widget class="QLabel" name="source_voltate_show_label">
                   <property name="text">
-                   <string>Source Voltage</string>
+                   <string>Source Voltage / mV</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLineEdit" name="b_field_show">
+                 <widget class="QLineEdit" name="source_voltage_show">
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
@@ -339,7 +339,7 @@
          <rect>
           <x>90</x>
           <y>80</y>
-          <width>290</width>
+          <width>303</width>
           <height>30</height>
          </rect>
         </property>
@@ -377,7 +377,7 @@
          <rect>
           <x>90</x>
           <y>130</y>
-          <width>300</width>
+          <width>315</width>
           <height>30</height>
          </rect>
         </property>
@@ -418,7 +418,7 @@
          <rect>
           <x>90</x>
           <y>180</y>
-          <width>287</width>
+          <width>303</width>
           <height>30</height>
          </rect>
         </property>
@@ -495,7 +495,7 @@
          <rect>
           <x>90</x>
           <y>320</y>
-          <width>254</width>
+          <width>271</width>
           <height>30</height>
          </rect>
         </property>
@@ -712,17 +712,17 @@
           <property name="currentIndex">
            <number>0</number>
           </property>
-          <widget class="QWidget" name="DC2pGateSweep">
+          <widget class="QWidget" name="DC2pSweep">
            <attribute name="title">
-            <string>DC 2p gate sweep</string>
+            <string>DC 2p sweep</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_23">
             <item>
-             <layout class="QHBoxLayout" name="DC2pGateSweep_horizontalLayout">
+             <layout class="QHBoxLayout" name="DC2pSweep_horizontalLayout">
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_gate_high_verticalLayout">
+               <layout class="QVBoxLayout" name="DC2pSweep_gate_high_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_gate_high_label">
+                 <widget class="QLabel" name="DC2pSweep_gate_high_label">
                   <property name="toolTip">
                    <string>Highest gate voltage / V</string>
                   </property>
@@ -732,7 +732,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_gate_high">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_gate_high">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -762,9 +762,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_gate_low_verticalLayout">
+               <layout class="QVBoxLayout" name="DC2pSweep_gate_low_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_gate_low_label">
+                 <widget class="QLabel" name="DC2pSweep_gate_low_label">
                   <property name="toolTip">
                    <string>Lowest gate voltage / V</string>
                   </property>
@@ -774,7 +774,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_gate_low">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_gate_low">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -804,9 +804,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_gate_steps_verticalLayout_2">
+               <layout class="QVBoxLayout" name="DC2pSweep_gate_steps_verticalLayout_2">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_gate_steps_label">
+                 <widget class="QLabel" name="DC2pSweep_gate_steps_label">
                   <property name="toolTip">
                    <string>Number of steps in gate sweep</string>
                   </property>
@@ -816,7 +816,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_gate_steps">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_gate_steps">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -846,9 +846,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_gate_repeats_verticalLayout">
+               <layout class="QVBoxLayout" name="DC2pSweep_gate_repeats_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_gate_repeats_label">
+                 <widget class="QLabel" name="DC2pSweep_gate_repeats_label">
                   <property name="toolTip">
                    <string>Number of repetitions of gate ramp</string>
                   </property>
@@ -858,7 +858,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_gate_repeats">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_gate_repeats">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -888,9 +888,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_bias_v_verticalLayout">
+               <layout class="QVBoxLayout" name="DC2pSweep_source_high_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_source_high_label">
+                 <widget class="QLabel" name="DC2pSweep_source_high_label">
                   <property name="toolTip">
                    <string>Highest source voltage / V</string>
                   </property>
@@ -900,7 +900,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_source_high">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_source_high">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -930,9 +930,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_bias_v_verticalLayout_2">
+               <layout class="QVBoxLayout" name="DC2pSweep_source_low_verticalLayout_2">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_source_low_label">
+                 <widget class="QLabel" name="DC2pSweep_source_low_label">
                   <property name="toolTip">
                    <string>Lowest source voltage / V</string>
                   </property>
@@ -942,7 +942,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_source_low">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_source_low">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -972,9 +972,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_source_steps_verticalLayout">
+               <layout class="QVBoxLayout" name="DC2pSweep_source_steps_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_source_steps_label">
+                 <widget class="QLabel" name="DC2pSweep_source_steps_label">
                   <property name="toolTip">
                    <string>Number of steps in source sweep</string>
                   </property>
@@ -984,7 +984,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_source_steps">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_source_steps">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1014,9 +1014,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_repeats_verticalLayout_2">
+               <layout class="QVBoxLayout" name="DC2pSweep_repeats_verticalLayout_2">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_source_repeats_label">
+                 <widget class="QLabel" name="DC2pSweep_source_repeats_label">
                   <property name="toolTip">
                    <string>Number of repetitions of source ramp</string>
                   </property>
@@ -1026,7 +1026,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC2pGateSweep_source_repeats">
+                 <widget class="QDoubleSpinBox" name="DC2pSweep_source_repeats">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1056,16 +1056,16 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC2pGateSweep_repeats_verticalLayout_3">
+               <layout class="QVBoxLayout" name="DC2pSweep_inner_loop_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC2pGateSweep_source_inner_loop_label">
+                 <widget class="QLabel" name="DC2pSweep_source_inner_loop_label">
                   <property name="text">
                    <string>Inner loop</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="DC2pGateSweep_source_inner_loop_label_box">
+                 <widget class="QComboBox" name="DC2pSweep_source_inner_loop_label_box">
                   <item>
                    <property name="text">
                     <string>Gate</string>
@@ -1081,7 +1081,7 @@
                </layout>
               </item>
               <item>
-               <spacer name="DC2pGateSweep_horizontalSpacer">
+               <spacer name="DC2pSweep_horizontalSpacer">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
                 </property>
@@ -1094,7 +1094,7 @@
                </spacer>
               </item>
               <item>
-               <widget class="QPushButton" name="DC2pGateSweep_simulate_button">
+               <widget class="QPushButton" name="two_point_double_stepped_v_source_simulate_button">
                 <property name="minimumSize">
                  <size>
                   <width>80</width>
@@ -1113,7 +1113,7 @@
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="DC2pGateSweep_start_button">
+               <widget class="QPushButton" name="two_point_double_stepped_v_source_start_button">
                 <property name="minimumSize">
                  <size>
                   <width>80</width>
@@ -1148,17 +1148,17 @@
             </item>
            </layout>
           </widget>
-          <widget class="QWidget" name="DC4pGateSweep">
+          <widget class="QWidget" name="DC4pSweep">
            <attribute name="title">
-            <string>DC 4p gate sweep</string>
+            <string>DC 4p sweep</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_23">
             <item>
-             <layout class="QHBoxLayout" name="DC4pGateSweep_horizontalLayout">
+             <layout class="QHBoxLayout" name="DC4pSweep_horizontalLayout">
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_gate_high_verticalLayout">
+               <layout class="QVBoxLayout" name="DC4pSweep_gate_high_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_gate_high_label">
+                 <widget class="QLabel" name="DC4pSweep_gate_high_label">
                   <property name="toolTip">
                    <string>Highest gate voltage / V</string>
                   </property>
@@ -1168,7 +1168,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_gate_high">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_gate_high">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1198,9 +1198,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_gate_low_verticalLayout">
+               <layout class="QVBoxLayout" name="DC4pSweep_gate_low_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_gate_low_label">
+                 <widget class="QLabel" name="DC4pSweep_gate_low_label">
                   <property name="toolTip">
                    <string>Lowest gate voltage / V</string>
                   </property>
@@ -1210,7 +1210,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_gate_low">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_gate_low">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1240,9 +1240,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_gate_steps_verticalLayout_2">
+               <layout class="QVBoxLayout" name="DC4pSweep_gate_steps_verticalLayout_2">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_gate_steps_label">
+                 <widget class="QLabel" name="DC4pSweep_gate_steps_label">
                   <property name="toolTip">
                    <string>Number of steps in gate sweep</string>
                   </property>
@@ -1252,7 +1252,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_gate_steps">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_gate_steps">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1282,9 +1282,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_gate_repeats_verticalLayout">
+               <layout class="QVBoxLayout" name="DC4pSweep_gate_repeats_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_gate_repeats_label">
+                 <widget class="QLabel" name="DC4pSweep_gate_repeats_label">
                   <property name="toolTip">
                    <string>Number of repetitions of gate ramp</string>
                   </property>
@@ -1294,7 +1294,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_gate_repeats">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_gate_repeats">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1324,9 +1324,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_bias_v_verticalLayout">
+               <layout class="QVBoxLayout" name="DC4pSweep_bias_v_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_source_high_label">
+                 <widget class="QLabel" name="DC4pSweep_source_high_label">
                   <property name="toolTip">
                    <string>Highest source current / mA</string>
                   </property>
@@ -1336,7 +1336,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_source_high">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_source_high">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1366,9 +1366,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_bias_v_verticalLayout_2">
+               <layout class="QVBoxLayout" name="DC4pSweep_source_low_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_source_low_label">
+                 <widget class="QLabel" name="DC4pSweep_source_low_label">
                   <property name="toolTip">
                    <string>Lowest source current / mA</string>
                   </property>
@@ -1378,7 +1378,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_source_low">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_source_low">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1408,9 +1408,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_source_steps_verticalLayout">
+               <layout class="QVBoxLayout" name="DC4pSweep_source_steps_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_source_steps_label">
+                 <widget class="QLabel" name="DC4pSweep_source_steps_label">
                   <property name="toolTip">
                    <string>Number of steps in source sweep</string>
                   </property>
@@ -1420,7 +1420,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_source_steps">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_source_steps">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1450,9 +1450,9 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_repeats_verticalLayout_2">
+               <layout class="QVBoxLayout" name="DC4pSweep_repeats_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_source_repeats_label">
+                 <widget class="QLabel" name="DC4pSweep_source_repeats_label">
                   <property name="toolTip">
                    <string>Number of repetitions of source ramp</string>
                   </property>
@@ -1462,7 +1462,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="DC4pGateSweep_source_repeats">
+                 <widget class="QDoubleSpinBox" name="DC4pSweep_source_repeats">
                   <property name="maximumSize">
                    <size>
                     <width>80</width>
@@ -1492,16 +1492,16 @@
                </layout>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="DC4pGateSweep_repeats_verticalLayout_3">
+               <layout class="QVBoxLayout" name="DC4pSweep_inner_loop_verticalLayout">
                 <item>
-                 <widget class="QLabel" name="DC4pGateSweep_source_inner_loop_label">
+                 <widget class="QLabel" name="DC4pSweep_inner_loop_label">
                   <property name="text">
                    <string>Inner loop</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="DC4pGateSweep_source_inner_loop_label_box">
+                 <widget class="QComboBox" name="DC4pSweep_inner_loop_label_box">
                   <item>
                    <property name="text">
                     <string>Gate</string>
@@ -1530,10 +1530,10 @@
                </spacer>
               </item>
               <item>
-               <widget class="QPushButton" name="DC4pGateSweep_start_button">
+               <widget class="QPushButton" name="four_point_double_stepped_i_source_simulate_button">
                 <property name="minimumSize">
                  <size>
-                  <width>160</width>
+                  <width>80</width>
                   <height>0</height>
                  </size>
                 </property>
@@ -1544,7 +1544,26 @@
                  </size>
                 </property>
                 <property name="text">
-                 <string>Start Gate Sweep</string>
+                 <string>Simulate</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="four_point_double_stepped_i_source_start_button">
+                <property name="minimumSize">
+                 <size>
+                  <width>80</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>300</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Start</string>
                 </property>
                </widget>
               </item>
