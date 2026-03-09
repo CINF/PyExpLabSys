@@ -14,7 +14,6 @@ import json
 import pickle
 import socket
 
-
 IP = '10.54.5.228'
 
 
@@ -44,11 +43,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggle_k6221_button.clicked.connect(self._toggle_k6221)
 
         # Connect to buttons
-        self.two_point_double_stepped_v_source_start_button.clicked.connect(self._start_2p_dc_sweep)
+        self.two_point_double_stepped_v_source_start_button.clicked.connect(
+            self._start_2p_dc_sweep
+        )
         self.two_point_double_stepped_v_source_simulate_button.clicked.connect(
             self._simulate_2p_dc_sweep
         )
-        self.four_point_double_stepped_i_source_start_button.clicked.connect(self._start_4p_dc_sweep)
+        self.four_point_double_stepped_i_source_start_button.clicked.connect(
+            self._start_4p_dc_sweep
+        )
         self.four_point_double_stepped_i_source_simulate_button.clicked.connect(
             self._simulate_4p_dc_sweep
         )
@@ -296,7 +299,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.simulation_inner_line.setData(simulation['time'], simulation['inner'])
         self.simulation_outer_line.setData(simulation['time'], simulation['outer'])
         self.updateViews()
-        
+
     def _start_4p_dc_sweep(self, no_execution=False):
         """
         This is a double-stepped 4point set-current measure voltage measurement
@@ -340,7 +343,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not no_execution:
             self._write_socket(command, 8510)
         return command
-    
+
     def _simulate_4p_dc_sweep(self):
         command = self._start_4p_dc_sweep(no_execution=True)
         simulation = self._read_simulation(command)
