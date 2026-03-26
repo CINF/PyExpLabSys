@@ -6,21 +6,26 @@
 # EDIT POINT START: Edit here to change what the script does #
 ##############################################################
 
+# Install virtual python environment in ~/$PELS_ENV
+PELS_ENV=.pels
+
 # apt install packages line 1, general packages
 #
-apt1="openssh-server emacs graphviz screen i2c-tools vim-nox"
+apt1="emacs-nox graphviz screen i2c-tools vim-nox"
 
 # apt install packages line 2, python extensions
 #
-# NOTE: This line used to contain colorama, but it is a dependency of
-# pip, so it will be installed anyway
-apt2="python3-pip python3-numpy black"
+# NOTE: This line used to contain colorama, but it was a dependency of
+# pip, so it will be installed anyway. Only used on Windows systems?
+apt2="python3-pip python3-venv black"
 
 # apt install packages that has possibly changed name, written in list form and installed one at at time
-declare -a apt3=("libpython3-dev" "python3-dev")
+# https://pypi.org/project/mysqlclient/
+declare -a apt3=("libpython3-dev" "python3-dev default-libmysqlclient-dev build-essential pkg-config")
+# for rhel, you need python3-devel mysql-devel pkgconfig instead to be able to pip mysqlclient
 
 # packages to be installed by pip
-pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient"
+pip3packages="minimalmodbus pyusb python-usbtmc pyserial pyyaml mysqlclient numpy"
 # Put packages into this array, whose installation sometimes fail
 declare -a pip3problempackages=("pylint")
 
@@ -37,16 +42,13 @@ if [ -d $machine_dir ]; then
     cd $machine_dir
 fi
 pistatus.py
+if [ -f ~/'$PELS_ENV'/bin/activate ]; then
+    source ~/'$PELS_ENV'/bin/activate
+fi
 '
 
 # These lines will be added to ~/.bash_aliases
 bash_aliases="
-alias sagi=\"sudo apt-get install\"
-alias sagr=\"sudo apt-get remove\"
-alias acs=\"apt-cache search\"
-alias sagu=\"sudo apt-get update\"
-alias sagup=\"sudo apt-get upgrade\"
-alias sagdu=\"sudo apt-get dist-upgrade\"
 alias ll=\"ls -lh\"
 alias df=\"df -h\"
 alias emacs-nolint=\"emacs -q --load ~/PyExpLabSys/bootstrap/.emacs-simple\"
@@ -58,6 +60,18 @@ alias m=\"if [ -d ~/machines/\$HOSTNAME ];then cd ~/machines/\$HOSTNAME; else cd
 alias p=\"cd ~/PyExpLabSys/PyExpLabSys\"
 alias b=\"cd ~/PyExpLabSys/bootstrap\"
 alias s=\"screen -x -p 0\"
+"
+
+# These lines will be added to /etc/screenrc
+screen_addition="
+# Added by PyExpLabSys:
+# turn sending of screen messages to hardstatus off
+hardstatus alwayslastline
+# Set the hardstatus prop on gui terms to set the titlebar/icon title
+termcapinfo xterm*|rxvt*|kterm*|Eterm* hs:ts=\E]0;:fs=\007:ds=\E]0;\007
+# use this for the hard status string
+hardstatus string '%{= kG}[%{G}%H%? %1\`%?%{g}][%= %{= kw}%-w%{+b yk} %n*%t%?(%u)%? %{-}%+w %=%{g}][%{B}%m/%d %{W}%C%A%{g}]'
+bind s split
 "
 
 # Usage string, edit if adding another section to the script
@@ -76,6 +90,7 @@ install     Install commonly used packages e.g openssh-server
 pip         Install extra Python packages with pip
 autostart   Setup autostart cronjob
 settings    Link in the PyExpLabSys settings file
+screen      Add visual defaults in the screen setup
 pycheckers  Install Python code style checkers and hook them up to emacs and
             geany (if geany is already installed)
 
@@ -87,6 +102,7 @@ abelec      Setup device to use daq-modules from AB Electronics (NOT part of all
 dash        Install packages for dash
 qt          Setup GUI environment: Qt and Qwt (for plots)
 "
+
 ##################
 # EDIT POINT END #
 ##################
@@ -200,69 +216,66 @@ fi
 
 # Install packages
 if [ $1 == "install" ] || [ $1 == "all" ];then
+    # Verified for Debian 13 - Trixie
     echo
     echobold "===> INSTALLING PACKAGES"
     echoblue "---> Updating package archive information"
 
-    # Update, but only if it has not just been done (within the last
-    # 10 hours), since it actually takes a while on a RPi.
-    #
-    # NOTE. The method is based on checking the last modification of
-    # the apt cache file, which may not the perfect method, we will
-    # test it and see
-    last_update=`stat /var/cache/apt/pkgcache.bin --format="%Y"`
-    now=`date +%s`
-    since_last_update=$((now-last_update))
-    if [ $since_last_update -gt 36000 ];then
-	sudo apt-get update
-    else
-	echoblue "Skipping, since it was done" $(($since_last_update/3600)) "hours ago"
-    fi
+    # Update - it does not take that long on newer hardware and the old
+    # method seemingly did not work when run on a fresh minimal installation.
+    sudo apt update
 
-    aptgetprefix='sudo apt-get -y'
+    aptprefix='sudo apt -y'
 
     echoblue "---> Upgrade all existing packages"
-    $aptgetprefix dist-upgrade
+    $aptprefix full-upgrade
     echoblue "---> Installing packages"
     echoblue "----> Install: $apt1"
-    $aptgetprefix install $apt1
+    $aptprefix install $apt1
     echoblue "----> Install: $apt2"
-    $aptgetprefix install $apt2
+    $aptprefix install $apt2
 
     # Install package individually, that may have changed name
     for package in "${apt3[@]}";do
 	echoblue "----> Attempting to install \"$package\" as an individual package"
-	$aptgetprefix install $package
+	$aptprefix install $package
     done
 
     echoblue "---> Remove un-needed packages, if any"
-    $aptgetprefix autoremove
+    $aptprefix autoremove
     echoblue "---> Clear apt cache"
-    $aptgetprefix clean
+    sudo apt -y clean
 
-    echoblue "---> Enable ssh by creating /boot/ssh"
-    sudo touch /boot/ssh
     echogood "+++++> DONE"
 fi
 
 # Install extra packages with pip
 if [ $1 == "pip" ] || [ $1 == "all" ];then
+    # Verified for Debian 13 - Trixie
     echo
-    # Test if pip3 is there
-    PIPEXECUTABLE=`which pip3`
 
-    if [ $? -eq 0 ];then
-	echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
-	echoblue "---> Installing: $pip3packages"
-	sudo $PIPEXECUTABLE install -U $pip3packages
-	# Individual packages
-	for package in "${pip3problempackages[@]}";do
-	    echoblue "---> Installing \"$package\" as an invididual package"
-	    sudo $PIPEXECUTABLE install -U $package
-	done
-	echogood "+++++> DONE"
+    # Create virtual Python environment if not existing
+    if [ ! -d ~/$PELS_ENV ];then
+        echoblue "Creating virtual environment for PyExpLabSys as $PELS_ENV"
+        python3 -m venv ~/$PELS_ENV
+    fi
+    # Activate virtual environment
+    if [ -f ~/$PELS_ENV/bin/activate ];then
+        source ~/$PELS_ENV/bin/activate
+
+        # Install packages
+        echobold "===> INSTALLING EXTRA PYTHON PACKAGES WITH PIP3"
+        echoblue "---> Installing: $pip3packages"
+        python -m pip install -U $pip3packages
+        # Individual packages
+        for package in "${pip3problempackages[@]}";do
+            echoblue "---> Installing \"$package\" as an invididual package"
+            python -m pip install -U $package
+        done
+        echogood "+++++> DONE"
     else
-	echobad "pip3 not installed, run install step and then re-try pip step"
+        echobad "~/$PELS_ENV already exists, but is not a virtual environment for Python"
+        echobad "Skipping pip installs"
     fi
 fi
 
@@ -309,7 +322,7 @@ $cronline"
 fi
 
 
-# Setup autostart cronjob
+# Setup settings
 if [ $1 == "settings" ] || [ $1 == "all" ];then
     echobold "===> LINKING PYEXPLABSYS SETTINGS FILE IN PLACE"
     if [ -f ~/.config/PyExpLabSys/user_settings.yaml ];then
@@ -324,6 +337,20 @@ if [ $1 == "settings" ] || [ $1 == "all" ];then
     echogood "+++++> DONE"
 fi
 
+# Screen section
+if [ $1 == "screen" ] || [ $1 == "all" ];then
+    echo
+    echobold "===> SETTING UP SCREEN"
+    grep "Added by PyExpLabSys" /etc/screenrc > /dev/null
+    if [ $? -eq 0 ];then
+	echogood "---> /etc/screenrc previously modified"
+    else
+	echoblue "----> Making the following addition to /etc/screenrc ============="
+	echoyellow "$screen_addition"
+	echoblue "----> ======================================================"
+	echo "$screen_addition" | sudo tee -a /etc/screenrc > /dev/null
+    fi
+fi
 
 if [ $1 == "pycheckers" ] || [ $1 == "all" ];then
     echobold "===> SETTINGS UP CODE STYLE CHECKERS FOR EMACS AND GEANY"
@@ -349,6 +376,7 @@ fi
 
 # Install extra packages needed for writing docs
 if [ $1 == "docs" ];then
+    # FIXME: Should be updated/removed or is working?
     # TODO add sphinx and extra package needed to dependency graph
     echobold "===> INSTALLING EXTRA PACKAGES FOR WRITING DOCS"
     echo
@@ -370,6 +398,7 @@ if [ $1 == "docs" ];then
 fi
 
 if [ $1 == "wiringpi" ];then
+    # FIXME: Should be updated/removed or is working?
     echobold "===> INSTALLING WIRINGPI"
     echoblue "---> Installing wiringpi with apt-get"
     sudo apt-get install wiringpi
@@ -383,9 +412,10 @@ if [ $1 == "wiringpi" ];then
 fi
 
 if [ $1 == "abelec" ];then
+    # FIXME: Should be updated/removed or is working?
     # TODO: Improve script to allow multiple executions
     echobold "===> INSTALLING EXTRA PACKAGES FOR AB ELECTRONICS"
-    sudo apt-get install i2c-tools python-smbus
+    sudo apt install i2c-tools python-smbus
     echo
 
     sudo touch /etc/modprobe.d/raspi-blacklist.conf # Make sure file is there before removing
@@ -439,6 +469,7 @@ fi
 
 
 if [ $1 == "dash" ];then
+    # FIXME: Should be updated/removed or is working?
     # TODO: Improve script to allow multiple executions
     echobold "===> INSTALLING EXTRA PACKAGES FOR DASH"
     pip3 install dash==0.28.5  # The core dash backend
@@ -450,6 +481,7 @@ fi
 
 # GUI section (Qt and Qwt)
 if [ $1 == "qt" ];then
+    # FIXME: Should be updated/removed or is working?
     echobold "===> INSTALLING EXTRA PACKAGES FOR GUIS"
     echo
 
