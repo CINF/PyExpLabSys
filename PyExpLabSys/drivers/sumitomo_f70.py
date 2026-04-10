@@ -1,13 +1,14 @@
-import time
 import serial
 
-# # Read firmware version
-# # comm = 'ID1D629' + '\r'
+from icecream import ic
+
 
 class SumitomoF70(object):
     def __init__(self, port='/dev/ttyUSB0'):
         # Default comm parameters are correct, we could choose to set them though
         self.serial = serial.Serial(port)
+        print(self.serial)
+        self.serial.timeout = 0.2
 
     @staticmethod
     def _crc(command):
@@ -25,24 +26,50 @@ class SumitomoF70(object):
 
         return_val = hex(crc)[2:].upper()
         return return_val
-        
-    def _comm(self, command):
-        comm = command + self._crc(command) + '\r'
-        comm = comm.encode('ascii')       
-        self.serial.write(comm)
-        reply = self.serial.read_until(b'\r')
 
-        expected_crc = self._crc(reply[:-5].decode())
-        actual_crc = reply[-5:-1].decode()
+    def _read_from_device(self, command, debug=False):
+        comm = command + self._crc(command) + '\r'
+        comm = comm.encode('ascii')
+        self.serial.write(comm)
+        reply = ''
+        next_char = reply = self.serial.read(1)
+        while len(next_char) > 0:
+            next_char = self.serial.read(1)
+            reply = reply + next_char
+
+        expected_crc = int(self._crc(reply[:-5].decode()), 16)
+        try:
+            actual_crc = int(reply[-5:-1].decode(), 16)
+        except ValueError:
+            print('Cannot read crc from string {}'.format(reply))
+            actual_crc = ''
+
+        # ic(expected_crc, actual_crc)
         if expected_crc == actual_crc:
             pre_cut = len(command) + 1  # Original command + comma
             post_cut = -6  #  comma, 4 crc digits, CR
             return_val = reply[pre_cut:post_cut].decode()
         else:
-            print('CRC error')
             return_val = None
-        
         return return_val
+
+    def _comm(self, command):
+        error = 0
+        while error > -1 and error < 10:
+            return_val = self._read_from_device(command)
+            if return_val is None:
+                error = error + 1
+                if error > 2:
+                    ic('Error is {}'.format(error))
+            else:
+                error = -1
+        return return_val
+
+    def read_firmware_and_run_hours(self):
+        command = '$ID1'
+        reply_raw = self._comm(command)
+        print(reply_raw)
+        return reply_raw
 
     def read_temperature(self):
         command = '$TEA'
@@ -58,6 +85,7 @@ class SumitomoF70(object):
     def read_pressure(self):
         command = '$PRA'
         reply_raw = self._comm(command)
+        # print(reply_raw)
         pressure = float(reply_raw.split(',')[0])
         pressure_in_bar = pressure * 0.0689476
         return pressure_in_bar
@@ -70,10 +98,6 @@ class SumitomoF70(object):
         msb = int(raw_reply[0:2], 16)
         lsb = int(raw_reply[2:4], 16)
 
-        print(bin(msb)[2:].zfill(8))
-        print(bin(lsb)[2:].zfill(8))
-
-        
         system_on =           bool(lsb & 0b00000001)
         motor_alam =          bool(lsb & 0b00000010)
         phase_sequence_alam = bool(lsb & 0b00000100)
@@ -82,33 +106,40 @@ class SumitomoF70(object):
         water_flow_alam =     bool(lsb & 0b00100000)
         oil_level_alam =      bool(lsb & 0b01000000)
         pressure_alam =       bool(lsb & 0b10000000)
-
         solenoid_on =         bool(msb & 0b00000001)
 
-        # state_lsb =           msb & 0b00000010
-        # state_center =        msb & 0b00000100
-        # state_msb =           msb & 0b00001000
+        state_lsb =           msb & 0b00000010
+        state_center =        msb & 0b00000100
+        state_msb =           msb & 0b00001000
         state = 0b111 & (msb >> 1)
-        
+
         configureation_bit =  msb & 0b10000000
 
-        print(state_lsb, state_center, 
-        
+        print(state_lsb, state_center, state_msb)
+        # Known value: Off is 000
+
         status = {
             'system_on': system_on,
         }
         return status
-        
+
+
 if __name__ == '__main__':
-    F70 = SuitomoF70()
-    # print('temperature')
-    # print(F70.read_temperature())
-    # print()
-    # print('pressure')
-    # for i in range(0, 10):
-    #     time.sleep(0.1)
-    #     print(F70.read_pressure())
-    # print()
+    F70 = SumitomoF70('/dev/ttyUSB1')
+
+    # Command to turn on compressor - not currently
+    # implemented in main driver
+    # cmd = b'$ON177CF\r'
+    # F70.serial.write(cmd)
+
+    print('temperature')
+    print(F70.read_temperature())
+    print()
+    print('pressure')
+    print(F70.read_pressure())
+    print()
     print('status')
     print(F70.read_status())
 
+    print('Firmware and run hours')
+    print(F70.read_firmware_and_run_hours())
