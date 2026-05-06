@@ -14,7 +14,7 @@ trigger.tsplinkin[2].clear()
 trigger.tsplinkin[2].edge = trigger.EDGE_RISING
 
 -- Configure NOTIFY2 to trigger DMM
-trigger.digout[1].stimulus = trigger.EVENT_NOTIFY2
+-- trigger.digout[1].stimulus = trigger.EVENT_NOTIFY2
 
 node[2].tsplink.line[2].mode = node[2].tsplink.MODE_SYNCHRONOUS_MASTER
 node[2].tsplink.line[1].mode = node[2].tsplink.MODE_SYNCHRONOUS_ACCEPTOR
