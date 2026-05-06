@@ -23,8 +23,17 @@ class ProbeStationController(threading.Thread):
 
         self.pullsocket = DateDataPullSocket(
             'probestation',
-            ['status', 'simulation', 'next_sim', 'v_source', 'v_tot'],
-            timeouts=[999999, 999999, 999999, 3, 3],
+            [
+                'status',
+                'simulation',
+                'next_sim',
+                'v_source',
+                'current',
+                'v_backgate',
+                'i_backgate',
+                'v_tot',
+            ],
+            timeouts=[999999, 999999, 999999, 3, 3, 3, 3, 3],
             port=9002,
         )
         self.pullsocket.start()
@@ -117,6 +126,18 @@ class ProbeStationController(threading.Thread):
                     self.pullsocket.set_point_now(
                         'v_source', self.measurement.current_measurement['v_source'][-1]
                     )
+                    self.pullsocket.set_point_now(
+                        'current', self.measurement.current_measurement['current'][-1]
+                    )
+                    self.pullsocket.set_point_now(
+                        'v_backgate',
+                        self.measurement.current_measurement['v_backgate'][-1],
+                    )
+                    self.pullsocket.set_point_now(
+                        'i_backgate',
+                        self.measurement.current_measurement['i_backgate'][-1],
+                    )
+
             status = {
                 'type': self.measurement.current_measurement['type'],
                 'start_time': self.measurement.current_measurement['start_time'],
