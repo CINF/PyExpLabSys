@@ -7,6 +7,7 @@ class ProbeStationDMMReader(threading.Thread):
     def __init__(self, visa_string):
         threading.Thread.__init__(self)
         self.daemon = True
+        self.name = 'DMM Reader thread'
         self.running = True
 
         # TODO - Visa string should of course not be hard-codet
