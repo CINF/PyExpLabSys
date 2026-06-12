@@ -5,7 +5,7 @@ class InficonSQC310(InficonSQM160):
     """ Driver for Inficon SQC310 QCM controller """
 
     def __init__(self, port='/dev/ttyUSB0'):
-        super().__init__(baudrate=19200)
+        super().__init__(port=port, baudrate=19200)
 
     def crystal_frequency_and_life(self, channel=1):
         """ Read crystal life """
@@ -27,7 +27,8 @@ class InficonSQC310(InficonSQM160):
 
 
 if __name__ == '__main__':
-    INFICON = InficonSQC310()
+    INFICON = InficonSQC310(port='/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0')
+
 
     print()
     print('Controler version: ', INFICON.show_version())

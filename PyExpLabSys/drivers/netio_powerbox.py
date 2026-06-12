@@ -32,7 +32,7 @@ class NetioPowerBox(object):
         return device_info
 
     def _read(self) -> dict:
-        r = requests.get(self.url)
+        r = requests.get(self.url, timeout=0.5)
         reply = r.json()
         return reply
 
@@ -79,12 +79,17 @@ class NetioPowerBox(object):
 
 
 if __name__ == '__main__':
-    npb = NetioPowerBox('10.54.4.98')
+    npb = NetioPowerBox('10.54.4.120')
     # print(npb.device_info)
-
     outputs = npb.output_status([1])
     print(outputs[0])
-    print()
-    print(outputs[1])
+    # print(outputs[1])
 
-    print(npb.plug_output_state(1, True))
+    npb = NetioPowerBox('10.54.5.209')
+    # print(npb.device_info)
+    outputs = npb.output_status([1])
+    print(outputs[0])
+    # print(outputs[1])
+
+    
+    # print(npb.plug_output_state(1, True))

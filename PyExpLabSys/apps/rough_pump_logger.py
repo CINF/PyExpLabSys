@@ -1,5 +1,5 @@
 # pylint: disable=no-member
-""" Logger for nXDSni roughing pump """
+""" Logger for roughing pumps """
 import sys
 import time
 import socket
@@ -12,30 +12,32 @@ from PyExpLabSys.common.database_saver import ContinuousDataSaver
 # from PyExpLabSys.common.sockets import DateDataPullSocket
 # from PyExpLabSys.common.sockets import LiveSocket
 from PyExpLabSys.drivers.edwards_nxds import EdwardsNxds
+from PyExpLabSys.drivers.pfeiffer_hiscroll import PfeifferHiscroll
 
 HOSTNAME = socket.gethostname()
 machine_path = pathlib.Path.home() / 'machines' / HOSTNAME
 sys.path.append(str(machine_path))
-
-# try:
-#     sys.path.append('/home/pi/machines/' + sys.argv[1])
-# except IndexError:
-#     print('You need to give the name of the raspberry pi as an argument')
-#     print('This will ensure that the correct settings file will be used')
-#     exit()
 
 import credentials  # pylint: disable=wrong-import-position, import-error
 import settings  # pylint: disable=wrong-import-position, import-error
 
 
 class PumpReader(threading.Thread):
-    """ Read pump parameters """
+    """Read pump parameters"""
 
-    def __init__(self, port):
+    def __init__(self, port, pump_type):
         threading.Thread.__init__(self)
         port = '/dev/serial/by-id/' + port
-        self.pump = EdwardsNxds(port)
+        if pump_type == 'nxds':
+            self.pump = EdwardsNxds(port)
+        elif pump_type == 'hiscroll':
+            self.pump = PfeifferHiscroll(port, 2)
+        else:
+            print('Unknown pump type!')
+            exit()
+
         self.values = {}
+        self.values['pressure'] = -1
         self.values['temperature'] = -1
         self.values['controller_temperature'] = -1
         self.values['rotational_speed'] = -1
@@ -45,7 +47,7 @@ class PumpReader(threading.Thread):
         self.quit = False
 
     def value(self, channel):
-        """ Return the value of the reader """
+        """Return the value of the reader"""
         value = self.values[channel]
         return value
 
@@ -58,17 +60,18 @@ class PumpReader(threading.Thread):
                 controller_status = self.pump.pump_controller_status()
                 self.values['temperature'] = temperatures['pump']
                 self.values['controller_temperature'] = temperatures['controller']
-                self.values['rotational_speed'] = self.pump.read_pump_status()[
-                    'rotational_speed'
-                ]
+                self.values['rotational_speed'] = self.pump.rotational_speed()['actual']
                 self.values['run_hours'] = self.pump.read_run_hours()
                 self.values['controller_run_hours'] = controller_status[
                     'controller_run_time'
                 ]
                 self.values['time_to_service'] = controller_status['time_to_service']
+                self.values['pressure'] = self.pump.pressure()
+
             except OSError:
                 print('Error reading from pump')
                 time.sleep(2)
+                self.values['pressure'] = -1
                 self.values['temperature'] = -1
                 self.values['controller_temperature'] = -1
                 self.values['rotational_speed'] = -1
@@ -78,7 +81,7 @@ class PumpReader(threading.Thread):
 
 
 def main():
-    """ Main function """
+    """Main function"""
     pumpreaders = {}
     loggers = {}
     channels = [
@@ -88,10 +91,14 @@ def main():
         'rotational_speed',
         'controller_run_hours',
         'time_to_service',
+        'pressure',
     ]
     codenames = []
-    for port, codename in settings.channels.items():
-        pumpreaders[port] = PumpReader(port)
+    # for port, codename in settings.channels.items():
+    for port, info in settings.channels.items():
+        codename = info[0]
+        pump_type = info[1]
+        pumpreaders[port] = PumpReader(port, pump_type)
         pumpreaders[port].daemon = True
         pumpreaders[port].start()
         pumpreaders[port].loggers = {}
@@ -99,7 +106,7 @@ def main():
         for channel in channels:
             codenames.append(codename + '_' + channel)  # Build the list of codenames
             loggers[port + channel] = ValueLogger(
-                pumpreaders[port], comp_val=0.9, channel=channel, maximumtime=600
+                pumpreaders[port], comp_val=1.1, channel=channel, maximumtime=600
             )
             loggers[port + channel].start()
 
@@ -120,7 +127,8 @@ def main():
 
     alive = True
     while alive:
-        for port, base_codename in settings.channels.items():
+        for port, info in settings.channels.items():
+            base_codename = info[0]
             time.sleep(10)
             for channel in channels:
                 if loggers[port + channel].is_alive is False:
