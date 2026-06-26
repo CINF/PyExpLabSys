@@ -51,6 +51,7 @@ RPI_REVISIONS = {
     '9000C1': 'Pi Zero W rev 1.1 512MB',
     'a02082': 'Pi 3 Model B 1GB rev 1.2',
     'a020d3': 'Pi 3 Model B+ 1GB rev 1.3',
+    'a020d4': 'Pi 3 Model B+ 1GB rev 1.4',
     'a03111': 'Pi 4 1GB rev 1.1',
     'b03111': 'Pi 4 2GB rev 1.1',
     'b03112': 'Pi 4 2GB rev 1.2',
@@ -59,6 +60,7 @@ RPI_REVISIONS = {
     'c03112': 'Pi 4 4GB rev 1.2',
     'c03114': 'Pi 4 4GB rev 1.4',
     'd03114': 'Pi 4 8GB rev 1.4',
+    'd03115': 'Pi 4 8GB rev 1.5',
     'c03130': 'Pi 400 4GB rev 1.0',
     '902120': 'Pi Zero 2 W 1GB rev 1.0',
 }
