@@ -53,6 +53,7 @@ RPI_REVISIONS = {
     'a020d3': 'Pi 3 Model B+ 1GB rev 1.3',
     'a020d4': 'Pi 3 Model B+ 1GB rev 1.4',
     'a03111': 'Pi 4 1GB rev 1.1',
+    'a03115': 'Pi 4 1GB rev 1.5',
     'b03111': 'Pi 4 2GB rev 1.1',
     'b03112': 'Pi 4 2GB rev 1.2',
     'b03114': 'Pi 4 2GB rev 1.2',
