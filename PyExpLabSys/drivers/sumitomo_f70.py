@@ -98,15 +98,15 @@ class SumitomoF70(object):
         msb = int(raw_reply[0:2], 16)
         lsb = int(raw_reply[2:4], 16)
 
-        system_on =           bool(lsb & 0b00000001)
-        motor_alam =          bool(lsb & 0b00000010)
-        phase_sequence_alam = bool(lsb & 0b00000100)
-        helium_temp_alam =    bool(lsb & 0b00001000)
-        water_temp_alam =     bool(lsb & 0b00010000)
-        water_flow_alam =     bool(lsb & 0b00100000)
-        oil_level_alam =      bool(lsb & 0b01000000)
-        pressure_alam =       bool(lsb & 0b10000000)
-        solenoid_on =         bool(msb & 0b00000001)
+        system_on =            bool(lsb & 0b00000001)
+        motor_alarm =          bool(lsb & 0b00000010)
+        phase_sequence_alarm = bool(lsb & 0b00000100)
+        helium_temp_alarm =    bool(lsb & 0b00001000)
+        water_temp_alarm =     bool(lsb & 0b00010000)
+        water_flow_alarm =     bool(lsb & 0b00100000)
+        oil_level_alarm =      bool(lsb & 0b01000000)
+        pressure_alarm =       bool(lsb & 0b10000000)
+        solenoid_on =          bool(msb & 0b00000001)
 
         state_lsb =           msb & 0b00000010
         state_center =        msb & 0b00000100
