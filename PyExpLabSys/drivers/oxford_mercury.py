@@ -9,7 +9,7 @@ import time
 import pyvisa
 
 
-class OxfordMercury():
+class OxfordMercury:
     def __init__(self, hostname: str) -> None:
         conn_string = 'TCPIP::{}::7020::SOCKET'.format(hostname)
         rm = pyvisa.ResourceManager('@py')
@@ -45,7 +45,8 @@ class OxfordMercury():
         error = 0
         while len(fields) < 2:
             error = error + 1
-            raw_reply = self.instr.query(cmd)
+            self.instr.write(cmd)
+            raw_reply = self.instr.read(encoding='latin1')
             if error > 1:
                 print('Errror!')
                 print('Command:', cmd)
@@ -92,12 +93,18 @@ class OxfordMercury():
             'temperature': self._read_value(uid, 'TEMP'),
             'voltage': self._read_value(uid, 'TEMP', 'VOLT'),
             'current': self._read_value(uid, 'TEMP', 'CURR'),
+            'resistance': self._read_value(uid, 'TEMP', 'RES'),
             'power': self._read_value(uid, 'TEMP', 'POWR'),
         }
         return data
 
     def read_pressure(self, uid: str) -> (float, str):
         value, unit = self._read_value(uid, 'PRES')
+        return value, unit
+
+    # TODO!!!!!
+    def read_needle_valve(self, uid: str) -> (float, str):
+        value, unit = self._read_value(uid, '')
         return value, unit
 
     def read_heater(self, uid) -> (float, str):
@@ -112,7 +119,11 @@ class OxfordMercury():
         data = {
             'voltage': self._read_value(uid, 'PSU', 'VOLT'),
             'current': self._read_value(uid, 'PSU', 'CURR'),
-            'persistent_current': self._read_value(uid, 'PSU', 'PCUR') * 2,
+            'field': self._read_value(uid, 'PSU', 'FLD'),
+            # 'rate': self._read_value(uid, 'PSU', 'RFSET'),
+            'target_field': self._read_value(uid, 'PSU', 'FSET'),
+            'persistent_current': self._read_value(uid, 'PSU', 'PCUR'),
+            'persistent_field': self._read_value(uid, 'PSU', 'PFLD'),
         }
         return data
 
@@ -140,7 +151,9 @@ class OxfordMercury():
                 switch_heater_turn_on_time = time.time()
         return heater_on
 
-    def temperature_setpoint(self, uid: str, setpoint: float = None, rate: float = None) -> float:
+    def temperature_setpoint(
+        self, uid: str, setpoint: float = None, rate: float = None
+    ) -> float:
         if setpoint is None:
             # This code is almost identical to _read_value()....
             cmd = 'READ:DEV:{}:TEMP:LOOP:TSET?'.format(uid)
@@ -184,7 +197,9 @@ class OxfordMercury():
 
         return setpoint
 
-    def b_field_setpoint(self, uid: str, setpoint: float = None, rate: float = None) -> (float, str):
+    def b_field_setpoint(
+        self, uid: str, setpoint: float = None, rate: float = None
+    ) -> (float, str):
         if setpoint is None:
             # This code is almost identical to _read_value()....
             cmd = 'READ:DEV:{}:PSU:SIG:FSET?'.format(uid)
@@ -237,10 +252,99 @@ class OxfordMercury():
             print(raw_reply)
         return setpoint
 
+    def pressure_setpoint(self, uid: str, setpoint: float = None) -> float:
+        if setpoint is None:
+            # This code is almost identical to _read_value()....
+            cmd = 'READ:DEV:{}:PRES:LOOP:PRST?'.format(uid)
+            raw_reply = self.instr.query(cmd)
+            print('Raw reply: ', raw_reply)
+            fields = raw_reply.split(':')
+            value_raw = fields[-1]
+            for i in range(1, len(value_raw)):
+                try:
+                    actual_setpoint = float(value_raw[0 : i + 1])
+                except ValueError:
+                    break
+            return actual_setpoint
+
+        # If we are here, we are setting a setpoint
+        if setpoint < 0:
+            setpoint = 0
+        if setpoint > 20:
+            setpoint = 20
+
+        print('Set setpoint to {}mBar'.format(setpoint))
+        cmd = 'SET:DEV:{}:PRES:LOOP:PRST:{}mB'.format(uid, setpoint)
+        raw_reply = self.instr.query(cmd)
+        print(raw_reply)
+        cmd = 'SET:DEV:{}:PRES:LOOP:ENAB:ON'.format(uid)
+        raw_reply = self.instr.query(cmd)
+        print(raw_reply)
+        return setpoint
+
 
 if __name__ == '__main__':
     itc = OxfordMercury(hostname='192.168.0.20')
-    print(itc.read_heater('DB1.H1'))
+
+    # print('ITC config:', itc.read_configuration().split('DEV'))
+    # print('VTI Temp: ', itc.read_temperature('MB1.T1'))
+    # print('VTI Temp: ', itc.read_temperature_details('MB1.T1'))
+    # print('Probe temp: ', itc.read_temperature('DB8.T1'))
+
+    # itc.temperature_setpoint('MB1.T1', 5)
+
+    print()
+    # THIS IS THE STEPPER MOTOR
+    cmd = 'READ:DEV:DB4.G1:AUX?'
+    print(itc.instr.query(cmd))
+    # print(itc.read_needle_valve('DB4.G1:AUX:'))
+
+    # THE SETPOINT IS CONTROLLED VIA THE PRESSURE UID
+
+    print()
+
+    # [':DB4.G1:AUX:']
+    print('VTI Pressure: ', itc.read_pressure('DB5.P1'))
+    # print('Probe heater: ', itc.read_heater('DB3.H1'))
+    print('VTI heater: ', itc.read_heater('MB0.H1'))
+
+    print(itc.pressure_setpoint('DB5.P1', 6))
+
+    exit()
+    print()
+    ips = OxfordMercury(hostname='192.168.0.21')
+    # print(ips.read_configuration().split('DEV'))
+    print('Magnet: ', ips.read_temperature('MB1.T1'))  # Magnet
+    print('PT2: ', ips.read_temperature('DB7.T1'))  # PT2
+    print('PT1: ', ips.read_temperature('DB8.T1'))  # PT1
+
+    print(ips.read_magnet_details('PSU.M1'))  # These are the two power supplies
+    # print(ips.read_magnet_details('PSU.M2')) # They show the same values
+    print(ips.read_magnet_details('GRPZ'))  # This is quite likely a better choice
+
+    print(ips.read_magnetic_field('PSU.M1'))
+    print(ips.read_magnetic_field('PSU.M2'))
+    print(ips.read_magnetic_field('GRPZ'))
+    print(ips.read_magnetic_field('GRPX'))  # No XY magnet installed
+    print(ips.read_magnetic_field('GRPY'))  # No XY magnet installed
+
+    print(ips.read_magnetic_field('GRPS'))  # No idea what this is
+    exit()
+
+    # print(itc.read_software_version())
+    # print(itc.read_heater('DB1.H1'))
+
+    uid = 'DB11'
+    cmd = 'READ:DEV:{}'.format(uid)
+    # cmd = 'READ:DEV:{}:HTR:VLIM'.format(uid)
+    # cmd = 'READ:DEV:{}:HTR:SIG:POWR?'.format(uid)
+    # STAT:DEV:DB1.H1:HTR:SIG:POWR:0.0000W
+    # cmd = 'READ:DEV:{}:HTR:SIG:POWR?'.format(uid)
+    # STAT:DEV:DB1.H1:HTR:SIG:POWR:18.4934W
+    print(cmd)
+    raw_reply = itc.scpi_comm(cmd, expect_return=True)
+    print(raw_reply)
+
     exit()
     ips = OxfordMercury(hostname='192.168.0.21')
 
