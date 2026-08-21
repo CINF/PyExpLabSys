@@ -407,6 +407,7 @@ UINT8 = ENDIAN + 'B'
 UINT16 = ENDIAN + 'H'
 INT16 = ENDIAN + 'h'
 INT32 = ENDIAN + 'i'
+UINT32 = ENDIAN + 'I'
 
 
 def parse_utf16_string(file_, encoding='UTF16'):
@@ -462,10 +463,13 @@ class CHFile(object):
         ('detector', 4213, 'utf16'),
         ('yscaling', 4732, ENDIAN + 'd'),
     )
+    # Fields in version file version 181 are different for software info
+    fields_revtwo = tuple(filter(lambda x: x[1] not in [3601,3089,3802], fields))
+
     # The start position of the data
     data_start = 6144
     # The versions of the file format supported by this implementation
-    supported_versions = {179}
+    supported_versions = {179, 181}
 
     def __init__(self, filepath):
         """Instantiate object
@@ -477,7 +481,10 @@ class CHFile(object):
         self.metadata = {}
         with open(self.filepath, 'rb') as file_:
             self._parse_header(file_)
-            self.values = self._parse_data(file_)
+            if self.metadata['magic_number_version'] == 179:
+                self.values = self._parse_data(file_)
+            elif self.metadata['magic_number_version'] == 181:
+                self.values = self._parse_data_decompress(file_)
 
     def _parse_header(self, file_):
         """Parse the header"""
@@ -488,6 +495,8 @@ class CHFile(object):
         if version not in self.supported_versions:
             raise ValueError('Unsupported file version {}'.format(version))
         self.metadata['magic_number_version'] = version
+        if version == 181:
+            self.fields = self.fields_revtwo
 
         # Parse all metadata fields
         for name, offset, type_ in self.fields:
@@ -590,6 +599,41 @@ class CHFile(object):
             numpy.fromfile(file_, dtype='<d', count=n_points)
             * self.metadata['yscaling']
         )
+
+    def _parse_data_decompress(self, file_):
+        """Parse the data"""
+        # from matlab implementation https://github.com/chemplexity/chromatography/blob/670ed772342a9c0440344682a02394a062c2467d/Methods/Import/ImportAgilent.m
+        # delta compressed data
+        # Go to the end of the file and calculate file length and number of datapoints
+        
+        file_.seek(0, 2)
+        n_points = (file_.tell() - self.data_start)        
+        file_length = file_.tell()
+        
+        buf = [0,0,0]
+        signal = [0] * int(n_points/2)
+        file_.seek(self.data_start)
+        count = 0        
+        
+        while file_.tell() < file_length:
+            buf[2] = unpack(INT16, file_.read(2))[0]
+            if buf[2] != 32767:
+                buf[1] = buf[1] + buf[2]
+                buf[0] = buf[0] + buf[1]
+            else:
+                buf[0] = unpack(INT16, file_.read(2))[0] * 4294967296.0
+                buf[0] = unpack(UINT32, file_.read(4))[0] + buf[0]
+                buf[1] = 0
+        
+            signal[count] = buf[0]
+            count += 1
+        
+        signal[count:] = []
+        
+        
+        # Return the data into a numpy array        
+        return numpy.array(signal) * self.metadata['yscaling']
+
 
     @cached_property
     def times(self):
