@@ -130,6 +130,11 @@ class SystemStatus(object):
         # /home/pi/PyExpLabSys/PyExpLabSys/common/../../.git/FETCH_HEAD
         git = {}
         fetch_head_file = pathlib.Path(__file__).parents[2] / '.git' / 'FETCH_HEAD'
+        # Turns out this does not really work with PyExpLabSys installed in a
+        # a venv - in this case, we attempt a naive guess of ~/PyExpLabSys
+        if 'venv' in str(fetch_head_file):
+            fetch_head_file = pathlib.Path.home() / 'PyExpLabSys' / '.git' / 'FETCH_HEAD'
+
         # Check for last change
         if os.access(fetch_head_file, os.F_OK):
             git['PyExpLabSys'] = os.path.getmtime(fetch_head_file)
