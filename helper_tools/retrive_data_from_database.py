@@ -1,7 +1,7 @@
 import tomllib
 import pymysql
 import matplotlib.pyplot as plt
-
+import matplotlib.colors as mcolors
 
 class DatabaseReader():
     def __init__(self):
@@ -51,7 +51,6 @@ class DatabaseReader():
 
     def data_summary(self):
         print('Summary of data:')
-        print()
         first_row = True
         for label, data in self.measurement.items():
             # The comment will typically be the same for all rows
@@ -73,25 +72,27 @@ class DatabaseReader():
             print()
 
     def quick_plot(self, left_labels, right_labels=[]):
+        # colors = ['b','g','r','c','m','y']
+        colors = list(mcolors.XKCD_COLORS)
+
         fig = plt.figure()
-        
         ax1 = fig.add_subplot(1, 1, 1)
         for label in left_labels:
             ax1.plot(
                 self.measurement[label]['x_values'],
                 self.measurement[label]['y_values'],
-                'b-', label=label
+                color=colors.pop(), label=label
             )
+        ax1.legend(loc=2, prop={"size": 8})
 
         if right_labels:
             ax1_2 = ax1.twinx()
-            for label in left_labels:
+            for label in right_labels:
                 ax1_2.plot(
                     self.measurement[label]['x_values'],
                     self.measurement[label]['y_values'],
-                    'b-', label=label
+                    color=colors.pop(), label=label
                 )
-        ax1.legend(loc=2, prop={"size": 8})
         ax1_2.legend(loc=4, prop={"size": 8})
         plt.show()
 
@@ -100,7 +101,6 @@ if __name__ == '__main__':
     DBREADER = DatabaseReader()
 
     setup = 'probe_station_ii'
-
 
     DBREADER.read_measurement(setup, '2026-09-23 13:35:44')
     DBREADER.data_summary()
