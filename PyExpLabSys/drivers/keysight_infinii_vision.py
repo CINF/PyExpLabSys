@@ -2,10 +2,9 @@ import time
 
 import pyvisa
 import numpy as np
-import matplotlib.pyplot as plt
 
 
-class Infinii:
+class InfiniiVision:
     def __init__(self, visa_addr):
         rm = pyvisa.ResourceManager()
         self.instr = rm.open_resource(visa_addr)
@@ -38,7 +37,7 @@ class Infinii:
     def get_waveform(self, channel):
         if not channel in (1, 2, 3, 4):
             return
-        scope.instr.write('WAVeform:SOURce CHANnel{}'.format(channel))
+        self.instr.write('WAVeform:SOURce CHANnel{}'.format(channel))
 
         preamble = self._read_preamble()
         print('Preamble: ', preamble)
@@ -65,8 +64,9 @@ class Infinii:
         )
         return x_data, y_data
 
-
+    
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
     # If in doubt about the address, see the list of devices here:
     # rm = pyvisa.ResourceManager()
     # resources = rm.list_resources()
@@ -74,13 +74,14 @@ if __name__ == '__main__':
     # exit()
 
     visa_addr = 'USB0::10893::5990::MY56311274::0::INSTR'
-    scope = Infinii(visa_addr)
+    scope = InfiniiVision(visa_addr)
 
     x_data1, y_data1 = scope.get_waveform(1)
 
     fig = plt.figure()
     axis = fig.add_subplot(1, 1, 1)
 
-    (line_data1,) = axis.plot(x_data1, y_data1, 'y.')
+    (line_data1,) = axis.plot(x_data1, y_data1, 'y-')
 
+    
     plt.show()
