@@ -31,8 +31,11 @@ class GeopalGP45(object):
     def read_sensor(self, channel: int):
         value_register = channel * 100
         error_register = value_register + 1
-        value = self._read(value_register)
-        error_code = self._read(error_register)
+        try:
+            value = self._read(value_register)
+            error_code = self._read(error_register)
+        except minimalmodbus.NoResponseError:
+            value, error_code = None
         return value, error_code
 
 
