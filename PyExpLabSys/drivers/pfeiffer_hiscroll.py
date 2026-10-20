@@ -704,6 +704,32 @@ class PfeifferHiscroll(object):
             if key == 'pressure_correction_factor':
                 self.pressure_correction_factor(value)
 
+    def errors(self):
+        """Print basic error information"""
+        # Overtemperatures
+        ot_elec = self.comm(action='0', parameter='304', command='=?')
+        ot_pump = self.comm(action='0', parameter='305', command='=?')
+        # Error history
+        error1 = self.comm(action='0', parameter='360', command='=?')
+        error2 = self.comm(action='0', parameter='361', command='=?')
+        error3 = self.comm(action='0', parameter='362', command='=?')
+
+        # Print information
+        print('Excess temperatures of..')
+        print('Electronic drive: {}'.format(ot_elec))
+        print('Pump: {}'.format(ot_pump))
+        print(self.read_pump_temperature())
+        print('Error history:\n{}\n{}\n{}'.format(error1, error2, error3))
+
+    def run(self, value=None):
+        """Switch pump on/off or read current state"""
+        if value is None:
+            reply = self.comm(action='0', parameter='010', command='=?')
+            return self._format_from_data_type(0, reply)
+
+        cmd = self._format_as_data_type(0, value)
+        self.comm(action='1', parameter='010', command=cmd)
+
 
 if __name__ == '__main__':
     PUMP = PfeifferHiscroll('/dev/ttyUSB0', device_address=2)
