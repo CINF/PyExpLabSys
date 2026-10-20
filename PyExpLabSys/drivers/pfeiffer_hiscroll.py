@@ -3,6 +3,9 @@ import time
 import logging
 import serial
 
+import pathlib
+import json
+
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.NullHandler())
 
@@ -28,7 +31,6 @@ class PfeifferHiscroll(object):
         cmd_len = str(len(command)).zfill(2)
         crc_command = self.device_address + action + '0' + parameter + cmd_len + command
         crc = self._checksum(crc_command)
-        # print(crc_command)
         final_command = crc_command + crc + '\r\n'
 
         self.ser.write(final_command.encode('ascii'))
@@ -40,11 +42,42 @@ class PfeifferHiscroll(object):
             print(reply)
             raise Exception('CRC error in reply!')
 
-        start_index = reply.find(parameter)
-        payload = reply[start_index + len(parameter) :]
+        expected = self.device_address + '10' + parameter
+        assert reply.startswith(expected)
+        payload = reply[len(expected) :]
         length = int(payload[0:2])
         value = payload[2 : 2 + length]
         return value
+
+    def _format_as_data_type(self, data_type, data):
+        """Utility function to convert data to representations understood by RS485"""
+        if data_type == 10:
+            # 9.9E-2 would be represented as 990018 (the last two digits is
+            # is the exponent subtracted by 20)
+            s = '{:1.1E}'.format(data)
+            exp = str(int(s[-3:]) + 20).zfill(2)
+            return s[0] + s[2] + '00' + exp
+        if data_type == 2:
+            s = '{:2.2f}'.format(data)
+            return (s[:-3] + s[-2:]).zfill(6)
+        if data_type == 0:
+            if data:
+                return '111111'
+            return '000000'
+
+    def _format_from_data_type(self, data_type, data):
+        if data_type == 10:
+            exp = int(data[-2:]) - 20
+            decimals = int(data[: len(data) - 2]) / 1000
+            return decimals * 10 ** exp
+        if data_type == 2:
+            return float(data[:4] + '.' + data[4:])
+        if data_type == 0:
+            if data == '111111':
+                return True
+            elif data == '000000':
+                return False
+            raise ValueError('{} not a valid boolean'.format(data))
 
     def rotational_speed(self):
         """Current rotational speed of the pump in Hz"""
@@ -94,10 +127,17 @@ class PfeifferHiscroll(object):
         # Firmware version
         firmware = self.comm(action='0', parameter='312', command=cmd)
         name = self.comm(action='0', parameter='349', command=cmd)
-
+        product_number = self.comm(action='0', parameter='388', command=cmd).strip()
         raw = self.comm(action='0', parameter='399', command=cmd)
+        drive_serial = self.comm(action='0', parameter='355', command=cmd).strip()
         nominal = int(raw) / 60.0
-        return {'type': name, 'software': firmware, 'nominal_frequency': nominal}
+        return {
+            'type': name,
+            'software': firmware,
+            'nominal_frequency': nominal,
+            'drive_serial': drive_serial,
+            'product_number': product_number,
+        }
 
     # Compatible with edwards_nxds, which has fields 'pump' and 'controller'
     def read_pump_temperature(self):
@@ -121,8 +161,11 @@ class PfeifferHiscroll(object):
 
     # Common with edwards_nxds
     def read_serial_numbers(self):
-        """Apparently HiScroll cannot read serial from rs485"""
-        return 'HiSroll'
+        """Pfeiffer does not yet store the serial number in a parameter, but a unique
+        number can still be obtained"""
+        cmd = '=?'
+        # The serial number of the drive unit is stored in param 355
+        return self.comm(action='0', parameter='355', command=cmd)
 
     # Common with edwards_nxds
     def read_run_hours(self):
@@ -144,6 +187,75 @@ class PfeifferHiscroll(object):
     # from run hours and known service intervals
     def bearing_service(self):
         return 0
+
+    def config_acc(self, channel, value=None):
+        """Configure accessory channels C1 and D1 (will automatically detect inputs"""
+        cfg = {
+            6: 'Output always "0"',
+            7: 'Output always "1"',
+            15: 'Gas ballast valve',
+            16: 'Vacuum safety valve, type IV 16 M',
+            17: 'Pressure sensor',
+            18: 'Vacuum safety valve, type ISV 25',
+        }
+        # Default to print info on both channels
+        if value is None:
+            if channel.upper().startswith('C'):
+                state = int(self.comm(action='0', parameter='068', command='=?'))
+                return state, cfg[state]
+            if channel.upper().startswith('D'):
+                state = int(self.comm(action='0', parameter='069', command='=?'))
+                return state, cfg[state]
+
+        cmd = str(value).zfill(3)
+        if channel.upper().startswith('C'):
+            param = '068'
+        if channel.upper().startswith('D'):
+            param = '069'
+        self.comm(action='1', parameter=param, command=cmd)
+
+    def config_digital_out(self, channel, value=None):
+        """Returns or sets the configuration for the two digital outputs (channel 1 and 2)"""
+        cfg = {
+            0: 'Switch-point reached',
+            1: 'No error',
+            2: 'Error',
+            5: 'Set rotation speed reached',
+            6: 'Pump on',
+            9: 'Always "0"',
+            10: 'Always "1"',
+            11: 'Remote priority active',
+            21: 'Gas ballast',
+        }
+        if value is None:
+            if int(channel) == 1:
+                state = int(self.comm(action='0', parameter='024', command='=?'))
+            if int(channel) == 2:
+                state = int(self.comm(action='0', parameter='019', command='=?'))
+            return state, cfg[state]
+
+        cmd = str(value).zfill(3)
+        if int(channel) == 1:
+            self.comm(action='1', parameter='024', command=cmd)
+        if int(channel) == 2:
+            self.comm(action='1', parameter='019', command=cmd)
+
+    def config_digital_in(self, value=None):
+        """Returns or sets the configuration for the digital inpur"""
+        cfg = {
+            0: 'Deactivated',
+            1: 'Deactivated',
+            2: 'Deactivated',
+            3: 'Deactivated',
+            4: 'Deactivated',
+            5: 'Rotation speed setting mode activated',
+        }
+        if value is None:
+            state = int(self.comm(action='0', parameter='063', command='=?'))
+            return state, cfg[state]
+
+        cmd = str(value).zfill(3)
+        self.comm(action='1', parameter='063', command=cmd)
 
     # def pump_controller_status(self):
     #     """ Read  the status of the pump controller """
@@ -255,13 +367,17 @@ class PfeifferHiscroll(object):
         """Setpoint Pressure in hPa"""
         if setpoint is None:
             cmd = '=?'
-            raw = self.comm(action='0', parameter='730', command=cmd)
-            exp = int(raw[-2:]) - 20
-            decimals = int(raw[: len(raw) - 2]) / 1000
-            pressure_setpoint = decimals * 10**exp
-            return pressure_setpoint
+            reply = self.comm(action='0', parameter='730', command=cmd)
+            return self._format_from_data_type(10, reply)
 
-        cmd = '990018'
+        if type(setpoint) == str and len(setpoint) == 6:
+            cmd = setpoint
+        else:
+            if setpoint < 0.01:
+                setpoint = 0.01
+            elif setpoint > 30:
+                setpoint = 30
+            cmd = self._format_as_data_type(10, setpoint)
         raw = self.comm(action='1', parameter='730', command=cmd)
         return raw
 
@@ -273,18 +389,26 @@ class PfeifferHiscroll(object):
         raw = self.comm(action='0', parameter='740', command=cmd)
         exp = int(raw[-2:]) - 20
         decimals = int(raw[: len(raw) - 2]) / 1000
-        pressure = decimals * 10**exp
+        pressure = decimals * 10 ** exp
+        if pressure == 0:
+            name = self.comm(action='0', parameter='739', command=cmd)
+            if name == 'noSens':
+                print('No gauge connected at C1')
+                return None
         return pressure
 
     """ Does not exist for edwards_nxds """
 
-    def stand_by_state(self, stand_by: bool = None):
+    def standby(self, standby: bool = None):
+        """Alias for stand_by"""
+        return self.stand_by(standby)
+
+    def stand_by(self, stand_by: bool = None):
         if stand_by is None:
             cmd = '=?'
             raw = self.comm(action='0', parameter='002', command=cmd)
-            if raw.find('00000') > 0:
-                actual_stand_by = False
-            if raw.find('11111') > 0:
+            actual_stand_by = False
+            if raw == '111111':
                 actual_stand_by = True
             return actual_stand_by
 
@@ -292,20 +416,16 @@ class PfeifferHiscroll(object):
             cmd = '111111'
         else:
             cmd = '000000'
-        raw = self.comm(action='1', parameter='002', command=cmd)
-        # todo: Consider some error checking here
-        return stand_by
+        self.comm(action='1', parameter='002', command=cmd)
 
         """ Does not exist for edwards_nxds """
 
-    def pressure_mode_state(self, pressure_mode: bool = None):
+    def pressure_mode(self, pressure_mode: bool = None):
         if pressure_mode is None:
             cmd = '=?'
             raw = self.comm(action='0', parameter='020', command=cmd)
-            print(raw)
-            if raw.find('00000') > -1:
-                actual_pressure_mode = False
-            if raw.find('11111') > -1:
+            actual_pressure_mode = False
+            if raw == '111111':
                 actual_pressure_mode = True
             return actual_pressure_mode
 
@@ -313,45 +433,292 @@ class PfeifferHiscroll(object):
             cmd = '111111'
         else:
             cmd = '000000'
-        raw = self.comm(action='1', parameter='020', command=cmd)
-        # todo: Consider some error checking here
-        return pressure_mode
+        self.comm(action='1', parameter='020', command=cmd)
+
+    def speed_mode(self, speed_mode: bool = None):
+        if speed_mode is None:
+            cmd = '=?'
+            raw = self.comm(action='0', parameter='026', command=cmd)
+            actual_speed_mode = False
+            if raw == '111111':
+                actual_speed_mode = True
+            return actual_speed_mode
+
+        if speed_mode:
+            cmd = '111111'
+        else:
+            cmd = '000000'
+        self.comm(action='1', parameter='020', command=cmd)
+
+    def gas_ballast(self, value=None):
+        """Switch gas ballast on/off"""
+        if value is None:
+            reply = bool(self.comm(action='0', parameter='052', command='=?'))
+            return reply
+        if value:
+            cmd = '111111'
+        else:
+            cmd = '000000'
+        self.comm(action='1', parameter='052', command=cmd)
+
+    def vent_mode(self, value=None):
+        """Vent valve mode"""
+        if value is None:
+            return int(self.comm(action='0', parameter='030', command='=?'))
+
+        cmd = str(value).zfill(3)
+        self.comm(action='1', parameter='030', command=cmd)
+
+    def valve_mode(self, value=None):
+        """Alias for vent_mode"""
+        if value is None:
+            return self.vent_mode(value)
+        self.vent_mode(value)
+
+    def auto_boost(self, on=None):
+        """Enable/disable auto boost function"""
+        if on is None:
+            reply = self.comm(action='0', parameter='011', command='=?')
+            return self._format_from_data_type(0, reply)
+
+        cmd = self._format_as_data_type(0, on)
+        self.comm(action='1', parameter='011', command=cmd)
+
+    def auto_start(self, on=None):
+        """Enable/disable auto start function"""
+        if on is None:
+            reply = self.comm(action='0', parameter='034', command='=?')
+            return self._format_from_data_type(0, reply)
+
+        cmd = self._format_as_data_type(0, on)
+        self.comm(action='1', parameter='034', command=cmd)
+
+    def address(self, address=None):
+        """Set or read the RS485 address"""
+
+        # Query address
+        if address is None:
+            reply = self.comm(action='0', parameter='797', command='=?')
+            return int(reply)
+
+        # Set address
+        if address < 1:
+            address = 1
+        if address > 255:
+            address = 255
+        cmd = str(address).zfill(6)
+        reply = self.comm(action='1', parameter='797', command=cmd)
+        if reply == cmd:
+            self.device_address = str(address).zfill(3)
+
+    def setpoint_speed(self, value=None):
+        """Set speed value in speed setting mode"""
+        if value is None:
+            reply = self.comm(action='0', parameter='707', command='=?')
+            return self._format_from_data_type(2, reply)
+
+        if value < 40:
+            value = 40
+        elif value > 100:
+            value = 100
+        cmd = self._format_as_data_type(2, value)
+        self.comm(action='1', parameter='707', command=cmd)
+
+    def setpoint_standby(self, value=None):
+        """Set standby value in standby operation mode"""
+        if value is None:
+            reply = self.comm(action='0', parameter='717', command='=?')
+            return self._format_from_data_type(2, reply)
+
+        if value < 40:
+            value = 40
+        elif value > 100:
+            value = 100
+        cmd = self._format_as_data_type(2, value)
+        self.comm(action='1', parameter='717', command=cmd)
+
+    def valve_duration(self, value=None):
+        """Set duration of gas ballast valve (minutes)"""
+        # Note - does not seem to actually be data type 2, but just an integer
+        if value is None:
+            reply = self.comm(action='0', parameter='721', command='=?')
+            return int(reply)
+
+        if value < 0:
+            value = 0
+        elif value > 60:
+            value = 60
+        cmd = str(int(value)).zfill(6)
+        self.comm(action='1', parameter='721', command=cmd)
+
+    def setpoint_pressure(self, value=None):
+        """Pressure setpoint at which auto standby switches on or the pressure auto
+        regulates to (mbar)"""
+        if value is None:
+            reply = self.comm(action='0', parameter='730', command='=?')
+            return self._format_from_data_type(10, reply)
+
+        if value < 0.01:
+            value = 0.01
+        elif value > 30:
+            value = 30
+        cmd = self._format_as_data_type(10, value)
+        self.comm(action='1', parameter='730', command=cmd)
+
+    def valve_mode_threshold(self, value=None):
+        """Pressure switching threshold (mbar) for the gas ballast valve in valve mode"""
+        if value is None:
+            reply = self.comm(action='0', parameter='731', command='=?')
+            return self._format_from_data_type(10, reply)
+
+        if value < 9e-2:
+            value = 9e-2
+        elif value > 30:
+            value = 30
+        cmd = self._format_as_data_type(10, value)
+        self.comm(action='1', parameter='731', command=cmd)
+
+    def auto_standby_threshold(self, value=None):
+        """Switch-off threshold with auto standby - pressure (mbar)"""
+        if value is None:
+            reply = self.comm(action='0', parameter='732', command='=?')
+            return self._format_from_data_type(10, reply)
+
+        if value < 1:
+            value = 1
+        elif value > 100:
+            value = 100
+        cmd = self._format_as_data_type(10, value)
+        self.comm(action='1', parameter='732', command=cmd)
+
+    def pressure_correction_factor(self, value=None):
+        """Correction factor for the pressure gauge"""
+        if value is None:
+            reply = self.comm(action='0', parameter='742', command='=?')
+            return self._format_from_data_type(2, reply)
+
+        if value == 0:
+            return
+        if value < 0.1:
+            value = 0.1
+        elif value > 8:
+            value = 8
+        cmd = self._format_as_data_type(2, value)
+        self.comm(action='1', parameter='742', command=cmd)
+
+    def copy_configuration(self, filename=None):
+        """Load all configuration parameters and save to file if given - otherwise return"""
+        cfg = {
+            'address': None,
+            'auto_boost': None,
+            'digital_out_2': None,
+            'digital_out_1': None,
+            'pressure_mode': None,
+            'speed_set_mode': None,
+            'vent_mode': None,
+            'auto_start': None,
+            'digital_input_2': None,
+            'setpoint_speed': None,
+            'setpoint_standby': None,
+            'valve_duration': None,
+            'setpoint_pressure': None,
+            'valve_mode_threshold': None,
+            'auto_standby_threshold': None,
+            'pressure_correction_factor': None,
+            'C1': None,
+            'D1': None,
+        }
+        # Should params 060 and 061 also be read?
+        cfg['address'] = self.address()
+        cfg['auto_boost'] = self.auto_boost()
+        cfg['digital_out_2'] = self.config_digital_out(2)[0]
+        cfg['digital_out_1'] = self.config_digital_out(1)[0]
+        cfg['pressure_mode'] = self.pressure_mode()
+        cfg['speed_set_mode'] = self.speed_mode()
+        cfg['vent_mode'] = self.vent_mode()
+        cfg['auto_start'] = self.auto_start()
+        cfg['digital_input_2'] = self.config_digital_in()[0]
+        cfg['setpoint_speed'] = self.setpoint_speed()
+        cfg['setpoint_standby'] = self.setpoint_standby()
+        cfg['valve_duration'] = self.valve_duration()
+        cfg['setpoint_pressure'] = self.setpoint_pressure()
+        cfg['valve_mode_threshold'] = self.valve_mode_threshold()
+        cfg['auto_standby_threshold'] = self.auto_standby_threshold()
+        cfg['pressure_correction_factor'] = self.pressure_correction_factor()
+        cfg['C1'] = self.config_acc('C1')  # Won't be loaded
+        cfg['D1'] = self.config_acc('D1')  # Won't be loaded
+
+        # Return to user
+        if filename is None:
+            return cfg
+
+        # or save to file
+        filename = pathlib.Path(filename)
+        with open(filename, 'w') as f:
+            f.write(json.dumps(cfg))
+
+    def load_configuration(self, filename):
+        filename = pathlib.Path(filename)
+        if not filename.exists():
+            raise ValueError('"{}" does not exist'.format(filename.resolve()))
+        with open(filename, 'r') as f:
+            cfg = json.loads(f.readline())
+
+        # Backup configuration
+        info = self.read_pump_type()
+        backup = pathlib.Path('{}.cfg.backup'.format(info['drive_serial']))
+        self.copy_configuration(backup)
+
+        # Apply settings
+        for key, value in cfg.items():
+            if key == 'address':
+                self.address(value)
+            if key == 'auto_boost':
+                self.auto_boost(value)
+            if key == 'digital_out_2':
+                self.config_digital_out(2, value)
+            if key == 'digital_out_1':
+                self.config_digital_out(1, value)
+            if key == 'pressure_mode':
+                self.pressure_mode(value)
+            if key == 'speed_set_mode':
+                self.speed_mode(value)
+            if key == 'vent_mode':
+                self.vent_mode(value)
+            if key == 'auto_start':
+                self.auto_start(value)
+            if key == 'digital_input_2':
+                self.config_digital_in(value)
+            if key == 'setpoint_speed':
+                self.setpoint_speed(value)
+            if key == 'setpoint_standby':
+                self.setpoint_standby(value)
+            if key == 'valve_duration':
+                self.valve_duration(value)
+            if key == 'setpoint_pressure':
+                self.setpoint_pressure(value)
+            if key == 'valve_mode_threshold':
+                self.valve_mode_threshold(value)
+            if key == 'auto_standby_threshold':
+                self.auto_standby_threshold(value)
+            if key == 'pressure_correction_factor':
+                self.pressure_correction_factor(value)
 
 
 if __name__ == '__main__':
     PUMP = PfeifferHiscroll('/dev/ttyUSB0', device_address=2)
-
-    # print('Set rotaional speed: ', PUMP.set_rotational_speed())
-    # print('Actual rotaional speed: ', PUMP.actual_rotational_speed())
-
-    # print(PUMP.stand_by_state(True))
-    # print('Stand by state: ', PUMP.stand_by_state(False))
-    print('Pressure mode state: ', PUMP.pressure_mode_state())
-    print('Pressure mode state: ', PUMP.pressure_mode_state(True))
-    print('Pressure: ', PUMP.pressure())
-    print('Pressure setpoint: ', PUMP.pressure_setpoint())
-    print('Pressure setpoint: ', PUMP.pressure_setpoint(1))
-    print('Pressure setpoint: ', PUMP.pressure_setpoint())
-
-    # print(PUMP.stand_by_state(False))
-    for i in range(0, 5):
-        print('Pressure: ', PUMP.pressure())
-        time.sleep(0.5)
-    print('Rotaional speed: ', PUMP.rotational_speed())
-    print('Power: ', PUMP.drive_power()['power'])
-
-    print()
-    print()
-    exit()
-    # Edwards compatible commands
     print('Pump type: ', PUMP.read_pump_type())
-    print(PUMP.read_pump_temperature())
-    # print(PUMP.read_serial_numbers())
+    print('Pump temperatures: ', PUMP.read_pump_temperature())
     print('Run hours: ', PUMP.read_run_hours())
-    # print(PUMP.read_normal_speed_threshold())
-    # print(PUMP.read_standby_speed())
-    # print(PUMP.pump_controller_status())
-    # print(PUMP.bearing_service())
-    # print(PUMP.read_pump_status()['rotational_speed'])
-    # print(PUMP.set_run_state(True))
-    # print(PUMP.set_standby_mode(False))
+    print('Serial number: ', PUMP.read_serial_numbers())
+    print(PUMP.config_acc('C'))
+    print(PUMP.config_acc('D'))
+    print(PUMP.config_digital_out(1))
+    print(PUMP.config_digital_out(2))
+
+    speed = PUMP.rotational_speed()
+    print('Set rotational speed: ', speed['setpoint'])
+    print('Actual rotational speed: ', speed['actual'])
+
+    print('Pressure mode state: ', PUMP.pressure_mode())
+    print('Pressure: ', PUMP.pressure())
