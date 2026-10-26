@@ -222,7 +222,7 @@ class Keithley2450:
         return value
 
     # Compatibility function, could be removed
-    def set_current_limit(self, current: float = None):
+    def set_current_limit(self, current: float = None, node: int = 0):
         cmd = 'smu.source.func = smu.FUNC_DC_VOLTAGE'
         self.instr.write(cmd, node)
         if current is not None:
@@ -284,6 +284,7 @@ class Keithley2450:
         return current_nplc
 
     def trigger_measurement(self, buffer: str = 'defbuffer1', node: int = 0):
+        self.write('*TRG')
         cmd = 'print([]smu.measure.read({}))'.format(buffer)
         value = float(self.query(cmd, node))
         return value
@@ -301,7 +302,7 @@ class Keithley2450:
 
     # def elements_in_buffer(self, buffer: str = 'defbuffer1'):
 
-    def read_latest(self, buffer: str = 'defbuffer1'):
+    def read_latest(self, buffer: str = 'defbuffer1', node: int = 0):
         reading = {}
         cmd = 'a={}; n = a.endindex'.format(buffer)
         self.instr.write(cmd, node)
@@ -348,6 +349,25 @@ class Keithley2450:
             now.year, now.month, now.day, now.hour, now.minute, now.second
         )
         self.write(cmd, node)
+
+    def configure_digital_port_as_triggers(self, channel_list=[], node=0):
+        """
+        Configure the DB9 digital output to be configured as
+        individual outputs, that can be (mis)used as triggers.
+        """
+        if not channel_list:
+            channel_list = [1, 2, 3, 4, 5, 6]
+        for i in range(1, 7):
+            if i in channel_list:
+                cmd = '[]digio.line[{}].mode = digio.MODE_TRIGGER_OPEN_DRAIN'.format(i)
+                self.write(cmd, node)
+                cmd = '[]trigger.digout[{}].pulsewidth = 1e-5'.format(i)
+                self.write(cmd, node)
+                cmd = '[]trigger.digout[{}].stimulus = trigger.EVENT_COMMAND'.format(i)
+                self.write(cmd, node)
+            else:
+                cmd = '[]digio.line[{}].mode = digio.MODE_DIGITAL_IN'.format(i)
+                self.write(cmd, node)
 
 
 if __name__ == '__main__':
