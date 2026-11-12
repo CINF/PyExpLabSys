@@ -234,6 +234,9 @@ class OxfordMercury:
             raw_reply = self.instr.query(cmd)
             print(raw_reply)
             # Todo check that raw_reply contains VALID
+            cmd = 'SET:DEV:{}:PSU:SIG:FSET:{}T'.format(uid, setpoint)
+            raw_reply = self.instr.query(cmd)
+            print(raw_reply)
         else:
             # Hold the ramp currently being performed
             cmd = 'SET:DEV:{}:PSU:ACTN:HOLD'.format(uid)
