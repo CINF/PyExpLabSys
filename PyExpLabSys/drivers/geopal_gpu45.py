@@ -35,7 +35,7 @@ class GeopalGP45(object):
             value = self._read(value_register)
             error_code = self._read(error_register)
         except minimalmodbus.NoResponseError:
-            value, error_code = None
+            value = error_code = None
         return value, error_code
 
 
