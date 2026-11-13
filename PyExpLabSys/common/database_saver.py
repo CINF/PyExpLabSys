@@ -1,6 +1,6 @@
 # pylint: disable=too-many-arguments,too-many-instance-attributes,no-member
 
-"""Classes for saving coninuous data and data sets to a database"""
+"""Classes for saving continuous data and data sets to a database"""
 
 import re
 import time
@@ -14,7 +14,6 @@ try:
     import MySQLdb
 except ImportError:
     import pymysql as MySQLdb
-
     MySQLdb.install_as_MySQLdb()
 
 from ..settings import Settings
@@ -326,7 +325,7 @@ class ContinuousDataSaver(object):
         """Initialize the continous logger
 
         Args:
-            continuous_data_table (str): The contunuous data table to log data to
+            continuous_data_table (str): The continuous data table to log data to
             username (str): The MySQL username
             password (str): The password for ``username`` in the database
             measurement_codenames (sequence): A sequence of measurement codenames that this
@@ -335,7 +334,7 @@ class ContinuousDataSaver(object):
                 :meth:`add_continuous_measurement` method.
 
         .. note:: The codenames are the 'official' codenames defined in the database for
-            contionuous measurements NOT codenames that can be userdefined
+            continuous measurements NOT codenames that can be userdefined
 
         """
         CDS_LOG.info(
@@ -367,6 +366,10 @@ class ContinuousDataSaver(object):
             for codename in measurement_codenames:
                 self.add_continuous_measurement(codename)
 
+        # Prepare batch query
+        query = 'INSERT INTO {} (type, time, value) values {{}}'
+        self.insert_batch_query = query.format(continuous_data_table)
+
     def add_continuous_measurement(self, codename):
         """Add a continuous measurement codename to this saver
 
@@ -374,7 +377,7 @@ class ContinuousDataSaver(object):
             codename (str): Codename for the measurement to add
 
         .. note:: The codenames are the 'official' codenames defined in the database
-            for contionuous measurements NOT codenames that can be userdefined
+            for continuous measurements NOT codenames that can be userdefined
 
         """
         CDS_LOG.info('Add measurements for codename \'%s\'', codename)
@@ -389,6 +392,25 @@ class ContinuousDataSaver(object):
             CDS_LOG.critical(message)
             raise ValueError(message)
         self.codename_translation[codename] = results[0][0]
+
+    def get_last_point(self, codename):
+        """Get the last saved datapoint of codename from the database
+
+        Args:
+            codename (str): Codename for the measurement datapoint to get
+
+        Returns:
+            tuple: (unixtime, value) of most recent point in data table
+        """
+        CDS_LOG.info('Get latest value for codename \'%s\'', codename)
+        measurement_number = self.codename_translation[codename]
+        query = 'SELECT unix_timestamp(time), value FROM {} where type = {} ORDER BY time DESC LIMIT 1'
+        query = query.format(self.continuous_data_table, measurement_number)
+        self.cursor.execute(query)
+        results = self.cursor.fetchall()
+        if len(results) == 0:
+            return None
+        return results[0]
 
     def save_point_now(self, codename, value):
         """Save a value and use now (a call to :func:`time.time`) as the timestamp
@@ -426,6 +448,63 @@ class ContinuousDataSaver(object):
         query = 'INSERT INTO {} (type, time, value) VALUES (%s, FROM_UNIXTIME(%s), %s);'
         query = query.format(self.continuous_data_table)
         self.sql_saver.enqueue_query(query, (measurement_number, unixtime, value))
+
+    def save_points_batch(self, codename, x_values, y_values, batchsize=1000):
+        """Save a number points for the same codename in batches
+
+        Args:
+            codename (str): The codename for the measurement to save the points for
+            x_values (sequence): A sequence of x values
+            y_values (sequence): A sequence of y values
+            batchsize (int): The number of points to send in the same batch.
+                Defaults to 1000, see the warning below before changing it
+
+        .. warning:: The batchsize is ultimately limited by the max package size that
+           the MySQL server will receive. The default is 1MB. Each point amounts to
+           around 60 bytes in the final query. Rounding this up to 100, means that
+           the limit is ~10000 points. This means that the default of 1000 should be
+           safe and that if it is changed by the user, expect problems if exceeding
+           the lower 10000ths.
+        """
+        CDS_LOG.debug(
+            'For codename \'%s\' save %s points in batches of %s',
+            codename,
+            len(x_values),
+            batchsize,
+        )
+
+        # Check lengths and get measurement_number
+        if len(x_values) != len(y_values):
+            msg = 'Number of x and y values must be the same. Values are {} and {}'
+            raise ValueError(msg.format(len(x_values), len(y_values)))
+        try:
+            measurement_number = self.codename_translation[codename]
+        except KeyError:
+            message = 'No entry in dateplots_descriptions for codename: \'{}\''
+            raise ValueError(message.format(codename))
+
+        # Gather values in batches of batchsize, start enumerate from 1, to make
+        # the criteria
+        values = []
+        number_of_values = 0
+        for x_value, y_value in zip(x_values, y_values):
+            # Add this point
+            values.extend([measurement_number, x_value, y_value])
+            number_of_values += 1
+
+            # Save a batch (> should not be necessary)
+            if number_of_values >= batchsize:
+                value_marker_string = ', '.join(['(%s, FROM_UNIXTIME(%s), %s)'] * number_of_values)
+                query = self.insert_batch_query.format(value_marker_string)
+                self.sql_saver.enqueue_query(query, values)
+                values = []
+                number_of_values = 0
+
+        # Save the remaining number of points (smaller than the batchsize)
+        if number_of_values > 0:
+            value_marker_string = ', '.join(['(%s, FROM_UNIXTIME(%s), %s)'] * number_of_values)
+            query = self.insert_batch_query.format(value_marker_string)
+            self.sql_saver.enqueue_query(query, values)
 
     def start(self):
         """Starts the underlying :class:`.SqlSaver`"""

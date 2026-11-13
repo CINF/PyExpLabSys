@@ -659,22 +659,6 @@ class LoggingCriteriumChecker(object):
             self.saved_points[codename].append((now, value))
             return True
 
-        # Always trigger on a timeout
-        if now - self.last_time[codename] > measurement['time_out']:
-            # Do extra fancy stuff to prevent artificial tailing
-            self.timeout_counter += 1
-            self.in_timeout = True
-            self.timeout_handler(codename, now, value)
-            self.in_timeout = False
-
-            self.last_time[codename] = now
-            self.last_values[codename] = value
-
-            # reset data buffer and save point(s)
-            self.buffer[codename] = []
-            self.saved_points[codename].append((now, value))
-            return True
-
         # Check if below lower compare value
         if (
             measurement['low_compare'] is not None
@@ -725,6 +709,23 @@ class LoggingCriteriumChecker(object):
                 self.buffer[codename] = []
                 self.saved_points[codename].append((now, value))
                 return True
+
+        # Always trigger on a timeout
+        if now - self.last_time[codename] > measurement['time_out']:
+            # Do extra fancy stuff to prevent artificial tailing
+            self.timeout_counter += 1
+            self.in_timeout = True
+            self.timeout_handler(codename, now, value)
+            self.in_timeout = False
+
+            self.last_time[codename] = now
+            self.last_values[codename] = value
+
+            # reset data buffer and save point(s)
+            self.buffer[codename] = []
+            self.saved_points[codename].append((now, value))
+            return True
+
         # Append point to buffer before returning false
         self.buffer[codename].append((now, value))
         return False
@@ -746,9 +747,6 @@ class LoggingCriteriumChecker(object):
         slope = (newest[1] - oldest[1]) / (newest[0] - oldest[0])
         intercept = newest[1] - slope * newest[0]
         fit = intercept + slope * buff[:, 0]
-
-        time_limit = (oldest[0], newest[0])  ##
-
         smoothed = smooth(buff[:, 1], 5)
         # The following gives a RuntimeWarning on 0's. This is okay for this purpose
         # A way to suppress this is to run np.seterr(invalid='ignore'), but this will
