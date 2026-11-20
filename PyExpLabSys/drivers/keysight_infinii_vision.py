@@ -1,4 +1,6 @@
 import time
+import pickle
+import datetime
 
 import pyvisa
 import numpy as np
@@ -40,7 +42,7 @@ class InfiniiVision:
         self.instr.write('WAVeform:SOURce CHANnel{}'.format(channel))
 
         preamble = self._read_preamble()
-        print('Preamble: ', preamble)
+        # print('Preamble: ', preamble)
 
         # The stated datatype and endianess is correct for now,
         # but this should be explicitly defined in __init__
@@ -64,24 +66,60 @@ class InfiniiVision:
         )
         return x_data, y_data
 
-    
+    def digitize(self):
+        scope.instr.write(':DIGITIZE')
+        return True
+
+    def scan_and_save(self):
+        data = {}
+        scope.instr.write(':DIGITIZE')
+        for i in range(1, 5):
+            visible = self.instr.query(':STATUS? CHANNEL{}'.format(i))
+            assert visible in ('0', '1')
+            if int(visible) == 0:
+                continue
+            x_data, y_data = scope.get_waveform(i)
+            data[i] = {'x': x_data, 'y': y_data}
+
+        now = datetime.datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+        filename = 'data_' + now + '.p'
+        with open(filename, 'wb') as f:
+            pickle.dump(data, f)
+        return filename
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    # If in doubt about the address, see the list of devices here:
-    # rm = pyvisa.ResourceManager()
-    # resources = rm.list_resources()
-    # print(resources)
-    # exit()
+    import matplotlib.animation as animation
 
-    visa_addr = 'USB0::10893::5990::MY56311274::0::INSTR'
+    rm = pyvisa.ResourceManager()
+    resources = rm.list_resources()
+    for res in resources:
+        if 'MY' in res:
+            visa_addr = res
     scope = InfiniiVision(visa_addr)
 
+    # scope.scan_and_save()
+
+    scope.digitize()
     x_data1, y_data1 = scope.get_waveform(1)
+    x_data2, y_data2 = scope.get_waveform(2)
+
+    def update(i):
+        # scope.instr.write(':DIGITIZE')
+        scope.digitize()
+        x_data1, y_data1 = scope.get_waveform(1)
+        x_data2, y_data2 = scope.get_waveform(2)
+        line_data1.set_ydata(y_data1)
+        line_data2.set_ydata(y_data2)
+        return line_data1, line_data2
 
     fig = plt.figure()
     axis = fig.add_subplot(1, 1, 1)
-
     (line_data1,) = axis.plot(x_data1, y_data1, 'y-')
+    (line_data2,) = axis.plot(x_data2, y_data2, 'b-')
 
-    
+    if False:
+        ani = animation.FuncAnimation(fig, update, interval=2, blit=False, save_count=1)
+
     plt.show()
