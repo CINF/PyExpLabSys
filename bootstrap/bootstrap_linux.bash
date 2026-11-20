@@ -36,14 +36,41 @@ export PATH=$PATH:$HOME/PyExpLabSys/bin:$HOME/.local/bin:$HOME/machines/bin
 export PYTHONPATH=$PYTHONPATH:$HOME/PyExpLabSys:$HOME/machines
 stty -ixon
 
-machine_dir=$HOME/machines/$HOSTNAME
-if [ -d $machine_dir ]; then
-    echo "Entering machine dir: $machine_dir"
-    cd $machine_dir
+# Define and enter machine dir
+prefix=${HOSTNAME%%-*}             # everything before first -
+rest=${HOSTNAME#*-}               # remove prefix and first -
+setup=${rest%%-*}              # everything before next -
+end=${rest#*-} # everything after the next -
+
+if [ -d $HOME/machines/$HOSTNAME ]; then
+    machine_dir=$HOME/machines/$HOSTNAME
+elif [ -d $HOME/machines/$prefix/$setup-$end ]; then
+    machine_dir=$HOME/machines/$prefix/$setup-$end
+elif [ -d $HOME/machines/$prefix/$setup/$end ]; then
+    machine_dir=$HOME/machines/$prefix/$setup/$end
+elif [ -d $HOME/machines/$setup/$end ]; then
+    machine_dir=$HOME/machines/$setup/$end
+elif [ -d $HOME/machines/$setup-$end ]; then
+    machine_dir=$HOME/machines/$setup-$end
+elif [ -d $HOME/machines/$prefix-$setup ]; then
+    machine_dir=$HOME/machines/$prefix-$setup
+elif [ -d $HOME/machines/$prefix/$setup ]; then
+    machine_dir=$HOME/machines/$prefix/$setup
+else
+    machine_dir=$HOME/machines
 fi
+echo "Entering machine dir: $machine_dir"
+cd $machine_dir
+
+# Run pistatus
 pistatus.py
-if [ -f ~/'$PELS_ENV'/bin/activate ]; then
-    source ~/'$PELS_ENV'/bin/activate
+if [ -f ~/.pels/bin/activate ]; then
+    source ~/.pels/bin/activate
+fi
+
+# Reload aliases to exploit newly defined variable names
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
 fi
 '
 
@@ -56,7 +83,7 @@ alias emacs-nolint=\"emacs -q --load ~/PyExpLabSys/bootstrap/.emacs-simple\"
 alias a=\"cd ~/PyExpLabSys/PyExpLabSys/apps\"
 alias c=\"cd ~/PyExpLabSys/PyExpLabSys/common\"
 alias d=\"cd ~/PyExpLabSys/PyExpLabSys/drivers\"
-alias m=\"if [ -d ~/machines/\$HOSTNAME ];then cd ~/machines/\$HOSTNAME; else cd ~/machines; fi\"
+alias m=\"if [ -d $machine_dir ];then cd $machine_dir; fi\"
 alias p=\"cd ~/PyExpLabSys/PyExpLabSys\"
 alias b=\"cd ~/PyExpLabSys/bootstrap\"
 alias s=\"screen -x -p 0\"
